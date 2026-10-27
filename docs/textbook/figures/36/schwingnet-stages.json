@@ -1,0 +1,40 @@
+{
+  "id": "36/schwingnet-stages",
+  "title": "SchwingNet as built: the stages, and which of them learn",
+  "caption": "The reported stack, left to right: the body detector with four corner keypoints, box repair, the level encoder and its run head beside the count from the anchor, and their coupling. Below, the proposed tie: the detector's corners already give five of SchwingCheck's seven measures.",
+  "chapter": "36",
+  "grade": "Reported",
+  "status": "current",
+  "source": {
+    "kind": "diagram",
+    "artifact": null,
+    "artifact_url": null,
+    "made_by": "tools/schwingcheck_figures.py",
+    "commit": null,
+    "data": [
+      "docs/textbook/12-detectors-the-architecture-and-the-version-1-training-plan.md"
+    ],
+    "run": null,
+    "notes": "Drawn from chapter 12's description of the stack as built; the SchwingCheck branch is a proposal."
+  },
+  "explore": [
+    {
+      "label": "The script",
+      "href": "tools/schwingcheck_figures.py"
+    },
+    {
+      "label": "The recorded numbers",
+      "href": "tools/schwingcheck_records.json"
+    },
+    {
+      "label": "The chapter",
+      "href": "docs/textbook/36-schwingcheck-an-explainable-bayesian-check-on-vertebral-labels.md"
+    }
+  ],
+  "rerun": {
+    "where": "actions",
+    "command": "python3 tools/schwingcheck_figures.py docs/textbook/figures/36",
+    "cost": "CPU, under a second",
+    "needs_owner_word": false
+  }
+}

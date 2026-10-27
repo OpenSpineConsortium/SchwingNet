@@ -1,0 +1,59 @@
+{
+  "about": "The recorded numbers chapter 36's figures print, each copied from the file named beside it. Nothing here is computed. bordercall is OpenSpineConsortium/bordercall, private, read at the commit given; its records are synthetic columns drawn from Panjabi's tables, no patient.",
+  "exact_rule": {
+    "source": {"repo": "OpenSpineConsortium/bordercall", "commit": "00f969f", "file": "records/exact-2026-10-26/exact.json", "key": "widths/<n>/regimes/both"},
+    "generator": {"noise_mm": 1.0, "rho": 0.5, "scale_sd": 0.07, "gh_nodes": 161, "places_from": "C3", "places_to": "L5", "levels": 22, "columns_per_width": 2000},
+    "measures": ["endplate", "endplate_depth", "endplate_lower", "endplate_lower_depth", "h_post", "canal_w", "canal_ap"],
+    "planes": {
+      "source": {"repo": "OpenSpineConsortium/bordercall", "commit": "17683b1", "file": "bordercall/neighbour.py", "key": "REGIMES"},
+      "ap": ["endplate", "endplate_lower", "h_post", "canal_w"],
+      "lateral": ["endplate_depth", "endplate_lower_depth", "h_post", "canal_ap"]
+    },
+    "widths": {
+      "1": {"exact": 0.4727272727272727, "answered_099": 0.0067954545454545455, "precision_099": 1.0, "fields": 44000},
+      "3": {"exact": 0.730825, "answered_099": 0.1712, "precision_099": 0.9978095794392523, "fields": 40000},
+      "5": {"exact": 0.8565277777777778, "answered_099": 0.36686111111111114, "precision_099": 0.9981070644355267, "fields": 36000},
+      "9": {"exact": 0.9611428571428572, "answered_099": 0.7182857142857143, "precision_099": 0.9992541766109785, "fields": 28000},
+      "15": {"exact": 0.9969375, "answered_099": 0.9781875, "precision_099": 0.9998083189572551, "fields": 16000}
+    },
+    "one_plane_at_nine": {"ap": 0.8909285714285714, "lateral": 0.8364285714285714, "both": 0.9611428571428572}
+  },
+  "measurement_error_3mm": {
+    "source": {"repo": "OpenSpineConsortium/bordercall", "commit": "00f969f", "file": "records/exact-2026-10-26/exact.json", "key": "robust/misspecified/noise_mm=3/<rule>/3/selective/0.99/precision"},
+    "bodies": 3,
+    "nominal": 0.8259773013871374,
+    "honest": 0.968476357267951
+  },
+  "posterior_latency": {
+    "source": {"repo": "OpenSpineConsortium/bordercall", "commit": "9e041ef", "file": "records/whitepaper-2026-10-26/second_opinion.json", "key": "latency"},
+    "bodies": 3,
+    "calls": 50,
+    "cpus": 4,
+    "median_ms": 13.574657000390289,
+    "max_ms": 17.376048999722116
+  },
+  "second_opinion": {
+    "source": {"repo": "OpenSpineConsortium/bordercall", "commit": "9e041ef", "file": "records/whitepaper-2026-10-26/second_opinion.json", "key": "widths/<n>/off_by_one_below_0.01 and correct_below_0.01"},
+    "off_by_one_contradicted_at_001": {"3": 0.3739736842105263, "9": 0.8414038461538461},
+    "correct_flagged_at_001": {"3": 0.00495, "9": 0.0009285714285714286}
+  },
+  "corner_detector": {
+    "source": {"repo": "OpenSpineConsortium/SchwingNet", "file": "docs/textbook/12-detectors-the-architecture-and-the-version-1-training-plan.md", "key": "The body detector, from detect_v1 to the film detector the stack uses", "artifact": "artifacts/vertebra-detector-field-report-1jljc6/"},
+    "model": "detect_v1, a YOLO11m-pose model with one class and four keypoints at the body's corners",
+    "ms_per_image": 6.8,
+    "hardware": "not named by the report",
+    "pck_01": 0.768,
+    "pck_02": 0.917,
+    "test_instances": 558
+  },
+  "frame_budget": {
+    "source": {"repo": "OpenSpineConsortium/SchwingNet", "file": "docs/memory/latency-and-the-recorded-sweep.md"},
+    "ms": 97,
+    "why": "one frame of C-ArmLSpine's 10.3 fps sweeps"
+  },
+  "levelcheck": {
+    "source": {"repo": "OpenSpineConsortium/SchwingNet", "file": "docs/textbook/36-schwingcheck-an-explainable-bayesian-check-on-vertebral-labels.md", "key": "the white paper's table of the components, from the publications it cites"},
+    "or_seconds": "17 to 72 s (Manbachi et al. 2018)",
+    "ms_seconds": "about 50 s projected (Ketcha et al. 2017)"
+  }
+}

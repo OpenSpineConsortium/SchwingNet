@@ -1,0 +1,40 @@
+{
+  "id": "36/schwingcheck-rule",
+  "title": "SchwingCheck: from seven measures to a named field",
+  "caption": "The bodies in view, every place between C3 and L5 they could occupy, the likelihood of each place from Panjabi's means and spreads with one shared size factor, and the posterior: a name at 0.99, a region or border claim, or \"cannot say\". The posterior bars are schematic; the table is the record's.",
+  "chapter": "36",
+  "grade": "Reported",
+  "status": "current",
+  "source": {
+    "kind": "diagram",
+    "artifact": null,
+    "artifact_url": null,
+    "made_by": "tools/schwingcheck_figures.py",
+    "commit": null,
+    "data": [
+      "tools/schwingcheck_records.json"
+    ],
+    "run": null,
+    "notes": "The rule as bordercall's exact.py computes it; numbers copied from bordercall records/exact-2026-10-26/exact.json at 00f969f, synthetic columns only."
+  },
+  "explore": [
+    {
+      "label": "The script",
+      "href": "tools/schwingcheck_figures.py"
+    },
+    {
+      "label": "The recorded numbers",
+      "href": "tools/schwingcheck_records.json"
+    },
+    {
+      "label": "The chapter",
+      "href": "docs/textbook/36-schwingcheck-an-explainable-bayesian-check-on-vertebral-labels.md"
+    }
+  ],
+  "rerun": {
+    "where": "actions",
+    "command": "python3 tools/schwingcheck_figures.py docs/textbook/figures/36",
+    "cost": "CPU, under a second",
+    "needs_owner_word": false
+  }
+}

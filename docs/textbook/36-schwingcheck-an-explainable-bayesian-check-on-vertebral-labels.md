@@ -1,0 +1,494 @@
+# 36 SchwingCheck: an explainable Bayesian check on vertebral labels
+
+Label: confidential-method. Results may be shown, mechanism may not, until the provisional is filed; this chapter states the method in full, stays in this private repository and is copied nowhere.
+
+This chapter carries the owner's white paper on SchwingCheck into the book, with five diagrams drawn for it. It settles five things for a planner. What SchwingCheck is: a rule that names the vertebral bodies in view from seven measurements an anatomist would recognise, the upper and lower end-plate widths and depths, the posterior body height and the canal's width and depth, and returns a probability over every place the bodies could occupy between C3 and L5. Where it joins SchwingNet as built, which names levels with learned stages and gives no probability an anatomist could audit. The three pathways the paper lays out to a level label in the operating room: LevelCheck, the Johns Hopkins registration that copies a labelled CT onto the radiograph, as prior art; SchwingCheck3D, where a preoperative CT exists; and SchwingCheck2D, with no CT, the paper's recommended default. How the seven measures could be read straight off a frame as distances between landmarks, with no segmentation, so that the check costs milliseconds and not the time a segmenter takes. And the randomized browser study of surgeons that the paper specifies. Every SchwingCheck number here is from synthetic columns drawn from Panjabi's published tables; no patient has been measured. The counting from an anchor that SchwingNet uses is [chapter 10](10-counting-from-an-anchor-along-a-sweep.md); naming from morphology is [chapter 11](11-naming-from-morphology-context-and-a-sweep.md); the stages as built are [chapter 12](12-detectors-the-architecture-and-the-version-1-training-plan.md); the overlap that makes a panorama is [chapter 34](34-the-optimal-overlap.md).
+
+## Where this chapter comes from
+
+The owner asked on 26 October 2026 at 21:18 UTC for "an entire white paper on this method succintly comparing how it would fare against levelcheck based in provable mathematical statistics and the spec for a demo of an IRB study comparing the accuracy of surgeon-assisted level identification with randomized assignment to a simulated environment via webbrowser to either levelcheck or SchwingCheck", and at 21:28 UTC set the sentence the paper hinges on. The paper was written as a Claude Doc, [SchwingCheck and LevelCheck](https://claude.ai/artifact/4VwMe9CKMX87s4jiEJBpRE), which the owner then rewrote live from about 00:50 UTC on 27 October into its present framing of three pathways. The rewrite stood still at revision 138; the checked corrections that still applied were folded in as narrow edits, with fourteen references the text cited and the list lacked, giving revision 188, which this chapter carries whole below. The same text is committed as `docs/SCHWINGCHECK_LEVELCHECK.md` in OpenSpineConsortium/bordercall, private, at commit 6ceb475, beside the records every SchwingCheck number comes from: `records/exact-2026-10-26/` (the exact rule at five widths) and `records/whitepaper-2026-10-26/` (the second opinion on a registration's label, the latency, the anomalous columns counted from C2, and the power of the reader study).
+
+At 03:15 UTC on 27 October the owner asked: "once this paper is done, add it to the schwingnet textbook and create a few visual diagrams focused on schwingnet, schwingcheck, and possible and automeasuring device which can obtain the measurements needed for schwingcheck without a segmentation to keep latency low". The five figures answer the second half. They are drawn by [tools/schwingcheck_figures.py](../../tools/schwingcheck_figures.py), standard library only, from [tools/schwingcheck_records.json](../../tools/schwingcheck_records.json), which copies each number it prints from the record named beside it and computes nothing; `python3 tools/schwingcheck_figures.py docs/textbook/figures/36` redraws all five in under a second. Each figure's JSON record beside it gives its grade: the stages and the rule are Reported, from chapter 12 and bordercall's records; the pathways, the landmarks and the device are Inferred, designs and not measurements.
+
+## SchwingNet as built, and where SchwingCheck joins it
+
+![SchwingNet as built: the stages, and which of them learn](figures/36/schwingnet-stages.svg)
+*Figure 36.1. The reported stack of chapter 12, stage by stage, with the learned stages shaded and the rules drawn dashed; the lower row is where the white paper's SchwingCheck pathways take SchwingNet's output. Source: [record](figures/36/schwingnet-stages.json).*
+
+SchwingNet as chapter 12 reports it is a chain of separate stages. A body detector, YOLO11m-pose, finds a box and four corner keypoints per body; detect_v1 took 6.8 ms per image on hardware its report does not name and placed 76.8 percent of corners within a tenth of the body's height and 91.7 percent within a fifth, on 558 test instances, mostly film. A box repair fills at most two bodies per gap from the spacing. A level encoder, a ResNet-18 over 27 classes, with a bidirectional GRU over runs of 2 to 9 bodies, gives each body a name, and a count from the anchor, the sacrum or C2, gives each body its place by position; the two are joined into one answer per body. Every one of those answers is the output of a learned stage or of a count, and none carries a probability that an anatomist could check against a measurement.
+
+SchwingCheck joins in two places. In SchwingCheck2D, SchwingNet's frames are linked into an AP and a lateral panorama by the overlap of chapter 34, and the rule names the run from the bodies' measures, or checks the names SchwingNet gave it. In SchwingCheck3D the rule reads the same measures from a CT's vertebra masks and checks the CT's labels before they are carried to the radiograph. In both the rule is the same function of the same seven numbers. What figure 36.1 marks as missing is the reading of the canal: SchwingNet's corners give five of the seven measures, both end-plate widths in an AP view or both depths in a lateral and the body's height, and nothing SchwingNet trains finds the canal's walls.
+
+## The rule in four steps
+
+![SchwingCheck: from seven measures to a named field](figures/36/schwingcheck-rule.svg)
+*Figure 36.2. The bodies in view, every place between C3 and L5 they could occupy, the likelihood of each place from Panjabi's means and spreads with one shared size factor, and the posterior: a name at 0.99, a region or border claim, or "cannot say". The posterior bars are schematic; the table is the record's. Source: [record](figures/36/schwingcheck-rule.json).*
+
+The rule takes the measures of a run of consecutive bodies and asks, for every place the run could start among the 22 levels from C3 to L5, how likely those measures are if the run sits there. The likelihood is Gaussian, with Panjabi's mean and spread for each measure at each level, a correlation of 0.5 between the measures of one body, 1 mm of measurement noise and one size factor shared by every body of the patient, drawn with a spread of 7 percent and integrated out by Gauss-Hermite quadrature on 161 nodes. A uniform prior over places turns those likelihoods into a posterior. Where the largest posterior is 0.99 or more the rule names the run; otherwise it says the two or three likeliest places, a region or the side of a border it can state nearly certainly, or "cannot say". Because the posterior is the Bayes rule for these fields and this prior, the paper rests on one sentence, quoted from its summary: "If every variable that determines the answer is a morphological metric familiar to an anatomist, then no function of the same measurements, whether a formula or a neural network, names fields correctly more often than this rule."
+
+On bordercall's synthetic columns, with an AP and a lateral view, the rule's forced choice names 47.3 percent of single bodies exactly, 73.1 percent of three-body fields, 85.7 percent of five, 96.1 percent of nine and 99.7 percent of fifteen. It gives a name at 0.99 on 0.7, 17.1, 36.7, 71.8 and 97.8 percent of those fields, and those names are right 100, 99.78, 99.81, 99.93 and 99.98 percent of the time. With one view only, nine bodies are named 89.1 percent from the AP and 83.6 percent from the lateral. The guarantee holds only while the generator holds: with 3 mm of measurement noise in place of 1 mm, names at 0.99 from three bodies are right 82.6 percent under the nominal rule and 96.85 percent under the honest rule that widens its spreads.
+
+## Three pathways to a level label
+
+![Three pathways to a level label on the X-ray](figures/36/schwingcheck-pathways.svg)
+*Figure 36.3. The white paper's three pathways, step by step: LevelCheck as prior art, SchwingCheck3D where a preoperative CT exists, and SchwingCheck2D with no CT, the default; the heavy border marks where the level is decided and the blue boxes the outputs the paper recommends. Source: [record](figures/36/schwingcheck-pathways.json).*
+
+The figure draws the paper's own section of that name. In LevelCheck the level is decided at its first step, a clinician's click on each target vertebra in the CT, and nothing later checks it: a wrong CT label registers as well as a right one. LevelCheck matters to the paper as proof that surgeons use a label overlay; in a mock operating room their median error fell from 30.4 percent unaided to 2.4 percent with it (Manbachi et al. 2018). SchwingCheck3D decides the level where the rule checks the CT's labels from its own masks, and carries them to the radiograph by a pose fitted to matched vertebral centroids, with no rendered image and no image similarity. SchwingCheck2D decides it where the rule names the run from the panoramas' bodies; it needs no CT, no registration and no licence, and the paper recommends it as the default. Its step 2 is, in the paper, one mask per body from FlexRay on each panorama; figure 36.5 proposes reading the measures with no mask at all.
+
+## The measures as landmarks
+
+![The seven measures as distances between landmarks](figures/36/measures-as-landmarks.svg)
+*Figure 36.4. The seven measures drawn as distances between landmarks on an AP and a lateral view: black the four corners SchwingNet's detector already finds, ochre the landmarks no trained head finds yet, blue the lengths SchwingCheck reads. Source: [record](figures/36/measures-as-landmarks.json).*
+
+None of the seven measures needs an outline. Each is a distance between two landmarks, or from a landmark to the line through two others. In an AP view the four corners give the upper and lower end-plate widths and the body's height, and the medial borders of the two pedicles' rings give the canal's width, the interpedicular distance. In a lateral view the four corners give the two end-plate depths and the posterior height, and the spinolaminar point, where the laminae meet at the canal's back wall, gives the canal's depth as its distance from the line through the two posterior corners. Each view shows four of the seven, which is why the rule asks for both where it can; bordercall's planes count the height in both. So three landmarks are new: two per body on an AP view and one on a lateral. The landmark scheme is this chapter's proposal, drawn after bordercall's measures figure; no head has been trained on it.
+
+## A measuring device with no segmentation
+
+![A segmentation-free measuring device](figures/36/segmentation-free-device.svg)
+*Figure 36.5. A proposed device that reads SchwingCheck's measures in one landmark pass and arithmetic, set against the segmentation road it replaces, with the times that exist against one frame of a 10.3 frame-per-second sweep. Only the corner detector and the posterior exist and have been timed. Source: [record](figures/36/segmentation-free-device.json).*
+
+The owner asked for a device that obtains the measurements with no segmentation, to keep the latency low. The design in figure 36.5 is one pass of a pose detector per frame that places seven landmark types per body, the four corners it places today and the three of figure 36.4; then arithmetic: the distances in pixels, a conversion to millimetres by the detector's pixel spacing times the ratio of the source-to-object to the source-to-image distance, or by a marker of known size; then the posterior. The road it replaces is SchwingCheck2D's step 2 as the paper draws it, a mask of every body from FlexRay, each body's contour traced from its mask, and the end plates, walls and canal found on the contour. No time for that road on a C-arm frame is in any record read here.
+
+What is measured is two numbers from two machines. The corner detector took 6.8 ms per image on unnamed hardware; the posterior took a median of 13.6 ms and at most 17.4 ms over 50 calls for a three-body field on four CPUs of a cloud container. One frame of C-ArmLSpine's sweeps is 97 ms. The two are not one end-to-end time and are not added as if they were; the device's own time is unknown until it is built. What the device must reach is stated by the record. Its lengths must be about as accurate as the generator assumes: at 3 mm of error the names given at 0.99 lose their guarantee, as above. Today's corners are scored in fractions of a body's height, not in millimetres, so their error in the rule's units is not known. Both views should be read where the C-arm allows, since one view costs seven to twelve points at nine bodies. And a wrong magnification scales every length by one factor, as patient size does; whether the rule's shared size factor absorbs it has not been scored.
+
+## The white paper, revision 188
+
+What follows is the paper as the owner wrote it, revision 188 of the Doc, copied from bordercall's ASCII copy with its section headings set one level down and its embedded figure replaced by a pointer to figure 36.3; nothing else is changed. Where it says "the record" it means bordercall's records named in its last reference.
+
+> **Confidential.** This paper describes unpublished work for which a provisional patent application is being prepared. Do not share it outside the lab until that application is filed and the university's technology transfer office has reviewed it. Every number for SchwingCheck is from synthetic columns drawn from Panjabi's published tables; no patient data were used.
+
+### Summary
+
+SchwingCheck is an explainable Bayesian classifier of vertebral level, built for the job LevelCheck showed is clinically useful. LevelCheck and its deformable successor msLevelCheck carry a labelled preoperative CT onto the intraoperative radiograph, and so check the surgeon's count against the CT's labels; nothing checks the labels themselves. SchwingCheck is that check: it reviews the annotator's work as LevelCheck reviews the surgeon's. This paper treats LevelCheck as prior art and lays out three pathways to a level label in the operating room: LevelCheck, SchwingCheck3D where a preoperative CT exists, and SchwingCheck2D without one. It recommends SchwingCheck2D as the default and SchwingCheck3D where a CT exists. SchwingCheck names levels from measurements an anatomist would recognise, and among all rules restricted to those measurements it is provably the most accurate. The whole paper rests on one sentence:
+
+> If every variable that determines the answer is a morphological metric familiar to an anatomist, then no function of the same measurements, whether a formula or a neural network, names fields correctly more often than this rule. That is because it is the Bayes rule for these fields and this prior over places, up to the 0.5 mm floor the likelihood leaves out (4 of 308,000 scored values touched it) and up to the quadrature. Its error is the floor for any network.
+
+The seven measures are the upper and lower end-plate widths and depths, the posterior body height, and the canal width and depth. The rule scores every place the visible bodies could occupy between C3 and L5 and returns the whole posterior over levels. While the generator holds, a name it gives at posterior 0.99 is right at least 99% of the time, by construction. On synthetic columns drawn from Panjabi's tables, it names 47% of single bodies exactly, 73% of three-body fields and 96% of nine-body fields. Its names at 0.99 are right 99.78% of the time from three bodies and 99.93% from nine.
+
+LevelCheck has no classifier of its own. It registers the patient's own preoperative CT (in research, also MRI) to the intraoperative radiograph and copies the image's labels across. Given a converged pose, the radiograph's labels are exactly the CT's. Which vertebra the CT calls L4 was decided earlier, by a clinician's click, a radiologist's count or an automatic labeller, and LevelCheck is only as right as that decision. Published results are strong. In the largest series, every label on 398 radiographs from 178 patients fell within the correct vertebra, after exclusions from an initial 504 that included 13 fields of three or fewer levels and 21 poor images. In an operating-room pilot of 20 patients, LevelCheck agreed with the surgeon's own localization every time. In a laboratory study of 62 hard cases, 16 of them deliberately mislabelled, surgeons' median error fell from 30.4% unaided to 2.4% with LevelCheck. Zero failures in 178 patients still cannot rule out, with 95% confidence, a patient-level failure rate as high as 1.7%. In every series the truth was the CT's own labels, so a CT that was itself miscounted would have been scored as right. These results measure the transfer, not the labels. The upstream labeller is what SchwingCheck checks, and section "Where LevelCheck's labels come from" shows that no LevelCheck study measures it against an independent count.
+
+The two SchwingCheck pathways, and the limit they share:
+
+- **SchwingCheck2D, the default.** AP and lateral panoramas from SchwingNet, one mask per body from FlexRay, and SchwingCheck naming the run or checking the names, with no CT, no registration and no patent in the path. The reader that takes the measures off radiographs is not built yet.
+- **SchwingCheck3D, when a CT exists.** SchwingCheck checks the CT's labels, human or automatic, before surgery, as LevelCheck's Independent Check mode checks the surgeon in the operating room; the checked labels then go to the X-ray by a landmark-based pose with SchwingCheck's probability on each. Where the labels come from a semantic segmenter, which can shift a whole lumbar run by one level without any error signal, this check is required rather than optional.
+- **The limit.** When a CT is labelled correctly and a registration converges with four or more levels in view, LevelCheck's published accuracy exceeds SchwingCheck's forced-choice accuracy from up to nine bodies. SchwingCheck's case rests on checking the labels, calibrated refusal, and working without a CT.
+
+The proposed study tests this with surgeons. They identify levels on simulated radiographs in a web browser, and each case is randomized to one of the three configurations: a registration aid of the LevelCheck type alone, SchwingCheck alone, or the two together.
+
+### Prior art: LevelCheck and msLevelCheck
+
+The components answer the same question from different evidence, which is what makes them useful together. LevelCheck asks where the patient's own labelled CT lies in the radiograph. SchwingCheck asks which run of levels the bodies in view most probably are, given how vertebrae of each level are shaped.
+
+|  | LevelCheck | SchwingCheck |
+| --- | --- | --- |
+| What it does | Registers a labelled preoperative CT (in research, also a sagittal T2 MRI) to the radiograph and projects the CT's labels onto it | Scores every place the visible run of bodies could occupy, C3 to L5, and returns the posterior over levels |
+| Inputs | A preoperative CT that overlaps the field, with labels a person placed; the radiograph; a coarse manual start and a mask | Seven measures of each body in view, from an AP and a lateral radiograph |
+| Where its truth comes from | The CT's labels: "human errors in vertebral labels in preoperative CT would be faithfully reproduced in the registered radiograph" (Otake et al. 2015) | Panjabi's per-level means and spreads, from twelve cadaver spines per level |
+| Computation | Rigid pose in 6 or 9 degrees of freedom; simulated radiographs of the CT compared with the real one by a gradient similarity (GI, GC or GO); multi-start CMA-ES on a GPU; msLevelCheck repeats this on sub-images masked around 5, 3 and then 1 label (Ketcha et al. 2017) | Exact posterior under a Gaussian model with one shared size factor, integrated by 161-node quadrature, uniform prior over places |
+| Output | Labels overlaid on the radiograph; success judged as a distance on the detector below 5, 20 or 30 mm | A probability for each level; a name at 0.99 or above, region and border claims, or "cannot say" |
+| Time | 7 to 26 s (Lo et al. 2015), median 44 s on a workstation (De Silva et al. 2016), 17 to 72 s in the operating room (Manbachi et al. 2018) | About 14 ms for a three-body field, the only width timed, before the measures are read off the images |
+| Evidence | Simulation, phantom and cadaver; 20 retrospective patients, 398 radiographs of 178 patients, a 20-patient operating-room pilot scored against the surgeon's own call; one laboratory reader study | 2,000 synthetic columns per width and robustness worlds; no patient |
+| Known failures | A one-level shift from the spine's repeating shape; implants absent from the CT; poor contrast; supine-to-prone change at the ends of the field | A table from too few spines; measurement error above 2 mm; transitional spines, which are not yet places of the rule |
+| Status | Rigid method: US 11,284,846 (Johns Hopkins and Siemens; priority 2011, granted 2022, listed to expire 2034). Multi-stage: US 10,262,424 (filed 2016). MR version: US 10,368,956. No public code; not FDA-cleared when last reported (2015); no product found | Confidential research code; provisional application in preparation |
+
+**LevelCheck.** It began as a simulation and phantom study, one failure in 50,000 simulated registrations, the failure a false optimum arising from "the periodic structure of vertebral levels" (Otake et al. 2012). A retrospective study of 20 thoracolumbar patients on lateral radiographs succeeded in all 10,000 trials with 200 starts per registration and 99.3% with 50; of the 70 failures at 50 starts, 8 came from implants missing from the CT and 16 from poor contrast (Lo et al. 2015). In 398 radiographs of 178 patients, every label fell within the correct vertebra, at a median 6.1 mm on the detector (De Silva et al. 2016). In a mock operating room, 5 surgeons reading 62 hard cases erred in a median 30.4% unaided and 2.4% with LevelCheck, though 16 of the cases carried a deliberately shifted label. In a pilot of 20 patients, where the labels came only after the surgeon's own decision, LevelCheck agreed with that decision every time, with no independent reference reported (Manbachi et al. 2018). Its success measure is always geometric, a label landing on the vertebra the CT names, and no paper reports a per-case probability or a confidence interval.
+
+**msLevelCheck.** Ketcha et al. 2017 extended LevelCheck to a spine that bends between the supine CT and the prone radiograph. Stage one is rigid LevelCheck; later stages register sub-images masked around 5, then 3, then 1 label, so each label ends with its own rigid transform, "locally rigid yet globally deformable". The masks are built from the CT's labels, which "can be done manually or automatically", so a wrong label shapes the registration as well as the overlay. In 7 radiographs of 5 patients chosen for the most severe deformation, mean projection error fell from 8.1 to 4.6 mm, maximum from 32.0 to 18.6 mm, and labels beyond 20 mm from 6.5% to none; in a bent phantom the maximum fell from 22.4 to 3.9 mm. A single-stage registration failed sharply more often as fewer vertebrae fell inside its mask. Truth was a neuroradiologist's centroid on each radiograph. Run serially it takes about 4V times as long as rigid LevelCheck for V labels, projected at about 50 s once parallelised, and the authors list poor radiographs, thick CT slices, dense instrumentation and gross anatomical change as challenges that remain. In this paper "LevelCheck" means either version unless the text says rigid.
+
+**What the patents claim, and a route around them.** This is a reading of the claims, not a freedom-to-operate opinion, which needs patent counsel. US 11,284,846 has one independent claim, and it requires every one of these steps: segment the vertebra in a preoperative CT; convert the radiograph to line integrals of attenuation; estimate a pose; render a DRR; compare it with the radiograph by a gradient-information similarity, which the description ties to Pluim et al. 2000; update the pose and repeat; then overlay the final DRR on the radiograph. US 10,262,424 claims hierarchical, locally rigid registrations of regions masked around annotations, so that the mapping is globally deformable, which is msLevelCheck. US 10,368,956 claims registering a segmented preoperative MR to the radiograph through a simulated projection of the segmented structures. Intensity-based 3D-2D registration itself predates all three (Weese et al. 1997; Penney et al. 1998), and open renderers exist, such as DiffDRR (Gopalakrishnan and Golland 2022; MIT licence). The cleanest route for SchwingCheck avoids the DRR loop entirely. Segment the vertebral bodies in the CT and in the radiograph, let SchwingCheck name both sets, and fit the pose to the matched centroids by a point-to-projection solve. That has no DRR, no image similarity and no overlay of a rendered image, so it lacks several steps of each independent claim. Two cautions: a claim can still reach a close substitute under the doctrine of equivalents, and US law has almost no research exemption (Madey v. Duke, 2002), so Aid A in the study, an open DRR registration with msLevelCheck stages, should be licensed or cleared before it is built.
+
+**SchwingCheck.** It needs no preoperative image. From the end-plate widths and depths, the posterior body height and the canal width and depth of each body in view, it computes the exact posterior over places, so every answer carries its probability and the rule can decline. Section "What can be proved" states what that buys and what it does not.
+
+### Where LevelCheck's labels come from
+
+LevelCheck's only classifier is whoever labels the preoperative CT before surgery. Every published study takes those labels as given, and none estimates how often they are wrong.
+
+**The algorithm.** LevelCheck was first published in 2012, at SPIE Medical Imaging ([Otake et al. 2012, SPIE 8316](https://doi.org/10.1117/12.911308)) and in Physics in Medicine and Biology (Otake et al. 2012); its first paper in Spine was the clinical evaluation of Lo et al. in 2015. From the start it was a 3D-2D registration and nothing more: a rigid pose search that projects the CT, compares the projection with the radiograph by a gradient similarity, and carries the CT's labels across. It "requires only that the target vertebrae are labeled in the preoperative image - e.g., a single point click on the vertebral bodies of interest" (Lo et al. 2015). The classification is that click.
+
+| Label source | Where the studies used it | How it goes wrong | What LevelCheck reports about it |
+| --- | --- | --- | --- |
+| A clinician's click on each target vertebra in the CT | The clinical workflow; Lo et al. 2015 show the labels as "labeled by the clinician" | Miscount when the CT is cropped and counted from its nearest end; transitional spines | Nothing: a wrong label registers as well as a right one |
+| A radiologist's numbering in the CT report | Not studied with LevelCheck | Conventions number variant spines differently (Carrino et al. 2011); lumbosacral transitional vertebrae occur in 4% to 30% of people (Konin and Walz 2010); spinal counts were wrong in 38 of 71 spines with a lumbosacral transitional vertebra in one series cited by Liebrand et al. 2026, whose readers and imaging the review does not give | Nothing |
+| A neuroradiologist's review | The truth: in Lo et al. 2015 a neuroradiologist "reviewed all pre-operative CT scans as well as the intraoperative mobile radiographs to assign the 'true' vertebral levels"; in De Silva et al. 2017 centroids were placed "manually with the assistance of a neuroradiologist"; De Silva et al. 2016 scored against the CT's labels | The same kind of judgement as the labels it scores; no study reports an independent count from C2 | Nothing: as the truth, its errors cannot appear as failures |
+| An automatic labeller on CT or MRI | Proposed, not used: centroids "can be done automatically in CT" (De Silva et al. 2017), and msLevelCheck's labels "can be done manually or automatically" (Ketcha et al. 2017) | The best algorithm in VerSe 2019 identified 94.3% of vertebrae on the hidden test set (Sekuboyina et al. 2021). TotalSegmentator has no L6 class in its default task and shifts lumbar labels one level on lumbarized spines, with no error signal (Schwing et al., accepted at NeurIPS 2026). VERIDAH labels 99.18% of CT subjects perfectly (Moeller et al. 2026). None reports a calibrated probability | Nothing passed through |
+| The registration itself | Every study | A false optimum one level away (Otake et al. 2012); implants missing from the CT; poor contrast (Lo et al. 2015) | A similarity gap: every failure had \|GC - GC\*\| above 0.1, a flag for the pose that is not a probability, with its clinical threshold left to further study (Lo et al. 2015) |
+
+**What LevelCheck says about being wrong.** Its authors state the limit plainly: "human errors in vertebral labels in preoperative CT would be faithfully reproduced in the registered radiograph" (Otake et al. 2015). A LevelCheck label is right only if the labeller was right and the transfer was right, so its error is about epsilon\_L + epsilon\_R, the labeller's error plus the registration's. The published counts bound epsilon\_R alone, and its only self-check, the similarity gap, also speaks to epsilon\_R alone. No LevelCheck study estimates epsilon\_L for the labels it transferred, and on transitional spines it can be the larger term.
+
+**What SchwingCheck adds at each source.** SchwingCheck sees none of these sources, only the shape of the bodies in view, so on typical spines its errors are independent of every labeller above. Where a labeller's accuracy is known, as for an automatic labeller validated on a benchmark, 1 - epsilon\_L enters the combination of section "SchwingCheck3D: carrying the posterior through registration" as a number, and every overlaid vertebra carries the fused posterior. Where it is not, as for a clinician's click, the posterior from the measurements alone is shown beside the label, and a disagreement says how strongly the label is contradicted.
+
+**Where LevelCheck's exclusions leave SchwingCheck.** De Silva et al. 2016 began with 504 radiographs and excluded four kinds: three or fewer levels in view (13), minimal or no overlap with the CT (22), cervical cases where head and neck were repositioned to ease access (53), and vertebral boundaries not visible on a poor image (21). As published, these counts sum to 109, which would leave 395 radiographs rather than 398; the paper does not explain the difference. It gives no reason for the exclusions, but each matches a limit of the registration's design. Its pose is rigid, six degrees of freedom: Otake et al. 2013 state that it models no deformation and relies on each vertebra being locally rigid, validated on one cadaver in AP views only. It matches edges by a gradient similarity, so it needs the CT and the radiograph to show the same edges. Multi-stage registration (Ketcha et al. 2017) addresses deformation in research but postdates that series.
+
+| Exclusion | Why registration fails | SchwingCheck | Status |
+| --- | --- | --- | --- |
+| Three or fewer levels (13) | Too little structure to fix a pose; the spine's repeating shape gives false optima one level away | Runs from one body up; calibrated, but names at 0.99 only 17.1% of three-body fields (right 99.78%) and is right 47.3% on forced choice from one body | Runs; mostly narrows rather than names |
+| Minimal or no CT overlap (22) | Nothing to register | Needs no CT | Unaffected |
+| Cervical repositioning (53) | A rigid pose cannot follow a neck moved between scans | Measures are of single bodies, so posture between scans does not enter; a rotated neck seen obliquely changes the apparent widths and depths; C3 to C7 are places of the rule, C1 and C2 are not | Plausibly robust; untested |
+| Boundaries not visible (21) | No edges for the gradient similarity to match | Reads end plates too, but does not need them. A missing measure can be dropped exactly, by deleting its row and column of the Gaussian, so the posterior stays the Bayes rule for what is seen; with nothing measured it returns the prior, an honest "cannot say". The record scores every subset of the seven measures: without the four end-plate measures, the posterior height and the canal's width and depth name 48.1% of three-body fields and 80.3% of nine-body fields on forced choice (73.1% and 96.1% with all seven), and names at 0.99 fall to 2.1% and 21.8% of fields, right 99.88% and 99.72%. Calibration then needs the missingness not to depend on the level, which pelvic overlap at L5 would break. At 3 mm of error, names at 0.99 fall to 82.6% to 96.85% from three bodies | Loses coverage, not calibration, when the same measures are missing from every body; missingness that varies by body or by level is not yet scored |
+
+So SchwingCheck runs in all four excluded groups, and needs nothing LevelCheck lacked in two of them. In the other two it pays in coverage, not in calibration, and that holds only while the generator and the missingness assumption hold.
+
+### Why every independent check lowers the chance of a wrong level
+
+A wrong level reaches the incision only if every check that could have caught it misses. Each added check that fails independently of the others multiplies that chance by its own miss rate, a number below one.
+
+**The model.** Reason's account of how safe systems fail treats each defence as a slice of Swiss cheese, where "the holes in many layers momentarily line up to permit a trajectory of accident opportunity" ([Reason 2000](https://doi.org/10.1136/bmj.320.7237.768)). For level localization the layers are the annotator's count on the CT, the surgeon's count in the operating room, and any aid that checks either. If an error is made with probability e and then meets independent checks that miss it with probabilities m\_1 to m\_j, it reaches the patient with probability
+
+```latex
+\Pr(\text{wrong level reaches the patient}) = e \prod_{i=1}^{j} m_i
+```
+
+so any check with m\_i below one lowers it.
+
+**LevelCheck and SchwingCheck check different counts.** In Independent Check mode LevelCheck reviews the surgeon's count after it is made (Manbachi et al. 2018). It cannot review the annotator's count, because it carries that count. SchwingCheck reviews the annotator's. On the record's columns, at the 0.01 level it contradicts an off-by-one label in 37.4% of three-body fields and 84.1% of nine-body fields, miss rates of 0.626 and 0.159, while contradicting a correct label in 0.50% and 0.09%. So of every 100 CTs mislabelled by one level and checked on nine bodies, about 16 would pass unflagged instead of 100.
+
+**Three conditions.** The product holds only if all three hold:
+
+1. **The checks fail independently.** SchwingCheck and a CT label share one failure, the transitional spine; section "When the two are not independent" bounds what agreement can show there.
+2. **The new check does not weaken the old ones.** People given a reliable aid check less for themselves and follow its errors, automation complacency and automation bias ([Parasuraman and Manzey 2010](https://doi.org/10.1177/0018720810376055)). The study measures this as the share of final answers that follow a wrong aid.
+3. **Its false alarms are worth their cost.** Each contradiction of a correct label costs an extra image or a count; Statement 6 sets the threshold at which flagging pays.
+
+**The evidence is thinner than the arithmetic.** A systematic review of 13 studies found insufficient evidence that double checking medication administration reduces errors compared with single checking ([Koyama et al. 2020](https://qualitysafety.bmj.com/content/29/7/595)). Second checks in practice are often not independent, so this paper measures the pathways with surgeons rather than asserting the product.
+
+### Three pathways
+
+There are three ways to put a level label on the intraoperative X-ray. LevelCheck is prior art; SchwingCheck3D and SchwingCheck2D are this paper's. SchwingCheck2D should be the default, because it needs no CT, no registration and no licence. SchwingCheck3D is the better choice when a preoperative CT exists, because only it checks the CT's labels before surgery.
+
+*The Doc embeds a figure of the three pathways here; in this book it is figure 36.3, above.*
+
+Each row runs from its input to a label on the X-ray; the shaded boxes are the two outputs this paper recommends.
+
+**LevelCheck, prior art.** These are the steps US 11,284,846 claims, with the classification step, which the claim leaves implicit, made explicit:
+
+1. Label each target vertebra in the preoperative CT, by a clinician's click. This is the only classification in the pipeline.
+2. Segment the vertebra in the CT.
+3. Convert the X-ray to line integrals of attenuation.
+4. Estimate a pose and render a DRR, a simulated X-ray from the CT.
+5. Compare the DRR with the X-ray by gradient information (Pluim et al. 2000), update the pose and repeat.
+6. Overlay the final DRR and the CT's labels on the X-ray.
+
+msLevelCheck repeats steps 4 and 5 on regions masked around 5, 3 and then 1 label. LevelCheck matters to this paper as proof that surgeons will use a label overlay in the operating room: in a mock operating room their median error fell from 30.4% to 2.4% with it (Manbachi et al. 2018). It is closed source, patented until about 2034, and nothing in it checks step 1.
+
+**SchwingCheck3D, when a preoperative CT exists.**
+
+1. Segment the CT into one mask per vertebra with a CT instance segmenter, such as the lab's CTSpinoPelvic1K model, which handles the L5/L6 merge. SPINEPS (Moeller et al. 2024), first published for T2-weighted MRI, also segments CT; the lab has run its CT models on the grid and already holds its masks of many full-spine CTs.
+2. Check the CT's labels with SchwingCheck, reading the seven measures straight from the 3D masks. A label it contradicts at the 0.01 level goes back to the radiologist before surgery.
+3. Build a panorama of the spine with SchwingNet while recording each C-arm pose in world space. This needs a tracked C-arm, by motor encoders or an optical tracker, and assumes the table and patient stay still. Breathing, retraction or a table move breaks that assumption, so a fresh reference image is taken just before incision.
+4. Transfer the checked labels to the X-ray by fitting the pose to matched vertebral centroids, then fuse SchwingCheck's posterior with each transferred label (section "SchwingCheck3D: carrying the posterior through registration"). An intensity-based DRR registration with a gradient-information score and a DRR overlay would reproduce the claim of US 11,284,846; the centroid fit uses none of its steps.
+
+**SchwingCheck2D, no CT.**
+
+1. Build an AP and a lateral panorama with SchwingNet. Both planes are needed: end-plate widths come from the AP view, depths from the lateral, and heights from either. With one plane the missing measures can be dropped exactly; on the synthetic record the reduced rule names 89.1% of nine-body fields from the AP alone and 83.6% from the lateral alone, against 96.1% with both planes (58.2%, 53.4% and 73.1% from three bodies).
+2. Segment each panorama into one mask per body with FlexRay.
+3. Name or check with SchwingCheck. From FlexRay's instances alone it names the run; given FlexRay's semantic labels, it checks them. If a panorama reaches C2 or the sacrum, the run can also be counted, and SchwingCheck checks the count.
+4. Show a name where the posterior reaches 0.99, and otherwise the two or three likeliest levels or "cannot say".
+
+Stitching adds a failure the other pathways lack: a body duplicated or dropped at a seam shifts every label below it. A duplicated body breaks the expected change in shape from one level to the next, which SchwingCheck may detect; that is untested, as is the reader that takes the measures off radiographs.
+
+**Which pathways, and why.**
+
+- **SchwingCheck2D as the default.** It works for every patient, with or without a CT, needs only a standard C-arm and software, and steps around both the registration and the patents. A panorama also puts more bodies in view, which is where SchwingCheck is strongest: on the synthetic record its forced-choice error falls from 3.9% at nine bodies to 0.31% at fifteen.
+- **SchwingCheck3D when a CT exists.** It is the only pathway that checks the CT's labels before surgery, catching the error LevelCheck would carry into the operating room, and the CT gives SchwingCheck exact 3D measures. Its operating-room half reuses SchwingCheck2D's panorama and SchwingCheck, so the two share one code base.
+- **LevelCheck as reference only.** It showed that a label overlay is clinically useful, but it is closed, patented and checks nothing upstream.
+
+### SchwingCheck's error likelihood, stated exactly
+
+Every SchwingCheck answer carries its own probability of being wrong, 1 - p-hat(x), and under the generator that number is exact (Statement 2). Averaged over the record's 2,000 synthetic columns per width, it gives the rates below. No number in this section comes from a patient.
+
+| Bodies in view | Wrong on forced choice | Off-by-one label missed at 0.01 | Correct label flagged at 0.01 |
+| --- | --- | --- | --- |
+| 1 | 52.7% | 87.6% | 0.65% |
+| 3 | 26.9% | 62.6% | 0.50% |
+| 5 | 14.4% | 42.2% | 0.32% |
+| 9 | 3.9% | 15.9% | 0.09% |
+
+From fifteen bodies the forced-choice error is 0.31%. When SchwingCheck names a level at 0.99, the guarantee is an error of at most 1%; on the record its names are wrong in 0.22% of answered three-body fields (15 of 6,848; 17.1% of fields answered) and 0.075% of answered nine-body fields (15 of 20,112; 71.8% answered).
+
+Away from the generator these numbers worsen, and the record says by how much. With its table estimated from twelve spines, as Panjabi's was, names at 0.99 are right 95.5%, an error of 4.5%; the widened-spread correction restores 99.3% but names only 5.5% of fields. With 3 mm of measurement error, names at 0.99 from three bodies are right 82.6% to 96.85%. On transitional spines they are right 98.65% (a thirteenth rib-bearing body, judged by its rib-bearing names; 91.2% by the count from C2) and 96.4% (six lumbar bodies) from five bodies, and one body's border claims near T12/L1 are right 97.9%. Until real spines are measured, these ranges are SchwingCheck's disclosed error.
+
+### A second pass on automatic labellers
+
+A preoperative CT can be labelled by software rather than by a person. Semantic segmenters of the spine can shift a whole run of labels by one level and look right while doing it, so their labels need a second pass. SchwingCheck can be that pass, and it can also produce the labels itself.
+
+**Why semantic segmenters need a second pass.** TotalSegmentator (Wasserthal et al. 2023), which 3D Slicer offers as an optional extension, has no L6 class in its default task. On lumbarized spines it spreads five lumbar labels over six bodies, so every label below L2 lands one level caudal: per-class Dice falls to 0.388 at L4 and 0.291 at L5, and Dice over the L5/S1 junction falls from 0.824 on normal spines to 0.357. It emitted an L6 label in 0 of 1,152 CTs. The output stays "locally well-formed", five compact bodies in roughly the right places, and the error is "detectable only by counting bodies" (Schwing et al., accepted at NeurIPS 2026). A segmenter retrained with VERIDAH's merged last-lumbar class removes that shift but keeps another. On the one held-out count-style sacralization case it labels 82.7% of true-L4 voxels as last lumbar, and on lumbarization the upper lumbar labels still drift caudally. The authors trace this to a signal that is not local: a 256 x 320 x 320 patch does not reliably hold both the lumbosacral and the cervicothoracic boundaries needed to count. Lumbosacral transitional vertebrae occur in 4% to 30% of people (Konin and Walz 2010).
+
+**The state of the art in labelling.** VERIDAH (Moeller et al. 2026) crops each vertebra from a given centroid, classifies it with a 3D DenseNet169 with four heads (label, region, transition, visibility), and then finds the label sequence of lowest cost under anatomical constraints, allowing a second L5 for an L6 and a second T12 for a T13. On 365 in-house test CTs, all showing T1, with 8 to 25 vertebrae in view, it labelled 99.18% of subjects perfectly and found 96.30% of thoracic and 97.22% of lumbar enumeration anomalies; the prior method labelled 77.81% perfectly. With one vertebra removed from each test CT, it labelled 85.21% perfectly. It needs centroids given in advance, on its CT test set taken from the reference segmentations, its reference labels came from one annotator, and its cohort is private.
+
+**SchwingCheck as the second pass.** SchwingCheck needs only the instances, one mask per body, from any segmenter. It ignores the segmenter's labels, measures each body, and returns the posterior over where the run sits. Comparing that posterior with the segmenter's labels gives the check: a label set SchwingCheck puts below 0.01 is flagged, at the miss and false-alarm rates in the section above. Because it reads shape rather than position in a patch, its evidence is independent of the segmenter's labels, which the safety argument requires, though not of its masks: a body split or merged by the segmenter corrupts both.
+
+**SchwingCheck as the labeller.** The place k that SchwingCheck returns names every body in the run at once, so it turns an instance segmentation into a semantic one, with the probability that the whole run is named right attached. VERIDAH's sequence predictor does the same job by a constrained optimisation over network costs; SchwingCheck does it by an exact posterior over measures an anatomist would recognise.
+
+|  | VERIDAH, CT | SchwingCheck, synthetic record |
+| --- | --- | --- |
+| Input | Vertebra centroids given in advance (on the CT test set, from the reference segmentations) and the CT around each | One instance mask per body, from any segmenter |
+| Output | A constrained label sequence | A posterior over places; the names follow from the place |
+| Whole-spine error | 0.82% of subjects not labelled perfectly, 365 real CTs, 8 to 25 vertebrae, T1 in view | 0.31% of fields named wrong on forced choice from fifteen bodies; 3.9% from nine |
+| Enumeration anomalies | Labelled: 96.30% thoracic, 97.22% lumbar | Not yet places; names at 0.99 right 98.65% (91.2% by the count from C2) and 96.4% on anomalous columns |
+| Needs an anchor | T1 in view in the test cohort; on small fields of view the share labelled perfectly stays high and only thoracic-anomaly recall falls | No; any run of one or more bodies |
+| Uncertainty | Path costs; no calibrated probability reported | Calibrated probability on every answer (Statement 2) |
+| Evidence | Real in-house CT, one annotator | Synthetic columns from Panjabi's table only |
+
+**Is SchwingCheck's error lower than VERIDAH's?** Not shown. Its 0.31% from fifteen bodies sits below VERIDAH's 0.82%, but the two numbers measure different things. SchwingCheck's comes from typical spines drawn from its own generator; VERIDAH's comes from real CTs in which 6.8% carried a thoracic and 7.9% a lumbar enumeration anomaly, cases SchwingCheck cannot yet name. Its real-spine error is unknown and the record says it worsens off the generator (section above). The claim that SchwingCheck labels with an error comparable to or lower than VERIDAH's is therefore a hypothesis. The test is direct: run both on the same instances of the public VerSe CTs, which label L6 and T13, and on CTSpinoPelvic1K's 33 LSTV cases, and report whole-spine error overall and by phenotype. The two also fit together: VERIDAH reads image appearance and SchwingCheck reads measured shape, so each can check the other.
+
+### What can be proved
+
+Six statements about SchwingCheck hold by construction, each with its assumption stated; the record checks each one. LevelCheck's evidence is empirical, and the last part of this section says what its published counts can and cannot bound.
+
+**Setting.** A field shows n consecutive bodies. Its place k is the level of its top body, numbered C3 = 1 to L5 = 22, so body i is level k + i - 1 and k takes 23 - n values. Each body gives seven measures; x is the 7 x n array of them. The generator G draws k from a uniform prior, a column size s with log s \~ N(0, 0.07^2), and x from Panjabi's per-level means and spreads:
+
+```latex
+p(x \mid k) = \int \prod_{m=1}^{7} \mathcal{N}\!\left(x_{m,1:n} \mid s\,\mu_{m,k:k+n-1},\; \Sigma_{m,k:k+n-1}(s)\right) p(s)\, ds,
+\qquad
+p(k \mid x) = \frac{p(x \mid k)\, \pi(k)}{\sum_{k'} p(x \mid k')\, \pi(k')}
+```
+
+Here Sigma(s) = s^2 rho^2 sigma sigma' + diag(s^2 (1 - rho^2) sigma^2 + sigma\_e^2), with rho = 0.5 and sigma\_e = 1 mm, and the seven measures are independent given s. SchwingCheck computes this posterior exactly, up to two approximations the record measures. The 161-node Gauss-Hermite quadrature over log s differs from a 1,801-node reference by at most 1.1 x 10^-9 on all 2,000 columns and changes no call. A 0.5 mm floor on drawn values, which the likelihood leaves out, touched 4 of 308,000 values.
+
+**Statement 1: no function of the same measurements names more fields correctly.** Let g be any rule from x to a place: a formula, a lookup table, or a neural network trained on any amount of data, deterministic or randomised. Then
+
+```latex
+\Pr_G\big(g(x) = k\big) \;\le\; \Pr_G\big(\hat{k}(x) = k\big) = \mathbb{E}_G\Big[\max_j\, p(j \mid x)\Big],
+\qquad \hat{k}(x) = \arg\max_j\, p(j \mid x)
+```
+
+Proof. Pr(g(x) = k) = E\[ p(g(x) | x) \] <= E\[ max\_j p(j | x) \]; a randomised g averages such terms. The same argument gives the best rule for any loss L(j, k), such as within one level: choose the j that minimises the sum over k of L(j, k) p(k | x). So the Bayes error, 1 - E\[max\_j p(j | x)\], is the floor for any network on these inputs. The record predicts it from the posteriors and counts it on the fields:
+
+| Bodies in view | Named exactly | Bayes error predicted | Bayes error counted | Within one level |
+| --- | --- | --- | --- | --- |
+| 1 | 47.3% | 52.8% | 52.7% | 76.5% |
+| 3 | 73.1% | 27.2% | 26.9% | 91.0% |
+| 5 | 85.7% | 14.4% | 14.4% | 96.6% |
+| 9 | 96.1% | 3.8% | 3.9% | 99.7% |
+| 15 | 99.7% | 0.25% | 0.31% | 100.0% |
+
+The Bayes error is above zero for every n below 22, so no function names every field. Rules fitted on separate synthetic columns land under it, as they must: on the same three-body fields a neural network names 71.6%, a quadratic discriminant 72.2% and a closed form 71.9%, against 73.1%.
+
+**What Statement 1 does not say.** It is relative to two things. The first is the information set: it covers rules that see only these seven measures per body. A method that also sees the patient's CT, the image intensities or a count from C2 is outside the class, and more information can only lower the Bayes error, so the theorem does not bound LevelCheck, nor a reader who counts a full CT from C2. The second is the generator: the rule is optimal for G, and on real spines from another distribution Q a rule fitted to Q could beat it. Statement 4 says how far that goes.
+
+**Statement 2: a name given at 0.99 is right at least 99% of the time.** Let p-hat(x) = max\_j p(j | x). For any threshold t with Pr(p-hat >= t) > 0,
+
+```latex
+\Pr_G\big(\hat{k} = k \,\big|\, \hat{p} \ge t\big) = \mathbb{E}_G\big[\hat{p} \,\big|\, \hat{p} \ge t\big] \;\ge\; t
+```
+
+Proof. Pr(k-hat = k and p-hat >= t) = E\[ 1{p-hat >= t} p-hat \]; divide by Pr(p-hat >= t). The proof holds for any condition computed from x, such as a width, a plane or a region called. It does not hold within a group chosen by the true level. The record shows the difference: near T12/L1, one body's side-of-border claims at 0.99 are right 97.9% (12 wrong of 568), while over all single bodies the same claims are right 99.96% (13 wrong of 30,943). Names at 0.99 are right 99.78% from three bodies (15 wrong of 6,848; 17.1% of fields answered) and 99.93% from nine (15 wrong of 20,112; 71.8% answered). Thresholding p-hat is also the best way to abstain: among all rules that answer the same share of fields, none is right more often on the fields it answers, because the share answered and right is at most the expected p-hat over the fields answered, which is largest when those are the fields of highest p-hat (Chow 1970).
+
+**Statement 3: weaker claims inherit the guarantee.** For any set S of places, such as cervical or at or below L2, p(S | x) is the sum of p(k | x) over S. A claim made when p(S | x) >= t is right with probability at least t, by the proof of Statement 2. Two claims made together at 0.99 are both right at least 98% of the time, by the union bound. From one body, region claims are made for 60.9% of bodies and are wrong 21 times in 26,786; far from both junctions, 2 times in 21,717.
+
+**Statement 4: under a wrong table the guarantee is measured, not proved.** If real spines follow Q rather than G, Statement 2 survives only as a bound in the total variation distance delta = TV(G, Q) on (x, k):
+
+```latex
+\Pr_Q\big(\hat{k} = k \,\big|\, \hat{p} \ge t\big) \;\ge\; \frac{\Pr_G\big(\hat{k} = k,\ \hat{p} \ge t\big) - \delta}{\Pr_G\big(\hat{p} \ge t\big)}
+```
+
+Proof. Between G and Q, the probability of answering right falls by at most delta and that of answering wrong rises by at most delta, and the precision is lowest when both move fully; a Q that moves mass delta from right answers to wrong ones attains the bound, so it cannot be improved. It is demanding: it keeps 99% at three bodies only for delta <= 0.0013, and at nine bodies for delta <= 0.0067, while a shift of a tenth of a spread in each of the 21 measures of three bodies, were they independent, already makes delta 0.18. So calibration on real spines has to be measured. The record's robustness worlds measure it on synthetic data. With the rule's table estimated from twelve spines, as Panjabi's were, names at 0.99 are right 95.5%. Widening each spread by the square root of 1 + 1/12 and assuming 2 mm of error, a correction tuned on a separate pilot, restores 99.3%, with 5.5% of fields named.
+
+**Statement 5: a real series' prior is one multiplication.** If places are not equally common, with prior pi', then p'(k | x) is proportional to p(k | x) pi'(k) / pi(k), and Statements 1 to 3 hold again under pi'. The cost of leaving it out is computable. A name at 0.99 whose rival place is ten times as common in the series is right 90.8%, not 99%.
+
+**Statement 6: when to answer.** If acting on a wrong level costs c\_w and declining costs c\_e (one more image, or a count from C2), answering is optimal exactly when p-hat >= 1 - c\_e / c\_w. Proof: answering costs (1 - p-hat) c\_w in expectation and declining costs c\_e. A threshold of 0.99 therefore says a wrong level is a hundred times as costly as a count. Because p-hat is calibrated (Statement 2), this is a decision about the case in hand, which a success rate averaged over patients cannot support. If the fallback itself errs with probability epsilon, the threshold becomes 1 - epsilon - c\_e / c\_w.
+
+### SchwingCheck3D: carrying the posterior through registration
+
+SchwingCheck's posterior can be carried through the registration onto the radiograph. The registration fixes which radiograph position belongs to which CT vertebra; the label it overlays there, R, is the upstream labeller's answer, right only if both the labeller and the transfer were. When the two agree the level is near certain, and when they disagree the surgeon should stop and count. If the overlaid label R and the measurements x are independent given the true place k, Bayes' rule combines them exactly:
+
+```latex
+p(k \mid x, R = j) \;=\; \frac{p(k \mid x)\, \Pr(R = j \mid k)}{\sum_{k'} p(k' \mid x)\, \Pr(R = j \mid k')}
+```
+
+To put numbers on it, assume the overlaid label is right with probability r, about 1 - epsilon\_L - epsilon\_R, and, when wrong, lands on one of the two adjacent levels with equal chance. Let q be SchwingCheck's posterior at the registration's answer, with the rest of its mass on the adjacent levels, the hardest case. The combined probability that the registration's answer is right is then:
+
+| Overlaid label right, r | Agree, q = 0.5 | Agree, q = 0.9 | Agree, q = 0.99 | Disagree, q = 0.05 | Disagree, q = 0.01 |
+| --- | --- | --- | --- | --- | --- |
+| 0.95 | 0.974 | 0.997 | 0.9997 | 0.667 | 0.277 |
+| 0.99 | 0.995 | 0.9994 | 0.9999 | 0.912 | 0.667 |
+| 0.999 | 0.9995 | 0.9999 | > 0.9999 | 0.991 | 0.953 |
+
+The last two columns carry the clinical point. A registration that is right 99% of the time, contradicted by SchwingCheck at 0.01, is right only two times in three. That is a reason to count from C2 or the sacrum before incising, not a reason to trust either answer. The table assumes that a registration which errs lands on an adjacent level; errors two or more levels away make a two-level disagreement less decisive than this model says, so their share has to be measured, not assumed to be zero.
+
+How often would SchwingCheck catch a registration that is one level off? On the record's own 2,000 scoring columns, both planes, its posterior at an adjacent wrong level falls below 0.01 in the share of fields shown below, and its posterior at a correct answer falls below 0.01 far less often. These counts are new to this paper, computed with the record's seed and settings; the exact share named at every width matched the record before counting.
+
+| Bodies in view | Off-by-one answer contradicted (posterior below 0.01) | Below 0.05 | Correct answer contradicted (below 0.01) | Below 0.05 |
+| --- | --- | --- | --- | --- |
+| 1 | 12.4% | 27.9% | 0.65% | 4.8% |
+| 3 | 37.4% | 55.6% | 0.50% | 2.9% |
+| 5 | 57.8% | 73.1% | 0.32% | 1.7% |
+| 9 | 84.1% | 91.4% | 0.09% | 0.53% |
+
+So from nine bodies SchwingCheck would flag 84% of off-by-one registrations at the 0.01 level while questioning 1 correct answer in 1,000; from three bodies it flags 37% at the cost of 1 in 200. The check is cheap: a three-body field takes about 14 ms (median 13.6 ms, at most 17.4 ms over 50 calls) in a four-CPU cloud container (measured 2026-10-26 on this rule as committed), against 17 to 72 seconds for a registration in the operating room (Manbachi et al.) and a median of 44 seconds on a workstation (De Silva et al.), where surgeons said they would wait 20 seconds to a minute.
+
+**When the two are not independent.** The combination is exact only if the two methods fail for unrelated reasons. They share one failure: a transitional spine. LevelCheck copies the labels its CT carries, so a CT miscounted for a sixth lumbar body or a thirteenth rib-bearing body carries that error onto the radiograph. SchwingCheck has no anomalous places yet. On synthetic anomalous columns its names at 0.99 are right 98.65% from five bodies on columns with a thirteenth rib-bearing body (13 wrong of 964 by its rib-bearing names, 85 by the count from C2) and 96.4% on six-lumbar columns (39 wrong of 1,073), below the 99% it promises on typical spines. Agreement on a transitional spine is therefore weaker evidence than the table above says, until anomalous phenotypes enter the rule as places of their own. Even a small shared failure caps what agreement can show: if both name the same wrong level on a share eta of fields, the probability that an agreed answer is right cannot exceed 1 - eta / Pr(agree), which is 99.4% when eta is 0.5% and the two agree 89% of the time, however accurate each is alone.
+
+### Study specification: a randomized browser simulation
+
+Wrong-level spine surgery is reported in about 1 in 3,110 procedures, and half of the 415 spine surgeons (members of the North American Spine Society) who answered one survey had operated at a wrong level at least once (Mody et al. 2008); most such errors happen in spines with variant anatomy (Konin and Walz 2010). The study asks which of the three configurations best helps a surgeon name the level of a marked vertebra: a registration aid alone, SchwingCheck alone, or the two together. Its primary question is whether adding SchwingCheck to the registration aid improves the surgeon's answer. Surgeons read simulated intraoperative radiographs in a web browser, and every case is randomized, within each surgeon, to one of the three. Nobody is operated on and no patient data are used, which keeps the study small, cheap and fast, and lets the truth be known exactly for every case.
+
+| Item | Specification |
+| --- | --- |
+| Design | Prospective, randomized, within-reader, case-level allocation; every reader reads every case once, a third with each configuration |
+| Readers | 40: attending spine surgeons (neurosurgery and orthopaedics) and senior residents or fellows, stratified by experience; none involved in building either aid |
+| Cases | 48 per reader, in four strata of 12; 4 per configuration in each stratum |
+| Primary outcome | Final level name of the marked vertebra exactly right, against the count from C2 |
+| Session | About 55 minutes, remote or in a reading room, desktop browser |
+| Analysis | Section "Statistical analysis plan and sample size" |
+
+**Cases.** Each case is made from a public, de-identified full-spine CT in which every level can be counted from C2. The truth for each vertebra is its number counted from C2, set by two readers with adjudication and recorded beside its conventional name, because surgeons and reports name a transitional spine differently (Carrino et al. 2011; Garg et al. 2021); the existing SPINEPS masks give the starting count. The first source is VerSe (CC BY-SA 4.0), which labels L6 and T13, keeping only scans that hold both C2 and the sacrum. From each CT the generator renders an AP and a lateral simulated radiograph with C-arm geometry, noise and scatter, collimated to the stratum's field, and marks one vertebra in view with a simulated instrument tip. The marked vertebra is drawn at random within the field, weighted to the lumbar and thoracolumbar levels where surgery is most often done. The four strata are:
+
+1. **Standard.** A lumbar or thoracolumbar field of five to seven bodies, typical anatomy, preoperative CT available.
+2. **Narrow field.** Three bodies in view, preoperative CT available. LevelCheck's largest series excluded such fields, so no accuracy is published for them.
+3. **Transitional anatomy.** A lumbosacral transitional vertebra, six lumbar bodies, or eleven or thirteen rib-bearing bodies. A preoperative CT is available but labelled by counting from its nearest end, as a report of a cropped CT would be, so its labels can be wrong.
+4. **No preoperative CT.** LevelCheck has been extended to MRI in research, but the study offers no MRI registration, so this stratum stands for a patient with no labelled preoperative 3D image and the registration aid has nothing to register. A case randomized to registration alone says "Aid unavailable: no preoperative CT", and one randomized to the pair shows SchwingCheck alone, so this stratum compares SchwingCheck with an unaided read.
+
+**Aid A: registration.** The first choice is LevelCheck itself under a research licence from its owners. Failing that, an open 3D-2D registration is built from published tools, run offline on every case from a coarse manual start with a gradient-orientation similarity and a CMA-ES optimiser, as LevelCheck does, then refined through msLevelCheck's later stages around 5, 3 and 1 label, and shown as LevelCheck shows its result: labels overlaid on the radiograph. It is named in every report as an open registration, never as LevelCheck. Its preoperative CT is the case's own CT, cropped to a clinical field, moved to a different posture level by level, and labelled as a report would label it. It starts from a perturbed pose, and in revision cases the radiograph shows implants the CT lacks, because a simulated radiograph registered back to the CT it was made from would make the overlay an oracle. An overlay at the true geometry is reported separately as an upper bound. Its errors therefore come from real causes: a CT labelled wrongly, convergence to the wrong vertebra, or failure to converge, which it reports as "Registration failed". A sensitivity arm replaces its output with one that is right unless the CT's own labels are wrong, the accuracy LevelCheck reports.
+
+**Aid B: SchwingCheck alone.** It shows the posterior over levels for the marked vertebra as a short bar chart. It names the level only when the posterior is at least 0.99, otherwise shows the two or three likeliest levels with their probabilities, and states any region or border claim that reaches 0.99, such as "at or below L2". Until a pipeline reads the seven measures off radiographs, the study takes them from the CT masks with 1 to 2 mm of added error, and the arm is reported as SchwingCheck with CT-derived measures. Its calibration is measured on real CTs before any posterior is shown to a reader, because the 0.99 guarantee holds only while the generator is true; once the pipeline exists, the measures come from the simulated radiographs themselves. The version used is frozen and its hash registered.
+
+**Aid C: registration with SchwingCheck.** The registration's overlay from Aid A, with each label carrying SchwingCheck's fused probability (section "SchwingCheck3D: carrying the posterior through registration"). A label that SchwingCheck's own posterior puts below 0.01 is flagged in red with both numbers. The preoperative check runs too: if SchwingCheck, reading the CT's own measures, contradicts the CT's label for the marked vertebra at the 0.01 level, that flag is shown with the aid's output at step 2.
+
+**Reader flow for each case.** It follows LevelCheck's Independent Check mode, so an unaided answer exists for every case. The closest precedent is Manbachi et al.'s laboratory study, 5 surgeons reading 62 cases in a mock operating room; this design adds two configurations and randomizes among the three:
+
+1. The AP and lateral images appear with the marker. The reader names the level, from C3 to S1 or "cannot say", gives a confidence from 0 to 100, and may ask for a wider image.
+2. The assigned aid's output appears.
+3. The reader gives a final answer and confidence.
+
+Time is recorded at each step. Four practice cases, at least one per aid, come first with feedback and are not scored; the scored cases get no feedback. Case order is random for each reader.
+
+**Allocation and blinding.** A computer-generated, seeded schedule allocates cases within reader and stratum, four to each configuration. The aid is revealed only at step 2. Readers cannot be blind to which aid they see, so the aids are called Aid A, Aid B and Aid C, each with a one-line neutral description. The analyst works from coded arms until the analysis is locked, and the developers of either aid have no contact with readers during the study.
+
+**Data.** Readers are pseudonymous: specialty, training level, years in practice and spine cases a year. For each case the record holds the case, stratum and arm; the unaided answer, confidence and any wider-image request; the aid's output; the final answer and confidence; and the times. After the session each reader rates each aid with NASA-TLX (Hart and Staveland 1988) and the System Usability Scale (Brooke 1996). The truth stays on the server and never reaches the browser.
+
+**Platform.** A static web application, with nothing to install, serves the images. Responses go to REDCap through its API, or to an equivalent store the IRB approves, hosted at Wayne State rather than on a third-party reader-study service, so that nothing leaves the university before the filing. A display check runs before the first case. The demo is the same application with eight cases, two per stratum: the full reader flow, all three aids, the allocation and an export of the data. Its screens go into the IRB submission.
+
+**Regulatory.** The readers are the human subjects. The images are made from public, de-identified CTs, which the lab's IRB umbrella covers for public data downloadable without an agreement. Neither aid touches a patient. Readers are told in advance that either aid's output may be wrong, as Manbachi et al. told theirs, so the study involves no deception. A surgeon's wrong answers tied to a name could harm a reputation, so answers are stored under codes whose key the investigators never hold: a coordinator outside the team handles consent and payment and keeps the key apart. With identity not readily ascertainable, the study fits exemption category 45 CFR 46.104(d)(3)(i)(A), because readers agree to the procedure in advance, while (d)(2) covers only interactions and the randomized aid is an intervention; if the team must keep a key, the category needs limited IRB review under (d)(3)(i)(C) instead. It cannot start until the Wayne State IRB concurs; if its data were ever to support an FDA submission, it would need IRB review under 21 CFR 56 instead. Consent is an information sheet with a click to agree, and any payment follows Wayne State policy 07-07 and does not depend on finishing. The study runs only after the provisional application is filed and the technology transfer office has reviewed it, because readers see SchwingCheck's output. A pilot with three to five readers and 12 cases tests the application, the timing and the size calculation, and its data are not analysed with the main study.
+
+**Pre-registration.** The protocol, the analysis plan, all three aids' versions and the allocation seed are registered on OSF before the first reader starts.
+
+### Statistical analysis plan and sample size
+
+Forty readers reading 48 cases each (1,920 decisions) give 98% power to show the pair noninferior to registration alone within 5 points when both are 95% accurate, 92% power to detect a 5-point gain from adding SchwingCheck, and 94% power to detect a 15-point difference inside one 12-case stratum, even at the strictest level Holm's correction (Holm 1979) sets. These figures assume the aids' difference is the same for every reader and case, and the t interval's nominal critical value (Sample size, below). The plan below is fixed before the first read.
+
+**Primary estimand.** The difference in the share of correct final answers, registration with SchwingCheck (Aid C) minus registration alone (Aid A), over the whole case mix, with readers and cases treated as random. All three arms share the unaided-then-aided sequence, so the bias the FDA's guidance describes for sequential reading, which inflates an aid's effect over the unaided read, falls on every arm. It cancels from the difference only if it moves each aid's rate of rescuing a wrong unaided answer and of keeping a right one by the same amount, so the difference is also reported by the unaided answer, as rescue and harm rates for each aid.
+
+**Primary analysis.** Each reader contributes one difference: accuracy on the cases randomised to Aid C minus accuracy on those randomised to Aid A. The mean difference across readers is tested with a t interval. It treats the cases as fixed: every reader reads the same cases, so when the aids' difference varies from case to case its size runs above the nominal level, and its critical value is calibrated by simulation (Type I error, below). Two hypotheses are tested in a fixed sequence, so no alpha is split:
+
+1. Noninferiority: the lower one-sided 97.5% bound of the difference lies above -5 percentage points.
+2. Only if the first holds, superiority: the two-sided 95% interval lies above zero.
+
+**Key secondary analyses.** Two further contrasts, SchwingCheck alone minus registration alone (B - A) and the pair minus SchwingCheck alone (C - B), overall and within each of the four strata, with Holm's correction across strata within each contrast; C - A is also reported by stratum. In the stratum without a preoperative CT, B and C both show SchwingCheck alone and A shows nothing, so there they compare SchwingCheck with an unaided read. The pre-specified expectation is that A leads B where its CT is correct, that C is at least as good as A everywhere, and that B and C lead A where the CT is missing or miscounted, except on spines with a thirteenth rib-bearing body, where SchwingCheck and a CT labelled up from the sacrum can name the same wrong level.
+
+**Sensitivity analyses.** A logistic mixed model with aid, stratum and their interaction as fixed effects, crossed random intercepts for reader and case, and a random aid effect by reader. The primary analysis repeated with the simulated aid at LevelCheck's published accuracy in place of the open registration. The primary analysis with "cannot say" scored as wrong, and with it excluded.
+
+**Other outcomes.**
+
+- Change of answer: of unaided answers, the share an aid turned from wrong to right and from right to wrong, by aid (McNemar within aid).
+- Following a wrong aid: among cases where the aid's output was wrong, the share of final answers that follow it, the measure of automation bias.
+- Calibration of readers' confidence: Brier score and a reliability curve, by aid.
+- Decisions to count: the share of cases with "cannot say" or a wider image requested, by aid.
+- Time per case (log scale, mixed model), and NASA-TLX workload and System Usability Scale per aid.
+
+**Sample size.** Power was simulated: correct answers follow a logistic model with a reader intercept (SD 0.5 on the logit scale) and a case intercept (SD 1.0), cases are randomised within reader, a third to each configuration, and the primary analysis of C - A is run as specified, 2,000 simulations per cell. For the same effect sizes the B - A and C - B contrasts have the same power, since each also rests on two thirds of each reader's cases, a third with each aid. These powers hold for the t interval at its nominal critical value, with the aids' difference the same for every reader and case; the record's simulation of this design reproduces them under those assumptions (0.98, 0.91 and 1.00 at 40 readers by 48 cases). With the critical values calibrated as below and the difference varying moderately or widely, 40 readers by 48 cases give 0.92 and 0.85 for noninferiority, 0.85 and 0.75 for superiority at 90% against 95%, and 1.00 at 85% against 95%.
+
+| Readers x cases | Decisions | Noninferiority, both 95% | Superiority, 90% vs 95% | Superiority, 85% vs 95% |
+| --- | --- | --- | --- | --- |
+| 20 x 60 | 1,200 | 0.87 | 0.73 | 0.99 |
+| 30 x 48 | 1,440 | 0.93 | 0.83 | 1.00 |
+| 30 x 60 | 1,800 | 0.97 | 0.90 | 1.00 |
+| 40 x 48 | 1,920 | 0.98 | 0.92 | 1.00 |
+
+Within one stratum of 12 cases per reader, 4 per configuration, 40 readers detect a 15-point difference (80% vs 95%) with power 0.98 at the 5% level and 0.94 at 1.25%, the level Holm's correction gives the first stratum it tests, and a 10-point difference (85% vs 95%) with power 0.85 and 0.68, under the same assumptions; with calibrated critical values and moderate variation, 0.93 and 0.77 for 15 points and 0.71 and 0.45 for 10 points. Forty readers by 48 cases is therefore the design. Thirty readers by 60 cases powers the primary as well but makes each session about 70 minutes. The same code, run on the earlier two-arm design of 30 readers by 40 cases, gives 0.96, 0.88 and 1.00 against the two-arm record's 0.97 and 0.89 for the first two (it has no cell at 85% against 95%) (seed 20261027, 2,000 simulations per cell).
+
+**Type I error.** In the same simulations at 40 readers by 48 cases, a true difference of exactly -5 points was declared noninferior 4.2% of the time (95% vs 90%) and 3.1% (90% vs 85%) when the aids' difference is the same for every reader and case, 4.6% and 4.1% when it varies moderately (reader-by-aid SD 0.25 and case-by-aid SD 0.5 on the logit scale) and 7.2% and 7.2% when it varies widely (0.25 and 1.0), against the nominal 2.5%; with 20,000 simulations per cell the Monte Carlo standard error is about 0.14 points. Calibrated over those settings, the critical values that hold the size at 2.5% are 2.31 for noninferiority and 2.05 for superiority. In one 12-case stratum the t interval's size at a nominal 5% reaches 6.5% and 12.1% under moderate and wide variation, and the calibrated values are 2.01 at 5% and 2.58 at 1.25%. Before the first read, the size of the test is simulated again at the final design and the critical values are registered.
+
+**Pre-registration.** The protocol, this plan, the frozen SchwingCheck version with its hash, the registration aid's version and the allocation seed are registered before any reader starts. There is one analysis, at the end; no interim look.
+
+### Limitations and what is not yet known
+
+The mathematics is settled; whether it holds on patients is not. Every SchwingCheck number above is on synthetic columns drawn from the model the rule assumes.
+
+1. **No patient yet.** Real-spine accuracy is unknown. The first real test is planned on existing SPINEPS masks of full-spine CTs, each level counted from C2; it has not been run.
+2. **The table is the weak point.** Panjabi's means and spreads come from twelve cadaver spines per level. A rule built on a table that small is right 95.5% at 0.99, not 99%. The widened-spread correction restores 99.3%, but its 2 mm was tuned on a pilot, it names only 5.5% of three-body fields, and its lumbar names are right 96.7% (8 wrong of 246).
+3. **Measurement from radiographs is not built.** The rule takes the seven measures as given. No pipeline yet reads them from an AP and a lateral radiograph. Magnification differs between the two views and along the beam, while the rule's one size factor is shared. The generator assumes 1 mm of error; at 3 mm every rule's names at 0.99 fall to between 82.6% and 96.85% from three bodies.
+4. **Range and anatomy.** Places run from C3 to L5, typical columns only. C1, C2 and the sacrum are not places, and anomalous phenotypes are scored but are not places of the rule.
+5. **Prior and dependence.** The prior over places is uniform, while real fields cluster where surgery is done (Statement 5). The seven measures are assumed independent given size; with measures correlated 0.4, a twelve-spine table and 1.5 mm of error together, names at 0.99 are right 92.9%.
+6. **The comparison is indirect.** LevelCheck's numbers come from a retrospective series of 398 radiographs in 178 patients, two series of 20 patients and a laboratory study of 5 surgeons, in other populations, with real radiographs and the CT's own labels as truth. SchwingCheck's come from synthetic columns. No study has run the two on the same cases; the study specified here is the first that would.
+7. **The theorem's scope.** Statement 1 says SchwingCheck is the best possible rule on its seven measures under its generator. It does not say SchwingCheck beats the labeller behind LevelCheck: a reader who counts a full CT from C2 sees more than seven measures per body. Its edge over that labeller is a probability calibrated while its generator holds, not yet measured on real spines, and independence from the CT, which matter most where a full count is not possible.
+8. **The study's own limits.** Simulated radiographs from CT are cleaner than intraoperative images. A registration aid built from open tools is not LevelCheck, and surgeons reading in a browser are not in an operating room.
+
+### References
+
+Papers 1 and 2, read in full, came from the owner, and 9, 10 and 15, also read in full, say what was read; the rest were read as full text through PubMed Central's open interface or on public sites, or, where marked, as abstracts only, except Panjabi's tables (17), which enter through the record's reference table, Chow (26), read as an abstract, TotalSegmentator (11), whose article was not read, and the bordercall record (27), which is private. Entries 28 to 41 were checked against their bibliographic records only.
+
+1. De Silva T, Lo SFL, Aygun N, et al. Utility of the LevelCheck algorithm for decision support in vertebral localization. Spine 2016;41(20):E1249-E1256, with its supplementary tables. [doi:10.1097/BRS.0000000000001589](https://doi.org/10.1097/BRS.0000000000001589). Read in full.
+2. Manbachi A, De Silva T, Uneri A, et al. Clinical translation of the LevelCheck decision support algorithm for target localization in spine surgery. Ann Biomed Eng 2018;46(10):1548-1557. [doi:10.1007/s10439-018-2099-2](https://doi.org/10.1007/s10439-018-2099-2). Read in full.
+3. Lo SFL, Otake Y, Puvanesarajah V, et al. Automatic localization of target vertebrae in spine surgery: clinical evaluation of the LevelCheck registration algorithm. Spine 2015;40(8):E476-E483. [doi:10.1097/BRS.0000000000000814](https://doi.org/10.1097/BRS.0000000000000814).
+4. Otake Y, Schafer S, Stayman JW, et al. Automatic localization of vertebral levels in x-ray fluoroscopy using 3D-2D registration: a tool to reduce wrong-site surgery. Phys Med Biol 2012;57(17):5485-5508. [doi:10.1088/0031-9155/57/17/5485](https://doi.org/10.1088/0031-9155/57/17/5485).
+5. Otake Y, Wang AS, Stayman JW, et al. Robust 3D-2D image registration: application to spine interventions and vertebral labeling in the presence of anatomical deformation. Phys Med Biol 2013;58(23):8535-8553. [doi:10.1088/0031-9155/58/23/8535](https://doi.org/10.1088/0031-9155/58/23/8535).
+6. Reason J. Human error: models and management. BMJ 2000;320(7237):768-770. [doi:10.1136/bmj.320.7237.768](https://doi.org/10.1136/bmj.320.7237.768).
+7. Parasuraman R, Manzey DH. Complacency and bias in human use of automation: an attentional integration. Hum Factors 2010;52(3):381-410. [doi:10.1177/0018720810376055](https://doi.org/10.1177/0018720810376055). Abstract only.
+8. Koyama AK, Maddox CS, Li L, Bucknall T, Westbrook JI. Effectiveness of double checking to reduce medication administration errors: a systematic review. BMJ Qual Saf 2020;29(7):595-603. [Abstract](https://qualitysafety.bmj.com/content/29/7/595). Abstract only.
+9. Schwing G, et al. Not all spines are created equal: how TotalSegmentator fails on lumbosacral transitional vertebrae. Accepted as a poster at NeurIPS 2026, Evaluations and Datasets Track, not yet published; confidential manuscript, read in full.
+10. Moeller H, Schoen H, Graf R, et al. VERIDAH: solving enumeration anomaly aware vertebra labeling across imaging sequences. arXiv:2601.14066, 2026. [arXiv](https://arxiv.org/abs/2601.14066). Read in full.
+11. Wasserthal J, Breit HC, Meyer MT, et al. TotalSegmentator: robust segmentation of 104 anatomic structures in CT images. Radiol Artif Intell 2023;5(5):e230024.
+12. Otake Y, Wang AS, Uneri A, et al. 3D-2D registration in mobile radiographs: algorithm development and preliminary clinical evaluation. Phys Med Biol 2015;60(5):2075-2090. [doi:10.1088/0031-9155/60/5/2075](https://doi.org/10.1088/0031-9155/60/5/2075).
+13. De Silva T, Uneri A, Ketcha MD, et al. 3D-2D image registration for target localization in spine surgery: investigation of similarity metrics providing robustness to content mismatch. Phys Med Biol 2016;61(8):3009-3025. [doi:10.1088/0031-9155/61/8/3009](https://doi.org/10.1088/0031-9155/61/8/3009).
+14. De Silva T, Uneri A, Ketcha MD, et al. Registration of MRI to intraoperative radiographs for target localization in spinal interventions. Phys Med Biol 2017;62(2):684-701. [doi:10.1088/1361-6560/62/2/684](https://doi.org/10.1088/1361-6560/62/2/684).
+15. Ketcha MD, De Silva T, Uneri A, et al. Multi-stage 3D-2D registration for correction of anatomical deformation in image-guided spine surgery. Phys Med Biol 2017;62(11):4604-4622. [doi:10.1088/1361-6560/aa6b3e](https://doi.org/10.1088/1361-6560/aa6b3e). Read in full from the author manuscript.
+16. Liebrand et al. Accuracy in spinal level determination, including transitional vertebrae: an ASReview supported systematic review. Eur Spine J 2026. [doi:10.1007/s00586-026-09925-x](https://doi.org/10.1007/s00586-026-09925-x). Abstract only.
+17. Panjabi MM, Duranceau J, Goel V, et al. Cervical human vertebrae: quantitative three-dimensional anatomy of the middle and lower regions. Spine 1991;16(8):861-869. Panjabi MM, Takata K, Goel V, et al. Thoracic human vertebrae: quantitative three-dimensional anatomy. Spine 1991;16(8):888-901. Panjabi MM, Goel V, Oxland T, et al. Human lumbar vertebrae: quantitative three-dimensional anatomy. Spine 1992;17(3):299-306.
+18. Mody MG, Nourbakhsh A, Stahl DL, et al. The prevalence of wrong level surgery among spine surgeons. Spine 2008;33(2):194-198. [doi:10.1097/BRS.0b013e31816043d1](https://doi.org/10.1097/BRS.0b013e31816043d1). Abstract only.
+19. Konin GP, Walz DM. Lumbosacral transitional vertebrae: classification, imaging findings, and clinical relevance. AJNR 2010;31(10):1778-1786. [doi:10.3174/ajnr.A2036](https://doi.org/10.3174/ajnr.A2036).
+20. Carrino JA, Campbell PD, Lin DC, et al. Effect of spinal segment variants on numbering vertebral levels at lumbar MR imaging. Radiology 2011;259(1):196-202. [doi:10.1148/radiol.11081511](https://doi.org/10.1148/radiol.11081511). Abstract only.
+21. Garg et al. Int J Spine Surg 2021;15(2):359-367. [doi:10.14444/8047](https://doi.org/10.14444/8047).
+22. Sekuboyina A, et al. VerSe: a vertebrae labelling and segmentation benchmark for multi-detector CT images. Med Image Anal 2021. [arXiv:2001.09193](https://arxiv.org/abs/2001.09193).
+23. US Food and Drug Administration. Clinical performance assessment: considerations for computer-assisted detection devices applied to radiology images and radiology device data in premarket notification (510(k)) submissions. Guidance, 28 September 2022. [fda.gov/media/77642](https://www.fda.gov/media/77642/download).
+24. US Patent 11,284,846 B2, Method for localization and identification of structures in projection images (Siemens and Johns Hopkins University), granted 29 March 2022. [Google Patents](https://patents.google.com/patent/US11284846).
+25. 45 CFR 46.104, exempt research. [eCFR](https://www.ecfr.gov/current/title-45/subtitle-A/subchapter-A/part-46/subpart-A/section-46.104).
+26. Chow CK. On optimum recognition error and reject tradeoff. IEEE Trans Inf Theory 1970;16(1):41-46. The reject rule behind Statement 2's remark on abstaining.
+27. The bordercall record, private until the filing: records/exact-2026-10-26/exact.json and supplement.json (every SchwingCheck number not marked new), and records/whitepaper-2026-10-26/second\_opinion.json (the second-opinion counts and the latency), checks.json (the anomalous columns scored by the count from C2), and study\_power.json and study\_power\_three\_arms.json (the power, size and critical values of the two-arm and the three-arm designs).
+28. Weese J, Penney GP, Desmedt P, Buzug TM, Hill DLG, Hawkes DJ. Voxel-based 2-D/3-D registration of fluoroscopy images and CT scans for image-guided surgery. IEEE Trans Inf Technol Biomed 1997;1(4):284-293. doi:10.1109/4233.681173.
+29. Penney GP, Weese J, Little JA, Desmedt P, Hill DLG, Hawkes DJ. A comparison of similarity measures for use in 2-D-3-D medical image registration. IEEE Trans Med Imaging 1998;17(4):586-595. doi:10.1109/42.730403.
+30. Pluim JPW, Maintz JBA, Viergever MA. Image registration by maximization of combined mutual information and gradient information. IEEE Trans Med Imaging 2000;19(8):809-814. doi:10.1109/42.876307.
+31. Gopalakrishnan V, Golland P. Fast auto-differentiable digitally reconstructed radiographs for solving inverse problems in intraoperative imaging. Clinical Image-Based Procedures (CLIP), MICCAI 2022 workshops, Springer, pp 1-11. Software: github.com/eigenvivek/DiffDRR, MIT licence.
+32. Madey v. Duke University, 307 F.3d 1351 (Fed. Cir. 2002), decided 3 October 2002.
+33. US Patent 10,262,424 B2, Method for deformable 3D-2D registration using multiple locally rigid registrations (Johns Hopkins University), filed 16 December 2016, granted 16 April 2019. patents.google.com/patent/US10262424B2.
+34. US Patent 10,368,956 B2, MR-levelcheck-2: method for localization of structures in projection images (Johns Hopkins University), filed 16 February 2017, granted 6 August 2019. patents.google.com/patent/US10368956B2.
+35. 21 CFR 56, Institutional review boards (56.110, expedited review). ecfr.gov/current/title-21/chapter-I/subchapter-A/part-56.
+36. Wayne State University IRB Policy 07-07, Compensation for Research Participation, administrative updates October 2024.
+37. Otake Y, Schafer S, Stayman JW, Zbijewski W, Kleinszig G, Graumann R, Khanna AJ, Siewerdsen JH. Automatic localization of target vertebrae in spine surgery using fast CT-to-fluoroscopy (3D-2D) image registration. Proc SPIE 8316, Medical Imaging 2012. doi:10.1117/12.911308.
+38. Holm S. A simple sequentially rejective multiple test procedure. Scand J Stat 1979;6(2):65-70.
+39. Hart SG, Staveland LE. Development of NASA-TLX (Task Load Index): results of empirical and theoretical research. In: Hancock PA, Meshkati N, eds. Human Mental Workload. Adv Psychol 1988;52:139-183.
+40. Brooke J. SUS: a quick and dirty usability scale. In: Jordan PW, et al., eds. Usability Evaluation in Industry. London: Taylor and Francis; 1996:189-194.
+41. Moeller H, Graf R, Schmitt J, et al. SPINEPS: automatic whole spine segmentation of T2-weighted MR images using a two-phase approach to multi-class semantic and instance segmentation. Eur Radiol 2024 (online 29 October 2024). doi:10.1007/s00330-024-11155-y. Software: github.com/Hendrik-code/spineps, Apache-2.0, which also segments CT.
+
+## What we know
+
+On synthetic columns drawn from Panjabi's tables, with 1 mm of measurement noise, one shared size factor and a uniform prior over the 22 places from C3 to L5, the rule's forced choice from an AP and a lateral view names 47.3, 73.1, 85.7, 96.1 and 99.7 percent of fields of one, three, five, nine and fifteen bodies, and the names it gives at 0.99 are right 99.78 percent or more from three bodies on. By construction no function of the same seven measures names those fields more often, which is the sentence the paper hinges on. One view costs seven to twelve points at nine bodies. The posterior for three bodies took a median of 13.6 ms on four CPUs. SchwingNet's corner detector already places four of the seven landmarks per body a segmentation-free device would need, at 6.8 ms per image, and its corners are scored in fractions of a body's height.
+
+## What we do not know
+
+No real spine has been measured, so SchwingCheck's error on patients is unknown, and the record says it worsens away from its generator: with a table estimated from twelve spines names at 0.99 are right 95.5 percent, with 3 mm of measurement error 82.6 to 96.85 percent from three bodies, and on columns with a thirteenth rib-bearing body or a sixth lumbar body 98.65 and 96.4 percent from five. The rule has no anomalous places yet. The device of figure 36.5 is not built: no head finds the pedicles' medial borders or the spinolaminar point, its lengths have no measured error in millimetres, its magnification has not been scored against the shared size factor, and no end-to-end time exists for it or for the segmentation road it replaces. LevelCheck's own accuracy on a miscounted CT, and the reader study's effect sizes, are the paper's assumptions, not measurements.
+
+## What would change our mind
+
+If the first real test, the existing SPINEPS masks of full-spine CTs counted from C2 (the bordercall pilot, two CPU jobs, not yet sent), puts names at 0.99 below 99 percent on typical spines, the guarantee is a property of the generator and the rule needs a table estimated from more spines or wider spreads before it is shown as a check. If anomalous places added to the rule still leave the thirteenth rib-bearing body below 99 percent, SchwingCheck and a CT labelled up from the sacrum share a failure and the paper's case for their pairing weakens. If a landmark head cannot read the canal's width and depth to about 1 mm on C-arm frames, the device reads five measures, not seven, and the accuracy of that reduced rule has to be scored before the device is designed further. If the reader study shows no gain of SchwingCheck over an unaided read where no CT exists, the recommendation of SchwingCheck2D as the default falls.
+
+## Sources
+
+| Statement | Source | Grade |
+|---|---|---|
+| The paper's text, revision 188, as carried in this chapter | [docs/SCHWINGCHECK_LEVELCHECK.md](https://github.com/OpenSpineConsortium/bordercall/blob/6ceb475/docs/SCHWINGCHECK_LEVELCHECK.md) in bordercall at 6ceb475; the Claude Doc [SchwingCheck and LevelCheck](https://claude.ai/artifact/4VwMe9CKMX87s4jiEJBpRE) | Reported |
+| The owner's asks of 26 October 21:18 UTC and 27 October 03:15 UTC, and the hinge sentence of 21:28 UTC | the thread "Finish CNS slides with junction predictor"; bordercall [HANDOFF.md](https://github.com/OpenSpineConsortium/bordercall/blob/6ceb475/HANDOFF.md), step 11 | Reported |
+| Exact naming 47.3, 73.1, 85.7, 96.1 and 99.7 percent from one, three, five, nine and fifteen bodies, both views; answered at 0.99 on 0.7 to 97.8 percent of fields, right 99.78 to 99.98 percent from three bodies | [records/exact-2026-10-26/exact.json](https://github.com/OpenSpineConsortium/bordercall/blob/00f969f/records/exact-2026-10-26/exact.json) at 00f969f, widths/n/regimes/both; [tools/schwingcheck_records.json](../../tools/schwingcheck_records.json) | Reported |
+| Nine bodies named 89.1 percent from the AP alone and 83.6 percent from the lateral alone | the same file, regimes ap and lateral | Reported |
+| With 3 mm of measurement error, names at 0.99 from three bodies right 82.6 percent (nominal rule) and 96.85 percent (honest rule) | the same file, robust/misspecified/noise_mm=3 | Reported |
+| Names at 0.99 right 95.5 percent with a table from twelve spines; 98.65 and 96.4 percent from five bodies on thirteenth-rib and six-lumbar columns | the paper, section "SchwingCheck's error likelihood, stated exactly" and "SchwingCheck3D"; [records/whitepaper-2026-10-26/checks.json](https://github.com/OpenSpineConsortium/bordercall/blob/9e041ef/records/whitepaper-2026-10-26/checks.json) | Reported |
+| The posterior for three bodies: median 13.6 ms, at most 17.4 ms over 50 calls on four CPUs | [records/whitepaper-2026-10-26/second_opinion.json](https://github.com/OpenSpineConsortium/bordercall/blob/9e041ef/records/whitepaper-2026-10-26/second_opinion.json) at 9e041ef, latency | Reported |
+| The generator: 1 mm noise, correlation 0.5, size spread 7 percent, 161 Gauss-Hermite nodes, 22 places from C3 to L5 | [records/exact-2026-10-26/exact.json](https://github.com/OpenSpineConsortium/bordercall/blob/00f969f/records/exact-2026-10-26/exact.json); bordercall/exact.py | Reported |
+| Which measures each view shows | bordercall/neighbour.py at 17683b1, REGIMES | Reported |
+| detect_v1: YOLO11m-pose, four corner keypoints, 6.8 ms per image on hardware not named, 76.8 and 91.7 percent of corners within a tenth and a fifth of the body's height on 558 instances | [chapter 12](12-detectors-the-architecture-and-the-version-1-training-plan.md); [vertebra-detector-field-report-1jljc6](../../artifacts/vertebra-detector-field-report-1jljc6/) | Reported |
+| One frame of C-ArmLSpine's sweeps is 97 ms | [docs/memory/latency-and-the-recorded-sweep.md](../../docs/memory/latency-and-the-recorded-sweep.md) | Reported |
+| SchwingNet's stages as built, and which learn | [chapter 12](12-detectors-the-architecture-and-the-version-1-training-plan.md); figure 36.1 | Reported |
+| The three pathways and where each decides the level | the paper, section "Three pathways"; figure 36.3 | Inferred |
+| The seven measures as distances between landmarks, three of them new | this chapter's design; figure 36.4 | Inferred |
+| A device that reads the measures in one landmark pass and arithmetic, with no segmentation | this chapter's design; figure 36.5 | Inferred |
+| SPINEPS CT masks of full-spine CTs are held on the grid | [docs/research/spineps-anomaly-route.md](../../docs/research/spineps-anomaly-route.md) | Reported |
+| The bordercall pilot waits for the owner's word and the number of jobs | [docs/project.md](../../docs/project.md); [docs/memory/bordercall-on-the-grid.md](../../docs/memory/bordercall-on-the-grid.md) | Reported |

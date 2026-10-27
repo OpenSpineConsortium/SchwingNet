@@ -410,6 +410,22 @@
         "docs/textbook/34-the-optimal-overlap.md"
       ],
       "figure": "34/overlapping-frames-stitched"
+    },
+    {
+      "id": "schwingcheck-versus-levelcheck",
+      "question": "How would SchwingCheck fare against LevelCheck, and which pathway to a level label is recommended?",
+      "chapters": [
+        "docs/textbook/36-schwingcheck-an-explainable-bayesian-check-on-vertebral-labels.md"
+      ],
+      "figure": "36/schwingcheck-pathways"
+    },
+    {
+      "id": "measures-without-segmentation",
+      "question": "Can the measurements SchwingCheck needs be read off a frame without a segmentation, to keep the latency low?",
+      "chapters": [
+        "docs/textbook/36-schwingcheck-an-explainable-bayesian-check-on-vertebral-labels.md"
+      ],
+      "figure": "36/segmentation-free-device"
     }
   ]
 }
