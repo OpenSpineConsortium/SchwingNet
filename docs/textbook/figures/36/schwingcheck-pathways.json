@@ -1,0 +1,41 @@
+{
+  "id": "36/schwingcheck-pathways",
+  "title": "Three pathways to a level label on the X-ray",
+  "caption": "LevelCheck, prior art, whose only classification is the click that labels the CT; SchwingCheck3D, which checks the CT's labels before surgery and carries them to the X-ray by a centroid fit; SchwingCheck2D, the default, which names or checks the bodies on AP and lateral panoramas with no CT. Heavy borders mark where the level is decided.",
+  "chapter": "36",
+  "grade": "Inferred",
+  "status": "current",
+  "source": {
+    "kind": "diagram",
+    "artifact": null,
+    "artifact_url": null,
+    "made_by": "tools/schwingcheck_figures.py",
+    "commit": null,
+    "data": [
+      "tools/schwingcheck_records.json",
+      "docs/textbook/36-schwingcheck-an-explainable-bayesian-check-on-vertebral-labels.md"
+    ],
+    "run": null,
+    "notes": "A design, drawn from the white paper's section Three pathways; LevelCheck's figures are the publications', SchwingCheck's rates bordercall's synthetic records."
+  },
+  "explore": [
+    {
+      "label": "The script",
+      "href": "tools/schwingcheck_figures.py"
+    },
+    {
+      "label": "The recorded numbers",
+      "href": "tools/schwingcheck_records.json"
+    },
+    {
+      "label": "The chapter",
+      "href": "docs/textbook/36-schwingcheck-an-explainable-bayesian-check-on-vertebral-labels.md"
+    }
+  ],
+  "rerun": {
+    "where": "actions",
+    "command": "python3 tools/schwingcheck_figures.py docs/textbook/figures/36",
+    "cost": "CPU, under a second",
+    "needs_owner_word": false
+  }
+}

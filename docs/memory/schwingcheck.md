@@ -1,0 +1,6 @@
+SchwingCheck, the explainable Bayesian check on vertebral labels, is textbook chapter 36 and bordercall's white paper; every number is synthetic.
+
+- The owner's white paper (revision 189 of the Claude Doc https://claude.ai/artifact/4VwMe9CKMX87s4jiEJBpRE) compares SchwingCheck with LevelCheck and specifies a randomized browser study of surgeons; it is carried whole in docs/textbook/36-schwingcheck-an-explainable-bayesian-check-on-vertebral-labels.md and kept beside its records in OpenSpineConsortium/bordercall (docs/SCHWINGCHECK_LEVELCHECK.md at df976d7, records/exact-2026-10-26/, records/whitepaper-2026-10-26/).
+- The Doc and bordercall's copy change together; the chapter is a copy at one revision, so a later revision of the Doc is copied into both by pull request.
+- Every SchwingCheck number comes from synthetic columns drawn from Panjabi's tables; no patient has been measured, and the first real test is the bordercall pilot over existing SPINEPS masks counted from C2 (docs/memory/bordercall-on-the-grid.md), which waits for the owner's word.
+- The chapter's figures are drawn by tools/schwingcheck_figures.py from tools/schwingcheck_records.json, which copies numbers and computes none; the segmentation-free device of figure 36.5 is a design, not built (docs/research/schwingcheck.md).
