@@ -84,14 +84,18 @@
 #                   count of 2026-10-25): flexray_carmlspine, flexray_deepfluoro or xvr_deepfluoro, each one
 #                   GPU job (grid/bench.sbatch, tools/bench_public.py) once its fetch has landed; the next
 #                   send prints logs/BENCH-<name>.md, and every later one prints it again and queues nothing;
-#                   and flexray_drr_gap, the DRR domain-gap study (tools/domain_gap.py) as one GPU job of
-#                   the same shape, once FleXray's weights, a whole sample index, the TotalSegmentator CTs
-#                   and the ImageNet file are there; FluXray, the SPINEPS masks (spineps) and the MOOSE
-#                   masks (moose, which flexray_drr_seg makes) are each read where they are there and
-#                   the groups that need one skipped with its reason otherwise, since a DRR is a
-#                   projection of the CT alone and the groups that read no label render without masks
-#                   (the owner's word of 2026-10-27), and the send says which are read;
-#                   only its summary leaves the grid, through grid/redact.sed; and
+#                   and flexray_drr_gap, the DRR domain-gap study (tools/domain_gap.py), sharded on the
+#                   H200 nodes (the owner's word of 2026-10-27 17:51 UTC): three GPU jobs on gmsap
+#                   (grid/drr-gap.sbatch), prepare, an array of DRR_GAP_TASKS shard tasks afterany it and
+#                   the merge afterany the array, all queued or none, each step run from prepare's copy of
+#                   the code and none holding the checkout, once FleXray's weights, a whole sample index,
+#                   the TotalSegmentator CTs and the ImageNet file are there; FluXray, the SPINEPS masks
+#                   (spineps) and the MOOSE masks (moose, which flexray_drr_seg makes) are each read where
+#                   they are there and the groups that need one skipped with its reason otherwise, since
+#                   a DRR is a projection of the CT alone and the groups that read no label render
+#                   without masks (the owner's word of 2026-10-27), and the send says which are read; a
+#                   send while any of the three is live prints the study's PROGRESS.txt, which status
+#                   shows too, and refuses; only its summary leaves the grid, through grid/redact.sed; and
 #                   flexray_drr_seg, one GPU job before it (the owner's word of 2026-10-26: MOOSE labels
 #                   for the FleXray replication, SPINEPS for production): the study's choice of CTs
 #                   (tools/domain_gap.py plan) and MOOSE on exactly those (tools/flexray_render.py segment),
@@ -124,11 +128,13 @@
 #                   again and queues nothing
 #   stop            cancel the gate's own jobs that are still queued or running, and nothing else
 #   cancel <job>    cancel one of the gate's own live jobs and every other live job its word queued
-#                   with it (a fetch's bank and catalog), and nothing else
+#                   with it (a fetch's bank and catalog, the DRR domain-gap study's three jobs), and nothing else
 #
 # While a version 1 run, a sweep, an experiment run, a benchmark, an anomaly stage, a bordercall stage or a
 # realism stage lasts, grid/logs/HOLD names its job and commit (grid/v1-driver.sbatch, grid/sweep-driver.sbatch,
-# grid/experiment-driver.sbatch, grid/bench.sbatch, grid/anomaly.sbatch, grid/bordercall.sbatch, grid/realism.sbatch); the gate's side skips its fast-forward while the file is there, and every word but a refused one
+# grid/experiment-driver.sbatch, grid/bench.sbatch, grid/anomaly.sbatch, grid/bordercall.sbatch, grid/realism.sbatch;
+# not the DRR domain-gap study's steps, grid/drr-gap.sbatch, which run from a copy of their code); the
+# gate's side skips its fast-forward while the file is there, and every word but a refused one
 # clears a hold whose job Slurm no longer holds, so the run's later steps run the code it
 # recorded. One file holds one job, so each run that takes it waits afterany on every other one
 # still live (checkout_holders) rather than run beside it.
@@ -166,6 +172,8 @@ RUNS=${RUNS:-/rs/rs_grp_oschome/go2432/runs}
 # code part naming the code its rows run and the plan's bytes, as `tools/block_sweep.py state` prints it.
 SMOKE=${SMOKE:-/rs/rs_grp_oschome/go2432/smoke}
 MODELS=${MODELS:-/rs/rs_grp_oschome/go2432/models}
+# Each benchmark's results, <name>/ (grid/bench.sbatch, grid/drr-gap.sbatch), where status reads a PROGRESS.txt.
+BENCH_ROOT=${BENCH_ROOT:-/rs/rs_grp_oschome/go2432/bench}
 WEIGHTS=$MODELS/resnet18-f37072fd.pth
 SWEEP_BANK=${SWEEP_BANK:-$DATA_ROOT/realxray/carmlspine_sweep}
 # The anomaly route's stages write under ANOMALY_ROOT (grid/anomaly.sbatch reads the same default from
@@ -173,6 +181,12 @@ SWEEP_BANK=${SWEEP_BANK:-$DATA_ROOT/realxray/carmlspine_sweep}
 ANOMALY_ROOT=${ANOMALY_ROOT:-$VOLUME/go2432/anomaly}
 G3_SPLIT=${G3_SPLIT:-$HOME/split_final.json}
 NETRC=${NETRC:-$HOME/.netrc}
+# The DRR domain-gap study's array (bench flexray_drr_gap, grid/drr-gap.sbatch): how many shard tasks
+# share its units, a committed default changed by pull request, since a gate word carries no option
+# and the owner's count of jobs decides it; and the partition of the H200 nodes its three jobs ask
+# within the gpu class, as grid/run-latency-sweep.sh asks it.
+DRR_GAP_TASKS=4
+H200=(--partition gmsap)
 LOGS=$REPO/grid/logs
 STATE=$LOGS/GATE_JOBS.txt
 WORDS="start status leaks v1 latency fetch explore dropzip unpack nodequota folders samples sweep bank experiment bench anomaly bordercall realism stop cancel"
@@ -321,7 +335,10 @@ checkout_holders() {  # afterany:<job> for every live job of the gate's that hol
   # A version 1 run, a sweep, an experiment run, a benchmark, an anomaly stage and a bordercall stage each write grid/logs/HOLD, one file
   # naming one job, and the first of two side by side to end would clear it while the other still
   # runs, whose end check then finds the checkout moved and throws the run away; so each waits for
-  # the others, a sweep sent while a benchmark lasts up to its 12 hours among them.
+  # the others, a sweep sent while a benchmark lasts up to its 12 hours among them. The DRR domain-gap
+  # study's three jobs (bench_flexray_drr_gap, _shard, _merge) match too, though they run from a copy
+  # of their code and hold no HOLD, so a run sent while the study lasts waits for it as it waited for
+  # the study's one job before: bench flexray_drr_seg among them, which writes the masks it reads.
   local job waits=""
   [ -f "$STATE" ] || return 0
   for job in $(awk '$3 == "v1_driver" || $3 == "sweep" || $3 ~ /^experiment_[0-9]+$/ || $3 ~ /^bench_[a-z_]+$/ || $3 ~ /^anomaly_[a-z_]+$/ || $3 ~ /^bordercall_[a-z]+$/ { print $1 }' "$STATE" | sort -u); do
@@ -610,10 +627,12 @@ word_status() {
 }
 status_sections() {  # every section of status whole, in the order the page shows them
   local ids run lines job name state elapsed code node probe
-  # The space first and the sweeps' progress, the one live view of a sweep, after it; then the
-  # sample manifest, which once came after the jobs, where the page's end cut it.
+  # The space first and the sweeps' progress, the one live view of a sweep, after it, then each
+  # benchmark's, the DRR domain-gap study's while its shards run; then the sample manifest, which
+  # once came after the jobs, where the page's end cut it.
   word_space
   sweep_progress | head -n "$SWEEP_LINES_SHOWN"
+  bench_progress
   samples_report
   ids=$(gate_ids | tail -n 60 | tr '\n' ',' | sed 's/,$//')
   if [ -z "$ids" ]; then
@@ -697,6 +716,26 @@ sweep_progress() {  # for each plan under SMOKE, its newest sweep's PROGRESS.txt
     echo "## sweep $(basename "$plan"), $(basename "$(dirname "$progress")") ($(date -r "$progress" '+%F %T'))" \
       | LC_ALL=C tr -cd '\11\12\40-\176' | masked
     progress_lines "$progress" | LC_ALL=C tr -cd '\11\12\40-\176' | smoke_paths | masked | sed 's/^/  /'
+  done
+}
+
+# A benchmark whose tool keeps <name>/PROGRESS.txt under BENCH_ROOT, the DRR domain-gap study's
+# (grid/drr-gap.sbatch), shows it here while it runs: the study's one live view from outside the
+# grid, as a sweep's is, at most BENCH_PROGRESS_LINES short lines of counts and group ids, each masked.
+BENCH_PROGRESS_LINES=40
+bench_progress_of() {  # bench_progress_of NAME: one benchmark's PROGRESS.txt as status shows it, its heading and its first lines, masked
+  local progress=$BENCH_ROOT/$1/PROGRESS.txt
+  [ -f "$progress" ] || return 0
+  echo "## bench $1, progress ($(date -r "$progress" '+%F %T'))" | LC_ALL=C tr -cd '\11\12\40-\176' | masked
+  head -n "$BENCH_PROGRESS_LINES" "$progress" | LC_ALL=C tr -cd '\11\12\40-\176' | masked | sed 's/^/  /'
+}
+bench_progress() {  # every benchmark under BENCH_ROOT that keeps a PROGRESS.txt, by its folder's name
+  local folder name
+  for folder in "$BENCH_ROOT"/*/; do
+    name=$(basename "$folder")
+    # A benchmark's folder is named by its id; any other name is no benchmark's and is passed over.
+    case "$name" in ""|*[!a-z0-9_]*) continue ;; esac
+    bench_progress_of "$name"
   done
 }
 
@@ -1063,7 +1102,7 @@ bench_inputs_missing() {  # what bench $id still lacks on the data root, one lin
         || { echo "xvr's DeepFluoro models (fetch hf_xvr_models first)"; return; }
       [ -f "$DATA_ROOT/hf_xvr_data/raw/deepfluoro/subject01/volume.nii.gz" ] || echo "xvr's DeepFluoro data (fetch hf_xvr_data first)" ;;
     flexray_drr_gap)
-      # The study's inputs in the order the job reads them (grid/bench.sbatch). FluXray and the two
+      # The study's inputs in the order its prepare step reads them (grid/drr-gap.sbatch). FluXray and the two
       # segmenters' masks are optional and never refused for, so word_bench only says which are
       # there: a DRR is a projection of the CT alone, so the render groups that read no label
       # (segmenter=none) render without any mask, and a group whose segmenter's masks are not there,
@@ -1144,19 +1183,59 @@ drr_gap_masks() {  # one line on each segmenter's masks bench flexray_drr_gap wi
     fi
   done
 }
+drr_gap_live() {  # the study's live jobs, its prepare, its shard array and its merge, space-separated
+  { live_of bench_flexray_drr_gap; live_of bench_flexray_drr_gap_shard; live_of bench_flexray_drr_gap_merge; } | tr '\n' ' ' | sed 's/ $//'
+}
+drr_gap_jobs() {  # drr_gap_jobs [WAIT...]: the study's three jobs (grid/drr-gap.sbatch), prepare after WAIT, the shard array afterany it, the merge afterany the array; all of them or none
+  # The owner's word of 2026-10-27 17:51 UTC: sharded, on the H200 nodes, by the Lab Recipe (rules 3,
+  # 8, 9 and 10, grid/drr-gap.sbatch). Each step reads a file to tell whether the one before it did
+  # its part, so each waits afterany; the shards and the merge are handed prepare's job, so neither
+  # reads a step file an earlier chain left, and the merge the array's count, so it names each task.
+  local waits=("$@") study prepare shards merge opts
+  study=(BENCH="$id" DATA_ROOT="$DATA_ROOT" INDEX="$(samples_index)" MODELS="$MODELS" BENCH_ROOT="$BENCH_ROOT")
+  prepare=$(submit bench_flexray_drr_gap gpu "${study[@]}" STEP=prepare ${waits[@]+"${waits[@]}"} "${H200[@]}" \
+    --cpus 16 --mem 64G --time 12:00:00 --no-requeue -- drr-gap.sbatch) || return 1
+  # Both or neither, as grid/run-leaks.sh queues its array and join: a prepare whose shards were
+  # refused would cut units nobody claims, and shards whose merge was refused would leave no report.
+  if ! depend_on "afterany:$prepare" || ! shards=$(submit bench_flexray_drr_gap_shard gpu "${study[@]}" STEP=shard PREPARE_JOB="$prepare" \
+    ${opts[@]+"${opts[@]}"} "${H200[@]}" --array "0-$((DRR_GAP_TASKS - 1))" --cpus 16 --mem 64G --time 12:00:00 --no-requeue -- drr-gap.sbatch); then
+    "$SCANCEL" "$prepare" && echo "  cancelled prepare $prepare, since its shard array was refused"
+    return 1
+  fi
+  if ! depend_on "afterany:$shards" || ! merge=$(submit bench_flexray_drr_gap_merge gpu "${study[@]}" STEP=merge PREPARE_JOB="$prepare" \
+    SHARD_TASKS="$DRR_GAP_TASKS" ${opts[@]+"${opts[@]}"} "${H200[@]}" --cpus 4 --mem 64G --time 04:00:00 --no-requeue -- drr-gap.sbatch); then
+    "$SCANCEL" "$prepare" "$shards" && echo "  cancelled prepare $prepare and the shard array $shards, since the merge was refused"
+    return 1
+  fi
+  echo "  the study: prepare $prepare, then the shard array $shards ($DRR_GAP_TASKS tasks, afterany $prepare), then the merge $merge (afterany $shards), each on gmsap's H200 nodes"
+}
+drr_gap_progress() {  # the study's PROGRESS.txt, masked, as a send while it lasts prints it, or that it has none yet
+  [ -f "$BENCH_ROOT/flexray_drr_gap/PROGRESS.txt" ] || { echo "  the study has written no PROGRESS.txt yet: prepare starts it once it runs"; return 0; }
+  bench_progress_of flexray_drr_gap
+}
 word_bench() {  # one public model's benchmark (#287): queued once, its report printed on every later send
-  local report=$LOGS/BENCH-$id.md busy missing holds opts setup extra
-  extra=()
+  local report=$LOGS/BENCH-$id.md busy missing holds opts setup
   case "$id" in
     flexray_carmlspine|flexray_deepfluoro|xvr_deepfluoro|flexray_drr_gap|flexray_drr_seg) ;;
     *) echo "refusing: bench takes flexray_carmlspine, flexray_deepfluoro, xvr_deepfluoro, flexray_drr_gap or flexray_drr_seg"; return 64 ;;
   esac
+  if [ "$id" = flexray_drr_gap ]; then
+    # Any of the study's three jobs still live is the study still running: what it has done so far
+    # first, from its PROGRESS.txt, then the refusal.
+    busy=$(drr_gap_live)
+    if [ -n "$busy" ]; then
+      drr_gap_progress
+      echo "refusing: the benchmark $id is still queued or running (jobs $busy); send bench $id again once its merge ends"
+      return 75
+    fi
+  fi
   busy=$(live_of "bench_$id")
   [ -z "$busy" ] || { echo "refusing: the benchmark $id is still queued or running (job $busy); send bench $id again once it ends"; return 75; }
   if [ -f "$report" ]; then
-    # Kept, so the owner's count of one job each holds: a report that stands queues nothing.
+    # Kept, so the owner's count of one job each holds: a report that stands queues nothing. The
+    # study's report carries each step's lines beside a summary of up to 80, so 120 lines are printed.
     echo "## $(basename "$report") ($(date -r "$report" '+%F %T'))"
-    head -n 100 "$report" | LC_ALL=C tr -cd '\11\12\40-\176' | masked | head -c 20000
+    head -n 120 "$report" | LC_ALL=C tr -cd '\11\12\40-\176' | masked | head -c 30000
     bench_failed_on_older_code "$report" || return 0
     # A benchmark that failed scored nothing, so once a fix has moved the checkout it is queued
     # once more, its report kept under its job's number (#312); the same commit queues nothing.
@@ -1167,10 +1246,9 @@ word_bench() {  # one public model's benchmark (#287): queued once, its report p
   [ -z "$missing" ] || { echo "refusing: bench $id needs $missing"; return 2; }
   if [ "$id" = flexray_drr_gap ]; then
     # The study reads the index this word checked and the ImageNet file beside the models; FluXray
-    # and each segmenter's masks join it only where they are there, and the job says so in its
+    # and each segmenter's masks join it only where they are there, and prepare says so in the
     # report rather than wait for them.
     drr_gap_masks
-    extra=(INDEX="$(samples_index)" MODELS="$MODELS")
     [ -d "$DATA_ROOT/hf_flexray_data/raw" ] || echo "  FluXray: not on the data root (fetch hf_flexray_data); the study skips its group with that reason"
   fi
   # Stale environments are rebuilt by the one setup job, which every bench sent while it runs waits
@@ -1178,11 +1256,17 @@ word_bench() {  # one public model's benchmark (#287): queued once, its report p
   setup=$(setup_dependency) || return 1
   [ -z "$setup" ] || echo "  the environments: after the setup job that rebuilds them (${setup#afterok:})"
   # The job holds the checkout while it runs (grid/bench.sbatch), so it is queued after every other
-  # run that holds it, as a sweep is, rather than refused.
+  # run that holds it, as a sweep is, rather than refused; the study's prepare waits for them too,
+  # bench flexray_drr_seg among them, whose MOOSE masks it reads.
   holds=$(checkout_holders)
   [ -z "$holds" ] || echo "  the checkout: after the live runs that hold it ($holds)"
   depend_on "$(joined "$setup" "$holds")" || return 1
-  submit "bench_$id" gpu BENCH="$id" DATA_ROOT="$DATA_ROOT" ${extra[@]+"${extra[@]}"} ${opts[@]+"${opts[@]}"} --no-requeue -- bench.sbatch > /dev/null || return 1
+  if [ "$id" = flexray_drr_gap ]; then
+    drr_gap_jobs ${opts[@]+"${opts[@]}"} || return 1
+    echo "submitted the study. 'status' shows its progress while it runs; send bench $id again once its merge ends to read its report, logs/BENCH-$id.md."
+    return 0
+  fi
+  submit "bench_$id" gpu BENCH="$id" DATA_ROOT="$DATA_ROOT" ${opts[@]+"${opts[@]}"} --no-requeue -- bench.sbatch > /dev/null || return 1
   echo "submitted the benchmark. Send bench $id again once it ends to read its report, logs/BENCH-$id.md."
 }
 

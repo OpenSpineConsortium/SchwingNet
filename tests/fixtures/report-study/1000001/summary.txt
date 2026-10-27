@@ -1,0 +1,28 @@
+record: study drr-domain-gap; commit 0000000; tree clean; seed 0; plan 1111-1111-1111-1111; groups.json 7e1b-145e-9d74-759a; PREREG 2222-2222-2222-2222; code 3333-3333-3333-3333
+record: jobs prepare 1000001, array 1000002 (4 tasks), merge 1000003; GPUs FIXTURE GPU x1
+record: units 4 of 4 done, 0 failed; mmd backend numpy
+record: seconds render 1, plan 2, images 3, features 4, heads 5, analysis 6 (wall), units 7 (summed), figures 8
+record: environment fixture-package 0.0.0 other-fixture-package 0.0.0
+drr gap: 160 images, 4 groups, W&B off
+replication flexray_replica vs flexray_reference: no verdict, flexray_replica: not in this fixture table
+render fixture_cts: 10 CTs chosen of 10 with every mask of 12 CTs (moose 10); 10 kept by every group
+group flexray_drr synthetic found 40 chosen 40 decoded 40 persons 10
+groups counted as flexray_drr: flexray_drr_ct
+group fluxray synthetic skipped, not on the data root in this fixture
+group fixture_fluoro fluoroscopy found 50 chosen 40 decoded 39 persons 8 undecoded 1
+group fixture_film film found 60 chosen 41 decoded 41 persons 41 persons by file
+space flexray dim 8 rows 160 spread 0.111 pca64 0.22
+ calibration split-half auc median 0.33 range 0.32 to 0.34 over 1, mmd flagged 0, auc interval above half 0
+ flexray_drr vs fluoroscopy auc 0.12 [0.11, 0.13] p 0.010 knn 0.14 fd64 1.5 ratio 0.16 mmd p 0.017 prdc 0.18 0.19 0.20 0.21 indistinguishable
+ flexray_drr vs film auc 0.22 [0.21, 0.23] p 0.020 knn 0.24 fd64 2.5 ratio 0.26 mmd p 0.027 prdc 0.28 0.29 0.30 0.31 indistinguishable
+ flexray_drr_ct vs fluoroscopy auc 0.32 [0.31, 0.33] p 0.030 knn 0.34 fd64 3.5 ratio 0.36 mmd p 0.037 prdc 0.38 0.39 0.40 0.41 indistinguishable
+ flexray_drr_ct vs film auc 0.42 [0.41, 0.43] p 0.040 knn 0.44 fd64 4.5 ratio 0.46 mmd p 0.047 prdc 0.48 0.49 0.50 0.51 indistinguishable
+ replication flexray_drr_ct vs flexray_drr persons 10/10 n 40/40 auc 0.52 [0.51, 0.53] knn 0.54 mmd p 0.550 q 0.560 fd64 5.7 kid64 0.058 prdc 0.59 0.60 0.61 0.62
+ real-real auc median 0.63 min 0.63 max 0.63 over 1 pairs
+ fluoroscopy vs film auc 0.64 [0.63, 0.65] p 0.066
+space flexray_as_stored dim 8 rows 160 spread 0.111 pca64 0.22
+ flexray_drr vs fluoroscopy auc 0.72 [0.71, 0.73] p 0.070 knn 0.74 fd64 7.5 ratio 0.76 mmd p 0.077 prdc 0.78 0.79 0.80 0.81
+space imagenet not run, no ImageNet weights in this fixture
+space physics dim 4 rows 160 spread 0.555 pca64 0.66
+ calibration split-half auc median 0.83 range 0.82 to 0.84 over 1, mmd flagged 0, auc interval above half 0
+ flexray_drr vs fluoroscopy auc 0.92 [0.91, 0.93] p 0.090 knn 0.94 fd64 9.5 ratio 0.96 mmd p 0.097 prdc 0.98 0.99 1.00 1.01

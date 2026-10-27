@@ -3,7 +3,7 @@ each group's files from a sample index or a folder by its rules (formats, modali
 masks left out, persons by rule with the frozen test persons dropped), the images come out as
 256 x 256 windows of the centre square whatever their depth or shape, and a whole run over three
 small corpora of different textures and the study's seven render groups drawn by a fake renderer,
-with only the physics space, writes a summary of at most 80 lines that survive the grid's
+with only the physics space, writes a summary of five record lines and at most 80 more that survive the grid's
 redaction, tells the textured corpora apart, finds nothing in its split-half nulls, renders the
 seven render groups from one choice of CTs under one salt, drawn among the CTs with masks under
 both segmenters they name and passed the mask roots, and reads the six replication pairs with the
@@ -481,9 +481,16 @@ class WholeRunTest(unittest.TestCase):
         self.assertIn("space flexray not run", verdict["reason"])
         self.assertEqual(set(verdict["pairs"]), set(PAIRS[:2]))
         self.assertEqual(results["renders"][CT_FOLDER]["every"], 26)
-        self.assertTrue(lines[1].startswith("replication flexray_replica vs flexray_reference: no verdict"))
-        self.assertTrue(lines[2].startswith("replication fluxray_raw vs fluxray_raw_reference: no verdict"))
-        self.assertEqual(lines[3], f"render {CT_FOLDER}: 24 CTs chosen of 26 with every mask of 30 CTs "
+        # the header, then the run's record in five lines the CLAIM report reads, then the verdicts
+        # the record first, which the study's report reads from the top, then the header and the verdicts
+        self.assertEqual([line.split(" ")[1] for line in lines[0:5]], ["study", "jobs", "units", "seconds", "environment"])
+        self.assertTrue(all(line.startswith("record: ") for line in lines[0:5]))
+        self.assertTrue(lines[1].startswith("record: jobs run local; GPUs cpu x1"), lines[1])
+        self.assertNotIn("units 0 (summed)", lines[3])
+        self.assertTrue(lines[5].startswith("drr gap: "), lines[5])
+        self.assertTrue(lines[6].startswith("replication flexray_replica vs flexray_reference: no verdict"))
+        self.assertTrue(lines[7].startswith("replication fluxray_raw vs fluxray_raw_reference: no verdict"))
+        self.assertEqual(lines[8], f"render {CT_FOLDER}: 24 CTs chosen of 26 with every mask of 30 CTs "
                                    "(moose 27, spineps 27); 23 kept by every group")
         self.assertIn("groups counted as flexray_drr: flexray_drr_ct flexray_replica flexray_reference flexray_spineps"
                       " fluxray_raw fluxray_raw_reference", lines)
@@ -905,10 +912,39 @@ def full_results(tool, groups):
 
 
 @unittest.skipIf(MISSING_BASE, f"needs {', '.join(MISSING_BASE)}")
+class CalibrationLineTest(unittest.TestCase):
+    """The split-half nulls' counts come first and every flagged group is named, on lines of their
+    own within the report's limit, however many are flagged (DEVIATIONS.md, item 8)."""
+
+    def test_every_flagged_group_is_named_and_no_count_is_cut(self):
+        tool = load_tool()
+        groups = [g["id"] for g in json.loads((ROOT / "data" / "domain_gap" / "groups.json").read_text(encoding="utf-8"))["groups"]]
+        for flagged in (0, 1, 8, len(groups)):
+            cal = {"auc_median": 0.51, "auc_range": [0.42, 0.61], "groups": {g: {} for g in groups},
+                   "flagged": groups[:flagged], "auc_above": groups[:2]}
+            lines = tool.calibration_summary({"calibration": cal})
+            self.assertTrue(lines[0].endswith(f"over {len(groups)}, mmd flagged {flagged}, auc interval above half 2"), lines[0])
+            named = [name for line in lines[1:] for name in line[len(" calibration flagged "):].split()]
+            self.assertEqual(named, groups[:flagged])
+            for line in lines:
+                self.assertEqual(tool.rules().safe_line(line), line)
+                self.assertLessEqual(len(line), tool.rules().LINE_LIMIT)
+            self.assertEqual(study_report().flagged_of({"lines": lines}), (groups[:flagged], flagged))
+
+
+def study_report():
+    """tools/report.py, whose study mode reads the record lines at the head of summary.txt."""
+    spec = importlib.util.spec_from_file_location("study_report", ROOT / "tools" / "report.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+@unittest.skipIf(MISSING_BASE, f"needs {', '.join(MISSING_BASE)}")
 class SummaryBudgetTest(unittest.TestCase):
     """The study's own 23-group table with every group full and every space run fits the 80 lines
-    the bench report carries with the three spaces' tables whole: the header and the verdicts, every
-    group's line (the render groups' equal counts on one), and in each space its line, its
+    the bench report carries below the record's five, which the study's report reads, with the
+    three spaces' tables whole: the header and the verdicts, every group's line (the render groups' equal counts on one), and in each space its line, its
     calibration and every family contrast of the groups that face the real corpora, the primary
     space's replication pairs and real-real lines too, with FluXray fetched or not."""
 
@@ -919,9 +955,18 @@ class SummaryBudgetTest(unittest.TestCase):
         for present in (True, False):
             kept = [g for g in groups if present or g["id"] != "fluxray"]
             results = full_results(tool, kept)
+            # the record every run writes, five lines above the findings' 80 (finish_results)
+            results["plan"] = "d" * 64
+            results["_run"] = {"git_head": "0" * 40, "git_dirty": False, "seed": 0, "inputs": {"groups.json": "a" * 64},
+                               "prereg_sha256": "b" * 64, "code_digest": "c" * 64}
+            results["_record"] = {"jobs": {"prepare": "1", "array": "2", "tasks": 4, "merge": "3"}, "gpus": {"NVIDIA H200": 5},
+                                  "units": {"total": 9, "done": 9, "failed": 0}, "mmd": "torch-cuda", "units_seconds": 9}
             lines = tool.summary_lines(results, "off")
-            self.assertLessEqual(len(lines), tool.LINE_BUDGET, present)
-            self.assertEqual(lines[1:3], tool.verdict_lines(results["replication"]))
+            self.assertLessEqual(len(lines), tool.LINE_BUDGET + tool.RECORD_LINES, present)
+            self.assertEqual([line.split(" ")[1] for line in lines[:5]], ["study", "jobs", "units", "seconds", "environment"])
+            _, problems, unknown, body = study_report().record_of(lines, "drr-domain-gap")
+            self.assertEqual((problems, unknown, body[0]), ({}, [], lines[5]))
+            self.assertEqual(lines[6:8], tool.verdict_lines(results["replication"]))
             for line in tool.render_summary(results["renders"]) + tool.group_summary(results["groups"]):
                 self.assertIn(line, lines)
             self.assertEqual(sum(1 for line in lines if line.startswith("groups counted as flexray_drr: ")), 1)

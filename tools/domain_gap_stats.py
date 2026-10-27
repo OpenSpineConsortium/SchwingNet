@@ -3,7 +3,7 @@ X-ray corpus in a feature space, and how far two real corpora sit from each othe
 tests, distances and maps a machine-learning reviewer expects.
 
 The thread "Compare FleXray DRRs to real X-ray corpora" (2026-10-25) asked for them beside the
-dimension-reduction maps; tools/domain_gap.py runs the study as one GPU job (grid/bench.sbatch, id
+dimension-reduction maps; tools/domain_gap.py runs the study as GPU jobs (grid/drr-gap.sbatch, bench id
 flexray_drr_gap) and calls these functions on numpy feature arrays, one row an image. They are plain
 functions with no state, each deterministic given its seed (on a GPU, up to the order in which
 floating-point sums are taken).
