@@ -1,0 +1,12 @@
+{
+  "doors": [
+    {"label": "Textbook", "path": "docs/textbook"},
+    {"label": "Research", "path": "docs/research/README.md"},
+    {"label": "Artifacts", "path": "artifacts/README.md"},
+    {"label": "Board", "path": "STATE.md", "ref": "board"},
+    {"label": "Memory", "path": "docs/memory/MEMORY.md"},
+    {"label": "Checkpoints", "path": "docs/checkpoints"},
+    {"label": "Data", "path": "data"},
+    {"label": "Grid", "path": "grid"}
+  ]
+}
