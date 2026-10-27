@@ -12,14 +12,18 @@
 #                       against its published 1.1 mm median mTRE
 #   flexray_drr_gap     the DRR domain-gap study (tools/domain_gap.py, docs/research/drr-domain-gap/README.md):
 #                       FleXray's recipe through this project's render blocks and through FleXray's own
-#                       code, beside every held real X-ray corpus and FluXray, with the replication test,
-#                       the CTs labelled by SPINEPS's existing masks (the production segmenter) and by
-#                       MOOSE's (the replication's, the owner's word of 2026-10-26), which flexray_drr_seg
-#                       makes; only its summary.txt leaves the grid, each line through grid/redact.sed
+#                       code, beside every held real X-ray corpus and FluXray, with the replication test;
+#                       the groups that read no label render from the CT alone, and the others read the
+#                       CTs' existing masks, SPINEPS's (the production segmenter) and MOOSE's (the
+#                       replication's, the owner's word of 2026-10-26), which flexray_drr_seg makes, each
+#                       where enough CTs have them, a group whose masks are not there, or too few CTs
+#                       have, being skipped with that reason (the owner's word of 2026-10-27); only its
+#                       summary.txt leaves the grid,
+#                       each line through grid/redact.sed
 #   flexray_drr_seg     the study's choice of CTs (tools/domain_gap.py plan, rendering nothing) and MOOSE
 #                       on exactly those (tools/flexray_render.py segment, moosez's Python entry on the
 #                       fetched model zips, never a download), written under the data root's moose in
-#                       moosez's own layout; sent before flexray_drr_gap, which reads the masks
+#                       moosez's own layout; sent before flexray_drr_gap, whose MOOSE groups read them
 #
 # The public package goes into a throwaway virtual environment on the lab volume, made from the
 # train-gpu environment with its site packages (torch among them) and kept for a rerun under a name
@@ -124,6 +128,12 @@ samples_index() {  # the sample index the gate checked (INDEX), else the newest 
   current=$(cat "$out/CURRENT" 2>/dev/null)
   [ -n "$current" ] && echo "$out/$current/samples.sqlite"
 }
+mask_state() {  # mask_state NAME: where a segmenter's masks are, or that their folder is not there
+  local name=$1
+  if [ -d "$DATA/$name" ]; then echo "$name in $DATA/$name"
+  elif [ "$name" = moose ]; then echo "$name absent, no $DATA/$name (bench flexray_drr_seg makes them)"
+  else echo "$name absent, no $DATA/$name"; fi
+}
 
 tail_lines=12  # how much of what the tool said the report carries: its last lines, or the whole summary
 case "$BENCH" in
@@ -179,17 +189,17 @@ case "$BENCH" in
     index=$(samples_index)
     [ -n "$index" ] && [ -f "$index" ] || { report "FAILED: no whole sample index under ${SAMPLES_OUT:-$DATA/_samples} (the gate word samples makes it)"; finish 2; }
     [ -d "$DATA/totalsegmentator_v201" ] || { report "FAILED: no totalsegmentator_v201 under $DATA, the CTs the render groups draw"; finish 2; }
-    # The masks of both segmenters: the render groups' CTs are chosen among those with masks under
-    # each, so a missing folder would render nothing (the gate refused the word without them).
-    [ -d "$DATA/spineps" ] || { report "FAILED: no spineps under $DATA, the production segmenter's masks"; finish 2; }
-    [ -d "$DATA/moose" ] || { report "FAILED: no moose under $DATA, the replication's masks (bench flexray_drr_seg makes them)"; finish 2; }
     imagenet=${MODELS:-$LAB/go2432/models}/resnet18-f37072fd.pth
     [ -s "$imagenet" ] || { report "FAILED: no ImageNet ResNet-18 file at $imagenet (the gate word start fetches it)"; finish 2; }
-    # FluXray is the one optional input: the tool reads it when the fetch has landed it and skips its
-    # group with that reason otherwise, so the study never waits for it.
+    # FluXray is optional: the tool reads it when the fetch has landed it and skips its group with
+    # that reason otherwise, so the study never waits for it.
     if [ -d "$DATA/hf_flexray_data/raw" ]; then report "FluXray: read from $DATA/hf_flexray_data/raw"
     else report "FluXray: not on the data root (fetch hf_flexray_data); the study skips its group with that reason"; fi
-    report "environment: $DRR_GAP_PIN; index: $index; weights: $weights; imagenet: $imagenet; masks: $DATA/spineps, $DATA/moose"
+    # The masks are optional too: a DRR is a projection of the CT alone, so the groups that read no
+    # label render without them, and the study skips a group whose segmenter's masks are absent,
+    # or held for too few CTs to test a group, with that reason (the owner's word of 2026-10-27).
+    report "masks: $(mask_state spineps); $(mask_state moose); a render group whose segmenter's masks are not read, or too few CTs have, is skipped with that reason"
+    report "environment: $DRR_GAP_PIN; index: $index; weights: $weights; imagenet: $imagenet"
     # The run folder is the owner's alone: the plan names files and person keys, and the run's own
     # output goes there too, since only summary.txt leaves the grid.
     umask 077; chmod 700 "$OUT"

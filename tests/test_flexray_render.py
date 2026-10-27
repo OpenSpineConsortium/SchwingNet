@@ -11,9 +11,13 @@ segmenter, the raw FluXray recipe's fixed poses, the layout, the reuse, the seed
 render groups, the refusals, and the segment subcommand's plan, its refusals (a zip missing or a
 part, a model whose dataset.json names a label otherwise), its runs with moosez kept out or stood
 in for in the layout its library entry writes (clin_CT_<region>_segmentation_CT_<id>.nii.gz
-beside the CT link) and in its command line's, and the one line a run ends with; and the
-arithmetic held equal to FleXray's (the crop plan at both overlaps, the crop weights, the crop
-draw, the crop records, the scaling, the label table) where fxr is installed.
+beside the CT link) and in its command line's, and the one line a run ends with; the render-only
+segmenter none, which reads no mask: every CT rendered with no masks folder, the raw recipe's
+pixels the same as under MOOSE's or SPINEPS's masks through both engines, render_drr's image with
+a label volume the same as with none, and physical-ct keeping every planned axial crop and aiming
+at the drawn crop's centre; and the arithmetic held equal to FleXray's (the crop plan at both
+overlaps, the crop weights, the crop draw, the crop records, the scaling, the label table) where
+fxr is installed.
 tests/schwingnet/test_render_blocks.py and test_segmenters.py hold the pure rules without it.
 
 It needs numpy, torch, nibabel, Pillow, fxr (flexray from pip) and the package's contract
@@ -463,7 +467,7 @@ class Tables(unittest.TestCase):
     def test_the_torch_table_names_every_choice_of_the_rules(self):
         parts = load_tool("render_blocks")
         self.assertEqual(tuple(parts.NAMES), tuple(parts.rules.CHOICES))
-        self.assertEqual(tuple(parts.NAMES["segmenter"]), parts.segmenters.SEGMENTERS)
+        self.assertEqual(tuple(parts.NAMES["segmenter"]), (*parts.segmenters.SEGMENTERS, "none"))
         for name, allowed in parts.rules.CHOICES.items():
             self.assertEqual(tuple(parts.NAMES[name]), allowed, name)
             for choice, function in parts.NAMES[name].items():
@@ -688,6 +692,18 @@ class Locators(unittest.TestCase):
             find(self.ct, segmenter="moose", roots={"spineps": self.spineps})
         with self.assertRaisesRegex(ValueError, "segmenter=spineps: no masks folder given"):
             find(self.ct, segmenter="spineps")
+
+    def test_find_subjects_under_none_lists_every_ct_with_no_masks_folder(self):
+        find = self.renderer.find_subjects
+        every = ["batch/s0002", "s0001", "s0003", "s0004", "s0005", "s0006", "s0010"]
+        self.assertEqual(find(self.ct, segmenter="none"), every)
+        self.assertEqual(find(self.ct, segmenter="none", roots={}), every)
+        self.assertEqual(find(self.ct, segmenter="none", roots=self.roots), every)
+        # s0004 has no mask, s0006 and s0010 masks on another grid alone: none of it matters.
+        for subject in ("s0004", "s0006", "s0010"):
+            self.assertNotIn(subject, find(self.ct, segmenter="spineps", roots=self.roots))
+            grid = self.renderer.header_grid(self.ct, subject)
+            self.assertTrue(self.renderer.has_masks(subject, "none", {}, grid), subject)
 
     def test_names_subject_reads_the_id_between_separators(self):
         names = self.parts.names_subject
@@ -918,6 +934,15 @@ class LabelVolumes(unittest.TestCase):
             self.assertEqual(str(found.exception), f"no {scheme} found under its folder")
             with self.assertRaises(parts.MaskProblem):
                 build("s0001", grid_for(300), {})
+
+    def test_none_reads_no_file_and_says_so(self):
+        label, record = self.parts.label_none("s0004", grid_for(120), {})
+        self.assertIsNone(label)
+        self.assertEqual(record["scheme"], "none")
+        self.assertEqual(record["note"], self.parts.NO_MASKS)
+        self.assertEqual((record["files"], record["labels"], record["absent"]), ({}, {}, []))
+        _, spineps = self.parts.label_spineps("s0001", grid_for(300), self.roots)
+        self.assertEqual(set(record) - {"note"}, set(spineps), "the label record's keys")
 
     def test_flexrays_projection_accepts_both_volumes(self):
         reason = runtime_missing()
@@ -1305,6 +1330,224 @@ class FleXraysRuntime(unittest.TestCase):
         rows = rows_by_file(self.base / "recorded")
         self.assertEqual(rows, rows_by_file(self.base / "default-flexray-runtime"))
         check_factors(self, self.renderer, done, rows, drawn)
+
+
+TALL = 600
+# A structure in the first of the four crops FleXray's packer plans for 600 slices, and none in
+# the others, so the labels drop three crops that segmenter none keeps.
+TALL_BONE = [(23, 20, 60, MAIN)]
+
+
+def make_tall(base):
+    """One CT of TALL slices, s0020, with its SPINEPS mask, under base/tall and base/tall-masks."""
+    write_ct(base / "tall" / "s0020", TALL, TALL_BONE)
+    write_mask(base / "tall-masks" / "s0020_seg-vert_msk.nii.gz", TALL, TALL_BONE)
+    return base / "tall", base / "tall-masks"
+
+
+def crop_centre(depth, crop):
+    """The world point at the centre of a drawn crop, its pads counted in: FleXray's
+    volume_center (the middle voxel index of each axis) through the affine moved to the crop."""
+    import numpy as np
+
+    parts = load_tool("render_blocks")
+    affine = parts.crop_affine(affine_for(depth), crop)
+    size = crop["z_stop"] - crop["z_start"] + crop["pad_before"] + crop["pad_after"]
+    middle = np.array([(SIDE - 1) / 2, (SIDE - 1) / 2, (size - 1) / 2, 1.0])
+    return (affine.astype(np.float64) @ middle)[:3].tolist()
+
+
+def view_of(renderer, blocks, ct_root, subject, roots, view=0):
+    """One view's image and row through the blocks engine, the generators seeded as a run seeds
+    them."""
+    engine = renderer.BlocksEngine(blocks, "cpu")
+    loaded = renderer.load_subject(ct_root / subject, subject, blocks, roots, engine.supervised)
+    prepared = engine.prepare(loaded)
+    renderer.seed_generators(renderer.view_seed(SALT, subject, view))
+    return engine.view(prepared, subject)
+
+
+@unittest.skipIf(MISSING, f"needs {', '.join(MISSING)}")
+class NoMasks(unittest.TestCase):
+    """Segmenter none, the owner's ask of 2026-10-27: a render that reads no labels needs no masks,
+    renders every CT and draws the same pixels as under either segmenter's masks."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.base = Path(tempfile.mkdtemp(prefix="flexray-none-"))
+        cls.root, spineps, moose = make_corpus(cls.base)
+        cls.roots = {"spineps": spineps, "moose": moose}
+        cls.tall, cls.tall_masks = make_tall(cls.base)
+        cls.renderer = load_tool("flexray_render")
+        cls.parts = load_tool("render_blocks")
+        rules = cls.renderer.rules()
+        cls.grid = grid_words(cls.renderer)
+        cls.physical_ct = rules.words_of(rules.PHYSICAL_CT)
+        cls.runs = {"physical-ct": render(cls.renderer, cls.root, cls.base / "physical-ct",
+                                          cls.physical_ct, {})}
+        for name in ("none", "moose", "spineps"):
+            roots = {} if name == "none" else cls.roots
+            cls.runs["grid", name] = render(cls.renderer, cls.root, cls.base / f"grid-{name}",
+                                            with_segmenter(cls.grid, name), roots, subjects=2)
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(cls.base, ignore_errors=True)
+
+    def test_none_needs_no_masks_folder_and_renders_every_ct(self):
+        done = self.runs["physical-ct"]
+        self.assertEqual((done["subjects"], done["skipped"]), (list(ALL), []))
+        self.assertEqual(done["rendered"], 2 * len(ALL))
+        manifest = read_file(self.base / "physical-ct", "manifest.json")
+        self.assertEqual((manifest["segmenter"], manifest["blocks"]["segmenter"]), ("none", "none"))
+        self.assertEqual(sorted(manifest["labels"]), sorted(ALL))
+        for subject, record in manifest["labels"].items():
+            self.assertEqual((record["scheme"], record["files"]), ("none", {}), subject)
+            self.assertEqual(record["note"], self.parts.NO_MASKS, subject)
+        record = read_file(self.base / "physical-ct", "RENDER.json")
+        self.assertEqual(record["arguments"]["roots"], {})
+        self.assertEqual(record["counts"]["subjects_kept"], len(ALL))
+        for row in manifest["views"]:
+            self.assertEqual(row["isocentre"]["label"], None, row["file"])
+            self.assertIsNone(row["attenuation"], row["file"])
+            self.assertIsNone(row["pose"]["grid"], row["file"])
+
+    def test_the_command_line_renders_a_ct_with_no_mask_under_none(self):
+        out = self.base / "cli"
+        words = ["--ct-root", str(self.root), "--out", str(out), "--salt", SALT, "--subject",
+                 "s0004", "--blocks", "views=1", "--blocks", "detector=32", "--blocks",
+                 "ray_samples=64"]
+        for word in self.physical_ct:
+            words += ["--blocks", word]
+        self.assertEqual(self.renderer.main(words), 0)
+        self.assertEqual(list(rows_by_file(out)), ["images/s0004_v00.png"])
+        self.assertEqual(read_file(out, "RENDER.json")["arguments"]["roots"], {})
+
+    def test_a_recipe_that_reads_labels_is_refused_under_none_before_anything_is_written(self):
+        rules = self.renderer.rules()
+        out = self.base / "refused"
+        with self.assertRaisesRegex(rules.RenderBlockError, "segmenter=none renders from the CT"):
+            render(self.renderer, self.root, out, ["segmenter=none"], {})
+        with self.assertRaisesRegex(rules.RenderBlockError, "cannot honour segmenter='none'"):
+            render(self.renderer, self.root, out, self.physical_ct, {}, engine="flexray-runtime")
+        self.assertFalse(out.exists())
+
+    def test_the_raw_recipe_draws_the_same_pixels_with_no_masks(self):
+        ours = rows_by_file(self.base / "grid-none")
+        self.assertEqual(self.runs["grid", "none"]["subjects"], ["s0001", "batch/s0002"])
+        for name in ("moose", "spineps"):
+            self.assertEqual(ours, rows_by_file(self.base / f"grid-{name}"), name)
+            for file in ours:
+                self.assertEqual((self.base / "grid-none" / file).read_bytes(),
+                                 (self.base / f"grid-{name}" / file).read_bytes(), (name, file))
+        self.assertEqual(read_file(self.base / "grid-none", "manifest.json")["segmenter"], "none")
+
+    def test_the_blocks_engines_image_of_a_view_is_the_same_under_none_and_the_masks(self):
+        import numpy as np
+
+        rules = self.renderer.rules()
+        for subject in ("s0001", "batch/s0002"):
+            for view in range(3):
+                images, rows = {}, {}
+                for name in ("none", "moose", "spineps"):
+                    blocks = rules.parse(SMALL + with_segmenter(self.grid, name))
+                    images[name], rows[name] = view_of(self.renderer, blocks, self.root, subject,
+                                                       self.roots, view)
+                for name in ("moose", "spineps"):
+                    np.testing.assert_allclose(images["none"], images[name], rtol=0, atol=1e-6)
+                    self.assertEqual(rows["none"], rows[name], (subject, view, name))
+
+    def test_render_drr_with_a_label_volume_draws_the_cts_projection_alone(self):
+        # nanodrr scatters each ray sample into the channel of its label id, background among
+        # them, and render_drr sums the channels: the masks change no pixel.
+        import numpy as np
+        import torch
+
+        parts, rules = self.parts, self.renderer.rules()
+        blocks = rules.parse(SMALL + with_segmenter(self.grid, "moose"))
+        engine = self.renderer.BlocksEngine(blocks, "cpu")
+        loaded = self.renderer.load_subject(self.root / "s0001", "s0001", blocks, self.roots,
+                                            engine.supervised)
+        self.assertGreater(len(np.unique(loaded["label"])), 5, "MOOSE's merged label volume")
+        prepared = engine.prepare(loaded)
+        crop = prepared["crops"][0]
+        volume = torch.from_numpy(parts.cut(prepared["volume"], crop, -1000.0))[None]
+        label = torch.from_numpy(parts.cut(loaded["label"], crop, 0).astype(np.int64))
+        affine = torch.from_numpy(parts.crop_affine(loaded["affine"], crop))
+        point, _ = parts.isocentre_volume_centre(crop, affine, volume, ())
+        seen = 0.0
+        for index in (10, 15, 21, 47, 78, 89):
+            alpha, y, z = rules.grid_pose(index)
+            pose = {"rot": torch.tensor([[alpha, 0.0, 0.0]]), "xyz": torch.tensor([[0.0, y, z]]),
+                    "sdd": rules.GRID_SDD_MM, "delx": rules.GRID_PIXEL_MM}
+            for orthographic in (False, True):
+                request = parts.request(pose, point, orthographic, 32, 64)
+                masked = parts.render(volume, label, affine, request, {})
+                alone = parts.render(volume, None, affine, request, {})
+                torch.testing.assert_close(masked, alone, rtol=1e-5, atol=1e-5)
+                seen = max(seen, float(alone.max()))
+        self.assertGreater(seen, 0.0, "some view sees the CT")
+
+    def test_the_runtimes_grid_path_draws_the_same_pixels_with_no_masks(self):
+        reason = runtime_missing()
+        if reason:
+            self.skipTest(reason)
+        runs = {}
+        for name in ("none", "moose"):
+            roots = {} if name == "none" else self.roots
+            runs[name] = render(self.renderer, self.root, self.base / f"runtime-{name}",
+                                with_segmenter(self.grid, name), roots,
+                                engine="flexray-runtime", subjects=2)
+        self.assertEqual(runs["none"]["subjects"], runs["moose"]["subjects"])
+        ours = rows_by_file(self.base / "runtime-none")
+        self.assertEqual(ours, rows_by_file(self.base / "runtime-moose"))
+        self.assertEqual(ours, rows_by_file(self.base / "grid-none"), "the blocks engine's rows")
+        for file in ours:
+            self.assertEqual((self.base / "runtime-none" / file).read_bytes(),
+                             (self.base / "runtime-moose" / file).read_bytes(), file)
+            self.assertLessEqual(image_gap(self.base / "runtime-none" / file,
+                                           self.base / "grid-none" / file), 2, file)
+
+    def test_physical_ct_keeps_every_planned_crop_and_aims_at_the_crops_centre(self):
+        rules = self.renderer.rules()
+        plan = rules.plan_crops(TALL)
+        self.assertEqual([start for start, _, _, _ in plan], [0, 115, 229, 344])
+        tall = rules.parse(["detector=32", "ray_samples=64"] + self.physical_ct)
+        engine = self.renderer.BlocksEngine(tall, "cpu")
+        roots = {"spineps": self.tall_masks}
+        loaded = self.renderer.load_subject(self.tall / "s0020", "s0020", tall, roots,
+                                            engine.supervised)
+        kept = engine.prepare(loaded)["crops"]
+        self.assertEqual([(c["z_start"], c["z_stop"], c["pad_before"], c["pad_after"])
+                          for c in kept], list(plan))
+        self.assertEqual([c["ids"] for c in kept], [[], [], [], []])
+        labelled = replace(tall, segmenter="spineps")
+        loaded = self.renderer.load_subject(self.tall / "s0020", "s0020", labelled, roots,
+                                            engine.supervised)
+        self.assertEqual([c["z_start"] for c in engine.prepare(loaded)["crops"]], [0],
+                         "the labels drop the crops holding no structure")
+        self.assert_aims_at_each_crops_centre(replace(tall, views=12), plan)
+
+    def assert_aims_at_each_crops_centre(self, blocks, plan):
+        import numpy as np
+
+        out = self.base / "tall-physical-ct"
+        done = self.renderer.render_subjects(self.tall, out, 1, SALT, "cpu", blocks=blocks,
+                                             subject_ids=("s0020",), roots={})
+        self.assertEqual((done["subjects"], done["rendered"]), (["s0020"], 12))
+        planned = {start: (start, stop, before, after) for start, stop, before, after in plan}
+        drawn = set()
+        for row in rows_by_file(out).values():
+            crop = row["crop"]
+            self.assertEqual(planned[crop["z_start"]], (crop["z_start"], crop["z_stop"],
+                                                        crop["pad_before"], crop["pad_after"]))
+            np.testing.assert_allclose(row["isocentre"]["point_mm"], crop_centre(TALL, crop),
+                                       atol=1e-3)
+            self.assertIsNone(row["isocentre"]["label"])
+            self.assertTrue(1150.0 <= row["pose"]["sdd"] <= 1250.0)
+            drawn.add(crop["z_start"])
+        self.assertGreater(len(drawn), 1, "the crops drawn uniformly, more than one of them")
+        self.assertTrue(drawn - {0}, "a crop the labels would have dropped is drawn")
 
 
 @unittest.skipIf(MISSING, f"needs {', '.join(MISSING)}")

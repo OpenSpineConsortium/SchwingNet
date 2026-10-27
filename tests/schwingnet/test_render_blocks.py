@@ -1,5 +1,6 @@
 """The renderer's building blocks: the defaults are FleXray's recipe with the project's segmenter,
-the four presets, the segmenter part, a fault refused in words, the crop plan at both overlaps and
+the five presets, the segmenter part with its render-only choice none and the recipes that read
+labels, a fault refused in words, the crop plan at both overlaps and
 the crop weights FleXray's own arithmetic (tests/test_flexray_render.py holds them equal to fxr's
 functions where fxr is installed; here the examples its docs and source give), and FluXray's
 90-pose grid.
@@ -23,6 +24,7 @@ from schwingnet.render_blocks import (
     CROP_DEPTH,
     CROP_OVERLAP,
     DEFAULT,
+    ENGINE_PRESETS,
     ENGINES,
     FIELDS,
     FLEXRAY,
@@ -34,8 +36,12 @@ from schwingnet.render_blocks import (
     GRID_SDD_MM,
     GRID_Y_MM,
     GRID_Z_MM,
+    LABEL_FREE,
+    NO_SEGMENTER,
     PHYSICAL,
+    PHYSICAL_CT,
     PRESETS,
+    RULES,
     RUNTIME_CHOICES,
     RenderBlockError,
     RenderBlocks,
@@ -48,6 +54,7 @@ from schwingnet.render_blocks import (
     parts,
     plan_crops,
     problems,
+    reads_labels,
     runtime_choices,
     slug,
     words_of,
@@ -82,7 +89,7 @@ class Parsing(unittest.TestCase):
             parse(["attenuation=strong"])
         with self.assertRaisesRegex(RenderBlockError, "is not one of flexray-moose, fluxray-grid"):
             parse(["pose=flexray-default"])
-        with self.assertRaisesRegex(RenderBlockError, "is not one of spineps, moose"):
+        with self.assertRaisesRegex(RenderBlockError, "is not one of spineps, moose, none"):
             parse(["segmenter=totalsegmentator"])
 
     def test_a_block_named_twice_is_refused(self):
@@ -113,8 +120,11 @@ class Parsing(unittest.TestCase):
 
 
 class Segmenter(unittest.TestCase):
-    def test_the_segmenter_is_a_part_after_edit_with_the_segmenters_choices(self):
-        self.assertEqual(CHOICES["segmenter"], segmenters.SEGMENTERS)
+    def test_the_segmenter_is_a_part_after_edit_with_the_segmenters_choices_and_none(self):
+        self.assertEqual(NO_SEGMENTER, "none")
+        self.assertEqual(CHOICES["segmenter"], (*segmenters.SEGMENTERS, "none"))
+        self.assertNotIn("none", segmenters.SEGMENTERS, "a render choice alone")
+        self.assertNotIn("totalsegmentator", CHOICES["segmenter"])
         self.assertEqual(FIELDS.index("segmenter"), FIELDS.index("edit") + 1)
         self.assertEqual(FIELDS.index("segmenter"), FIELDS.index("views") - 1)
         self.assertEqual(set(CHOICES) | set(COUNTS), set(FIELDS))
@@ -126,20 +136,99 @@ class Segmenter(unittest.TestCase):
         self.assertNotEqual(slug(DEFAULT), slug(FLEXRAY))
 
 
+class ReadsLabels(unittest.TestCase):
+    def test_each_part_that_reads_the_labels_is_named(self):
+        free = parse(["crop-sampler=uniform", "isocentre=volume-centre", "attenuation=off"])
+        self.assertFalse(reads_labels(free))
+        self.assertEqual((free.crop_sampler, free.isocentre, free.attenuation), LABEL_FREE)
+        for word in (
+            "crop_sampler=inverse-label-frequency",
+            "isocentre=random-label",
+            "isocentre=vertebra",
+            "attenuation=flexray-lognormal",
+        ):
+            name, value = word.split("=")
+            self.assertTrue(reads_labels(replace(free, **{name: value})), word)
+
+    def test_the_presets_that_read_labels(self):
+        reading = {name for name, preset in PRESETS.items() if reads_labels(preset)}
+        self.assertEqual(reading, {"default", "flexray", "physical"})
+        self.assertFalse(reads_labels(FLUXRAY_RAW), "the raw stream's pixels need no mask")
+        self.assertFalse(reads_labels(PHYSICAL_CT))
+
+    def test_the_crop_the_pose_and_the_projection_read_no_label(self):
+        for crop in CHOICES["crop"]:
+            self.assertFalse(reads_labels(replace(PHYSICAL_CT, crop=crop)), crop)
+        for pose in CHOICES["pose"]:
+            self.assertFalse(reads_labels(replace(PHYSICAL_CT, pose=pose)), pose)
+        for projection in CHOICES["projection"]:
+            self.assertFalse(reads_labels(replace(PHYSICAL_CT, projection=projection)))
+
+
+class NoSegmenter(unittest.TestCase):
+    def test_none_goes_only_with_a_recipe_that_reads_no_labels(self):
+        rule = "segmenter=none renders from the CT alone"
+        with self.assertRaisesRegex(RenderBlockError, rule):
+            parse(["segmenter=none"])
+        with self.assertRaisesRegex(
+            RenderBlockError, "isocentre=volume-centre and attenuation=off"
+        ):
+            parse(["segmenter=none", "crop-sampler=uniform", "isocentre=volume-centre"])
+        found = problems(replace(PHYSICAL_CT, attenuation="flexray-lognormal"))
+        self.assertEqual(len(found), 1)
+        self.assertIn(rule, found[0])
+        self.assertTrue(any(line.startswith("segmenter=none") for line in RULES))
+
+    def test_none_takes_any_crop_pose_and_projection_with_the_label_free_choices(self):
+        for crop in CHOICES["crop"]:
+            for pose in CHOICES["pose"]:
+                blocks = replace(PHYSICAL_CT, crop=crop, pose=pose, projection="cone")
+                self.assertEqual(problems(blocks), [], (crop, pose))
+        raw = replace(FLUXRAY_RAW, segmenter="none")
+        self.assertEqual(problems(raw), [])
+        self.assertEqual(parse(words_of(raw)), raw)
+
+    def test_the_label_reading_presets_refuse_none_and_the_others_take_it(self):
+        for name, preset in PRESETS.items():
+            found = problems(replace(preset, segmenter="none"))
+            self.assertEqual(bool(found), reads_labels(preset), name)
+
+
 class Presets(unittest.TestCase):
-    def test_the_four_presets_hold_and_are_named(self):
+    def test_the_five_presets_hold_and_are_named(self):
         self.assertEqual(
             PRESETS,
             {
                 "default": DEFAULT,
                 "flexray": FLEXRAY,
                 "physical": PHYSICAL,
+                "physical-ct": PHYSICAL_CT,
                 "fluxray-raw": FLUXRAY_RAW,
             },
         )
         for name, preset in PRESETS.items():
             self.assertEqual(problems(preset), [], name)
-        self.assertEqual(len({slug(p) for p in PRESETS.values()}), 4)
+        self.assertEqual(len({slug(p) for p in PRESETS.values()}), 5)
+
+    def test_physical_ct_is_the_physical_render_with_no_label_read(self):
+        self.assertEqual(
+            replace(PHYSICAL, crop_sampler="uniform", isocentre="volume-centre", segmenter="none"),
+            PHYSICAL_CT,
+        )
+        self.assertEqual(PHYSICAL_CT.crop, "flexray-axial", "FleXray's axial crops")
+        self.assertEqual(
+            (PHYSICAL_CT.pose, PHYSICAL_CT.projection, PHYSICAL_CT.hu_window),
+            ("flexray-moose", "flexray-mix", "flexray"),
+        )
+        self.assertEqual(
+            words_of(PHYSICAL_CT),
+            [
+                "crop_sampler=uniform",
+                "isocentre=volume-centre",
+                "attenuation=off",
+                "segmenter=none",
+            ],
+        )
 
     def test_physical_is_the_recipe_with_the_attenuation_randomisation_off(self):
         self.assertEqual(PHYSICAL.attenuation, "off")
@@ -154,6 +243,7 @@ class Presets(unittest.TestCase):
         self.assertEqual((raw.projection, raw.attenuation, raw.scale), ("cone", "off", "minmax"))
         self.assertEqual((raw.views, raw.detector, raw.edit), (4, 1024, "none"))
         self.assertEqual(raw.hu_window, "flexray")
+        self.assertEqual(raw.segmenter, "moose", "the replication's labels stay MOOSE's")
 
     def test_words_name_only_what_differs_from_the_default(self):
         self.assertEqual(words_of(DEFAULT), [])
@@ -164,11 +254,41 @@ class Presets(unittest.TestCase):
 
 
 class Engines(unittest.TestCase):
-    def test_the_two_engines_run_every_preset(self):
+    def test_each_engine_runs_the_presets_it_takes(self):
         self.assertEqual(ENGINES, ("blocks", "flexray-runtime"))
-        for engine in ENGINES:
-            for name, preset in PRESETS.items():
-                self.assertEqual(engine_problems(engine, preset), [], f"{engine} {name}")
+        self.assertEqual(set(ENGINE_PRESETS), set(ENGINES))
+        self.assertEqual(ENGINE_PRESETS["blocks"], tuple(PRESETS))
+        self.assertEqual(set(PRESETS) - set(ENGINE_PRESETS["flexray-runtime"]), {"physical-ct"})
+        for engine, names in ENGINE_PRESETS.items():
+            for name in names:
+                self.assertEqual(engine_problems(engine, PRESETS[name]), [], f"{engine} {name}")
+
+    def test_flexrays_runtime_refuses_physical_ct_for_the_labels_it_reads(self):
+        found = engine_problems("flexray-runtime", PHYSICAL_CT)
+        self.assertEqual(len(found), 3)
+        for line in found:
+            self.assertIn("FleXray's runtime cannot honour", line)
+        self.assertTrue(any("segmenter='none'" in line for line in found))
+        self.assertTrue(any("runs only spineps, moose" in line for line in found))
+        self.assertTrue(any("isocentre='volume-centre'" in line for line in found))
+        self.assertTrue(any("crop_sampler='uniform'" in line for line in found))
+
+    def test_flexrays_runtime_refuses_none_under_its_own_pose(self):
+        # Under flexray-moose the runtime reads labels for every view, so a recipe the blocks
+        # engine runs with no masks is refused there for its segmenter among the rest.
+        self.assertEqual(RUNTIME_CHOICES["segmenter"], segmenters.SEGMENTERS)
+        blocks = replace(PHYSICAL_CT, crop="flexray-axial-min")
+        self.assertEqual(engine_problems("blocks", blocks), [])
+        found = engine_problems("flexray-runtime", blocks)
+        self.assertTrue(any("cannot honour segmenter='none'" in line for line in found))
+
+    def test_the_grid_path_takes_none_since_it_reads_no_label(self):
+        self.assertEqual(GRID_CHOICES["segmenter"], CHOICES["segmenter"])
+        raw = replace(FLUXRAY_RAW, segmenter="none")
+        self.assertEqual(runtime_choices(raw), GRID_CHOICES)
+        self.assertEqual(engine_problems("flexray-runtime", raw), [])
+        self.assertEqual(engine_problems("blocks", raw), [])
+        self.assertEqual(engine_problems("blocks", PHYSICAL_CT), [])
 
     def test_the_blocks_engine_runs_every_configuration_that_holds(self):
         words = ["crop=whole", "crop-sampler=uniform", "isocentre=vertebra", "projection=cone"]
@@ -186,7 +306,7 @@ class Engines(unittest.TestCase):
         self.assertTrue(any("crop='whole'" in line and "flexray-axial" in line for line in found))
         self.assertTrue(any("isocentre='vertebra'" in line for line in found))
 
-    def test_flexrays_runtime_takes_both_segmenters_and_the_fewest_crops(self):
+    def test_flexrays_runtime_takes_both_masked_segmenters_and_the_fewest_crops(self):
         for segmenter in segmenters.SEGMENTERS:
             blocks = replace(DEFAULT, segmenter=segmenter, crop="flexray-axial-min")
             self.assertEqual(engine_problems("flexray-runtime", blocks), [])
@@ -211,7 +331,7 @@ class Engines(unittest.TestCase):
             for name, allowed in table.items():
                 self.assertTrue(set(allowed) <= set(CHOICES[name]), name)
                 self.assertIn(getattr(preset, name), allowed)
-            self.assertEqual(table["segmenter"], segmenters.SEGMENTERS)
+            self.assertTrue(set(segmenters.SEGMENTERS) <= set(table["segmenter"]))
 
     def test_an_engine_that_does_not_exist_is_named(self):
         found = engine_problems("flux", DEFAULT)
@@ -252,7 +372,8 @@ class Records(unittest.TestCase):
             self.assertEqual(by_part[name]["default"], getattr(DEFAULT, name))
         for name, (low, high) in COUNTS.items():
             self.assertEqual(by_part[name]["choices"], f"a whole number from {low} to {high}")
-        self.assertEqual(by_part["segmenter"]["choices"], "spineps, moose")
+        self.assertEqual(by_part["segmenter"]["choices"], "spineps, moose, none")
+        self.assertEqual(by_part["segmenter"]["default"], "spineps")
 
 
 class CropPlan(unittest.TestCase):

@@ -5,7 +5,11 @@ beside FleXray's own runtime step by step and tests/test_flexray_render.py holds
 equal. The segmenter part is the one that reads files: label_spineps and label_moose each find a
 subject's existing masks under that scheme's folder (locate_spineps, locate_moose) and write one
 int16 label volume of MOOSE's stored ids through schwingnet.segmenters' maps, with a record of
-what the masks carried, so both engines read the labels as FleXray's own code reads MOOSE's.
+what the masks carried, so both engines read the labels as FleXray's own code reads MOOSE's;
+label_none, the render-only choice none, reads no file and gives no label volume, for a recipe
+that reads no labels (schwingnet.render_blocks.reads_labels), whose image is the CT's projection
+alone: render_drr given no label renders the volume as one channel, and given labels it renders
+one channel a label id, background among them, and sums them, so the pixels are the same.
 
 A view is made in the order FleXray's runtime draws (fxr/models/camera/runtime.py,
 SegmentationDRRRuntime.render, then sample_request; then fxr/drr/rendering.py, render_drr): the
@@ -196,8 +200,9 @@ def isocentre_vertebra(crop, affine, volume, supervised):
 
 def isocentre_volume_centre(crop, affine, volume, supervised):
     """The crop's centre in world coordinates, FleXray's volume_center scheme
-    (fxr/drr/isocenter.py, compute_isocenter), which draws nothing; the raw FluXray renders'
-    choice."""
+    (fxr/drr/isocenter.py, compute_isocenter) on the crop drawn, its pads counted in, and the
+    affine moved to it, which draws nothing and reads no label; the volume's centre under crop
+    whole, the raw FluXray renders' choice."""
     point = compute_isocenter(volume, None, affine, "volume_center")
     return [float(v) for v in point.tolist()], None
 
@@ -611,6 +616,22 @@ def label_moose(subject, grid, roots):
     return label, record
 
 
+NO_MASKS = "no masks read: the render is the CT's projection alone"
+
+
+def label_none(subject, grid, roots):
+    """No masks read and no label volume, so every CT renders, masks or none: what FleXray's
+    render_drr takes as label None, the volume rendered as one channel (fxr/drr/rendering.py,
+    render_drr, then fxr/drr/subjects.py, subject_from_tensors with no label), which is the sum
+    of the channels it renders a label volume into, background among them; for a recipe that
+    reads no labels alone (schwingnet.render_blocks.problems refuses the rest). None and the
+    record, in label_record's keys with nothing read, saying so."""
+    record = {"scheme": rules.NO_SEGMENTER, "files": {}, "precedence": [], "skipped": [],
+              "labels": {}, "dropped": [], "absent": [], "unsupervised": {},
+              "models_missing": [], "unplaced": [], "note": NO_MASKS}
+    return None, record
+
+
 NAMES = {
     "hu_window": {"flexray": hu_window_flexray, "none": hu_window_none},
     "air_clamp": {"flexray": air_clamp_flexray, "none": air_clamp_none},
@@ -630,7 +651,7 @@ NAMES = {
     "attenuation": {"flexray-lognormal": attenuation_flexray_lognormal, "off": attenuation_off},
     "scale": {"minmax": scale_minmax},
     "edit": {"none": edit_none},
-    "segmenter": {"spineps": label_spineps, "moose": label_moose},
+    "segmenter": {"spineps": label_spineps, "moose": label_moose, "none": label_none},
 }
 
 
@@ -649,7 +670,11 @@ def crop_content(label, plan):
     voxel frame, the pad before counted in, as FleXray's packer records them
     (fxr/datasets/ct_crops.py, crop_metadata: the mean voxel index of each id over the padded
     crop); a crop holding no structure is left out, as the packer drops it. One pass over the
-    volume, the rows of each id in the C order np.argwhere gives, so the means are the packer's."""
+    volume, the rows of each id in the C order np.argwhere gives, so the means are the packer's.
+    With no label volume (segmenter none) nothing tells a crop's structures, so every planned
+    crop is kept, holding no id and no centroid."""
+    if label is None:
+        return [crop_entry(planned, {}) for planned in plan]
     foreground = label > 0
     rows = np.argwhere(foreground)
     values = label[foreground]
@@ -664,10 +689,16 @@ def crop_content(label, plan):
                 shifted[:, 2] += before - start
                 centroids[i] = tuple(float(v) for v in shifted.mean(axis=0))
         if centroids:
-            crops.append({"z_start": int(start), "z_stop": int(stop), "pad_before": int(before),
-                          "pad_after": int(after), "ids": sorted(centroids),
-                          "centroids": centroids})
+            crops.append(crop_entry((start, stop, before, after), centroids))
     return crops
+
+
+def crop_entry(planned, centroids):
+    """One planned crop (start, stop, pad before, pad after) as crop_content records it, with the
+    ids it holds and their centroids."""
+    start, stop, before, after = planned
+    return {"z_start": int(start), "z_stop": int(stop), "pad_before": int(before),
+            "pad_after": int(after), "ids": sorted(centroids), "centroids": centroids}
 
 
 def cut(array, crop, fill):

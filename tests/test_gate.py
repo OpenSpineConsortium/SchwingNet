@@ -30,6 +30,9 @@ NEW_SCRIPTS = ("gate.sh", "hpcw.sh", "box.sh", "bin/pixi", "bin/train-cpu-python
                "00-carmlspine.sbatch", "v1-driver.sbatch", "experiment-driver.sbatch", "run-xray-chain.sh",
                "run-platform-fetch.sh", "sweep-driver.sbatch", "v1-version.sh", "realism.sbatch", "venv.sh")
 ENVS = ("default", "train-cpu", "train-gpu", "telemetry")
+# What bench flexray_drr_gap's word says of a mask folder that is there: the study reads too few CTs'
+# masks as none, which its summary says, so the word says only where the folder is.
+READ_WHERE = "read where enough CTs have them (the study's summary says how many)"
 # A stand-in for spinesurg-ct-nnunet's benchmark/run_spineps_cases.py, which the timing stage of the anomaly
 # route runs in the spineps conda environment: a mask and a timing record per case, no SPINEPS; a case whose
 # name says fail fails, and the runner then exits 2 as the real one does.
@@ -2370,9 +2373,9 @@ esac
     )
 
     def drr_gap_inputs(self):
-        """Every input bench flexray_drr_gap refuses without: FleXray's bundle, a whole sample index,
-        the TotalSegmentator CTs, the SPINEPS and MOOSE mask folders and the ImageNet file; the
-        index's path comes back."""
+        """Every input bench flexray_drr_gap refuses without, FleXray's bundle, a whole sample index,
+        the TotalSegmentator CTs and the ImageNet file, and the SPINEPS and MOOSE mask folders, which
+        the study reads where they are there; the index's path comes back."""
         bundle = self.data / "hf_flexray_weights" / "raw"
         bundle.mkdir(parents=True, exist_ok=True)
         (bundle / "ensemble.json").write_text("{}\n", encoding="utf-8")
@@ -2388,9 +2391,10 @@ esac
 
     def test_bench_flexray_drr_gap_refuses_each_missing_input_then_queues_one_gpu_job(self):
         # the DRR domain-gap study (tools/domain_gap.py) is a bench id of its own: refused, naming one
-        # input a send, until FleXray's weights, a whole sample index, the TotalSegmentator CTs, the
-        # SPINEPS masks, the MOOSE masks (which bench flexray_drr_seg makes) and the ImageNet file are
-        # on the volume; FluXray is optional, said and never waited for
+        # input a send, until FleXray's weights, a whole sample index, the TotalSegmentator CTs and the
+        # ImageNet file are on the volume; FluXray and both segmenters' masks are optional, each said
+        # and never waited for, since a DRR is a projection of the CT alone (the owner's word of
+        # 2026-10-27) and the study skips a group whose segmenter's masks are not there
         refused = self.gate("bench", "flexray_drr_gap")
         self.assertEqual(refused.returncode, 2, refused.stdout)
         self.assertIn("fetch hf_flexray_weights first", refused.stdout)
@@ -2410,21 +2414,20 @@ esac
         (self.data / "totalsegmentator_v201" / "s0001").mkdir(parents=True)
         refused = self.gate("bench", "flexray_drr_gap")
         self.assertEqual(refused.returncode, 2, refused.stdout)
-        self.assertIn(f"the SPINEPS masks at {self.data}/spineps", refused.stdout)
-        (self.data / "spineps").mkdir()
-        refused = self.gate("bench", "flexray_drr_gap")
-        self.assertEqual(refused.returncode, 2, refused.stdout)
-        self.assertIn(f"the MOOSE masks at {self.data}/moose (bench flexray_drr_seg makes them)", refused.stdout)
-        (self.data / "moose").mkdir()
-        refused = self.gate("bench", "flexray_drr_gap")
-        self.assertEqual(refused.returncode, 2, refused.stdout)
         self.assertIn("resnet18-f37072fd.pth", refused.stdout)
+        self.assertNotIn("masks", refused.stdout)
         self.assertEqual(self.submitted(), [])
         self.weights_ready()
         self.environments_ready()
+        # with no mask folder at all the word is taken and says each segmenter's masks are not there
+        # and that the groups naming it are skipped
         done = self.gate("bench", "flexray_drr_gap")
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
         self.assertIn("FluXray: not on the data root (fetch hf_flexray_data)", done.stdout)
+        self.assertIn(f"  the SPINEPS masks: not at {self.data}/spineps; the render groups that name segmenter=spineps"
+                      " are skipped with that reason\n", done.stdout)
+        self.assertIn(f"  the MOOSE masks: not at {self.data}/moose (bench flexray_drr_seg makes them); the render groups"
+                      " that name segmenter=moose are skipped with that reason\n", done.stdout)
         lines = self.submitted()
         self.assertEqual(len(lines), 1, lines)
         self.assertIn("--class gpu --name bench_flexray_drr_gap", lines[0])
@@ -2433,25 +2436,50 @@ esac
         self.assertIn("--no-requeue", lines[0])
         self.assertIn("bench.sbatch", lines[0])
         self.assertIn("bench_flexray_drr_gap", self.recorded())
-        # once FluXray is fetched the send says nothing of it, and the other bench ids are as they were
+        # once FluXray is fetched the send says nothing of it, a mask folder that is there is said to
+        # be read, and the other bench ids are as they were
         (self.data / "hf_flexray_data" / "raw").mkdir(parents=True)
+        (self.data / "spineps").mkdir()
+        (self.data / "moose").mkdir()
         done = self.gate("bench", "flexray_drr_gap")
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
         self.assertNotIn("FluXray", done.stdout)
+        self.assertIn(f"  the SPINEPS masks: in {self.data}/spineps, {READ_WHERE}\n", done.stdout)
+        self.assertIn(f"  the MOOSE masks: in {self.data}/moose, {READ_WHERE}\n", done.stdout)
+        self.assertNotIn("skipped", done.stdout)
         self.assertEqual(len(self.submitted()), 2)
         self.assertEqual(self.gate("bench", "fluorosam").returncode, 64)
         refused = self.gate("bench", "flexray_deepfluoro")
         self.assertEqual(refused.returncode, 2, refused.stdout)
         self.assertIn("DeepFluoro's .h5", refused.stdout)
 
-    def test_the_drr_gap_job_runs_the_study_in_its_own_environment_and_reports_the_summary_alone(self):
-        # bench.sbatch with BENCH=flexray_drr_gap: the pins go into the throwaway environment, the run
-        # reads the index the gate checked (else the newest whole one), FleXray's bundle, the ImageNet
-        # file and the frozen test persons, its own output stays in the run folder (umask 077), and the
-        # report carries the summary whole, each line as grid/redact.sed leaves it; a run that fails
-        # reports its last line masked and runs no summary
-        self.git_repo()
-        index = self.drr_gap_inputs()
+    def test_bench_flexray_drr_gap_waits_for_a_live_segment_job_and_reads_its_masks(self):
+        # bench flexray_drr_seg writes the MOOSE masks under the data root's moose and holds the
+        # checkout while it runs, so the study sent meanwhile is queued afterany on it, as on every run
+        # that holds the checkout, and reads MOOSE's masks once that job has written them: nothing is
+        # left out for it, and a live fetch changes nothing either
+        self.drr_gap_inputs()
+        self.environments_ready()
+        self.state_line(4242, "bench:flexray_drr_seg", "bench_flexray_drr_seg")
+        self.live(4242)
+        done = self.gate("bench", "flexray_drr_gap")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn(f"  the SPINEPS masks: in {self.data}/spineps, {READ_WHERE}\n", done.stdout)
+        self.assertIn(f"  the MOOSE masks: in {self.data}/moose, {READ_WHERE}\n", done.stdout)
+        self.assertNotIn("left out", done.stdout)
+        self.assertIn("--dependency=afterany:4242 ", self.line_of("bench_flexray_drr_gap")[0])
+        self.assertNotIn("BENCH_SKIP_MASKS", self.line_of("bench_flexray_drr_gap")[0])
+        self.state_line(4343, "fetch:moose_weights", "dp_moose_weights")
+        self.live(4343)
+        done = self.gate("bench", "flexray_drr_gap")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn(f"  the MOOSE masks: in {self.data}/moose, {READ_WHERE}\n", done.stdout)
+        self.assertNotIn("left out", done.stdout)
+
+    def drr_gap_box(self):
+        """A stand-in box.sh for the study's job: every call logged, the run writing the summary (or
+        failing where $FAKE/fail holds a token) and saying a line that names files, the summary
+        printing what the run wrote."""
         (self.fake / "summary").write_text("\n".join(self.DRR_GAP_SUMMARY) + "\n", encoding="utf-8")
         (self.repo / "grid" / "box.sh").write_text(
             '#!/bin/bash\necho "$*" >> "$FAKE/box.log"\n'
@@ -2462,6 +2490,39 @@ esac
             '  [ ! -f "$FAKE/fail" ] || { echo "drr-gap FAILED: no image decoded, token $(cat "$FAKE/fail")"; exit 2; }\n'
             '  cp "$FAKE/summary" "$out/summary.txt"\n'
             'else\n  cat "$out/summary.txt"\nfi\n', encoding="utf-8")
+
+    def test_the_drr_gap_job_runs_without_mask_folders(self):
+        # the study needs no mask folder (the owner's word of 2026-10-27): with none on the data root
+        # the job runs, passes both folders as ever and says each is absent, and nothing in the caller's
+        # environment leaves a segmenter's masks out
+        self.git_repo()
+        self.drr_gap_inputs()
+        (self.data / "spineps").rmdir()
+        (self.data / "moose").rmdir()
+        self.drr_gap_box()
+        report = self.repo / "grid" / "logs" / "BENCH-flexray_drr_gap.md"
+        done = self.bench_job("flexray_drr_gap", MODELS=str(self.models), BENCH_SKIP_MASKS="moose")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        runs = [line for line in self.boxed() if "tools/domain_gap.py run " in line]
+        self.assertEqual(len(runs), 1, self.boxed())
+        self.assertTrue(runs[0].endswith(f" --spineps {self.data}/spineps --moose {self.data}/moose"), runs[0])
+        self.assertIn(f"- masks: spineps absent, no {self.data}/spineps; moose absent, no {self.data}/moose (bench flexray_drr_seg"
+                      " makes them); a render group whose segmenter's masks are not read, or too few CTs have, is"
+                      " skipped with that reason\n",
+                      report.read_text(encoding="utf-8"))
+        self.assertIn("- exit 0 at ", report.read_text(encoding="utf-8"))
+        self.assertNotIn("--skip-masks", runs[0])
+        self.assertFalse((self.repo / "grid" / "logs" / "HOLD").exists())
+
+    def test_the_drr_gap_job_runs_the_study_in_its_own_environment_and_reports_the_summary_alone(self):
+        # bench.sbatch with BENCH=flexray_drr_gap: the pins go into the throwaway environment, the run
+        # reads the index the gate checked (else the newest whole one), FleXray's bundle, the ImageNet
+        # file and the frozen test persons, its own output stays in the run folder (umask 077), and the
+        # report carries the summary whole, each line as grid/redact.sed leaves it; a run that fails
+        # reports its last line masked and runs no summary
+        self.git_repo()
+        index = self.drr_gap_inputs()
+        self.drr_gap_box()
         done = self.bench_job("flexray_drr_gap", MODELS=str(self.models))
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
         boxed = self.boxed()
@@ -2484,8 +2545,10 @@ esac
                                 capture_output=True, text=True).stdout
         self.assertEqual(masked.splitlines(), list(self.DRR_GAP_SUMMARY))
         self.assertIn("- FluXray: not on the data root (fetch hf_flexray_data)", report)
-        self.assertIn(f"- environment: {self.DRR_GAP_PINS}; index: {index};", report)
-        self.assertIn(f"; masks: {self.data}/spineps, {self.data}/moose\n", report)
+        self.assertIn(f"- environment: {self.DRR_GAP_PINS}; index: {index}; weights: {self.data / 'hf_flexray_weights' / 'raw'};"
+                      f" imagenet: {self.models / 'resnet18-f37072fd.pth'}\n", report)
+        self.assertIn(f"- masks: spineps in {self.data}/spineps; moose in {self.data}/moose; a render group whose"
+                      " segmenter's masks are not read, or too few CTs have, is skipped with that reason\n", report)
         self.assertIn("- exit 0 at ", report)
         # the run's own output names files, so it stays in the run folder and reaches neither the
         # report nor the job's log
