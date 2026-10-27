@@ -589,6 +589,12 @@ SUMMARY = {
 }
 INTERVAL = re.compile(r" auc \S+ \[\S+, \S+\]")
 BASELINE = re.compile(r" (?:calibration split-half auc median |real-real auc median |fluoroscopy vs film auc )")
+# A space's split-half nulls: the counts on one line, the flagged groups' names on lines after it
+# (tools/domain_gap.py, calibration_summary); a flagged group's contrasts in the space are not read
+# (docs/research/drr-domain-gap/DEVIATIONS.md, item 8).
+CALIBRATION = re.compile(r" calibration split-half auc median \S+ range \S+ to \S+ over [0-9]+, mmd flagged (?P<count>[0-9]+),"
+                         r" auc interval above half [0-9]+")
+FLAGGED = " calibration flagged "
 # The measures a contrast line can carry, each by the words that show it.
 MEASURES = (
     ("the logistic two-sample AUC with its interval", INTERVAL),
@@ -1016,29 +1022,49 @@ def study_exclusions(run):
     return met("summary.txt, found/chosen/decoded/persons of each group: " + "; ".join(f"{g['id']} {group_counts(g)}" for g in ordered_groups(run)))
 
 
+def flagged_of(space):
+    """The groups the space's calibration lines flag, and the count its first line gives, or None
+    where the space has no calibration line in its form."""
+    lines = space.get("lines", [])
+    head = next((m for m in map(CALIBRATION.fullmatch, lines) if m), None)
+    names = [name for line in lines if line.startswith(FLAGGED) for name in line[len(FLAGGED):].split()]
+    return names, int(head["count"]) if head else None
+
+
 def endpoint_lines(run):
-    """The primary endpoints' lines in the primary space, and the endpoints summary.txt lacks."""
+    """The primary endpoints' lines in the primary space, the endpoints summary.txt lacks, and those
+    not read because the space's split-half null of the group was flagged."""
     config, groups = run["config"], run["body"]["groups"]
-    lines = run["body"]["spaces"].get(config["primary_space"], {}).get("lines", [])
-    found, absent = [], []
+    space = config["primary_space"]
+    lines = run["body"]["spaces"].get(space, {}).get("lines", [])
+    flagged, _ = flagged_of(run["body"]["spaces"].get(space, {}))
+    found, absent, unread = [], [], []
     for group in config["endpoints"]:
         for family in config["families"]:
             line = next((line.strip() for line in lines if line.startswith(f" {group} vs {family} auc ")), "")
             skipped = (groups.get(group) or {}).get("reason")
+            if line and group in flagged:
+                unread.append(f"{group} vs {family}: the split-half null of {group} in {space} found a difference, so its contrasts are not read (DEVIATIONS.md, item 8)")
+                continue
             (found if line else absent).append(line or f"{group} vs {family}" + (f" (group skipped, {skipped})" if skipped else ""))
-    return found, absent
+    return found, absent, unread
 
 
 def study_endpoints(run):
-    """CLAIM 37: the pre-registered primary endpoints with their intervals, and the verdict."""
+    """CLAIM 37: the pre-registered primary endpoints with their intervals, and the verdict; an
+    endpoint whose split-half null is flagged is reported as not read."""
     partial = unfinished(run)
     if partial:
         return missing(partial)
     config = run["config"]
-    found, absent = endpoint_lines(run)
-    if not found:
+    names, count = flagged_of(run["body"]["spaces"].get(config["primary_space"], {}))
+    if count is not None and count != len(names):
+        return missing(f"needs the names of the flagged split-half nulls in the {config['primary_space']} space: its calibration line counts {count} and names {len(names)}, so which endpoints are read cannot be told")
+    found, absent, unread = endpoint_lines(run)
+    if not found and not unread:
         return missing(f"needs the primary endpoints' lines, {', '.join(config['endpoints'])} against {' and '.join(config['families'])} in the {config['primary_space']} space: summary.txt holds none")
-    text = f"the primary endpoints in the {config['primary_space']} space's inversion-invariant reading (summary.txt): {'; '.join(found)}"
+    text = f"the primary endpoints in the {config['primary_space']} space's inversion-invariant reading (summary.txt): {'; '.join(found) or 'none read'}"
+    text += f"; not read: {'; '.join(unread)}" if unread else ""
     text += f"; not in summary.txt: {', '.join(absent)}" if absent else ""
     verdicts = run["body"]["verdicts"]
     return met(text + (f"; the replication verdict: {'; '.join(verdicts)}" if verdicts else ""))

@@ -249,6 +249,25 @@ class TableAndLicenceTest(StudyFolder):
         self.assertIn("persons by file: fixture_film", reforms["6b"]["evidence"])
 
 
+    def test_a_primary_endpoint_whose_null_is_flagged_is_not_read(self):
+        calibration = " calibration split-half auc median 0.33 range 0.32 to 0.34 over 1, mmd flagged 0, auc interval above half 0"
+        lines = self.lines()
+        at = lines.index(calibration)
+        self.write_lines(lines[:at] + [calibration.replace("mmd flagged 0", "mmd flagged 1"), " calibration flagged flexray_drr"] + lines[at + 1:])
+        endpoints = self.rows("claim")["37"]
+        self.assertEqual(endpoints["state"], "met")
+        self.assertIn("not read: flexray_drr vs fluoroscopy: the split-half null of flexray_drr in flexray found a difference", endpoints["evidence"])
+        self.assertNotIn("flexray_drr vs fluoroscopy auc 0.12", endpoints["evidence"])
+        self.assertIn("flexray_drr_ct vs fluoroscopy auc 0.32", endpoints["evidence"])
+
+    def test_a_flagged_count_the_names_do_not_match_leaves_the_endpoints_missing(self):
+        calibration = " calibration split-half auc median 0.33 range 0.32 to 0.34 over 1, mmd flagged 0, auc interval above half 0"
+        self.replace_line(calibration, calibration.replace("mmd flagged 0", "mmd flagged 2"))
+        endpoints = self.rows("claim")["37"]
+        self.assertEqual(endpoints["state"], "missing")
+        self.assertIn("counts 2 and names 0", endpoints["evidence"])
+
+
 class CheckTest(StudyFolder):
     def test_complete_fails_while_the_owner_s_items_are_empty(self):
         self.assertEqual(quiet(report.check, self.run, study=STUDY), 1)

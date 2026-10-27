@@ -226,7 +226,7 @@ class ArrayTest(unittest.TestCase):
 
         record = self.prepared()
         tool, sizes = self.tool, []
-        tool.unit_pool = lambda workers: sizes.append(workers) or (Broken() if len(sizes) == 1 else ThreadPoolExecutor(1))
+        tool.unit_pool = lambda workers, processes=None: sizes.append(workers) or (Broken() if len(sizes) == 1 else ThreadPoolExecutor(1))
         self.assertEqual(tool.shard(shard_args(self.out, workers=4)), 0)
         self.assertEqual(sizes, [4, 2])
         self.assertEqual(list((self.analysis / "failed").iterdir()), [])
@@ -235,7 +235,9 @@ class ArrayTest(unittest.TestCase):
         self.assertEqual(sum(e["event"] == "released" for e in events), 4)
         self.assertTrue(all(tool.unit_done(self.analysis, i, record["stamp"]) for i in range(len(record["units"]))))
 
-    def test_three_broken_pools_in_a_row_stop_the_task_with_its_claims_let_go(self):
+    def test_pools_that_always_break_halve_to_one_worker_and_three_lone_deaths_stop_the_task(self):
+        # a pool that cannot run anything: halved to one worker, whose death fails its one unit,
+        # then the full count again, until three units have failed alone in a row
         from concurrent.futures import Future
         from concurrent.futures.process import BrokenProcessPool
 
@@ -249,26 +251,86 @@ class ArrayTest(unittest.TestCase):
                 pass
 
         self.prepared()
-        tool = self.tool
-        tool.unit_pool = lambda workers: Broken()
+        tool, sizes = self.tool, []
+        tool.unit_pool = lambda workers, processes=None: sizes.append((workers, processes)) or Broken()
         self.assertEqual(tool.shard(shard_args(self.out, workers=8)), 3)
-        self.assertEqual(list((self.analysis / "failed").iterdir()), [])
-        self.assertEqual(list((self.analysis / "claims").iterdir()), [])
+        self.assertEqual(sizes[:6], [(8, None), (4, True), (2, True), (1, True), (8, True), (4, True)])
+        failed = sorted(p.name for p in (self.analysis / "failed").iterdir())
+        self.assertEqual(len(failed), tool.FAILURE_STREAK)
+        self.assertEqual({read(self.analysis / "failed" / name)["error"] for name in failed}, {"BrokenProcessPool"})
+        self.assertLessEqual({p.name for p in (self.analysis / "claims").iterdir()}, {name[:-len(".json")] for name in failed})
+
+    def test_a_unit_that_kills_its_worker_fails_alone_and_every_other_unit_is_done(self):
+        # one unit breaks every pool it is in, as one too big for the job's memory would: the pools
+        # halve until it runs alone, it alone is failed, and the full pool does the rest
+        from concurrent.futures import Future
+        from concurrent.futures.process import BrokenProcessPool
+
+        record = self.prepared()
+        tool = self.tool
+        units = record["units"]
+        poison = sorted(range(len(units)), key=lambda i: (-tool.unit_cost(units[i]), i))[0]
+
+        class Pool:
+            def __init__(self):
+                self.broken = False
+
+            def submit(self, fn, *args):
+                future = Future()
+                if self.broken or args[1] == poison:
+                    self.broken = True
+                    future.set_exception(BrokenProcessPool("a worker died"))
+                    return future
+                try:
+                    future.set_result(fn(*args))
+                except Exception as error:  # the real unit's own failure, as a pool would hand it back
+                    future.set_exception(error)
+                return future
+
+            def shutdown(self, wait=True, cancel_futures=False):
+                pass
+
+        sizes = []
+        tool.unit_pool = lambda workers, processes=None: sizes.append(workers) or Pool()
+        self.assertEqual(tool.shard(shard_args(self.out, workers=4)), 0)
+        self.assertIn(1, sizes)
+        failed = [p.name for p in (self.analysis / "failed").iterdir()]
+        self.assertEqual(failed, [f"{poison:05d}.json"])
+        self.assertEqual(read(self.analysis / "failed" / failed[0])["error"], "BrokenProcessPool")
+        self.assertTrue(all(tool.unit_done(self.analysis, i, record["stamp"]) for i in range(len(units)) if i != poison))
+
+    def test_a_list_the_volume_will_not_read_for_a_while_stops_no_task(self):
+        # units.json unreadable for every read after the task's first: no task stops, and each
+        # unit is still written, since only a list read whole with another stamp is a new one
+        record = self.prepared()
+        tool = self.tool
+        tool.LIST_RETRY_SECONDS = 0.0
+        real, reads = tool.units_record, []
+        tool.units_record = lambda out: reads.append(1) or (real(out) if len(reads) == 1 else None)
+        self.assertEqual(tool.shard(shard_args(self.out)), 0)
+        self.assertGreater(len(reads), 1)
+        self.assertTrue(all(tool.unit_done(self.analysis, i, record["stamp"]) for i in range(len(record["units"]))))
 
     def test_a_unit_of_a_replaced_list_writes_nothing_and_is_no_failure(self):
         record = self.prepared()
         tool = self.tool
         with self.assertRaises(tool.ListChanged):
-            tool.unit_task(str(self.out), 0, "another list's stamp")
+            tool.unit_task(str(self.out), 0, record["units"][0], record["seed"], "another list's stamp")
         self.assertFalse(tool.done_path(self.analysis, 0).exists())
 
         class Replaced:
             def result(self):
                 raise tool.ListChanged("replaced")
 
+        # this task's claim is let go; one another task has taken since is left as it stands
         task = tool.Task(self.analysis, 0, 1, "cpu", record["stamp"])
-        self.assertIsNone(tool.settle(self.analysis, task, record["units"], 0, Replaced(), time.time()))
-        self.assertFalse(tool.failed_path(self.analysis, 0).exists())
+        self.assertTrue(tool.try_claim(self.analysis, 0, task.token))
+        self.assertTrue(tool.try_claim(self.analysis, 1, "another task"))
+        for index in (0, 1):
+            self.assertIsNone(tool.settle(self.analysis, task, record["units"], index, Replaced(), time.time()))
+            self.assertFalse(tool.failed_path(self.analysis, index).exists())
+        self.assertFalse(tool.claim_path(self.analysis, 0).exists())
+        self.assertEqual(tool.claim_path(self.analysis, 1).read_text(encoding="ascii"), "another task")
 
     def test_a_failure_names_the_frames_of_the_study_it_rose_through(self):
         def deepest():

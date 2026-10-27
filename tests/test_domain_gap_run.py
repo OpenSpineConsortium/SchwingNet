@@ -911,6 +911,27 @@ def full_results(tool, groups):
             "replication": {"space": "flexray", "reading": "invariant", "pair": first, **worded[first], "pairs": worded}}
 
 
+@unittest.skipIf(MISSING_BASE, f"needs {', '.join(MISSING_BASE)}")
+class CalibrationLineTest(unittest.TestCase):
+    """The split-half nulls' counts come first and every flagged group is named, on lines of their
+    own within the report's limit, however many are flagged (DEVIATIONS.md, item 8)."""
+
+    def test_every_flagged_group_is_named_and_no_count_is_cut(self):
+        tool = load_tool()
+        groups = [g["id"] for g in json.loads((ROOT / "data" / "domain_gap" / "groups.json").read_text(encoding="utf-8"))["groups"]]
+        for flagged in (0, 1, 8, len(groups)):
+            cal = {"auc_median": 0.51, "auc_range": [0.42, 0.61], "groups": {g: {} for g in groups},
+                   "flagged": groups[:flagged], "auc_above": groups[:2]}
+            lines = tool.calibration_summary({"calibration": cal})
+            self.assertTrue(lines[0].endswith(f"over {len(groups)}, mmd flagged {flagged}, auc interval above half 2"), lines[0])
+            named = [name for line in lines[1:] for name in line[len(" calibration flagged "):].split()]
+            self.assertEqual(named, groups[:flagged])
+            for line in lines:
+                self.assertEqual(tool.rules().safe_line(line), line)
+                self.assertLessEqual(len(line), tool.rules().LINE_LIMIT)
+            self.assertEqual(study_report().flagged_of({"lines": lines}), (groups[:flagged], flagged))
+
+
 def study_report():
     """tools/report.py, whose study mode reads the record lines at the head of summary.txt."""
     spec = importlib.util.spec_from_file_location("study_report", ROOT / "tools" / "report.py")

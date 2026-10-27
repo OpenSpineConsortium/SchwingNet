@@ -2188,29 +2188,30 @@ def shard(args):
 
 def claim_loop(out, record, task, workers):
     """Claim, run and settle units until none is left to claim and no other task's claim is still
-    beating; 3 once FAILURE_STREAK units have failed in a row or the pool has broken that many
-    times in a row, 0 otherwise, and 0 too where a new prepare replaced the list under this task."""
+    beating; 3 once FAILURE_STREAK units have failed in a row, 0 otherwise, and 0 too where a new
+    prepare replaced the list under this task. A pool that a worker's death breaks is replaced by
+    one of half the size, down to one worker, whose death names the unit it ran (broken_pool)."""
     from concurrent.futures import FIRST_COMPLETED, wait
     from concurrent.futures.process import BrokenProcessPool
 
     folder, stamp, units = Path(out) / ANALYSIS, record["stamp"], record["units"]
     order = sorted(range(len(units)), key=lambda i: (-unit_cost(units[i]), i))
-    todo, others, held, streak, breaks = [i for i in order if not settled(folder, i, stamp)], [], {}, 0, 0
-    pool = unit_pool(workers)
+    todo, others, held, streak, size = [i for i in order if not settled(folder, i, stamp)], [], {}, 0, workers
+    pool = unit_pool(size)
     try:
-        while streak < FAILURE_STREAK and breaks < FAILURE_STREAK:
-            if not list_is(out, stamp):
+        while streak < FAILURE_STREAK:
+            if list_replaced(out, stamp):
                 log("shard: a new prepare replaced the list of units, so this task stops and claims nothing more")
                 return 0
             try:
-                while streak < FAILURE_STREAK and len(held) < max(1, workers):
+                while streak < FAILURE_STREAK and len(held) < max(1, size):
                     index = next_unit(folder, todo, others, stamp, task.token)
                     if index is None:
                         break
                     try:
-                        held[pool.submit(unit_task, str(out), index, stamp)] = (index, time.time())
+                        held[pool.submit(unit_task, str(out), index, units[index], record["seed"], stamp)] = (index, time.time())
                     except BrokenProcessPool:
-                        claim_path(folder, index).unlink(missing_ok=True)
+                        release(folder, task, units, index)
                         todo.insert(0, index)
                         raise
                     task.event("claimed", index, units[index]["id"])
@@ -2228,48 +2229,82 @@ def claim_loop(out, record, task, workers):
                         continue
                     index, started = held.pop(future)
                     outcome = settle(folder, task, units, index, future, started)
-                    if outcome is not None:
-                        streak = 0 if outcome else streak + 1
+                    if outcome is None:
+                        continue
+                    streak = 0 if outcome else streak + 1
                 if broken:
                     raise BrokenProcessPool("a worker of the pool died")
-                breaks = 0 if finished else breaks
             except BrokenProcessPool:
-                breaks += 1
-                pool, workers = broken_pool(pool, held, folder, task, units, todo, workers)
+                pool, size, failed = broken_pool(pool, held, folder, task, units, todo, size, workers)
+                streak += failed
                 continue
             task.beat([claim_path(folder, i) for i, _ in held.values()])
             write_progress(out)
     finally:
         pool.shutdown(wait=False, cancel_futures=True)
-    if streak >= FAILURE_STREAK or breaks >= FAILURE_STREAK:
-        log(f"shard: stopped after {FAILURE_STREAK} {'failures' if streak >= FAILURE_STREAK else 'broken pools'} in a row")
+    if streak >= FAILURE_STREAK:
+        log(f"shard: stopped after {FAILURE_STREAK} failures in a row")
         return 3
     log(f"shard: nothing left to claim; {task.counts['done']} done and {task.counts['failed']} failed here")
     return 0
 
 
-def list_is(out, stamp):
-    """Whether units.json still holds the list this task claims from (a new prepare writes another)."""
-    record = units_record(out)
-    return record is not None and record["stamp"] == stamp
+LIST_READS = 3            # reads of units.json before an unreadable list is taken as unchanged
+LIST_RETRY_SECONDS = 2.0  # the pause before each read again
 
 
-def broken_pool(pool, held, folder, task, units, todo, workers):
+def list_replaced(out, stamp):
+    """Whether a new prepare has replaced the list this task claims from: units.json read whole
+    with another stamp. A read the lab volume fails for a moment is tried again, and a list that
+    still cannot be read is no reason to stop, since the task holds its list in memory and a
+    replacement is seen at the next read that works."""
+    for attempt in range(LIST_READS):
+        record = units_record(out)
+        if record is not None:
+            return record["stamp"] != stamp
+        if attempt < LIST_READS - 1:
+            time.sleep(LIST_RETRY_SECONDS)
+    return False
+
+
+def release(folder, task, units, index):
+    """This task's claim on a unit let go, so any task may take the unit at once; a claim another
+    task has taken since is left as it stands."""
+    path = claim_path(folder, index)
+    try:
+        if path.read_text(encoding="ascii") == task.token:
+            path.unlink()
+    except OSError:
+        pass
+    task.event("released", index, units[index]["id"])
+
+
+def broken_pool(pool, held, folder, task, units, todo, size, workers):
     """A worker of the pool died (the kernel's OOM killer, a crash in native code), which breaks
-    every unit the pool held: none of them is failed for it, since all but one did nothing wrong;
-    each claim is let go and the unit put back at the head of this task's list, and a new pool of
-    half as many workers takes them, so units that broke the pool by filling the job's memory
-    together run fewer at a time. FAILURE_STREAK breaks in a row stop the task (claim_loop),
-    leaving the units for the merge to name as not done. The new pool and its size."""
-    smaller = max(1, workers // 2)
-    log(f"shard: a worker died and broke the pool; {len(held)} units let go and claimed again by {smaller} workers")
-    for index, _ in sorted(held.values(), reverse=True):
-        claim_path(folder, index).unlink(missing_ok=True)
-        task.event("released", index, units[index]["id"])
-        todo.insert(0, index)
-    held.clear()
+    every unit the pool held. In a pool of more than one worker none of them is failed for it,
+    since all but one did nothing wrong: each claim is let go, the unit put back at the head of
+    this task's list, and a pool of half as many workers takes them, so units that filled the
+    job's memory together run fewer at a time, and a unit that breaks every pool it is in soon
+    runs alone. In a pool of one worker the unit broke it alone: it is failed (error
+    BrokenProcessPool), counted toward FAILURE_STREAK, and the next pool has the task's full
+    count of workers again. Every pool after a break is of processes, so no death reaches the
+    task itself. The new pool, its size and how many units failed."""
     pool.shutdown(wait=False, cancel_futures=True)
-    return unit_pool(smaller), smaller
+    entries = sorted(held.values(), reverse=True)
+    held.clear()
+    if size <= 1:
+        for index, started in entries:
+            fail_unit(folder, task, units[index], index, started, "BrokenProcessPool",
+                      ["its worker died running it alone"], "its worker died running it alone")
+        log(f"shard: a worker died running unit {', '.join(units[i]['id'] for i, _ in entries) or 'none'} alone;"
+            f" failed, and a pool of {workers} workers goes on")
+        return unit_pool(workers, processes=True), workers, len(entries)
+    smaller = max(1, size // 2)
+    log(f"shard: a worker died and broke the pool; {len(entries)} units let go and claimed again by {smaller} workers")
+    for index, _ in entries:
+        release(folder, task, units, index)
+        todo.insert(0, index)
+    return unit_pool(smaller, processes=True), smaller, 0
 
 
 def next_unit(folder, todo, others, stamp, token):
@@ -2303,22 +2338,28 @@ class ListChanged(Exception):
 
 def settle(folder, task, units, index, future, started):
     """A finished unit's outcome: True when done and logged with its seconds; False when it failed,
-    recorded with the kind of error and where in the study's code it rose; None when the list was
-    replaced under it, which is no failure of the unit and leaves the new list's folders alone."""
+    recorded with the kind of error and where in the study's code it rose; None when a new prepare
+    replaced the list under it, which is no failure of the unit: this task's claim on it is let go
+    and the new list's folders are left alone."""
     unit = units[index]
     try:
         seconds, backend = future.result()
     except ListChanged:
+        release(folder, task, units, index)
         return None
     except Exception as error:  # one unit's failure is recorded and counted toward the streak, never fatal alone
-        write_json(failed_path(folder, index), {"id": unit["id"], "error": type(error).__name__,
-                                                "where": where_raised(error), "task": task.token})
-        task.event("failed", index, unit["id"], seconds=round(time.time() - started, 1), error=type(error).__name__)
-        log(f"unit {unit['id']} FAILED after {time.time() - started:.0f} s: {type(error).__name__}: {error}")
+        fail_unit(folder, task, unit, index, started, type(error).__name__, where_raised(error), str(error))
         return False
     task.event("done", index, unit["id"], seconds=round(seconds, 1), backend=backend)
     log(f"unit {unit['id']} done in {seconds:.1f} s ({task.counts['done']} done by this task)")
     return True
+
+
+def fail_unit(folder, task, unit, index, started, kind, where, message):
+    """failed/<index>.json for a unit, which settles it for every task until a new prepare."""
+    write_json(failed_path(folder, index), {"id": unit["id"], "error": kind, "where": where, "task": task.token})
+    task.event("failed", index, unit["id"], seconds=round(time.time() - started, 1), error=kind)
+    log(f"unit {unit['id']} FAILED after {time.time() - started:.0f} s: {kind}: {message}")
 
 
 def where_raised(error):
@@ -2333,18 +2374,20 @@ def where_raised(error):
     return [f"{Path(name).name}:{function}:{line}" for name, line, function in frames[-3:]]
 
 
-def unit_pool(workers):
+def unit_pool(workers, processes=None):
     """workers processes, started fresh rather than forked (the self-test opened CUDA here, which a
     fork must not copy), each with one BLAS and torch thread so the node's CPUs are the pool's; or,
-    for one worker, one thread of this process, so the task still beats while a unit runs."""
+    for one worker unless processes is asked for, one thread of this process, so the task still
+    beats while a unit runs. After a pool breaks the task asks for processes even for one worker,
+    so a unit that kills its worker never kills the task (broken_pool)."""
     from concurrent.futures import ThreadPoolExecutor
 
-    if workers <= 1:
+    if not (workers > 1 if processes is None else processes):
         return ThreadPoolExecutor(max_workers=1)
     for name in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS"):
         os.environ[name] = "1"
     context = multiprocessing.get_context("spawn")
-    return ProcessPoolExecutor(max_workers=workers, mp_context=context, initializer=pool_start)
+    return ProcessPoolExecutor(max_workers=max(1, workers), mp_context=context, initializer=pool_start)
 
 
 def pool_start():
@@ -2367,24 +2410,21 @@ def loaded(key, make):
     return _LOADED[key]
 
 
-def unit_task(out, index, stamp):
-    """One unit in a worker: its head loaded once per process, its result written whole, then
-    (seconds, the MMD's backend); ListChanged, with nothing written, where units.json no longer
-    holds the list the task claimed it from, before the unit or once it has run, so a unit of an
-    old list never writes over the new list's result of the same number."""
-    folder = Path(out) / ANALYSIS
-    record = units_record(out)
-    if record is None or record["stamp"] != stamp:
+def unit_task(out, index, unit, seed, stamp):
+    """One unit in a worker, as the task read it from its list: its head loaded once per process,
+    its result written whole, then (seconds, the MMD's backend); ListChanged, with nothing written,
+    where a new prepare has replaced the list, before the unit runs or once it has, so a unit of
+    an old list never writes over the new list's result of the same number."""
+    if list_replaced(out, stamp):
         raise ListChanged(f"unit {index} was claimed from list {stamp[:16]}, which a new prepare replaced")
-    unit = record["units"][index]
-    head = loaded((str(out), record["stamp"], unit["key"]), lambda: load_head(out, unit["key"]))
+    head = loaded((str(out), stamp, unit["key"]), lambda: load_head(out, unit["key"]))
     started = time.time()
-    piece, arrays = run_unit(head, unit, record["seed"])
+    piece, arrays = run_unit(head, unit, seed)
     seconds = time.time() - started
     backend = mmd_backend()
-    if not list_is(out, stamp):
+    if list_replaced(out, stamp):
         raise ListChanged(f"unit {index} of list {stamp[:16]} ran while a new prepare replaced the list")
-    save_unit(folder, index, unit, piece, arrays, record["stamp"], seconds, backend)
+    save_unit(Path(out) / ANALYSIS, index, unit, piece, arrays, stamp, seconds, backend)
     return seconds, backend
 
 
@@ -2448,6 +2488,8 @@ def merge(args):
     if not (folder / "PREPARED.json").is_file():
         raise StageError("prepare did not finish: there is no analysis/PREPARED.json")
     record = units_record(out)
+    if record is None:
+        raise StageError("analysis/units.json cannot be read whole")
     if record["code"] != code_digest():
         raise StageError("the code differs from the code prepare planned the units with")
     missing, failed = open_units(folder, record)
@@ -3052,13 +3094,27 @@ def within_limit(head, numbers, word):
 
 
 def calibration_summary(space):
+    """The split-half nulls' line, its counts first, then the flagged groups' names on lines of
+    their own within the report's limit, so no cut ever takes a count or a name (DEVIATIONS.md,
+    item 8: every contrast of a flagged group in the space is not read)."""
     cal = space.get("calibration", {})
     if cal.get("auc_median") is None:
         return []
-    return [f" calibration split-half auc median {fmt(cal['auc_median'])} range"
-            f" {fmt(cal['auc_range'][0])} to {fmt(cal['auc_range'][1])} over {len(cal['groups'])},"
-            f" mmd flagged {len(cal['flagged'])}" + (f" ({' '.join(cal['flagged'])})" if cal["flagged"] else "")
-            + f", auc interval above half {len(cal.get('auc_above', []))}"]
+    head = (f" calibration split-half auc median {fmt(cal['auc_median'])} range {fmt(cal['auc_range'][0])} to"
+            f" {fmt(cal['auc_range'][1])} over {len(cal['groups'])}, mmd flagged {len(cal['flagged'])},"
+            f" auc interval above half {len(cal.get('auc_above', []))}")
+    return [head] + name_lines(" calibration flagged", cal["flagged"])
+
+
+def name_lines(lead, names):
+    """lead and as many names as the report's limit takes on each line, every name on one."""
+    limit, lines, line = rules().LINE_LIMIT, [], lead
+    for name in names:
+        if line != lead and len(line) + 1 + len(name) > limit:
+            lines.append(line)
+            line = lead
+        line += f" {name}"
+    return lines + ([line] if line != lead else [])
 
 
 def family_line(space, sg, family, c):
