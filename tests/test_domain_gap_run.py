@@ -481,9 +481,13 @@ class WholeRunTest(unittest.TestCase):
         self.assertIn("space flexray not run", verdict["reason"])
         self.assertEqual(set(verdict["pairs"]), set(PAIRS[:2]))
         self.assertEqual(results["renders"][CT_FOLDER]["every"], 26)
-        self.assertTrue(lines[1].startswith("replication flexray_replica vs flexray_reference: no verdict"))
-        self.assertTrue(lines[2].startswith("replication fluxray_raw vs fluxray_raw_reference: no verdict"))
-        self.assertEqual(lines[3], f"render {CT_FOLDER}: 24 CTs chosen of 26 with every mask of 30 CTs "
+        # the header, then the run's record in five lines the CLAIM report reads, then the verdicts
+        self.assertEqual([line.split(" ")[1] for line in lines[1:6]], ["study", "jobs", "units", "seconds", "environment"])
+        self.assertTrue(all(line.startswith("record: ") for line in lines[1:6]))
+        self.assertTrue(lines[2].startswith("record: jobs run local; GPUs cpu x1"), lines[2])
+        self.assertTrue(lines[6].startswith("replication flexray_replica vs flexray_reference: no verdict"))
+        self.assertTrue(lines[7].startswith("replication fluxray_raw vs fluxray_raw_reference: no verdict"))
+        self.assertEqual(lines[8], f"render {CT_FOLDER}: 24 CTs chosen of 26 with every mask of 30 CTs "
                                    "(moose 27, spineps 27); 23 kept by every group")
         self.assertIn("groups counted as flexray_drr: flexray_drr_ct flexray_replica flexray_reference flexray_spineps"
                       " fluxray_raw fluxray_raw_reference", lines)

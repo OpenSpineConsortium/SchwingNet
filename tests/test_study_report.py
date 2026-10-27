@@ -1,0 +1,292 @@
+"""Study mode of the run report (tools/report.py --study): a study that trains no network, read from
+its recorded folder, every code answer taken from its record lines, its summary or the table the
+record names and never guessed, and every owner item missing until the owner writes it."""
+
+import hashlib
+import importlib.util
+import json
+import shutil
+import tempfile
+import unittest
+from contextlib import redirect_stderr, redirect_stdout
+from io import StringIO
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+FIXTURE = ROOT / "tests" / "fixtures" / "report-study" / "1000001"
+STUDY = "drr-domain-gap"
+# A licence register of the fixture's own, so no test reads data/licences.json: one source by its
+# id, one through an alias, and the fixture's two folders with no entry.
+REGISTER = {
+    "aliases": {"fixture_film_alias": "fixture_film_entry"},
+    "sources": {
+        "fixture_fluoro_source": {"licence": "fixture", "class": "open", "reviewed": "rule"},
+        "fixture_film_entry": {"licence": "fixture", "class": "non-commercial", "reviewed": "owner 2000-01-01"},
+    },
+}
+
+
+def load_report():
+    spec = importlib.util.spec_from_file_location("report_under_test", ROOT / "tools" / "report.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+report = load_report()
+
+
+def quiet(function, *args, **kwargs):
+    with redirect_stdout(StringIO()), redirect_stderr(StringIO()):
+        return function(*args, **kwargs)
+
+
+class StudyFolder(unittest.TestCase):
+    """Each test copies the fixture into a folder of its own and reads answers and a licence
+    register of its own, so the repository's study files are never read for it or written."""
+
+    def setUp(self):
+        self.folder = tempfile.TemporaryDirectory()
+        self.addCleanup(self.folder.cleanup)
+        root = Path(self.folder.name)
+        self.run = root / "runs" / FIXTURE.name
+        shutil.copytree(FIXTURE, self.run)
+        self.answers = root / "answers.json"
+        self.write_answers({})
+        register = root / "licences.json"
+        register.write_text(json.dumps(REGISTER), encoding="utf-8")
+        # a frozen pre-registration of the fixture's own, its digest written into the record line
+        prereg = root / "PREREG.md"
+        prereg.write_text("fixture pre-registration, frozen\n", encoding="ascii")
+        self.prereg = hashlib.sha256(prereg.read_bytes()).hexdigest()[:16]
+        self.replace_line("record: study ", self.lines()[0].replace("PREREG 2222222222222222", f"PREREG {self.prereg}"))
+        config = report.STUDIES[STUDY]
+        self.addCleanup(config.update, dict(config))
+        config.update(answers=self.answers, runs=root / "runs", prereg=prereg)
+        self.addCleanup(setattr, report, "LICENCES", report.LICENCES)
+        report.LICENCES = register
+
+    def write_answers(self, answers):
+        self.answers.write_text(json.dumps({"_about": "test", **answers}), encoding="utf-8")
+
+    def lines(self):
+        return (self.run / "summary.txt").read_text(encoding="utf-8").splitlines()
+
+    def write_lines(self, lines):
+        (self.run / "summary.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+    def replace_line(self, start, new):
+        """The summary line that starts so replaced by new, or dropped where new is None."""
+        self.write_lines([line if not line.startswith(start) else new for line in self.lines() if not (line.startswith(start) and new is None)])
+
+    def rows(self, checklist):
+        report.write(self.run, STUDY)
+        return {row["id"]: row for row in json.loads((self.run / f"{checklist}.json").read_text(encoding="utf-8"))["items"]}
+
+    def text(self):
+        return (self.run / "REPORT.md").read_text(encoding="utf-8")
+
+
+class RecordTest(StudyFolder):
+    def test_the_record_lines_are_read_by_their_forms(self):
+        fields, problems, unknown, body = report.record_of(self.lines(), STUDY)
+        self.assertEqual((problems, unknown), ({}, []))
+        self.assertEqual({key: fields["study"][key] for key in ("commit", "tree", "seed", "groups", "prereg")},
+                         {"commit": "0000000", "tree": "clean", "seed": "0", "groups": "7e1b145e9d74759a", "prereg": self.prereg})
+        self.assertEqual((fields["jobs"]["prepare"], fields["jobs"]["tasks"], fields["jobs"]["gpu"], fields["jobs"]["gpus"]),
+                         ("1000001", "4", "FIXTURE GPU", "1"))
+        self.assertEqual((fields["units"]["done"], fields["units"]["backend"]), ("4", "numpy"))
+        self.assertEqual((fields["seconds"]["analysis"], fields["seconds"]["figures"]), ("6", "8"))
+        self.assertEqual(fields["environment"]["pins"], "fixture-package 0.0.0 other-fixture-package 0.0.0")
+        self.assertTrue(body[0].startswith("drr gap: "))
+
+    def test_a_serial_run_writes_its_one_job(self):
+        self.replace_line("record: jobs", "record: jobs run local; GPUs FIXTURE GPU x1")
+        fields, problems, _, _ = report.record_of(self.lines(), STUDY)
+        self.assertEqual((problems, fields["jobs"]["run"]), ({}, "local"))
+        compute = self.rows("reforms")["2c"]
+        self.assertEqual(compute["state"], "met")
+        self.assertIn("one job, run local, on GPUs FIXTURE GPU x1", compute["evidence"])
+
+    def test_a_line_out_of_its_form_given_twice_or_after_the_summary_is_not_read(self):
+        lines = self.lines()
+        study = lines[0].replace("commit 0000000", "commit 00000000")
+        units = next(line for line in lines if line.startswith("record: units"))
+        seconds = next(line for line in lines if line.startswith("record: seconds"))
+        rest = [line for line in lines[1:] if line != seconds]
+        _, problems, _, _ = report.record_of([study, units, *rest[:-1], seconds], STUDY)
+        self.assertEqual(problems, {"study": "not in its form", "units": "given 2 times", "seconds": "absent"})
+        other = lines[0].replace("study drr-domain-gap", "study other-study")
+        _, problems, _, _ = report.record_of([other, *lines[1:]], STUDY)
+        self.assertEqual(problems, {"study": "names study other-study"})
+
+    def test_digests_the_record_names_as_none_are_read_and_answer_nothing(self):
+        line = self.lines()[0].replace("groups.json 7e1b145e9d74759a", "groups.json none").replace(f"PREREG {self.prereg}", "PREREG none")
+        self.replace_line("record: study", line)
+        claim = self.rows("claim")
+        self.assertEqual(claim["7"]["state"], "missing")
+        self.assertIn("the record names none", claim["7"]["evidence"])
+        self.assertEqual(claim["26"]["state"], "not applicable")
+        self.assertIn("PREREG none", claim["26"]["evidence"])
+
+
+class MissingRecordLineTest(StudyFolder):
+    def test_an_absent_line_makes_its_items_missing_and_no_others(self):
+        self.replace_line("record: seconds", None)
+        reforms = self.rows("reforms")
+        self.assertEqual(reforms["2c"]["state"], "missing")
+        self.assertIn("'record: seconds ...' (absent)", reforms["2c"]["evidence"])
+        self.assertEqual(reforms["2b"]["state"], "met")
+        self.assertIn("seconds absent", self.text())
+
+    def test_without_the_study_line_its_items_are_missing_never_not_applicable(self):
+        self.replace_line("record: study", None)
+        claim = self.rows("claim")
+        for item in ("7", "9", "19", "26", "33", "38"):
+            self.assertEqual(claim[item]["state"], "missing", item)
+            self.assertIn("'record: study ...' (absent)", claim[item]["evidence"], item)
+        self.assertEqual(claim["35"]["state"], "met")
+        self.assertIn("Not recorded: the report needs summary.txt's record line", self.text())
+
+    def test_units_not_all_done_leave_the_results_missing(self):
+        self.replace_line("record: units", "record: units 3 of 4 done, 1 failed; mmd backend numpy")
+        claim = self.rows("claim")
+        for item in ("32", "37"):
+            self.assertEqual(claim[item]["state"], "missing", item)
+            self.assertIn("units 3 of 4 done, 1 failed", claim[item]["evidence"], item)
+        self.assertEqual(claim["28"]["state"], "met")
+
+    def test_a_dirty_tree_is_never_met(self):
+        self.replace_line("record: study", self.lines()[0].replace("tree clean", "tree dirty"))
+        code = self.rows("reforms")["2b"]
+        self.assertEqual(code["state"], "missing")
+        self.assertIn("DIRTY tree", code["evidence"])
+        self.assertIn("Study record: commit 0000000, DIRTY tree", self.text())
+
+    def test_a_bench_report_on_another_commit_or_a_moved_checkout_is_never_met(self):
+        bench = self.run / "BENCH.md"
+        original = bench.read_text(encoding="utf-8")
+        bench.write_text(original.replace("commit 0000000", "commit 1234567"), encoding="utf-8")
+        self.assertIn("BENCH.md names commit 1234567", self.rows("reforms")["2b"]["evidence"])
+        bench.write_text(original + "- FAILED: the checkout moved from 0000000 to 1234567 during the benchmark\n", encoding="utf-8")
+        code = self.rows("reforms")["2b"]
+        self.assertEqual(code["state"], "missing")
+        self.assertIn("the checkout moved", code["evidence"])
+
+
+class NotApplicableTest(StudyFolder):
+    def test_what_the_design_leaves_out_says_why_and_names_the_run(self):
+        claim, reforms = self.rows("claim"), self.rows("reforms")
+        for row in (claim["26"], claim["33"], claim["38"], reforms["5d"]):
+            self.assertEqual(row["state"], "not applicable", row["id"])
+            self.assertTrue(row["evidence"].startswith("Not applicable: the study "), row["id"])
+            self.assertIn("study drr-domain-gap, commit 0000000, code 3333333333333333", row["evidence"])
+        self.assertIn(f"PREREG.md {self.prereg}", claim["26"]["evidence"])
+        self.assertIn("trains no model", claim["33"]["evidence"])
+
+    def test_a_record_naming_another_pre_registration_answers_nothing_that_reads_it(self):
+        self.replace_line("record: study ", self.lines()[0].replace(f"PREREG {self.prereg}", "PREREG 2222222222222222"))
+        claim, reforms = self.rows("claim"), self.rows("reforms")
+        for row in (claim["26"], reforms["5d"], reforms["2d"]):
+            self.assertEqual(row["state"], "missing", row["id"])
+            self.assertIn("the record names PREREG 2222222222222222, which is not the frozen ", row["evidence"])
+
+    def test_only_code_items_are_not_applicable_by_code(self):
+        rows = {**self.rows("claim"), **{f"R{key}": row for key, row in self.rows("reforms").items()}}
+        for row in rows.values():
+            if row["state"] == "not applicable":
+                self.assertEqual(row["basis"], "code", row["id"])
+
+
+class TableAndLicenceTest(StudyFolder):
+    def test_each_group_s_licence_is_copied_and_a_source_with_no_entry_is_named(self):
+        report.write(self.run, STUDY)
+        text = self.text()
+        self.assertIn("- Source ids with no entry in data/licences.json: fixture_cts, fixture_flux.", text)
+        self.assertIn("| flexray_drr | synthetic | fixture_cts | fixture licence text R | fixture_cts: no entry |", text)
+        self.assertIn("| fixture_film | film | fixture_film_alias | fixture licence text B | fixture_film_alias as fixture_film_entry: non-commercial, reviewed owner 2000-01-01 |", text)
+        self.assertIn("names no network's commercial use", text)
+
+    def test_a_folder_of_the_two_files_alone_is_read_and_a_table_of_another_digest_is_not_used(self):
+        (self.run / "groups.json").unlink()
+        claim = self.rows("claim")
+        self.assertEqual(claim["7"]["state"], "missing")
+        self.assertIn("needs the groups table the record names, 7e1b145e9d74759a: data/domain_gap/groups.json is", claim["7"]["evidence"])
+        self.assertEqual(claim["35"]["state"], "met")
+        self.assertIn("Not recorded: the report needs the groups table", self.text())
+
+    def test_a_group_of_the_table_the_summary_has_no_line_for_leaves_the_counts_missing(self):
+        self.replace_line("group fluxray ", None)
+        exclusions = self.rows("claim")["35"]
+        self.assertEqual(exclusions["state"], "missing")
+        self.assertIn("no line for the table's groups fluxray", exclusions["evidence"])
+
+    def test_the_summary_s_counts_and_endpoints_are_quoted(self):
+        claim, reforms = self.rows("claim"), self.rows("reforms")
+        self.assertIn("flexray_drr_ct 40/40/40/10 (the counts of flexray_drr)", claim["35"]["evidence"])
+        self.assertIn("fluxray skipped (not on the data root in this fixture)", claim["35"]["evidence"])
+        self.assertIn("flexray_drr vs fluoroscopy auc 0.12 [0.11, 0.13]", claim["37"]["evidence"])
+        self.assertIn("not in summary.txt: fluxray vs fluoroscopy (group skipped, not on the data root in this fixture)", claim["37"]["evidence"])
+        self.assertIn("fixture_fluoro 1", reforms["4b"]["evidence"])
+        self.assertIn("persons by file: fixture_film", reforms["6b"]["evidence"])
+
+
+class CheckTest(StudyFolder):
+    def test_complete_fails_while_the_owner_s_items_are_empty(self):
+        self.assertEqual(quiet(report.check, self.run, study=STUDY), 1)
+        report.write(self.run, STUDY)
+        self.assertEqual(quiet(report.check, self.run, study=STUDY), 0)
+        self.assertEqual(quiet(report.check, self.run, True, STUDY), 1)
+        self.write_answers({fact: "Fixture sentence." for fact in report.study_declared_facts(STUDY)})
+        self.assertEqual(quiet(report.check, self.run, study=STUDY), 1)
+        report.write(self.run, STUDY)
+        self.assertEqual(quiet(report.check, self.run, True, STUDY), 0)
+
+    def test_a_folder_without_its_summary_or_with_a_summary_too_long_is_refused(self):
+        self.write_lines(self.lines() + [" filler"] * 80)
+        with self.assertRaises(report.ReportError):
+            report.render_study(STUDY, self.run)
+        (self.run / "summary.txt").unlink()
+        with self.assertRaises(report.ReportError):
+            report.render_study(STUDY, self.run)
+
+
+class StudyRulesTest(unittest.TestCase):
+    def test_every_item_a_training_run_answers_by_code_has_a_study_answer(self):
+        for key, checklist in report.checklists().items():
+            for item in checklist["items"]:
+                basis, fact = report.study_basis(key, item, STUDY)
+                self.assertIn(basis, ("code", "declared"), item["id"])
+                if basis == "code":
+                    self.assertIn(fact, report.STUDY_FACTS, item["id"])
+
+    def test_the_study_s_answers_file_holds_every_fact_its_owner_answers(self):
+        path = ROOT / "data" / "reporting" / "studies" / f"{STUDY}.json"
+        self.assertEqual(set(report.study_answers(path)), report.study_declared_facts(STUDY))
+
+
+class RecordedTest(StudyFolder):
+    def setUp(self):
+        super().setUp()
+        self.addCleanup(setattr, report, "RUNS", report.RUNS)
+        report.RUNS = Path(self.folder.name) / "no-training-runs"
+
+    def test_check_recorded_passes_with_no_study_run(self):
+        report.STUDIES[STUDY]["runs"] = Path(self.folder.name) / "no-study-runs"
+        self.assertEqual(report.recorded_studies(), [])
+        self.assertEqual(quiet(report.main, ["check-recorded"]), 0)
+
+    def test_check_recorded_holds_each_study_run_to_its_report(self):
+        self.assertEqual(report.recorded_studies(), [(STUDY, self.run)])
+        self.assertEqual(quiet(report.main, ["check-recorded"]), 1)
+        self.assertEqual(quiet(report.main, ["write-recorded"]), 0)
+        self.assertEqual(quiet(report.main, ["check-recorded"]), 0)
+
+    def test_the_command_line_takes_the_study(self):
+        self.assertEqual(quiet(report.main, ["write", "--study", STUDY, "--run", str(self.run)]), 0)
+        self.assertEqual(quiet(report.main, ["check", "--study", STUDY, "--run", str(self.run)]), 0)
+        self.assertEqual(quiet(report.main, ["check", "--study", STUDY, "--run", str(self.run), "--complete"]), 1)
+
+
+if __name__ == "__main__":
+    unittest.main()
