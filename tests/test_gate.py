@@ -109,9 +109,13 @@ esac
 """
 
 FAKES = {
+    # what $FAKE/queue holds, or, asked for the pending jobs' reasons, what $FAKE/pending holds
     "squeue": """#!/bin/bash
 [ -f "$FAKE/squeue_fails" ] && { echo "slurm_load_jobs error: Socket timed out" >&2; exit 1; }
-cat "$FAKE/queue" 2>/dev/null || true
+case " $* " in
+  *" -t PENDING "*) cat "$FAKE/pending" 2>/dev/null || true ;;
+  *) cat "$FAKE/queue" 2>/dev/null || true ;;
+esac
 """,
     # what $FAKE/sacct.out holds, else one finished job; its arguments logged
     "sacct": """#!/bin/bash
@@ -1291,6 +1295,28 @@ esac
         self.assertIn("cancelled before it started", done.stdout)
         self.assertIn("## 501 (xr_fetch) ended FAILED", done.stdout)
         self.assertIn("    XR_FETCH_RC=1", done.stdout)
+
+    def test_status_says_what_a_pending_job_waits_for_and_when_slurm_expects_it(self):
+        self.failed((700, "bench", "bench_flexray_drr_gap", "bench_flexray_drr_gap", "PENDING", "00:00:00", None),
+                    ("701_[0-3]", "bench", "bench_flexray_drr_gap_shard", "bench_flexray_drr_gap_shard", "PENDING", "00:00:00", None),
+                    (702, "bench", "bench_flexray_drr_gap_merge", "bench_flexray_drr_gap_merge", "PENDING", "00:00:00", None),
+                    (703, "bench", "bench_flexray_drr_seg", "bench_flexray_drr_seg", "RUNNING", "00:10:00", None))
+        (self.fake / "queue").write_text("700\n701_[0-3]\n702\n703\n", encoding="utf-8")
+        # 702 has no reason line; 703 runs, so a stale pending line for it says nothing
+        (self.fake / "pending").write_text(
+            "700|Resources|2026-10-28T03:12:00\n701_[0-3]|Dependency|N/A\n703|Priority|N/A\n", encoding="utf-8")
+        done = self.gate("status")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("  700 bench_flexray_drr_gap PENDING 00:00:00 1:0 n1, waiting: Resources, start expected 2026-10-28T03:12:00 grid time\n",
+                      done.stdout)
+        self.assertIn("  701_[0-3] bench_flexray_drr_gap_shard PENDING 00:00:00 1:0 n1, waiting: Dependency\n", done.stdout)
+        self.assertIn("  702 bench_flexray_drr_gap_merge PENDING 00:00:00 1:0 n1\n", done.stdout)
+        self.assertIn("  703 bench_flexray_drr_seg RUNNING 00:10:00 1:0 n1\n", done.stdout)
+        # squeue that does not answer leaves the job lines as sacct gives them
+        (self.fake / "squeue_fails").write_text("", encoding="utf-8")
+        done = self.gate("status")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("  700 bench_flexray_drr_gap PENDING 00:00:00 1:0 n1\n", done.stdout)
 
     def test_status_bounds_how_many_failed_jobs_and_array_tasks_it_shows(self):
         rows = [(600 + i, "start", f"dp_s{i}", f"dp_fetch_s{i}", "FAILED", "00:00:01", ["PLATFORM_RC=1"]) for i in range(8)]

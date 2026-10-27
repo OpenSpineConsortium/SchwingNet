@@ -431,6 +431,20 @@ newest_jobs() {  # " <id> <id> ... ": the newest job the gate submitted for each
 what_of() {  # what_of ID: what the gate recorded job ID as
   awk -v j="$1" '$1 == j { what = $3 } END { print what }' "$STATE" 2>/dev/null
 }
+# sacct says a queued job is PENDING and no more, so a job that waits hours reads the same whether
+# Slurm is waiting for a node to come free or will never start it under its partition's or QoS's
+# limits; squeue's reason tells the two apart, and its expected start says how long the first is.
+pending_reasons() {  # one squeue read of WHO's pending jobs: base id|reason|expected start per job, nothing where squeue does not answer
+  "$SQUEUE" -h -u "$WHO" -t PENDING -o '%i|%r|%S' 2>/dev/null | LC_ALL=C tr -cd '\12\40-\176' \
+    | awk -F'|' 'NF == 3 && $1 ~ /^[0-9]/ { sub(/_.*/, "", $1); if (!seen[$1]++) print $1 "|" substr($2, 1, 80) "|" substr($3, 1, 19) }'
+}
+waiting_for() {  # waiting_for ID STATE PENDING: what a PENDING job waits for, as a tail for its sacct line, else nothing
+  [ "$2" = PENDING ] || return 0
+  awk -F'|' -v job="$1" '$1 == job && $2 != "" {
+    tail = ", waiting: " $2
+    if ($3 ~ /^[0-9][0-9][0-9][0-9]-/) tail = tail ", start expected " $3 " grid time"
+    print tail; exit }' <<< "$3"
+}
 masked() {  # every line status shows of a log or a stage report: masked, then cut
   sed -r -f "$REPO/grid/redact.sed" | cut -c "1-$LINE_CHARS"
 }
@@ -626,7 +640,7 @@ word_status() {
     -f "$REPO/grid/status-page.awk"
 }
 status_sections() {  # every section of status whole, in the order the page shows them
-  local ids run lines job name state elapsed code node probe
+  local ids run lines job name state elapsed code node probe pending
   # The space first and the sweeps' progress, the one live view of a sweep, after it, then each
   # benchmark's, the DRR domain-gap study's while its shards run; then the sample manifest, which
   # once came after the jobs, where the page's end cut it.
@@ -638,11 +652,12 @@ status_sections() {  # every section of status whole, in the order the page show
   if [ -z "$ids" ]; then
     echo "no job submitted by the gate yet; 'start' submits the graph"
   else
-    echo "## the gate's newest jobs (sacct): id, what, state, elapsed, exit code, node"
+    echo "## the gate's newest jobs (sacct): id, what, state, elapsed, exit code, node, and what a pending job waits for (squeue)"
     lines=$("$SACCT" -X -n -P -j "$ids" --format=JobID,JobName,State,Elapsed,ExitCode,NodeList 2>/dev/null)
+    pending=$(pending_reasons)
     while IFS='|' read -r job name state elapsed code node; do
       [ -n "$job" ] || continue
-      echo "  $job $(what_of "${job%%_*}") $state $elapsed $code $node"
+      echo "  $job $(what_of "${job%%_*}") $state $elapsed $code $node$(waiting_for "${job%%_*}" "$state" "$pending")"
     done <<< "$lines"
     fetch_progress
     failed_tails "$lines"
