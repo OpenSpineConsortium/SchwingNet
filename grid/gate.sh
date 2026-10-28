@@ -3,10 +3,12 @@
 # `schwingnet <word> [<id>]`, so the owner never types a grid command again (his rule of
 # 2026-10-21 19:37 UTC). The gate's side brings the checkout to main first (a clone at ~/SchwingNet
 # when there is none, else a fast-forward) and then runs `bash ~/SchwingNet/grid/gate.sh <word> [<id>]`.
-# On the login node this script runs only bash, git, hpcworker, squeue, sacct, scancel, flock, awk,
-# sed and coreutils (warrior kills python by name); every byte of work is a Slurm job, queued through
-# hpcworker's `job submit` with a class and no partition or QoS of ours (grid/hpcw.sh, issue #77),
-# and every Python step of those jobs runs inside the container (grid/box.sh, grid/bin/).
+# On the login node this script runs only bash, git (with gh as its sign-in for a carried folder),
+# hpcworker, squeue, sacct, scancel, flock, awk, sed and coreutils (warrior kills python by name);
+# every byte of work is a Slurm job, queued through hpcworker's `job submit` with a class and no
+# partition or QoS of ours (grid/hpcw.sh, issue #77), and every Python step of those jobs runs inside
+# the container (grid/box.sh, grid/bin/). The one exception is a carried folder's copy, which git
+# makes here as the gate's side fetches main, since it is a copy and no computation (word_fetch_carried).
 #
 #   start           the whole graph, with Slurm dependencies, once:
 #                     setup        the container and the pixi environments, only when pixi.lock
@@ -37,7 +39,10 @@
 #   fetch <id>      one set of grid/fetch-xray.json, a credentialed one with ~/.netrc, banked and catalogued;
 #                   or one source of grid/run-platform-fetch.sh's --gated-ids (CADS, RSNA RATIC, RSPECT,
 #                   ReXGradient once its token or link file is in place; the full NLST on the owner's yes),
-#                   after any live X-ray fetch
+#                   after any live X-ray fetch; or one carried folder of grid/carry/, a commit a cloud
+#                   session pushed to a private branch, fetched with git on this node and checked file by
+#                   file against its SHA256SUMS before it lands, with no job (the owner's word of
+#                   2026-10-28 17:24 UTC for the Claude project's shared folder)
 #   explore <id>    one look inside a fetched set (tools/explore.py, grid/explore.sbatch): the first send
 #                   queues one job for the listing of its raw folder and zips and, for a set the gate
 #                   names one for (explore_against), the comparison with it by name and content; the
@@ -875,6 +880,8 @@ fetch_section() {  # fetch_section ID: open or credentialed, the section of grid
 }
 word_fetch() {
   local section setup busy waits="" one args=(--only "$id")
+  # A folder a cloud session carried to GitHub comes by git on this node, with no job (word_fetch_carried).
+  if [ -f "$REPO/grid/carry/$id.txt" ]; then word_fetch_carried; return; fi
   # A look at the set taken before this fetch no longer says what it holds (word_explore).
   rm -f "$LOGS/EXPLORE-$id.md" "$LOGS/EXPLORE-$id.md.key"
   section=$(fetch_section "$id")
@@ -931,6 +938,115 @@ word_fetch_gated() {  # one gated CT source through the platform script, recorde
   echo "$out" | sed -n 's/^\([a-z0-9_]*\): job \([0-9][0-9]*\).*/\2 \1/p' | while read -r one name; do
     record "$one" "dp_$name"
   done
+  return $rc
+}
+
+# A carried folder (grid/carry/<id>.txt): files a cloud session can hand on only through GitHub, as a
+# Claude project's shared folder, which does not follow the owner to another project (the owner's
+# word of 2026-10-28 17:24 UTC, "push these to the grid to the new project to fine there"). They ride
+# as one commit on a branch of a private repository, and the fetch word brings that commit's tree
+# onto the data root as the landing <id> with git on this node, as the gate's side fetches main: a
+# copy and no computation, so no job is queued. The record pins the repository, the branch, the
+# commit, the files and bytes its tree holds and the sha256 of its SHA256SUMS, which lists every other
+# file; each is checked before the folder is put in place, so what lands is exactly what the session
+# sent, or nothing. The size rule's lock is held from the room's reading until the folder is in
+# place, so nothing is admitted beside bytes the rule has not counted, and the git copy counts
+# against the room with the files while it lasts. A later send checks the landing against
+# SHA256SUMS again and fetches nothing.
+CARRY_BASE=${CARRY_BASE:-https://github.com}
+CARRY_TIMEOUT=${CARRY_TIMEOUT:-480}
+carry_field() {  # carry_field KEY: the one value the record gives KEY on a line "KEY VALUE"; status 1 where it gives none, several or more than one word
+  awk -v k="$1" '$1 == k { n++; v = $2; if (NF != 2) n++ } END { if (n != 1) exit 1; print v }' "$REPO/grid/carry/$id.txt"
+}
+carry_gh() {  # where gh is, on PATH or where a login shell finds it, as the grid gate's own gh_on_path looks; status 1 where it is not
+  local d
+  command -v gh 2>/dev/null && return 0
+  for d in "$HOME/bin" "$HOME/.local/bin" "$HOME/opt/gh/bin"; do [ -x "$d/gh" ] && { echo "$d/gh"; return 0; }; done
+  return 1
+}
+carry_fetch() {  # carry_fetch GIT_DIR URL BRANCH: the branch's tip fetched as refs/carry, through gh's own sign-in where gh is found
+  # A ~/.gitconfig helper may hold another account's sign-in, as the grid gate's artifacts word found,
+  # so gh's comes first, as that word fetches.
+  local gh helper=()
+  gh=$(carry_gh) && helper=(-c credential.helper= -c "credential.helper=!env -u GITHUB_TOKEN -u GH_TOKEN $gh auth git-credential")
+  GIT_TERMINAL_PROMPT=0 timeout "$CARRY_TIMEOUT" git ${helper[@]+"${helper[@]}"} --git-dir="$1" fetch -q --no-tags --depth 1 "$2" "+refs/heads/$3:refs/carry" < /dev/null
+}
+carry_tree() {  # carry_tree GIT_DIR COMMIT: "<files> <bytes> <others>", the tree's plain files, their bytes, and its entries that are none (links, submodules)
+  git --git-dir="$1" ls-tree -r -l --full-tree "$2" | awk -F '\t' '
+    { split($1, f, " "); if (f[1] == "100644" || f[1] == "100755") { n++; b += f[4] } else o++ }
+    END { printf "%d %.0f %d\n", n, b, o }'
+}
+carry_check() {  # carry_check FOLDER MANIFEST FILES: 0 where SHA256SUMS hashes to MANIFEST, lists every other file once and each matches; the reason otherwise
+  local f=$1 listed found count out
+  [ "$(sha256sum < "$f/SHA256SUMS" 2>/dev/null | cut -c1-64)" = "$2" ] || { echo "its SHA256SUMS is not the one the record names"; return 1; }
+  listed=$(sed 's/^[0-9a-f]\{64\}  //' "$f/SHA256SUMS" | LC_ALL=C sort)
+  found=$(cd "$f" && find . -path ./meta/CARRIED -prune -o -type f ! -path ./SHA256SUMS -print | sed 's|^\./||' | LC_ALL=C sort)
+  [ "$listed" = "$found" ] || { echo "SHA256SUMS does not list exactly the files there"; return 1; }
+  count=$(printf '%s\n' "$listed" | grep -c .)
+  [ "$count" = $(( $3 - 1 )) ] || { echo "SHA256SUMS lists $count files where the record counts $(( $3 - 1 )) beside it"; return 1; }
+  out=$(cd "$f" && sha256sum -c --quiet --strict SHA256SUMS 2>&1) && return 0
+  echo "$(printf '%s\n' "$out" | grep -c 'FAILED') of its files do not match SHA256SUMS"
+  return 1
+}
+carry_land() {  # carry_land REPO BRANCH COMMIT FILES BYTES MANIFEST: the commit fetched to $stage, checked, checked out, checked again and put in place as $dest
+  local n b o why
+  if [ -e "$stage" ] || [ -L "$stage" ]; then
+    [ -d "$stage" ] && [ ! -L "$stage" ] || { echo "refusing: .carry_$id on the data root is no folder of this word's; nothing was fetched"; return 2; }
+    rm -rf "$stage" || { echo "fetch $id failed: an earlier send's .carry_$id could not be cleared"; return 1; }
+  fi
+  ( umask 077; mkdir "$stage" "$stage/tree" && git init -q --bare "$stage/git" ) > /dev/null 2>&1 \
+    || { echo "fetch $id failed: its git copy could not be made on the data root"; return 1; }
+  if ! carry_fetch "$stage/git" "$CARRY_BASE/$1.git" "$2" > "$stage/fetch.log" 2>&1; then
+    echo "fetch $id failed: git could not fetch the branch $2 of $1 within $CARRY_TIMEOUT seconds; what it said last:"
+    # with the data root cut, since no path under it leaves the grid (a full volume names the git copy's)
+    tail -n 3 "$stage/fetch.log" | printable | while IFS= read -r line; do echo "  ${line//"$DATA"/<data root>}"; done
+    return 1
+  fi
+  [ "$(git --git-dir="$stage/git" rev-parse -q --verify refs/carry 2>/dev/null)" = "$3" ] \
+    || { echo "refusing: the branch $2 of $1 is not at the record's commit ${3:0:12}; nothing was put in place"; return 2; }
+  read -r n b o <<< "$(carry_tree "$stage/git" "$3")"
+  [ "$n" = "$4" ] && [ "$b" = "$5" ] && [ "$o" = 0 ] \
+    || { echo "refusing: the commit holds $n files of $b bytes and $o other entries, where the record says $4 files of $5 bytes and none other; nothing was put in place"; return 2; }
+  ( umask 077; GIT_TERMINAL_PROMPT=0 timeout "$CARRY_TIMEOUT" git --git-dir="$stage/git" --work-tree="$stage/tree" checkout -q -f "$3" -- . < /dev/null ) > /dev/null 2>&1 \
+    || { echo "fetch $id failed: git could not check the commit out within $CARRY_TIMEOUT seconds"; return 1; }
+  [ ! -e "$stage/tree/meta" ] || { echo "refusing: the commit has a meta at its top, where the landing keeps its record; nothing was put in place"; return 2; }
+  why=$(carry_check "$stage/tree" "$6" "$4") || { echo "refusing: $why; nothing was put in place"; return 1; }
+  ( umask 077; mkdir "$stage/tree/meta" && echo "carried $3 $4 $5 $(date -u '+%FT%TZ') $1 $2" > "$stage/tree/meta/CARRIED" ) \
+    || { echo "fetch $id failed: meta/CARRIED could not be written"; return 1; }
+  chmod 700 "$stage/tree" && mv -T "$stage/tree" "$dest" || { echo "fetch $id failed: the checked folder could not be put in place"; return 1; }
+  echo "  $id: carried at ${3:0:12} from the branch $2 of $1: $4 files, $5 bytes, each matching SHA256SUMS; the landing $id on the data root, 0700, with meta/CARRIED"
+}
+word_fetch_carried() {  # one carried folder brought onto the data root, or its landing checked again where it stands
+  local DATA=$DATA_ROOT repo branch commit files bytes manifest dest stage need rc why
+  repo=$(carry_field repo) && branch=$(carry_field branch) && commit=$(carry_field commit) && files=$(carry_field files) \
+    && bytes=$(carry_field bytes) && manifest=$(carry_field manifest) \
+    || { echo "refusing: grid/carry/$id.txt does not give each of repo, branch, commit, files, bytes and manifest once"; return 2; }
+  [[ "$repo" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] && [[ "$branch" =~ ^[A-Za-z0-9_./-]+$ ]] && [[ "$branch" != *..* ]] \
+    && [[ "$commit" =~ ^[0-9a-f]{40}$ ]] && [[ "$manifest" =~ ^[0-9a-f]{64}$ ]] \
+    && [[ "$files" =~ ^[1-9][0-9]{0,8}$ ]] && [[ "$bytes" =~ ^[1-9][0-9]{0,14}$ ]] \
+    || { echo "refusing: a value of grid/carry/$id.txt is not of its shape"; return 2; }
+  [ -d "$DATA" ] || { echo "refusing: there is no data root to land $id in"; return 2; }
+  dest=$DATA/$id stage=$DATA/.carry_$id
+  if [ -e "$dest" ] || [ -L "$dest" ]; then
+    [ -d "$dest" ] && [ ! -L "$dest" ] && [ "$(awk '{ print $2; exit }' "$dest/meta/CARRIED" 2>/dev/null)" = "$commit" ] \
+      || { echo "refusing: $id is on the data root already and holds no carry of ${commit:0:12}; nothing was changed (move it aside to fetch it again)"; return 2; }
+    why=$(carry_check "$dest" "$manifest" "$files") || { echo "fetch $id: carried earlier, but $why"; return 1; }
+    echo "  $id: carried at ${commit:0:12} on $(awk '{ print $5; exit }' "$dest/meta/CARRIED"); its $files files match SHA256SUMS again; nothing was fetched"
+    return 0
+  fi
+  # The pack git fetches holds the files' bytes again until the folder is in place, and a little more.
+  need=$(( 2 * bytes + bytes / 50 ))
+  exec 8> "$DATA/.size-rule.lock" || { echo "refusing: the size rule's lock on the data root could not be opened; nothing was fetched"; return 2; }
+  if ! flock -w "${SIZE_RULE_WAIT:-900}" 8; then
+    exec 8>&-
+    echo "refusing: another decision held the size check for ${SIZE_RULE_WAIT:-900} seconds; nothing was fetched"
+    return 75
+  fi
+  room_for "$need" "the folder and its git copy need" "nothing was fetched" \
+    && carry_land "$repo" "$branch" "$commit" "$files" "$bytes" "$manifest"
+  rc=$?
+  exec 8>&-
+  rm -rf "$stage"
   return $rc
 }
 
@@ -1664,18 +1780,21 @@ bank_room() {  # bank_room NEED: 0 where the room under the quota takes NEED byt
   # The room the bank word decides against before it queues its job (grid/size-rule.sh): what the
   # running fetches owe first, then the room twice a minute apart, the smaller kept. The fetch
   # word's chain decides nothing at submit since #163; its job decides each set in turn.
+  room_for "$1" "the bank and its shard need" "nothing was queued"
+}
+room_for() {  # room_for NEED WHAT NOTHING: as bank_room, WHAT naming what needs NEED in a refusal and NOTHING what was left undone
   local owed owed_bytes owed_n unsized free free_from room
-  owed=$(owed_by_running "") || { echo "refusing: squeue did not answer, so what the running fetches owe is not known; nothing was queued"; return 75; }
+  owed=$(owed_by_running "") || { echo "refusing: squeue did not answer, so what the running fetches owe is not known; $3"; return 75; }
   read -r owed_bytes owed_n unsized <<< "$owed"
-  [ -z "$unsized" ] || { echo "refusing: the running fetch of $unsized states no size, so the room after it is not known; nothing was queued"; return 75; }
+  [ -z "$unsized" ] || { echo "refusing: the running fetch of $unsized states no size, so the room after it is not known; $3"; return 75; }
   read -r free free_from <<< "$(settled_room "$VOLUME")"
   if [ -z "$free" ]; then
-    echo "refusing: the room on the lab volume could not be read: $(room_unread_words "$VOLUME"); nothing was queued"
+    echo "refusing: the room on the lab volume could not be read: $(room_unread_words "$VOLUME"); $3"
     return 2
   fi
   room=$(( free > owed_bytes ? free - owed_bytes : 0 ))
   echo "  room: $(gb_down "$room") GB $(free_space_words "$free_from") after $(gb_up "$owed_bytes") GB owed to $(running_fetches "$owed_n")"
-  [ "$1" -le "$room" ] || { echo "refusing: the bank and its shard need $(gb_up "$1") GB and the room is $(gb_down "$room") GB; nothing was queued"; return 75; }
+  [ "$1" -le "$room" ] || { echo "refusing: $2 $(gb_up "$1") GB and the room is $(gb_down "$room") GB; $3"; return 75; }
 }
 admission_holder() {  # admission_holder [SET]: the live job whose admission $DATA/<SET>/meta/SIZE still holds (SET $id by default), else nothing
   local set=${1:-$id} state job

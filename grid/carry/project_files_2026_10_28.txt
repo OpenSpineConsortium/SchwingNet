@@ -1,0 +1,10 @@
+# The Claude project "symphony_4"'s shared folder (gold3-ct, enhance-pet-repair, drr-domain-gap-monitor
+# and mask-free-import as they stood at 17:32 UTC on 2026-10-28), carried to the grid for the owner's
+# next account: "no please push these to the grid to the new project to fine there" (2026-10-28 17:24 UTC).
+# `schwingnet fetch project_files_2026_10_28` lands it as the data root's project_files_2026_10_28.
+repo OpenSpineConsortium/bordercall
+branch claude/project-thread-rr7in4
+commit 01435c18c907a7bd6b2ccc25a5969d527aa96b9a
+files 3332
+bytes 1107335194
+manifest 78a193a614787ef3a1fe101e25f2b00b256d3e281a9ea2a9bd90d272a6921941

@@ -418,6 +418,115 @@ class GateTest(unittest.TestCase):
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
         self.assertIn("--dependency=afterany:201,afterany:202 ", self.line_of("platform-fetch.sbatch")[0])
 
+    GIT = ("git", "-c", "gc.auto=0", "-c", "maintenance.auto=false", "-c", "user.name=t", "-c", "user.email=t@t")
+
+    def carrier(self, files):
+        """A private repository as a cloud session leaves one: a branch whose last commit holds FILES (path:
+        bytes) and SHA256SUMS over them, in a bare repository at <tmp>/remotes/owner/carrier.git, which
+        CARRY_BASE=file://<tmp>/remotes reaches. Its commits, oldest first, and the record's values."""
+        work = self.tmp / "carrier-work"
+        remote = self.tmp / "remotes" / "owner" / "carrier.git"
+        remote.parent.mkdir(parents=True)
+        subprocess.run([*self.GIT, "init", "-q", "--bare", str(remote)], check=True)
+        subprocess.run([*self.GIT, "init", "-q", str(work)], check=True)
+        git = [*self.GIT, "-C", str(work)]
+        commits = []
+        for step in (dict(list(files.items())[:1]), files):
+            for name, data in step.items():
+                (work / name).parent.mkdir(parents=True, exist_ok=True)
+                (work / name).write_bytes(data)
+            sums = "".join(f"{hashlib.sha256(data).hexdigest()}  {name}\n" for name, data in sorted(step.items()))
+            (work / "SHA256SUMS").write_text(sums, encoding="utf-8")
+            subprocess.run([*git, "add", "-A"], check=True)
+            subprocess.run([*git, "commit", "-q", "-m", "carry"], check=True)
+            commits.append(subprocess.run([*git, "rev-parse", "HEAD"], check=True, capture_output=True, text=True).stdout.strip())
+        subprocess.run([*git, "push", "-q", str(remote), "HEAD:refs/heads/claude/carrier"], check=True, capture_output=True)
+        sums = (work / "SHA256SUMS").read_bytes()
+        values = {"repo": "owner/carrier", "branch": "claude/carrier", "commit": commits[-1], "files": str(len(files) + 1),
+                  "bytes": str(sum(len(data) for data in files.values()) + len(sums)), "manifest": hashlib.sha256(sums).hexdigest()}
+        return commits, values
+
+    def carry_record(self, values, name="carried_set"):
+        (self.repo / "grid" / "carry").mkdir(exist_ok=True)
+        lines = "".join(f"{key} {value}\n" for key, value in values.items())
+        (self.repo / "grid" / "carry" / f"{name}.txt").write_text("# a carried folder for the test\n" + lines, encoding="utf-8")
+
+    def carry(self, name="carried_set"):
+        self.ceph_fake()
+        env = dict(self.gate_env(), GETFATTR=str(self.fake / "getfattr"), CARRY_BASE=f"file://{self.tmp / 'remotes'}")
+        return subprocess.run(["bash", str(self.repo / "grid" / "gate.sh"), "fetch", name], env=env, capture_output=True, text=True, timeout=120)
+
+    CARRIED = {"a/one.txt": b"one\n", "b c/two.bin": bytes(range(256)) * 4, "README.md": b"# carried\n"}
+
+    def test_a_carried_folder_lands_checked_with_no_job_and_a_later_send_checks_it_again(self):
+        commits, values = self.carrier(self.CARRIED)
+        self.carry_record(values)
+        done = self.carry()
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        landing = self.data / "carried_set"
+        for name, data in self.CARRIED.items():
+            self.assertEqual((landing / name).read_bytes(), data, name)
+        self.assertEqual(oct(landing.stat().st_mode & 0o777), "0o700")
+        self.assertEqual((landing / "a" / "one.txt").stat().st_mode & 0o077, 0, "only the account reads the files")
+        carried = (landing / "meta" / "CARRIED").read_text(encoding="utf-8").split()
+        self.assertEqual(carried[:4], ["carried", commits[-1], values["files"], values["bytes"]])
+        self.assertEqual(carried[5:], ["owner/carrier", "claude/carrier"])
+        self.assertFalse((self.data / ".carry_carried_set").exists(), "the git copy is gone once the folder is in place")
+        self.assertIn("room: 8844 GB free under its quota", done.stdout)
+        self.assertIn(f"carried_set: carried at {commits[-1][:12]}", done.stdout)
+        self.assertNotIn(str(self.data), done.stdout)
+        self.assertEqual(self.submitted(), [])
+        self.assertEqual(self.recorded(), {})
+        # a later send fetches nothing and checks the landing again
+        done = self.carry()
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn(f"its {values['files']} files match SHA256SUMS again; nothing was fetched", done.stdout)
+        (landing / "a" / "one.txt").write_bytes(b"changed\n")
+        done = self.carry()
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("1 of its files do not match SHA256SUMS", done.stdout)
+
+    def test_a_carried_folder_is_refused_whole_when_anything_differs_from_its_record(self):
+        commits, values = self.carrier(self.CARRIED)
+        landing, stage = self.data / "carried_set", self.data / ".carry_carried_set"
+        cases = (
+            ({"commit": commits[0]}, 2, "is not at the record's commit"),
+            ({"branch": "claude/gone"}, 1, "git could not fetch the branch claude/gone of owner/carrier"),
+            ({"files": "3"}, 2, "where the record says 3 files"),
+            ({"bytes": str(int(values["bytes"]) + 1)}, 2, "bytes and none other"),
+            ({"manifest": "0" * 64}, 1, "its SHA256SUMS is not the one the record names"),
+            ({"commit": "HEAD"}, 2, "is not of its shape"),
+            ({"branch": "claude/../main"}, 2, "is not of its shape"),
+            # ten terabytes and their git copy: more than the 8844 GB of room, refused before git runs
+            ({"bytes": str(10 * 10**12)}, 75, "the folder and its git copy need 20200 GB and the room is 8844 GB; nothing was fetched"),
+        )
+        for change, code, said in cases:
+            self.carry_record(dict(values, **change))
+            done = self.carry()
+            self.assertEqual(done.returncode, code, f"{change}: {done.stdout}{done.stderr}")
+            self.assertIn(said, done.stdout, change)
+            self.assertFalse(landing.exists(), change)
+            self.assertFalse(stage.exists(), change)
+        self.carry_record({key: value for key, value in values.items() if key != "manifest"})
+        self.assertEqual(self.carry().returncode, 2, "a record without its manifest")
+        self.carry_record(values)
+        # a folder of that name that holds no carry of the commit is never overwritten
+        landing.mkdir()
+        (landing / "keep").write_text("mine\n", encoding="utf-8")
+        done = self.carry()
+        self.assertEqual(done.returncode, 2, done.stdout)
+        self.assertIn("holds no carry of", done.stdout)
+        self.assertEqual(sorted(path.name for path in landing.iterdir()), ["keep"])
+        # a git copy an earlier send left behind is cleared, and the folder lands
+        landing.rename(self.tmp / "aside")
+        stage.mkdir()
+        (stage / "half").write_text("x", encoding="utf-8")
+        done = self.carry()
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertEqual((landing / "README.md").read_bytes(), b"# carried\n")
+        self.assertFalse(stage.exists())
+        self.assertEqual(self.submitted(), [])
+
     def test_ct_rate_and_an_open_chain_source_are_never_a_fetch_word(self):
         for name in ("hf_ct_rate", "aws_stoic2021"):
             self.assertEqual(self.gate_at_home("fetch", name).returncode, 64, name)
