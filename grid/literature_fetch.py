@@ -11,7 +11,7 @@ two passes inside one Slurm job (grid/literature.sbatch, queued by the gate word
            it stated none, by a cap, then writes the landing's INDEX.md and README.md and the report.
 
 The sources, in order. A paper the list marks held is not fetched. A PMC id in the open-access
-subset gets Europe PMC's JATS XML and a PDF (the PMC open-access service's link, else Europe PMC's).
+subset gets Europe PMC's JATS XML and a PDF (from PMC's Cloud Service, else Europe PMC's link).
 A DOI of Elsevier's (10.1016/) goes through Elsevier's article API with the owner's key and
 institutional token, after its entitlement check, whether or not PMC holds it too, so the answer
 shows what the key and token reach. Any other DOI with no PDF yet gets the open-access PDF Semantic
@@ -65,7 +65,7 @@ TRIES = 6
 RETRY_AFTER_CAP_SECONDS = 120
 DEFAULTS = {
     "epmc": "https://www.ebi.ac.uk/europepmc/webservices/rest",
-    "pmc_oa": "https://www.ncbi.nlm.nih.gov/pmc/utils/oa/oa.fcgi",
+    "pmc_cloud": "https://pmc-oa-opendata.s3.amazonaws.com",
     "elsevier": "https://api.elsevier.com/content/article",
     "s2": "https://api.semanticscholar.org/graph/v1/paper",
 }
@@ -360,9 +360,15 @@ def europe_pmc_record(pmcid):
     return None, "Europe PMC lists no record of it"
 
 
-def oa_service_pdfs(pmcid):
-    """The PDF links PMC's open-access service gives PMCID, as https addresses."""
-    answer = ask(f"{base('pmc_oa')}?id={pmcid}")
+def cloud_pdfs(pmcid):
+    """The article PDF of PMCID's newest version in PMC's Cloud Service, as an https address, or none.
+    PMC's copyright notice allows automated retrieval only through its OAI-PMH, FTP and Cloud services;
+    its open-access web service closed with the PMC Article Dataset Changes announced on 12 February
+    2026, Europe PMC's rendered PDFs answered the first run's script with 403, and PMC's own PDF links
+    show a script a reCAPTCHA (checked by hand, 2026-10-28).
+    The listing asks for PMCID and a dot, since PMC111 alone would also list PMC1110 and on."""
+    listing = f"{base('pmc_cloud')}/?list-type=2&prefix={pmcid}."
+    answer = ask(listing)
     pause()
     if answer.code != 200:
         return []
@@ -370,12 +376,13 @@ def oa_service_pdfs(pmcid):
         root = ElementTree.fromstring(answer.body)
     except ElementTree.ParseError:
         return []
-    links = []
-    for link in root.iter("link"):
-        href = link.get("href", "")
-        if link.get("format") == "pdf" and (href.startswith(("ftp://ftp.ncbi.nlm.nih.gov/", "https://")) or loopback(href)):
-            links.append("https://" + href[len("ftp://"):] if href.startswith("ftp://") else href)
-    return links
+    versions = {}
+    for element in root.iter():
+        if element.tag.rsplit("}", 1)[-1] == "Key":
+            match = re.fullmatch(rf"{pmcid}\.([0-9]{{1,4}})/{pmcid}\.\1\.pdf", element.text or "")
+            if match:
+                versions[int(match.group(1))] = match.group(0)
+    return [f"{base('pmc_cloud')}/{versions[max(versions)]}"] if versions else []
 
 
 def europe_pmc_pdfs(record):
@@ -396,10 +403,10 @@ def pmc_items(row):
     if record is None:
         return [], [why]
     if record.get("isOpenAccess") != "Y":
-        return [], ["PMC holds it outside the open-access subset, which no script may fetch"]
+        return [], ["PMC holds it outside the open-access subset, which this fetch leaves to a person"]
     licence = record.get("license", "")
     items = [item(row, "epmc", "xml", [f"{base('epmc')}/{row['pmcid']}/fullTextXML"], licence=licence)]
-    pdfs = oa_service_pdfs(row["pmcid"]) + europe_pmc_pdfs(record)
+    pdfs = cloud_pdfs(row["pmcid"]) + europe_pmc_pdfs(record)
     if pdfs:
         items.append(item(row, "pmc", "pdf", pdfs, licence=licence))
     return items, []

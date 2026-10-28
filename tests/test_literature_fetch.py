@@ -1,5 +1,5 @@
 """grid/literature_fetch.py and grid/literature.sbatch against stand-ins for Europe PMC, PMC's
-open-access service, Elsevier's article API and Semantic Scholar on a loopback server: each paper
+Cloud Service, Elsevier's article API and Semantic Scholar on a loopback server: each paper
 lands from the source that allows it or is listed with the reason it did not; Elsevier's key and
 token travel only in Elsevier's request headers, Semantic Scholar's only in its own, never through a
 redirect, and never into a file, the output or the report; the landing is 0700 and every file 0600;
@@ -21,6 +21,7 @@ import sys
 import tempfile
 import threading
 import unittest
+import urllib.error
 from unittest import mock
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -84,8 +85,10 @@ class Services(BaseHTTPRequestHandler):
             return self.europe_pmc_search(query["query"][0].split(":", 1)[1])
         if path.startswith("/epmc/") and path.endswith("/fullTextXML"):
             return self.answer(200, b"<article><front/><body><p>text</p></body></article>", "application/xml")
-        if path == "/pmc_oa":
-            return self.oa_service(query["id"][0])
+        if path == "/pmc_cloud/":
+            return self.cloud_listing(query["prefix"][0])
+        if path.startswith("/pmc_cloud/"):
+            return self.answer(200, PDF, "binary/octet-stream")
         if path.startswith("/elsevier/entitlement/doi/"):
             return self.entitlement(path[len("/elsevier/entitlement/doi/"):])
         if path.startswith("/elsevier/doi/"):
@@ -106,12 +109,17 @@ class Services(BaseHTTPRequestHandler):
                       {"documentStyle": "html", "availabilityCode": "OA", "url": "https://example.org/x"}]}}
         self.answer(200, json.dumps({"resultList": {"result": [record]}}).encode())
 
-    def oa_service(self, pmcid):
-        if pmcid != "PMC111":
-            return self.answer(200, b'<OA><error code="idIsNotOpenAccess">no</error></OA>', "text/xml")
-        body = f'<OA><records><record id="{pmcid}"><link format="tgz" href="{self.base()}/files/a.tgz"/>' \
-               f'<link format="pdf" href="{self.base()}/files/oa.pdf"/></record></records></OA>'
-        self.answer(200, body.encode(), "text/xml")
+    def cloud_listing(self, prefix):
+        """An S3 listing of PMC's Cloud Service bucket, in S3's order: PMC111 in versions 2 and 10, which
+        sort the other way as text, each PDF with its text or figure beside it and the newest with a
+        supplement's PDF too, and PMC1110, which a prefix without its dot would list as well."""
+        keys = ["PMC111.2/PMC111.2.pdf", "PMC111.2/PMC111.2.xml", "PMC111.10/fig1.jpg", "PMC111.10/PMC111.10.pdf",
+                "PMC111.10/PMC111.10.txt", "PMC111.10/supp1.pdf", "PMC1110.1/PMC1110.1.pdf"]
+        listed = "".join(f"<Contents><Key>{key}</Key><Size>{len(PDF)}</Size></Contents>"
+                         for key in sorted(keys) if key.startswith(prefix))
+        body = f'<?xml version="1.0" encoding="UTF-8"?><ListBucketResult xmlns="http://s3.amazonaws.com/doc/' \
+               f'2006-03-01/"><Prefix>{prefix}</Prefix>{listed}</ListBucketResult>'
+        self.answer(200, body.encode(), "application/xml")
 
     def keyed_as_elsevier(self):
         return self.headers.get("X-ELS-APIKey") == ELSEVIER_KEY and self.headers.get("X-ELS-Insttoken") == ELSEVIER_TOKEN
@@ -204,7 +212,7 @@ def serve(test):
 
 
 def service_env(address):
-    return {"LITERATURE_EPMC": f"{address}/epmc", "LITERATURE_PMC_OA": f"{address}/pmc_oa",
+    return {"LITERATURE_EPMC": f"{address}/epmc", "LITERATURE_PMC_CLOUD": f"{address}/pmc_cloud",
             "LITERATURE_ELSEVIER": f"{address}/elsevier", "LITERATURE_S2": f"{address}/s2", "LITERATURE_PAUSE": "0",
             "LITERATURE_STAND_INS": "yes"}
 
@@ -229,6 +237,7 @@ def home_with_keys(folder, elsevier=True, s2=True, mode=0o600):
 class FetchToolTest(unittest.TestCase):
     def setUp(self):
         self.tool = load_tool()
+        self.keep_to_the_stand_ins()
         self.address = serve(self)
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
@@ -241,6 +250,29 @@ class FetchToolTest(unittest.TestCase):
         saved = dict(os.environ)
         self.addCleanup(lambda: (os.environ.clear(), os.environ.update(saved)))
         os.environ.update(service_env(self.address), HOME=str(self.home))
+
+    def keep_to_the_stand_ins(self):
+        """Refuse, and fail the test for, any request the tool makes past the loopback stand-ins, such
+        as one to a default address a stand-in was meant to replace."""
+        self.left_loopback = []
+        build = self.tool.opener
+
+        def loopback_only(keyed):
+            built = build(keyed)
+            real_open = built.open
+
+            def open_loopback(request, *args, **kwargs):
+                url = getattr(request, "full_url", request)
+                if not self.tool.loopback(url):
+                    self.left_loopback.append(url)
+                    raise urllib.error.URLError("a request left the stand-ins")
+                return real_open(request, *args, **kwargs)
+
+            built.open = open_loopback
+            return built
+
+        self.tool.opener = loopback_only
+        self.addCleanup(lambda: self.assertFalse(self.left_loopback, "a request left the stand-ins"))
 
     def run_step(self, *args):
         out = io.StringIO()
@@ -277,7 +309,8 @@ class FetchToolTest(unittest.TestCase):
         self.assertIn("elsevier pdf: not asked: Elsevier's XML held no full text", line["elsabs"])
         self.assertIn("not got; Elsevier: not entitled to the full text under the key and insttoken", line["elsno"])
         self.assertIn("no open-access copy that Semantic Scholar knows of", line["elsno"])
-        self.assertIn("PMC holds it outside the open-access subset, which no script may fetch", line["closedpmc"])
+        self.assertIn("PMC holds it outside the open-access subset, which this fetch leaves to a person",
+                      line["closedpmc"])
         self.assertIn("Semantic Scholar's copy is on www.ncbi.nlm.nih.gov, not scripted here", line["closedpmc"])
         self.assertIn("Elsevier entitlement check: redirect refused", line["redir"])
         self.assertIn("got s2 pdf", line["s2got"])
@@ -319,8 +352,14 @@ class FetchToolTest(unittest.TestCase):
         self.assertFalse([name for name in names if name.endswith(".part")])
         self.assertTrue((self.landing / "INDEX.md").exists() and (self.landing / "README.md").exists())
         self.assertIn("never used to train a model", (self.landing / "README.md").read_text(encoding="utf-8"))
-        # the PDF came from PMC's open-access service, the first link it offers
-        self.assertTrue(any(path.endswith("/files/oa.pdf") for _, path, _ in Services.calls))
+        # the PDF came from PMC's Cloud Service, its newest version, from a listing that names the id whole
+        asked = [path for _, path, _ in Services.calls if path.startswith("/pmc_cloud/")]
+        self.assertIn("/pmc_cloud/?list-type=2&prefix=PMC111.", asked)
+        self.assertIn("/pmc_cloud/PMC111.10/PMC111.10.pdf", asked)
+        self.assertNotIn("/pmc_cloud/PMC111.2/PMC111.2.pdf", asked)
+        self.assertNotIn("/pmc_cloud/PMC111.10/supp1.pdf", asked)
+        self.assertNotIn("/pmc_cloud/PMC1110.1/PMC1110.1.pdf", asked)
+        self.assertFalse([path for path in asked if "PMC222" in path])
 
     def test_keys_travel_only_in_their_own_services_headers(self):
         _, planned = self.plan()
@@ -355,7 +394,7 @@ class FetchToolTest(unittest.TestCase):
         self.report.unlink()
         self.fetch()
         again = [path for _, path, _ in Services.calls[before:]]
-        self.assertFalse([path for path in again if path.startswith(("/files/s2got", "/files/oa.pdf"))], again)
+        self.assertFalse([path for path in again if path.startswith(("/files/s2got", "/pmc_cloud/PMC111.10/"))], again)
         self.assertTrue([path for path in again if path.startswith("/elsevier/doi/10.1016/j.abs.1")], again)
         self.assertIn("- elsgot: got elsevier xml", self.report.read_text(encoding="ascii"))
 
@@ -482,8 +521,10 @@ class FetchToolTest(unittest.TestCase):
     def test_a_stand_in_address_counts_only_under_the_stand_in_switch(self):
         del os.environ["LITERATURE_STAND_INS"]
         self.assertEqual(self.tool.base("elsevier"), "https://api.elsevier.com/content/article")
+        self.assertEqual(self.tool.base("pmc_cloud"), "https://pmc-oa-opendata.s3.amazonaws.com")
         os.environ["LITERATURE_STAND_INS"] = "yes"
         self.assertEqual(self.tool.base("elsevier"), f"{self.address}/elsevier")
+        self.assertEqual(self.tool.base("pmc_cloud"), f"{self.address}/pmc_cloud")
 
     def test_a_redirect_moves_freely_except_onto_a_host_never_scripted(self):
         handler = self.tool.ScriptedOnly()
@@ -509,6 +550,7 @@ class FetchToolTest(unittest.TestCase):
     def test_every_service_is_asked_over_https(self):
         for service, address in self.tool.DEFAULTS.items():
             self.assertTrue(address.startswith("https://"), service)
+            self.assertNotIn("/pmc/utils/oa", address, "PMC's open-access web service has closed")
 
 
 class CommittedListTest(unittest.TestCase):
