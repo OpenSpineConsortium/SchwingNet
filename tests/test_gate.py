@@ -109,9 +109,15 @@ esac
 """
 
 FAKES = {
+    # what $FAKE/queue holds, or, asked for the pending jobs' reasons, what $FAKE/pending holds; its
+    # arguments logged
     "squeue": """#!/bin/bash
+echo "$*" >> "$FAKE/squeue.log"
 [ -f "$FAKE/squeue_fails" ] && { echo "slurm_load_jobs error: Socket timed out" >&2; exit 1; }
-cat "$FAKE/queue" 2>/dev/null || true
+case " $* " in
+  *" -t PENDING "*) cat "$FAKE/pending" 2>/dev/null || true ;;
+  *) cat "$FAKE/queue" 2>/dev/null || true ;;
+esac
 """,
     # what $FAKE/sacct.out holds, else one finished job; its arguments logged
     "sacct": """#!/bin/bash
@@ -1291,6 +1297,56 @@ esac
         self.assertIn("cancelled before it started", done.stdout)
         self.assertIn("## 501 (xr_fetch) ended FAILED", done.stdout)
         self.assertIn("    XR_FETCH_RC=1", done.stdout)
+
+    def test_status_says_what_a_pending_job_waits_for_and_when_slurm_expects_it(self):
+        self.failed((700, "bench", "bench_flexray_drr_gap", "bench_flexray_drr_gap", "PENDING", "00:00:00", None),
+                    ("701_[0-3]", "bench", "bench_flexray_drr_gap_shard", "bench_flexray_drr_gap_shard", "PENDING", "00:00:00", None),
+                    (702, "bench", "bench_flexray_drr_gap_merge", "bench_flexray_drr_gap_merge", "PENDING", "00:00:00", None),
+                    (703, "bench", "bench_flexray_drr_seg", "bench_flexray_drr_seg", "RUNNING", "00:10:00", None),
+                    ("704_1", "bench", "bench_flexray_carmlspine", "bench_flexray_carmlspine", "PENDING", "00:00:00", None),
+                    ("704_[2-3]", "bench", "bench_flexray_carmlspine", "bench_flexray_carmlspine", "PENDING", "00:00:00", None),
+                    (705, "bench", "bench_flexray_deepfluoro", "bench_flexray_deepfluoro", "PENDING", "00:00:00", None),
+                    (706, "bench", "bench_xvr_deepfluoro", "bench_xvr_deepfluoro", "PENDING", "00:00:00", None),
+                    (707, "bench", "setup", "sn_setup", "PENDING", "00:00:00", None))
+        (self.fake / "queue").write_text("700\n701_[0-3]\n702\n703\n704_1\n704_[2-3]\n705\n706\n707\n", encoding="utf-8")
+        # 702 has no row; 703 runs, so a stale row for it says nothing; 704 is an array Slurm split in
+        # two, each part with a reason of its own; 705's reason is empty, 706's row is cut short, and
+        # 707's reason holds a token, which the redaction withholds with the rest of its row
+        (self.fake / "pending").write_text(
+            "700|Resources|2026-10-28T03:12:00\n701_[0-3]|Dependency|N/A\n703|Priority|N/A\n"
+            "704_1|BeginTime|2026-10-28T00:05:00\n704_[2-3]|QOSMaxGRESPerUser|N/A\n705||N/A\n706|Priority\n"
+            "707|token=ghp_abcdefgh12345678|N/A\n", encoding="utf-8")
+        done = self.gate("status")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("  700 bench_flexray_drr_gap PENDING 00:00:00 1:0 n1, waiting: Resources, start expected 2026-10-28T03:12:00 grid time\n",
+                      done.stdout)
+        self.assertIn("  701_[0-3] bench_flexray_drr_gap_shard PENDING 00:00:00 1:0 n1, waiting: Dependency\n", done.stdout)
+        self.assertIn("  702 bench_flexray_drr_gap_merge PENDING 00:00:00 1:0 n1\n", done.stdout)
+        self.assertIn("  703 bench_flexray_drr_seg RUNNING 00:10:00 1:0 n1\n", done.stdout)
+        self.assertIn("  704_1 bench_flexray_carmlspine PENDING 00:00:00 1:0 n1, waiting: BeginTime, start expected 2026-10-28T00:05:00 grid time\n",
+                      done.stdout)
+        self.assertIn("  704_[2-3] bench_flexray_carmlspine PENDING 00:00:00 1:0 n1, waiting: QOSMaxGRESPerUser\n", done.stdout)
+        self.assertIn("  705 bench_flexray_deepfluoro PENDING 00:00:00 1:0 n1\n", done.stdout)
+        self.assertIn("  706 bench_xvr_deepfluoro PENDING 00:00:00 1:0 n1\n", done.stdout)
+        self.assertIn("  707 setup PENDING 00:00:00 1:0 n1\n", done.stdout)
+        self.assertNotIn("ghp_", done.stdout)
+        # squeue that does not answer leaves the job lines as sacct gives them, its error unshown and
+        # not asked again for the reasons
+        (self.fake / "squeue_fails").write_text("", encoding="utf-8")
+        (self.fake / "squeue.log").unlink()
+        done = self.gate("status")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("  700 bench_flexray_drr_gap PENDING 00:00:00 1:0 n1\n", done.stdout)
+        self.assertNotIn("slurm_load_jobs", done.stdout)
+        self.assertNotIn("-t PENDING", (self.fake / "squeue.log").read_text(encoding="utf-8"))
+
+    def test_status_asks_squeue_for_no_reasons_where_no_job_waits(self):
+        self.failed((710, "bench", "bench_flexray_drr_seg", "bench_flexray_drr_seg", "RUNNING", "00:10:00", None))
+        (self.fake / "queue").write_text("710\n", encoding="utf-8")
+        done = self.gate("status")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("  710 bench_flexray_drr_seg RUNNING 00:10:00 1:0 n1\n", done.stdout)
+        self.assertNotIn("-t PENDING", (self.fake / "squeue.log").read_text(encoding="utf-8"))
 
     def test_status_bounds_how_many_failed_jobs_and_array_tasks_it_shows(self):
         rows = [(600 + i, "start", f"dp_s{i}", f"dp_fetch_s{i}", "FAILED", "00:00:01", ["PLATFORM_RC=1"]) for i in range(8)]
@@ -3258,6 +3314,54 @@ esac
         self.live("4243")
         self.assertEqual(self.gate("unpack", "kaggle_scoliosis_yolov5").returncode, 75)
         self.assertEqual(len(self.submitted()), 1)
+
+    def test_literature_queues_once_then_prints_and_keeps_its_report(self):
+        # a list the checkout does not hold, and a malformed send, are refused and queue nothing
+        self.assertEqual(self.gate("literature", "no_such_list").returncode, 64)
+        self.assertEqual(self.gate("literature", "a", "b").returncode, 64)
+        self.assertEqual(self.gate("literature", "Bad-List").returncode, 64)
+        self.assertEqual(self.submitted(), [])
+        done = self.gate("literature", "synthetic_spine")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        lines = self.submitted()
+        self.assertEqual(len(lines), 1, lines)
+        self.assertIn("--class batch --name literature", lines[0])
+        self.assertIn("literature.sbatch", lines[0])
+        self.assertIn("LIST_ID=synthetic_spine", lines[0])
+        self.assertIn(f"DATA_ROOT={self.data}", lines[0])
+        job = self.recorded()["literature"]
+        # while it is live, a second send is refused
+        self.live(job)
+        self.assertEqual(self.gate("literature", "synthetic_spine").returncode, 75)
+        self.assertEqual(len(self.submitted()), 1)
+        # once it has ended, its report is printed once, kept under its job's number, and nothing is queued
+        (self.fake / "queue").write_text("", encoding="utf-8")
+        logs = self.repo / "grid" / "logs"
+        report = logs / "LITERATURE-synthetic_spine.md"
+        report.write_text(f"# literature synthetic_spine: job {job} on node1, commit abc1234, 2026-10-28 01:00:00 UTC\n"
+                          "- bach2019: not got; Elsevier: not entitled to the full text under the key and insttoken\n"
+                          "- exit 0 at 2026-10-28 01:05:00 UTC\n", encoding="utf-8")
+        done = self.gate("literature", "synthetic_spine")
+        self.assertEqual(done.returncode, 0, done.stdout)
+        self.assertIn("- bach2019: not got; Elsevier: not entitled to the full text under the key and insttoken", done.stdout)
+        self.assertEqual(len(self.submitted()), 1)
+        self.assertFalse(report.exists())
+        self.assertTrue((logs / f"LITERATURE-synthetic_spine-{job}.md").exists())
+        # and the send after that fetches again what is still missing
+        self.assertEqual(self.gate("literature", "synthetic_spine").returncode, 0)
+        self.assertEqual(len(self.submitted()), 2)
+        # a job killed before it wrote its exit leaves its report unfinished: printed and kept, nothing queued
+        (self.fake / "queue").write_text("", encoding="utf-8")
+        part = logs / "LITERATURE-synthetic_spine.md.part"
+        part.write_text("# literature synthetic_spine: job 4242 on node1, commit abc1234, 2026-10-28 02:00:00 UTC\n"
+                        "- admitted under the size rule: 400000000 bytes at most\n", encoding="utf-8")
+        done = self.gate("literature", "synthetic_spine")
+        self.assertEqual(done.returncode, 0, done.stdout)
+        self.assertIn("unfinished: the job ended before it wrote its exit", done.stdout)
+        self.assertIn("admitted under the size rule", done.stdout)
+        self.assertEqual(len(self.submitted()), 2)
+        self.assertFalse(part.exists())
+        self.assertTrue((logs / "LITERATURE-synthetic_spine-4242-unfinished.md").exists())
 
     def test_status_shows_the_sample_manifest_whole(self):
         logs = self.repo / "grid" / "logs"

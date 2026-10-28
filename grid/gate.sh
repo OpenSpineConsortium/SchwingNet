@@ -126,6 +126,13 @@
 #                   job (grid/realism.sbatch, tools/realism.py) once its inputs have landed and the stage before
 #                   it has finished; the next send prints logs/REALISM-<stage>.md, and every later one prints it
 #                   again and queues nothing
+#   literature <list>  one reading list's papers fetched onto the grid (the owner's word of 2026-10-27
+#                   23:00 UTC; grid/literature.sbatch, grid/literature_fetch.py, the list grid/literature/<list>.csv):
+#                   PMC's open-access copies, Elsevier's through its API with the key and institutional token
+#                   the key route wrote, and the open copies Semantic Scholar names, under the size rule, into
+#                   the landing literature_<list>, 0700; queued as one batch job, the next send prints
+#                   logs/LITERATURE-<list>.md, which names every paper it could not get, keeps it under its job's
+#                   number and queues nothing, and the send after that fetches again what is still missing
 #   stop            cancel the gate's own jobs that are still queued or running, and nothing else
 #   cancel <job>    cancel one of the gate's own live jobs and every other live job its word queued
 #                   with it (a fetch's bank and catalog, the DRR domain-gap study's three jobs), and nothing else
@@ -189,18 +196,18 @@ DRR_GAP_TASKS=4
 H200=(--partition gmsap)
 LOGS=$REPO/grid/logs
 STATE=$LOGS/GATE_JOBS.txt
-WORDS="start status leaks v1 latency fetch explore dropzip unpack nodequota folders samples sweep bank experiment bench anomaly bordercall realism stop cancel"
+WORDS="start status leaks v1 latency fetch explore dropzip unpack nodequota folders samples sweep bank experiment bench anomaly bordercall realism literature stop cancel"
 ENVS="default train-cpu train-gpu telemetry"
 
 word=${1:-}
 id=${2:-}
 # Matched whole, so one argument holding two words ("v1 latency") is refused and never runs nothing.
 case "$word" in
-  start|status|leaks|v1|latency|fetch|explore|dropzip|unpack|nodequota|folders|samples|sweep|bank|experiment|bench|anomaly|bordercall|realism|stop|cancel) ;;
+  start|status|leaks|v1|latency|fetch|explore|dropzip|unpack|nodequota|folders|samples|sweep|bank|experiment|bench|anomaly|bordercall|realism|literature|stop|cancel) ;;
   "") echo "refusing: no word; one of: $WORDS"; exit 64 ;;
   *) echo "refusing: '$word' is not one of: $WORDS"; exit 64 ;;
 esac
-if [ "$word" = fetch ] || [ "$word" = explore ] || [ "$word" = dropzip ] || [ "$word" = unpack ] || [ "$word" = sweep ] || [ "$word" = bank ] || [ "$word" = bench ] || [ "$word" = anomaly ] || [ "$word" = bordercall ] || [ "$word" = realism ]; then
+if [ "$word" = fetch ] || [ "$word" = explore ] || [ "$word" = dropzip ] || [ "$word" = unpack ] || [ "$word" = sweep ] || [ "$word" = bank ] || [ "$word" = bench ] || [ "$word" = anomaly ] || [ "$word" = bordercall ] || [ "$word" = realism ] || [ "$word" = literature ]; then
   [ $# -eq 2 ] || { echo "refusing: $word takes exactly one id"; exit 64; }
   case "$id" in ""|*[!a-z0-9_]*) echo "refusing: an id is lower-case letters, digits and _"; exit 64 ;; esac
   [ ${#id} -le 40 ] || { echo "refusing: an id is at most 40 characters"; exit 64; }
@@ -251,14 +258,14 @@ submit() {  # submit WHAT CLASS [K=V...] [job submit options...] -- SCRIPT: the 
 gate_ids() {  # every job id the gate's list names, oldest first
   [ -f "$STATE" ] && awk '{ print $1 }' "$STATE"
 }
-QUEUED=""
+QUEUED="" SQUEUE_ANSWERED=""
 snapshot() {  # what Slurm holds for WHO, read once per word; a failed squeue refuses the word
   local out
   if ! out=$("$SQUEUE" -h -u "$WHO" -o '%i' 2>/dev/null); then
     echo "refusing: squeue failed, so the gate cannot tell which of its jobs are queued or running; send the word again"
     return 75
   fi
-  QUEUED=" $(echo "$out" | sed 's/_.*//' | sort -u | tr '\n' ' ') "
+  QUEUED=" $(echo "$out" | sed 's/_.*//' | sort -u | tr '\n' ' ') " SQUEUE_ANSWERED=yes
 }
 live_ids() {  # the gate's jobs Slurm still holds, queued or running (an array as its base id)
   gate_ids | sort -u | while read -r job; do
@@ -430,6 +437,27 @@ newest_jobs() {  # " <id> <id> ... ": the newest job the gate submitted for each
 }
 what_of() {  # what_of ID: what the gate recorded job ID as
   awk -v j="$1" '$1 == j { what = $3 } END { print what }' "$STATE" 2>/dev/null
+}
+# sacct says a queued job is PENDING and no more, so a job that waits hours reads the same whether
+# Slurm is waiting for a node to come free or will never start it under its partition's or QoS's
+# limits; squeue's reason tells the two apart, and its expected start says how long the first is.
+# The reason is the one field of the job list Slurm may write in words of its own, so it passes the
+# same redaction as a log's lines; a row the redaction cuts short is dropped, never shown in part.
+pending_reasons() {  # one squeue read of WHO's pending jobs: id|base id|reason|expected start per row, nothing where squeue does not answer
+  "$SQUEUE" -h -u "$WHO" -t PENDING -o '%i|%r|%S' 2>/dev/null | LC_ALL=C tr -cd '\12\40-\176' | sed -r -f "$REPO/grid/redact.sed" \
+    | awk -F'|' 'NF == 3 && $1 ~ /^[0-9]/ { base = $1; sub(/_.*/, "", base); print $1 "|" base "|" substr($2, 1, 80) "|" substr($3, 1, 19) }'
+}
+waiting_for() {  # waiting_for ID STATE PENDING: what a PENDING job waits for, as a tail for its sacct line, else nothing
+  # An array split by Slurm, one task held or requeued apart from the rest, has a row for each part,
+  # so the row of the same id comes first and its array's first row only where none has that id.
+  [ "$2" = PENDING ] || return 0
+  awk -F'|' -v job="$1" 'function tail(reason, start) {
+      return ", waiting: " reason (start ~ /^[0-9][0-9][0-9][0-9]-/ ? ", start expected " start " grid time" : "") }
+    $3 == "" { next }
+    $1 == job { exact = tail($3, $4); exit }
+    { base = job; sub(/_.*/, "", base) }
+    $2 == base && first == "" { first = tail($3, $4) }
+    END { print (exact != "" ? exact : first) }' <<< "$3"
 }
 masked() {  # every line status shows of a log or a stage report: masked, then cut
   sed -r -f "$REPO/grid/redact.sed" | cut -c "1-$LINE_CHARS"
@@ -626,7 +654,7 @@ word_status() {
     -f "$REPO/grid/status-page.awk"
 }
 status_sections() {  # every section of status whole, in the order the page shows them
-  local ids run lines job name state elapsed code node probe
+  local ids run lines job name state elapsed code node probe pending
   # The space first and the sweeps' progress, the one live view of a sweep, after it, then each
   # benchmark's, the DRR domain-gap study's while its shards run; then the sample manifest, which
   # once came after the jobs, where the page's end cut it.
@@ -638,11 +666,15 @@ status_sections() {  # every section of status whole, in the order the page show
   if [ -z "$ids" ]; then
     echo "no job submitted by the gate yet; 'start' submits the graph"
   else
-    echo "## the gate's newest jobs (sacct): id, what, state, elapsed, exit code, node"
+    echo "## the gate's newest jobs (sacct): id, what, state, elapsed, exit code, node, and what a pending job waits for (squeue)"
     lines=$("$SACCT" -X -n -P -j "$ids" --format=JobID,JobName,State,Elapsed,ExitCode,NodeList 2>/dev/null)
+    # squeue is asked for reasons only where the word's own read of it answered and a job waits,
+    # so a slow scheduler costs status no second timeout and a quiet list no extra call.
+    pending=""
+    if [ -n "$SQUEUE_ANSWERED" ] && [[ "$lines" == *"|PENDING|"* ]]; then pending=$(pending_reasons); fi
     while IFS='|' read -r job name state elapsed code node; do
       [ -n "$job" ] || continue
-      echo "  $job $(what_of "${job%%_*}") $state $elapsed $code $node"
+      echo "  $job $(what_of "${job%%_*}") $state $elapsed $code $node$(waiting_for "$job" "$state" "$pending")"
     done <<< "$lines"
     fetch_progress
     failed_tails "$lines"
@@ -1392,6 +1424,31 @@ word_bordercall() {  # the bordercall corpus, pilot then full (the owner's count
   echo "submitted the bordercall stage $id. Send bordercall $id again once it ends to read its report, logs/BORDERCALL-$id.md."
 }
 
+word_literature() {  # one reading list fetched onto the grid: queued once, its report printed and kept on the next send
+  local report=$LOGS/LITERATURE-$id.md busy
+  [ -f "$REPO/grid/literature/$id.csv" ] || { echo "refusing: no reading list grid/literature/$id.csv"; return 64; }
+  busy=$(live_of literature "literature:$id")
+  [ -z "$busy" ] || { echo "refusing: the fetch of the list $id is still queued or running (job $busy); send literature $id again once it ends"; return 75; }
+  if [ -f "$report" ]; then
+    # Printed once and kept under its job's number, so the send after this one fetches again what
+    # is still missing (an Elsevier paper once its access opens) while the landing keeps what came.
+    echo "## $(basename "$report") ($(date -r "$report" '+%F %T'))"
+    head -n 200 "$report" | LC_ALL=C tr -cd '\11\12\40-\176' | masked | head -c 30000
+    mv "$report" "$LOGS/LITERATURE-$id-$(bench_job_of "$report").md" || return 1
+    return 0
+  fi
+  if [ -f "$report.part" ]; then
+    # A job killed past its own trap, by memory or a node's failure, leaves its report unfinished:
+    # printed and kept the same way, so a failed run is never followed by a silent new one.
+    echo "## $(basename "$report") unfinished: the job ended before it wrote its exit ($(date -r "$report.part" '+%F %T'))"
+    head -n 200 "$report.part" | LC_ALL=C tr -cd '\11\12\40-\176' | masked | head -c 30000
+    mv "$report.part" "$LOGS/LITERATURE-$id-$(bench_job_of "$report.part")-unfinished.md" || return 1
+    return 0
+  fi
+  submit literature batch LIST_ID="$id" DATA_ROOT="$DATA_ROOT" VOLUME="$VOLUME" -- literature.sbatch > /dev/null || return 1
+  echo "submitted one job. It lands a byte only once the size rule admits it; send literature $id again once it ends to read its report, logs/LITERATURE-$id.md."
+}
+
 realism_class() {  # the job class a stage of the realism programme runs as, else nothing
   case "$1" in
     edit|stats|lora|eval) echo gpu ;;
@@ -1772,6 +1829,7 @@ case "$word" in
   anomaly) word_anomaly ;;
   bordercall) word_bordercall ;;
   realism) word_realism ;;
+  literature) word_literature ;;
   samples) word_samples ;;
   sweep) word_sweep ;;
   bank) word_bank ;;
