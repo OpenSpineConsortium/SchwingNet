@@ -1830,6 +1830,70 @@ esac
         self.assertEqual(self.gate("bench", "flexray_deepfluoro").returncode, 0)
         self.assertEqual(len(self.submitted()), 1)
 
+    def test_a_standing_report_is_queued_once_more_only_where_bench_reruns_lists_its_job(self):
+        # the owner's count for one more run of a benchmark whose report stands is an entry
+        # <id>:<job> of BENCH_RERUNS, committed by pull request: a send whose report names that job,
+        # from a commit not the checkout's, keeps the report under its job's number and queues the
+        # benchmark again, the study's three jobs; the new report names its own job, so the entry
+        # runs it once; another job, the listed job at the checkout's own commit, or another id's
+        # report queues nothing, and a send refused for a missing input leaves the report standing
+        commit = self.git_repo()
+        self.drr_gap_inputs()
+        self.environments_ready()
+        gate = (self.repo / "grid" / "gate.sh").read_text(encoding="utf-8")
+        listed = [line for line in gate.splitlines() if line.startswith("BENCH_RERUNS=")]
+        self.assertEqual(listed, ['BENCH_RERUNS="flexray_drr_gap:40828920"'])
+        logs = self.repo / "grid" / "logs"
+        logs.mkdir(parents=True, exist_ok=True)
+        report = logs / "BENCH-flexray_drr_gap.md"
+        kept = logs / "BENCH-flexray_drr_gap-40828920.md"
+        head = "# bench flexray_drr_gap: job {} on voh6, commit {}, 2026-10-28 03:08:36 UTC\n"
+        ended = "- exit 0 at 2026-10-28 03:26:43 UTC\n"
+        for job, at in (("40828919", "d3fe578"), ("40828920", commit)):
+            report.write_text(head.format(job, at) + ended, encoding="utf-8")
+            done = self.gate("bench", "flexray_drr_gap")
+            self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+            self.assertIn("## BENCH-flexray_drr_gap.md (", done.stdout)
+            self.assertNotIn("queueing the benchmark again", done.stdout)
+            self.assertTrue(report.is_file())
+        other = logs / "BENCH-flexray_carmlspine.md"
+        other.write_text(head.format("40828920", "d3fe578").replace("flexray_drr_gap", "flexray_carmlspine") + ended, encoding="utf-8")
+        done = self.gate("bench", "flexray_carmlspine")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertNotIn("queueing the benchmark again", done.stdout)
+        self.assertTrue(other.is_file())
+        self.assertEqual(self.submitted(), [])
+        # the listed job from an older commit: refused while an input is missing, the report left
+        # standing, then queued once the input is back
+        report.write_text(head.format("40828920", "d3fe578") + ended, encoding="utf-8")
+        cts = self.data / "totalsegmentator_v201"
+        cts.rename(self.tmp / "cts")
+        refused = self.gate("bench", "flexray_drr_gap")
+        self.assertEqual(refused.returncode, 2, refused.stdout)
+        self.assertIn("refusing: bench flexray_drr_gap needs the TotalSegmentator CTs", refused.stdout)
+        self.assertNotIn("queueing the benchmark again", refused.stdout)
+        self.assertTrue(report.is_file())
+        self.assertFalse(kept.exists())
+        self.assertEqual(self.submitted(), [])
+        (self.tmp / "cts").rename(cts)
+        done = self.gate("bench", "flexray_drr_gap")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("  the report above is job 40828920's, which BENCH_RERUNS lets the owner's count run once more:"
+                      f" queueing the benchmark again at {commit}\n", done.stdout)
+        self.assertFalse(report.exists())
+        self.assertEqual(kept.read_text(encoding="utf-8"), head.format("40828920", "d3fe578") + ended)
+        self.assertEqual(len(self.submitted()), 3)
+        self.assertEqual([line.split("--name ")[1].split()[0] for line in self.submitted()], list(self.DRR_GAP_NAMES))
+        # the rerun's own report names prepare's new job, which no entry lists: printed, nothing queued
+        (self.fake / "queue").write_text("", encoding="utf-8")
+        report.write_text(head.format("101", "c694cc0") + ended, encoding="utf-8")
+        for _ in range(2):
+            done = self.gate("bench", "flexray_drr_gap")
+            self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+            self.assertNotIn("queueing the benchmark again", done.stdout)
+        self.assertTrue(report.is_file())
+        self.assertEqual(len(self.submitted()), 3)
+
     def test_anomaly_queues_one_cpu_job_for_select_and_then_keeps_printing_its_report(self):
         # no stage, two stages and a stage not built yet are refused before anything is read
         self.assertEqual(self.gate("anomaly").returncode, 64)

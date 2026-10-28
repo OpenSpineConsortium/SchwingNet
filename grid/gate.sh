@@ -88,7 +88,9 @@
 #   bench <name>    one public model's benchmark as its authors published it (#287, the owner's word and
 #                   count of 2026-10-25): flexray_carmlspine, flexray_deepfluoro or xvr_deepfluoro, each one
 #                   GPU job (grid/bench.sbatch, tools/bench_public.py) once its fetch has landed; the next
-#                   send prints logs/BENCH-<name>.md, and every later one prints it again and queues nothing;
+#                   send prints logs/BENCH-<name>.md, and every later one prints it again and queues nothing,
+#                   but for a report that ended in failure on older code (#312) or whose job BENCH_RERUNS
+#                   lists, the owner's count for one more run, each kept under its job's number and queued once more;
 #                   and flexray_drr_gap, the DRR domain-gap study (tools/domain_gap.py), sharded (the
 #                   owner's words of 2026-10-27 17:51 UTC and 2026-10-28 00:23 UTC): three GPU jobs on
 #                   any card of the gpu class (grid/drr-gap.sbatch), prepare, an array of DRR_GAP_TASKS
@@ -200,6 +202,18 @@ NETRC=${NETRC:-$HOME/.netrc}
 # each on whichever of its partitions frees first (the owner's words of 2026-10-28 00:23 UTC, "shard
 # it to more gpus like 16" and "drop the requirement for h200 unless its a memory problem").
 DRR_GAP_TASKS=16
+# The benchmarks the owner's word and count let run once more although a report of theirs stands,
+# each as <id>:<the job that report's first line names>: a committed list changed by pull request,
+# as DRR_GAP_TASKS is, since a gate word carries no option. A send of bench <id> whose standing
+# report names a job listed beside the id, from a commit other than the checkout's, keeps that report
+# under its job's number, as a failure on older code is kept (#312), and queues the benchmark again;
+# the new report names its own job, which no entry lists, so an entry runs its benchmark once and
+# every later send prints the new report and queues nothing. flexray_drr_gap:40828920 is the owner's
+# tap of 2026-10-28 16:28 UTC, "Rerun, family as PREREG says", one more run of the DRR domain-gap
+# study's 18 jobs (prepare, 16 shards, the merge) once FluXray's reader was fixed (#441) and the
+# family set (#442), and his word of 22:58 UTC that day, "The FluXray rerun: go, and which project
+# runs it., this project can run it now".
+BENCH_RERUNS="flexray_drr_gap:40828920"
 LOGS=$REPO/grid/logs
 STATE=$LOGS/GATE_JOBS.txt
 WORDS="start status leaks v1 latency fetch explore dropzip unpack nodequota folders samples sweep bank experiment bench anomaly bordercall realism literature stop cancel"
@@ -1314,6 +1328,14 @@ bench_failed_on_older_code() {  # a report whose last line is a nonzero exit, fr
   began=$(sed -n '1s/.*, commit \([0-9a-f]*\|unknown\),.*/\1/p' "$1")
   [ -n "$began" ] && [ -n "$(bench_job_of "$1")" ] && [ "$began" != "${commit:0:7}" ]
 }
+bench_rerun_allowed() {  # a report whose job BENCH_RERUNS lists beside the benchmark's id, from a commit not the checkout's
+  local job began
+  job=$(bench_job_of "$1")
+  began=$(sed -n '1s/.*, commit \([0-9a-f]*\|unknown\),.*/\1/p' "$1")
+  [ -n "$job" ] && [ -n "$began" ] && [ "$began" != "${commit:0:7}" ] || return 1
+  case " $BENCH_RERUNS " in *" $id:$job "*) return 0 ;; esac
+  return 1
+}
 drr_gap_masks() {  # one line on each segmenter's masks bench flexray_drr_gap will read
   # The study waits afterany on a live bench flexray_drr_seg, as on every run that holds the
   # checkout, so it reads the MOOSE masks that job wrote once it has ended, however it ended; a
@@ -1363,7 +1385,7 @@ drr_gap_progress() {  # the study's PROGRESS.txt, masked, as a send while it las
   bench_progress_of flexray_drr_gap
 }
 word_bench() {  # one public model's benchmark (#287): queued once, its report printed on every later send
-  local report=$LOGS/BENCH-$id.md busy missing holds opts setup
+  local report=$LOGS/BENCH-$id.md busy missing holds opts setup again=""
   case "$id" in
     flexray_carmlspine|flexray_deepfluoro|xvr_deepfluoro|flexray_drr_gap|flexray_drr_seg) ;;
     *) echo "refusing: bench takes flexray_carmlspine, flexray_deepfluoro, xvr_deepfluoro, flexray_drr_gap or flexray_drr_seg"; return 64 ;;
@@ -1386,14 +1408,24 @@ word_bench() {  # one public model's benchmark (#287): queued once, its report p
     # of up to 85 and a run log of up to 50, so 220 lines are printed, its exit line last among them.
     echo "## $(basename "$report") ($(date -r "$report" '+%F %T'))"
     head -n 220 "$report" | LC_ALL=C tr -cd '\11\12\40-\176' | masked | head -c 45000
-    bench_failed_on_older_code "$report" || return 0
-    # A benchmark that failed scored nothing, so once a fix has moved the checkout it is queued
-    # once more, its report kept under its job's number (#312); the same commit queues nothing.
-    mv "$report" "$LOGS/BENCH-$id-$(bench_job_of "$report").md" || return 1
-    echo "  the report above ended in failure on older code: queueing the benchmark again at $commit"
+    if bench_failed_on_older_code "$report"; then
+      # A benchmark that failed scored nothing, so once a fix has moved the checkout it is queued
+      # once more, its report kept under its job's number (#312); the same commit queues nothing.
+      again="ended in failure on older code"
+    elif bench_rerun_allowed "$report"; then
+      # The owner's count for one more run, listed in BENCH_RERUNS by the job of the report it replaces.
+      again="is job $(bench_job_of "$report")'s, which BENCH_RERUNS lets the owner's count run once more"
+    else
+      return 0
+    fi
   fi
   missing=$(bench_inputs_missing)
   [ -z "$missing" ] || { echo "refusing: bench $id needs $missing"; return 2; }
+  # Kept only once the inputs are there, so a refused send leaves the report standing as it was.
+  if [ -n "$again" ]; then
+    mv "$report" "$LOGS/BENCH-$id-$(bench_job_of "$report").md" || return 1
+    echo "  the report above $again: queueing the benchmark again at $commit"
+  fi
   if [ "$id" = flexray_drr_gap ]; then
     # The study reads the index this word checked and the ImageNet file beside the models; FluXray
     # and each segmenter's masks join it only where they are there, and prepare says so in the
