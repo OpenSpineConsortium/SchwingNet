@@ -609,6 +609,13 @@ MEASURES = (
 )
 BENCH_HEAD = re.compile(r"# bench (?P<bench>\S+): job (?P<job>[0-9]+) on (?P<host>\S+), commit (?P<commit>[0-9a-f]{7}), (?P<began>.+) UTC")
 BENCH_EXIT = re.compile(r"- exit (?P<rc>[0-9]+) at (?P<at>.+) UTC")
+# The run log the merge writes into BENCH.md since 2026-10-28 (grid/drr-gap.sbatch, run_log): a line
+# that opens it, then its lines indented by two spaces, each a date and time UTC and what a step
+# noted then; or one line saying why there is none.
+BENCH_RUNLOG = "- run log, UTC: "
+BENCH_NO_RUNLOG = re.compile(r"- run log: (?P<why>.+)")
+RUNLOG_FROM = "2026-10-28"  # the day the study began writing its run log, as BENCH.md's header dates a run
+RUNLOG_TIME = re.compile(r"(?P<at>[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}) \S.*")
 
 
 def record_of(lines, study):
@@ -680,7 +687,34 @@ def bench_of(text):
     heads = [m.groupdict() for m in map(BENCH_HEAD.fullmatch, lines) if m]
     ends = [m.groupdict() for m in map(BENCH_EXIT.fullmatch, lines) if m]
     return {"header": heads[0] if heads else None, "exit": ends[-1] if ends else None,
-            "failed": [line[2:] for line in lines if line.startswith("- FAILED")]}
+            "failed": [line[2:] for line in lines if line.startswith("- FAILED")],
+            **run_log_of(lines, heads[0] if heads else None)}
+
+
+def run_log_of(lines, header=None):
+    """BENCH.md's run log: its indented lines under its opening line, the last such section where
+    a report holds two, with the times of its first and last timed lines; or why it has none, a
+    report from before the study logged as it ran saying nothing of one."""
+    opens = [i for i, line in enumerate(lines) if line.startswith(BENCH_RUNLOG)]
+    if not opens:
+        said = [m["why"] for m in map(BENCH_NO_RUNLOG.fullmatch, lines) if m]
+        return {"runlog": None, "runlog_span": None, "runlog_why": said[-1].rstrip(".") if said else no_run_log_why(header)}
+    body = []
+    for line in lines[opens[-1] + 1:]:
+        if not line.startswith("  "):
+            break
+        body.append(line[2:])
+    times = [m["at"] for m in map(RUNLOG_TIME.fullmatch, body) if m]
+    return {"runlog": body, "runlog_why": "", "runlog_span": (times[0], times[-1]) if times else None}
+
+
+def no_run_log_why(header):
+    """Why a BENCH.md that says nothing of a run log has none, as far as its header tells: a run
+    begun before the study wrote one, or, where the header dates it later or gives no date, that
+    the report carries no run log line, and no more."""
+    if header and header["began"] < RUNLOG_FROM:
+        return f"BENCH.md carries no run log: the run began {header['began']} UTC, before the study wrote one ({RUNLOG_FROM})"
+    return "BENCH.md carries no run log line" + (f", though the run began {header['began']} UTC" if header else "")
 
 
 def load_study(name, run_dir):
@@ -1104,7 +1138,16 @@ def study_compute(run):
     stages = ", ".join(f"{part} {seconds[part]}" + {"analysis": " wall", "units": " summed"}.get(part, "") for part in SECONDS_PARTS)
     ended = run["bench"]["exit"]
     tail = f"; BENCH.md: exit {ended['rc']} at {ended['at']} UTC" if ended else ""
-    return met(f"{ran}, on GPUs {jobs['gpu']} x{jobs['gpus']}; seconds by stage: {stages} (summary.txt record){tail}")
+    return met(f"{ran}, on GPUs {jobs['gpu']} x{jobs['gpus']}; seconds by stage: {stages} (summary.txt record){tail}; {run_log_said(run['bench'])}")
+
+
+def run_log_said(bench):
+    """One clause on the run log the report's section Run log shows: how many lines, from when to when."""
+    if bench["runlog"] is None:
+        return f"run log: none ({bench['runlog_why']})"
+    span = bench["runlog_span"]
+    when = f", {span[0]} to {span[1]} UTC" if span else ""
+    return f"run log: {len(bench['runlog'])} lines in BENCH.md{when}, shown in the section Run log"
 
 
 @recorded("study")
@@ -1264,6 +1307,7 @@ def bench_lines(run):
     lines += [f"- BENCH.md says: {line}" for line in bench["failed"]]
     if bench["exit"]:
         lines.append(f"- BENCH.md: exit {bench['exit']['rc']} at {bench['exit']['at']} UTC")
+    lines.append(f"- BENCH.md's {run_log_said(bench)}.")
     states = ", ".join(f"{kind} {'read' if kind in record else run['problems'][kind]}" for kind in RECORD_LINES)
     lines.append(f"- summary.txt's record lines: {states}" + (f"; lines of kinds the report does not read: {', '.join(run['unknown'])}" if run["unknown"] else "") + ".")
     if "study" in record:
@@ -1291,8 +1335,32 @@ def study_markdown(run, claim_rows, reforms_rows):
         *checklist_section("CLAIM 2024", claim_rows),
         "",
         *checklist_section("REFORMS", reforms_rows),
+        "",
+        *run_log_section(run["bench"]),
     ]
     return "\n".join(lines) + "\n"
+
+
+def run_log_section(bench):
+    """The run's own log as BENCH.md carries it: what each step wrote, line by line with its time, as
+    it ran (the owner's ask of 2026-10-28 00:23 UTC, "make sure there is realtime logging in the
+    CLAIMS/REPORT"), copied whole, or why there is none."""
+    lines = ["## Run log", ""]
+    if bench["runlog"] is None:
+        return lines + [f"None: {bench['runlog_why']}."]
+    return lines + [
+        "What each step of the run wrote while it ran, each line with its date and time UTC: prepare's stages, the array's tasks with their nodes and cards, every unit that failed (by the kind of error alone), every claim taken over from a task that stopped beating, every pool a dead worker broke, every unit whose MMD a full card sent to the CPU, how each task ended, Slurm's TERM among the ends, and the merge's reading back; the units by their first done and each quarter of the list. Copied from BENCH.md, which the merge wrote from the run folder's run log (tools/domain_gap.py runlog): the tasks' routine starts and finishes folded into one line each and, where more than 50 lines were left, ordinary lines from the middle left out, never a quarter mark or a line of something gone wrong; the run folder's RUNLOG.txt keeps every line the run log took, at most 400 a step, and every unit, and stays on the grid.",
+        "",
+        *fenced(bench["runlog"]),
+    ]
+
+
+def fenced(lines):
+    """lines as a Markdown code block whose fence is longer than any run of backticks in them, so
+    no line of the log can close it early."""
+    longest = max((len(run) for line in lines for run in re.findall(r"`+", line)), default=0)
+    fence = "`" * max(3, longest + 1)
+    return [f"{fence}text", *lines, fence]
 
 
 def render_study(name, run_dir):

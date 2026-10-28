@@ -3,12 +3,19 @@
 #SBATCH --mem=64G
 #SBATCH --time=12:00:00
 # The DRR domain-gap study (tools/domain_gap.py, docs/research/drr-domain-gap/README.md) in three
-# steps on the H200 nodes. The owner cancelled the study's one job (Slurm 40802322, bench
+# steps on the grid's GPU nodes. The owner cancelled the study's one job (Slurm 40802322, bench
 # flexray_drr_gap: four CPUs beside a V100 for statistics that are bound by the CPU) at 2026-10-27
 # 17:51 UTC with "cancel and shard requesting h200 / see the beethoven protocol for doing so", and
-# added "make sure you are logging, and I want to see a visual representation of what is happening".
-# grid/gate.sh's word `bench flexray_drr_gap` queues the three as job submit's gpu class on gmsap, the
-# partition of the H200 nodes, with STEP naming the step as BENCH names a benchmark to grid/bench.sbatch:
+# added "make sure you are logging, and I want to see a visual representation of what is happening";
+# at 2026-10-28 00:23 UTC the owner asked for 16 shards ("shard it to more gpus like 16") and dropped the
+# H200 ("you can drop the requirement for h200 unless its a memory problem"). Memory is measured on
+# a smaller card for prepare alone: the first send ran its render, images and features on a 16 GB
+# V100. A shard's sixteen workers share one card for the MMD's permutations alone, which no run has
+# measured on a small card, so a test the card has no room for runs with numpy on the CPU, its
+# permutations drawn the same (tools/domain_gap.py, mmd_where_it_fits; DEVIATIONS.md item 9).
+# grid/gate.sh's word `bench flexray_drr_gap` queues the three as job submit's gpu class on whichever
+# of its partitions frees first, with STEP naming the step as BENCH names a benchmark to
+# grid/bench.sbatch:
 #
 #   prepare  every stage of the study up to the features, as `run` did, then the analysis cut into
 #            units (analysis/units.json, analysis/heads/, last analysis/PREPARED.json); one job
@@ -29,15 +36,20 @@
 # GPU self-test and failure streak are the tool's (rule 8); never requeued (rule 10).
 #
 # Logging: the tool keeps <out>/PROGRESS.txt current, which the busy refusal of the word prints and
-# the status word shows as its section "bench flexray_drr_gap, progress" while the study runs; each
-# step's own lines go to <out>/analysis/steps/ (prepare.md, shard-<task>.md, merge.md), each tool's
-# whole output to a log in the run folder. Only the merge writes the report,
-# logs/BENCH-flexray_drr_gap.md: prepare's lines first, whose first line names prepare's job and the
-# commit as grid/gate.sh's bench_job_of and bench_failed_on_older_code read them, a line per shard
-# task, the merge's lines and the summary. Only summary.txt, five record lines and at most 80 lines of
-# numbers and group names, leaves the grid, each line through grid/redact.sed; the plan, results.json and the logs name
-# files and stay in the run folder, the owner's alone (umask 077); the figures go to W&B where the
-# grid's key is found.
+# the status word shows as its section "bench flexray_drr_gap, progress" while the study runs, its
+# last lines the newest of the run log, which every step of the tool writes as it goes, line by line
+# with the time (the owner's ask of 2026-10-28 00:23 UTC, "make sure there is realtime logging in
+# the CLAIMS/REPORT"); each step's own lines go to <out>/analysis/steps/ (prepare.md,
+# shard-<task>.md, merge.md), each tool's whole output to a log in the run folder. Only the merge
+# writes the report, logs/BENCH-flexray_drr_gap.md: prepare's lines first, whose first line names
+# prepare's job and the commit as grid/gate.sh's bench_job_of and bench_failed_on_older_code read
+# them, a line per shard task, the merge's lines, the summary and the run log, at most 50 lines of
+# it with the units' quarter marks, which tools/report.py carries into the CLAIM report. Only
+# summary.txt, five record lines and at most 80 lines of numbers and group names, and the run log,
+# lines of times, steps, nodes, cards, counts and unit names, leave the grid, each line through
+# grid/redact.sed; the plan, results.json, RUNLOG.txt with every unit's line and the logs name files
+# or hold more and stay in the run folder, the owner's alone (umask 077); the figures go to W&B
+# where the grid's key is found.
 set -uo pipefail
 REPO=${SCHWINGNET:-$HOME/SchwingNet}
 DATA=${DATA_ROOT:-/rs/rs_grp_oschome/go2432/data}
@@ -96,12 +108,43 @@ study_venv() {  # the study's environment, made by the copy's grid/venv.sh, into
   . "$CODE/grid/venv.sh"
   venv=$(venv_for "$DRR_GAP_PIN")
 }
-study_tool() {  # study_tool VERB ARG...: the copy's tools/domain_gap.py in the study's environment, inside the container
+ready_venv() {  # the study's environment where a step made it whole, into venv, building nothing
+  # shellcheck source=grid/venv.sh
+  . "$CODE/grid/venv.sh"
+  venv=$(venv_ready "$DRR_GAP_PIN")
+}
+tool_argv() {  # the command that runs the copy's tools/domain_gap.py in the study's environment, inside the container
   # The copy is no checkout, so the run record's commit, its clean tree (git archive writes the
   # commit as it is) and the environment's pins come from here (tools/domain_gap.py, git_state and
-  # record_lines), the pins spelled with spaces since the grid's filter rewrites an "=".
-  SN_GIT_HEAD=$started_at SN_GIT_DIRTY=no SN_PINS="${DRR_GAP_PIN//==/ } over the train-gpu torch" \
-    bash "$CODE/grid/box.sh" "$venv/bin/python" "$CODE/tools/domain_gap.py" "$@"
+  # record_lines), the pins spelled with spaces since the grid's filter rewrites an "=". env and
+  # box.sh each exec the next, so the command's process is the container's starter.
+  TOOL_ARGV=(env SN_GIT_HEAD="$started_at" SN_GIT_DIRTY=no SN_PINS="${DRR_GAP_PIN//==/ } over the train-gpu torch"
+    bash "$CODE/grid/box.sh" "$venv/bin/python" "$CODE/tools/domain_gap.py")
+}
+study_tool() {  # study_tool VERB ARG...: the tool, for a verb that takes seconds
+  tool_argv
+  "${TOOL_ARGV[@]}" "$@"
+}
+TOOL=""
+TOOL_GRACE=60
+study_tool_waited() {  # study_tool_waited VERB ARG...: the tool for a step's long verb, in the background and waited on
+  # job submit asks Slurm for TERM to the batch shell alone two minutes before the time limit
+  # (--signal=B:TERM@120, hpcworker's framework/lib/jobs.sh), which a shell running a command in the
+  # foreground holds until the command ends; a shell in wait runs its trap at once, and the step's
+  # trap passes the TERM on (tool_stop), so the tool's own run log line says how it ended.
+  local rc
+  tool_argv
+  "${TOOL_ARGV[@]}" "$@" &
+  TOOL=$!
+  wait "$TOOL"; rc=$?
+  TOOL=""
+  return "$rc"
+}
+tool_stop() {  # the TERM passed on to a waited tool, and up to TOOL_GRACE seconds for it to write its closing line and end
+  local waited=0
+  [ -n "$TOOL" ] || return 0
+  kill -TERM "$TOOL" 2>/dev/null
+  while kill -0 "$TOOL" 2>/dev/null && [ "$waited" -lt "$TOOL_GRACE" ]; do sleep 1; waited=$((waited + 1)); done
 }
 last_line_of() {  # last_line_of LOG: a log's last line, masked and cut, for a report line
   tail -n 1 "$1" 2>/dev/null | sed -r -f "$REDACT" | cut -c1-160
@@ -146,10 +189,13 @@ step_prepare() {
   # A prepare starts the study over: what an earlier chain's steps said, its copy's name and its
   # marker that the analysis was cut into units go first, so no later step of this chain reads them.
   rm -rf "$STEPS" && mkdir -p "$STEPS" || exit 2
-  rm -f "$ANALYSIS/PREPARED.json" "$ANALYSIS/CODE" "$ANALYSIS/COMMIT"
+  # The earlier chain's run log goes too: the tool clears it only once it runs, and a prepare that
+  # stops at a check before it must not leave the merge an earlier chain's lines as this one's.
+  rm -f "$ANALYSIS/PREPARED.json" "$ANALYSIS/CODE" "$ANALYSIS/COMMIT" "$OUT/RUNLOG.txt"
+  rm -rf "$ANALYSIS/runlog"
   started_at=$(git -C "$REPO" rev-parse HEAD 2>/dev/null)
   echo "# bench flexray_drr_gap: job ${SLURM_JOB_ID:-none} on $(hostname), commit ${started_at:0:7}, $(date -u '+%F %T') UTC" | tee "$STEP_FILE"
-  trap 'report "TERMINATED: Slurm ended prepare (its time, or a cancel)"; step_end 143' TERM
+  trap 'tool_stop; report "TERMINATED: Slurm ended prepare (its time, or a cancel)"; step_end 143' TERM
   [ -n "$started_at" ] || { report "FAILED: the checkout at $REPO names no commit"; step_end 2; }
   # The code every step runs, copied from the commit as git holds it, so the gate's fast-forward of
   # the checkout, which no HOLD stops, changes nothing a later step reads.
@@ -165,8 +211,9 @@ step_prepare() {
   report "PREREG.md: as frozen, sha256 $(cut -c1-16 "$CODE/docs/research/drr-domain-gap/PREREG.md.sha256")"
   gpu=$(gpu_line)
   [ -n "$gpu" ] || { report "FAILED: nvidia-smi names no GPU on $(hostname)"; step_end 4; }
+  # Any card of the gpu class (the owner's word of 2026-10-28 00:23 UTC), named so each number can be
+  # read against the card it ran on.
   report "GPU: $gpu"
-  [[ $gpu == *H200* ]] || report "NOTE: not an H200, though the word asks gmsap, the H200 partition; the study runs on what Slurm gave"
   # The study's inputs, each named in the report, since its numbers are read against them. The gate
   # refused the word without them (grid/gate.sh, bench_inputs_missing); a miss here is a samples run
   # or a fetch that moved since, said and failed rather than run on part of the table.
@@ -187,7 +234,7 @@ step_prepare() {
   # or held for too few CTs to test a group, with that reason (the owner's word of 2026-10-27).
   report "masks: $(mask_state spineps); $(mask_state moose); a render group whose segmenter's masks are not read, or too few CTs have, is skipped with that reason"
   report "environment: $DRR_GAP_PIN; index: $index; weights: $weights; imagenet: $imagenet"
-  study_tool prepare --groups "$CODE/data/domain_gap/groups.json" --data-root "$DATA" --index "$index" --weights "$weights" \
+  study_tool_waited prepare --groups "$CODE/data/domain_gap/groups.json" --data-root "$DATA" --index "$index" --weights "$weights" \
     --imagenet "$imagenet" --out "$OUT" --device cuda --workers "$WORKERS" --frozen "$CODE/data/splits/test-persons.json" \
     --spineps "$DATA/spineps" --moose "$DATA/moose" > "$OUT/prepare.log" 2>&1; rc=$?
   [ "$rc" = 0 ] || { report "FAILED: domain_gap.py prepare ended $rc ($(last_line_of "$OUT/prepare.log"))"; step_end "$rc"; }
@@ -212,7 +259,7 @@ step_shard() {
   log=$ANALYSIS/logs/shard-$TASK.log
   GPU=$(gpu_line)
   GPU=${GPU%%,*}
-  trap 'shard_end 143 "Slurm ended the task (its time, or a cancel)"' TERM
+  trap 'tool_stop; shard_end 143 "Slurm ended the task (its time, or a cancel)"' TERM
   # Each worker is one thread: the tool runs WORKERS of them, and a BLAS pool in each would ask the
   # node for WORKERS times its CPUs.
   export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1
@@ -222,13 +269,29 @@ step_shard() {
   fi
   prereg_frozen || shard_end 90 "STOP: PREREG.md changed since the freeze"
   study_venv || shard_end 1 "FAILED: the environment for $DRR_GAP_PIN could not be made"
-  study_tool shard --out "$OUT" --task "$TASK" --tasks "${SLURM_ARRAY_TASK_COUNT:-1}" --workers "$WORKERS" --device cuda > "$log" 2>&1
+  study_tool_waited shard --out "$OUT" --task "$TASK" --tasks "${SLURM_ARRAY_TASK_COUNT:-1}" --workers "$WORKERS" --device cuda > "$log" 2>&1
   rc=$?
   [ "$rc" = 0 ] && shard_end 0
   shard_end "$rc" "$(last_line_of "$log")"
 }
 
 SUMMARY=""
+RUN_LOG_LINES=50  # what the report carries of the run log (tools/domain_gap.py, RUNLOG_REPORT)
+RUN_LOG_WHY="since the study's environment could not be made"  # each branch that ends before reading it says its own
+run_log() {  # the run log as the report carries it, each line through the filter and indented, or why there is none
+  local lines
+  if [ -z "${venv:-}" ]; then
+    echo "- run log: not read, $RUN_LOG_WHY"
+    return 0
+  fi
+  lines=$(study_tool runlog --out "$OUT" 2>/dev/null | LC_ALL=C tr -cd '\12\40-\176' | sed -r -f "$REDACT" | head -n "$RUN_LOG_LINES")
+  if [ -z "$lines" ]; then
+    echo "- run log: none, since no step of the tool wrote a line of it"
+    return 0
+  fi
+  echo "- run log, UTC: each step's lines as it wrote them while it ran, with the units' quarter marks"
+  printf '%s\n' "$lines" | sed 's/^/  /'
+}
 shard_tasks() {  # how many tasks the array had: SHARD_TASKS from the gate, else the shard files there are
   case "${SHARD_TASKS:-}" in
     ""|*[!0-9]*) find "$STEPS" -maxdepth 1 -name 'shard-*.md' 2>/dev/null | wc -l ;;
@@ -253,6 +316,7 @@ merge_finish() {  # merge_finish RC [summary]: the report composed from every st
       echo "- results: $OUT"
       printf '%s\n' "$SUMMARY" | head -n 85 | sed 's/^/  /'
     fi
+    run_log
     echo "- exit $rc at $ended"
   } > "$REPORT.part"
   echo "- exit $rc at $ended" >> "$STEP_FILE"
@@ -265,7 +329,7 @@ step_merge() {
   STEP_FILE=$STEPS/merge.md
   : > "$STEP_FILE"
   # Cut short, the merge writes no report, so the next send of the word queues the study again.
-  trap 'report "TERMINATED: Slurm ended the merge (its time, or a cancel), so no report is written"; step_end 143' TERM
+  trap 'tool_stop; report "TERMINATED: Slurm ended the merge (its time, or a cancel), so no report is written"; step_end 143' TERM
   report "merge: job ${SLURM_JOB_ID:-none} on $(hostname)"
   if ! prepared_here; then
     # No report either: one would stand at this commit and keep the word from queueing the study
@@ -277,15 +341,25 @@ step_merge() {
     rc=$(tail -n 1 "$STEPS/prepare.md" | sed -n 's/^- exit \([0-9][0-9]*\) at .*/\1/p')
     [ -n "$rc" ] || { report "prepare left no exit line: Slurm ended it before it finished (its time or its memory, or a cancel); its log is $OUT/prepare.log"; rc=1; }
     report "the shards and the merge ran nothing of the study, since prepare did not end in exit 0"
+    # The run log says how far prepare got: read with the environment prepare made, where it made it
+    # whole and the copy's PREREG.md is still the frozen one, which every step checks before it
+    # reads anything; nothing is built for it here.
+    venv=""
+    if ! code_of; then RUN_LOG_WHY="since prepare named no copy of the code to read it with"
+    elif ! prereg_frozen; then RUN_LOG_WHY="since the copy's PREREG.md is not the one frozen"
+    elif ! ready_venv; then venv=""; RUN_LOG_WHY="since prepare made no environment to read it with"
+    fi
     merge_finish "$rc"
   fi
+  RUN_LOG_WHY="since the merge stopped before it read the run folder"
   code_of || { report "FAILED: prepare ended well but analysis/CODE names no copy of the code"; merge_finish 2; }
   prereg_frozen || { report "STOP: PREREG.md changed since the freeze"; merge_finish 90; }
+  RUN_LOG_WHY="since the study's environment could not be made"
   now=$(git -C "$REPO" rev-parse HEAD 2>/dev/null)
   [ "$now" = "$started_at" ] \
     || report "NOTE: the checkout is at ${now:0:7} now; every step ran from the copy at ${started_at:0:7}, so the results stand"
   study_venv || { report "FAILED: the environment for $DRR_GAP_PIN could not be made"; merge_finish 1; }
-  study_tool merge --out "$OUT" --groups "$CODE/data/domain_gap/groups.json" > "$ANALYSIS/logs/merge.log" 2>&1; rc=$?
+  study_tool_waited merge --out "$OUT" --groups "$CODE/data/domain_gap/groups.json" > "$ANALYSIS/logs/merge.log" 2>&1; rc=$?
   [ "$rc" = 0 ] || { report "FAILED: domain_gap.py merge ended $rc ($(last_line_of "$ANALYSIS/logs/merge.log"))"; merge_finish "$rc"; }
   # The summary, five record lines and at most 80 of numbers and group names, each through the filter the gate word
   # status applies to every log line, and the report carries it whole.

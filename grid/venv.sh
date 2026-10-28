@@ -5,11 +5,21 @@
 # a public model's package (#287) and by the pack stage of grid/anomaly.sbatch for FleXray's packager
 # with thunderpack and nibabel (#391); a stage that runs from a copy of the code sources the copy's,
 # whose box.sh sits beside this file. Standard library bash; no job header, since nothing here is a job.
-venv_for() {  # venv_for PINS: a virtual environment holding PINS beside train-gpu's packages, made once
-  local key venv box
-  box=$(dirname "${BASH_SOURCE[0]}")/box.sh
+venv_path() {  # venv_path PINS: where venv_for keeps the environment for PINS, made or not
+  local key
   key=$(printf '%s' "$1" | sha256sum | cut -c1-12)
-  venv=${LAB:-/rs/rs_grp_oschome}/go2432/.cache/bench/venv-$key
+  echo "${LAB:-/rs/rs_grp_oschome}/go2432/.cache/bench/venv-$key"
+}
+venv_ready() {  # venv_ready PINS: the environment for PINS where venv_for has made it whole, else nothing and 1
+  local venv
+  venv=$(venv_path "$1")
+  [ -f "$venv/READY" ] || return 1
+  echo "$venv"
+}
+venv_for() {  # venv_for PINS: a virtual environment holding PINS beside train-gpu's packages, made once
+  local venv box
+  box=$(dirname "${BASH_SOURCE[0]}")/box.sh
+  venv=$(venv_path "$1")
   if [ ! -f "$venv/READY" ]; then
     rm -rf "$venv"
     bash "$box" pixi run --locked -e train-gpu python -m venv --system-site-packages "$venv" || return 1

@@ -84,9 +84,10 @@
 #                   count of 2026-10-25): flexray_carmlspine, flexray_deepfluoro or xvr_deepfluoro, each one
 #                   GPU job (grid/bench.sbatch, tools/bench_public.py) once its fetch has landed; the next
 #                   send prints logs/BENCH-<name>.md, and every later one prints it again and queues nothing;
-#                   and flexray_drr_gap, the DRR domain-gap study (tools/domain_gap.py), sharded on the
-#                   H200 nodes (the owner's word of 2026-10-27 17:51 UTC): three GPU jobs on gmsap
-#                   (grid/drr-gap.sbatch), prepare, an array of DRR_GAP_TASKS shard tasks afterany it and
+#                   and flexray_drr_gap, the DRR domain-gap study (tools/domain_gap.py), sharded (the
+#                   owner's words of 2026-10-27 17:51 UTC and 2026-10-28 00:23 UTC): three GPU jobs on
+#                   any card of the gpu class (grid/drr-gap.sbatch), prepare, an array of DRR_GAP_TASKS
+#                   (16) shard tasks afterany it and
 #                   the merge afterany the array, all queued or none, each step run from prepare's copy of
 #                   the code and none holding the checkout, once FleXray's weights, a whole sample index,
 #                   the TotalSegmentator CTs and the ImageNet file are there; FluXray, the SPINEPS masks
@@ -190,10 +191,10 @@ G3_SPLIT=${G3_SPLIT:-$HOME/split_final.json}
 NETRC=${NETRC:-$HOME/.netrc}
 # The DRR domain-gap study's array (bench flexray_drr_gap, grid/drr-gap.sbatch): how many shard tasks
 # share its units, a committed default changed by pull request, since a gate word carries no option
-# and the owner's count of jobs decides it; and the partition of the H200 nodes its three jobs ask
-# within the gpu class, as grid/run-latency-sweep.sh asks it.
-DRR_GAP_TASKS=4
-H200=(--partition gmsap)
+# and the owner's count of jobs decides it. Its three jobs ask no partition, so the gpu class puts
+# each on whichever of its partitions frees first (the owner's words of 2026-10-28 00:23 UTC, "shard
+# it to more gpus like 16" and "drop the requirement for h200 unless its a memory problem").
+DRR_GAP_TASKS=16
 LOGS=$REPO/grid/logs
 STATE=$LOGS/GATE_JOBS.txt
 WORDS="start status leaks v1 latency fetch explore dropzip unpack nodequota folders samples sweep bank experiment bench anomaly bordercall realism literature stop cancel"
@@ -754,7 +755,7 @@ sweep_progress() {  # for each plan under SMOKE, its newest sweep's PROGRESS.txt
 # A benchmark whose tool keeps <name>/PROGRESS.txt under BENCH_ROOT, the DRR domain-gap study's
 # (grid/drr-gap.sbatch), shows it here while it runs: the study's one live view from outside the
 # grid, as a sweep's is, at most BENCH_PROGRESS_LINES short lines of counts and group ids, each masked.
-BENCH_PROGRESS_LINES=40
+BENCH_PROGRESS_LINES=60
 bench_progress_of() {  # bench_progress_of NAME: one benchmark's PROGRESS.txt as status shows it, its heading and its first lines, masked
   local progress=$BENCH_ROOT/$1/PROGRESS.txt
   [ -f "$progress" ] || return 0
@@ -1219,27 +1220,27 @@ drr_gap_live() {  # the study's live jobs, its prepare, its shard array and its 
   { live_of bench_flexray_drr_gap; live_of bench_flexray_drr_gap_shard; live_of bench_flexray_drr_gap_merge; } | tr '\n' ' ' | sed 's/ $//'
 }
 drr_gap_jobs() {  # drr_gap_jobs [WAIT...]: the study's three jobs (grid/drr-gap.sbatch), prepare after WAIT, the shard array afterany it, the merge afterany the array; all of them or none
-  # The owner's word of 2026-10-27 17:51 UTC: sharded, on the H200 nodes, by the Lab Recipe (rules 3,
-  # 8, 9 and 10, grid/drr-gap.sbatch). Each step reads a file to tell whether the one before it did
+  # The owner's word of 2026-10-27 17:51 UTC: sharded by the Lab Recipe (rules 3, 8, 9 and 10,
+  # grid/drr-gap.sbatch), on any card since the owner's word of 2026-10-28 00:23 UTC. Each step reads a file to tell whether the one before it did
   # its part, so each waits afterany; the shards and the merge are handed prepare's job, so neither
   # reads a step file an earlier chain left, and the merge the array's count, so it names each task.
   local waits=("$@") study prepare shards merge opts
   study=(BENCH="$id" DATA_ROOT="$DATA_ROOT" INDEX="$(samples_index)" MODELS="$MODELS" BENCH_ROOT="$BENCH_ROOT")
-  prepare=$(submit bench_flexray_drr_gap gpu "${study[@]}" STEP=prepare ${waits[@]+"${waits[@]}"} "${H200[@]}" \
+  prepare=$(submit bench_flexray_drr_gap gpu "${study[@]}" STEP=prepare ${waits[@]+"${waits[@]}"} \
     --cpus 16 --mem 64G --time 12:00:00 --no-requeue -- drr-gap.sbatch) || return 1
   # Both or neither, as grid/run-leaks.sh queues its array and join: a prepare whose shards were
   # refused would cut units nobody claims, and shards whose merge was refused would leave no report.
   if ! depend_on "afterany:$prepare" || ! shards=$(submit bench_flexray_drr_gap_shard gpu "${study[@]}" STEP=shard PREPARE_JOB="$prepare" \
-    ${opts[@]+"${opts[@]}"} "${H200[@]}" --array "0-$((DRR_GAP_TASKS - 1))" --cpus 16 --mem 64G --time 12:00:00 --no-requeue -- drr-gap.sbatch); then
+    ${opts[@]+"${opts[@]}"} --array "0-$((DRR_GAP_TASKS - 1))" --cpus 16 --mem 64G --time 12:00:00 --no-requeue -- drr-gap.sbatch); then
     "$SCANCEL" "$prepare" && echo "  cancelled prepare $prepare, since its shard array was refused"
     return 1
   fi
   if ! depend_on "afterany:$shards" || ! merge=$(submit bench_flexray_drr_gap_merge gpu "${study[@]}" STEP=merge PREPARE_JOB="$prepare" \
-    SHARD_TASKS="$DRR_GAP_TASKS" ${opts[@]+"${opts[@]}"} "${H200[@]}" --cpus 4 --mem 64G --time 04:00:00 --no-requeue -- drr-gap.sbatch); then
+    SHARD_TASKS="$DRR_GAP_TASKS" ${opts[@]+"${opts[@]}"} --cpus 4 --mem 64G --time 04:00:00 --no-requeue -- drr-gap.sbatch); then
     "$SCANCEL" "$prepare" "$shards" && echo "  cancelled prepare $prepare and the shard array $shards, since the merge was refused"
     return 1
   fi
-  echo "  the study: prepare $prepare, then the shard array $shards ($DRR_GAP_TASKS tasks, afterany $prepare), then the merge $merge (afterany $shards), each on gmsap's H200 nodes"
+  echo "  the study: prepare $prepare, then the shard array $shards ($DRR_GAP_TASKS tasks, afterany $prepare), then the merge $merge (afterany $shards), each on the first card of the gpu class that frees"
 }
 drr_gap_progress() {  # the study's PROGRESS.txt, masked, as a send while it lasts prints it, or that it has none yet
   [ -f "$BENCH_ROOT/flexray_drr_gap/PROGRESS.txt" ] || { echo "  the study has written no PROGRESS.txt yet: prepare starts it once it runs"; return 0; }
@@ -1265,9 +1266,10 @@ word_bench() {  # one public model's benchmark (#287): queued once, its report p
   [ -z "$busy" ] || { echo "refusing: the benchmark $id is still queued or running (job $busy); send bench $id again once it ends"; return 75; }
   if [ -f "$report" ]; then
     # Kept, so the owner's count of one job each holds: a report that stands queues nothing. The
-    # study's report carries each step's lines beside a summary of up to 80, so 120 lines are printed.
+    # study's report carries each step's lines, one for each of its 16 shard tasks, beside a summary
+    # of up to 85 and a run log of up to 50, so 220 lines are printed, its exit line last among them.
     echo "## $(basename "$report") ($(date -r "$report" '+%F %T'))"
-    head -n 120 "$report" | LC_ALL=C tr -cd '\11\12\40-\176' | masked | head -c 30000
+    head -n 220 "$report" | LC_ALL=C tr -cd '\11\12\40-\176' | masked | head -c 45000
     bench_failed_on_older_code "$report" || return 0
     # A benchmark that failed scored nothing, so once a fix has moved the checkout it is queued
     # once more, its report kept under its job's number (#312); the same commit queues nothing.
