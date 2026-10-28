@@ -521,9 +521,13 @@ class WholeRunTest(unittest.TestCase):
         before the fix, the classifier learns each CT from the other side, the AUC falls far
         below one half and the free permutation's MMD p sits at one, which the pre-registered
         rule reads as "replicated" whatever the engines differ by. A gamma curve on the reference
-        alone reads "not replicated" under the paired reading and "replicated" under the other."""
+        alone reads "not replicated" under the paired reading and "replicated" under the other.
+        The MMD takes the study's own 1,000 permutations: its q is read over the space's contrasts
+        and its split-half nulls (PREREG.md section 3, DEVIATIONS.md item 11), here 12 p-values,
+        and 200 permutations floor a p at 0.005, which those 12 lift to a q of 0.06, over the bar
+        however far the gamma moves the reference."""
         tool = load_tool()
-        tool.PERMUTATIONS_C2ST, tool.PERMUTATIONS_MMD, tool.BOOTSTRAP = 5, 200, 50
+        tool.PERMUTATIONS_C2ST, tool.PERMUTATIONS_MMD, tool.BOOTSTRAP = 5, 1000, 50
         tool.SPLIT_PERSONS = 12
         with tempfile.TemporaryDirectory() as temporary:
             folder = Path(temporary)
@@ -543,6 +547,7 @@ class WholeRunTest(unittest.TestCase):
         self.assertEqual((auc["auc"], auc["lo"], auc["hi"], same["auc_knn"]["auc"]), (0.5, 0.5, 0.5, 0.5))
         self.assertEqual(shifted["word"], "not replicated")
         self.assertLess(shifted["mmd"]["q"], 0.05)
+        self.assertLessEqual(shifted["mmd"]["q_without_nulls"], shifted["mmd"]["q"])
         self.assert_worded_lines(lines)
         self.assert_read_as_before(tool, before, shifted)
 
@@ -983,6 +988,78 @@ class SummaryBudgetTest(unittest.TestCase):
             for pair in primary["replication"]:
                 self.assertIn(tool.replication_line(pair, primary["replication"][pair]), lines, pair)
             self.assertTrue(any(line.startswith(" real-real auc median ") for line in lines))
+
+
+@unittest.skipIf(MISSING_BASE, f"needs {', '.join(MISSING_BASE)}")
+class FamilyTest(unittest.TestCase):
+    """The MMD's Benjamini-Hochberg family is every MMD p of the space, the split-half nulls'
+    among them, as PREREG.md section 3 says; each contrast keeps its q over the contrasts alone
+    beside it, the family the first sharded run read (DEVIATIONS.md, item 11). The nulls move a
+    contrast's q either way, and the C2ST's family, which no null enters, does not move."""
+
+    def setUp(self):
+        self.tool = load_tool()
+
+    def space(self, contrasts, nulls):
+        """A space's result with the contrasts' MMD p-values on its family contrasts and the
+        nulls' on its calibration; a null given as None was not tested."""
+        def contrast(p):
+            return {"mmd": {"p": p}, "auc_logistic": {"p": p}}
+        return {"vs_group": {}, "real_real": {}, "replication": {},
+                "vs_family": {"synthetic": {f"family{i}": contrast(p) for i, p in enumerate(contrasts)}},
+                "calibration": {"groups": {f"null{i}": {"mmd": {} if p is None else {"p": p}} for i, p in enumerate(nulls)}}}
+
+    def q_values(self, result, key):
+        return [c["mmd"][key] for c in result["vs_family"]["synthetic"].values()]
+
+    def test_the_nulls_raise_a_q_over_the_bar_where_they_lie_above_its_p(self):
+        result = self.space((0.001, 0.03, 0.2), (0.6, 0.9))
+        self.tool.adjust(result)
+        for found, expected in zip(self.q_values(result, "q"), (0.005, 0.075, 1 / 3)):
+            self.assertAlmostEqual(found, expected)
+        for found, expected in zip(self.q_values(result, "q_without_nulls"), (0.003, 0.045, 0.2)):
+            self.assertAlmostEqual(found, expected)
+        pure = self.tool.rules()
+        self.assertEqual(self.q_values(result, "q"), list(pure.benjamini_hochberg((0.001, 0.03, 0.2, 0.6, 0.9))[:3]))
+        self.assertEqual([c["auc_logistic"]["q"] for c in result["vs_family"]["synthetic"].values()],
+                         list(pure.benjamini_hochberg((0.001, 0.03, 0.2))))
+
+    def test_the_nulls_lower_a_q_where_they_lie_below_its_p(self):
+        result = self.space((0.04, 0.3), (0.001, 0.002))
+        self.tool.adjust(result)
+        self.assertAlmostEqual(self.q_values(result, "q")[0], 0.04 * 4 / 3)
+        self.assertAlmostEqual(self.q_values(result, "q_without_nulls")[0], 0.08)
+
+    def test_a_null_not_tested_and_a_space_with_no_null_leave_the_family_to_the_contrasts(self):
+        for nulls in ((), (None,)):
+            result = self.space((0.001, 0.03, 0.2), nulls)
+            self.tool.adjust(result)
+            self.assertEqual(self.q_values(result, "q"), self.q_values(result, "q_without_nulls"))
+        result = self.space((0.001,), (0.5,))
+        self.tool.adjust(result)
+        self.assertEqual(result["calibration"]["groups"]["null0"]["mmd"], {"p": 0.5})  # a null's flag is flagged_nulls'
+
+    def test_the_replication_line_shows_both_q_values_and_keeps_the_word(self):
+        found = {"persons": [26, 26], "n": [52, 52], "word": "replicated", "paired": True,
+                 "auc_logistic": {"auc": 0.5, "lo": 0.5, "hi": 0.5, "p": 1.0}, "auc_knn": {"auc": 0.5},
+                 "mmd": {"mmd2": 0.0, "p": 0.047, "q": 0.052, "q_without_nulls": 0.048}, "fd64": 0.0,
+                 "kid64": {"kid": -0.467}, "prdc": {"precision": 1.0, "recall": 1.0, "density": 1.0, "coverage": 1.0}}
+        line = self.tool.replication_line("flexray_replica|flexray_reference", found)
+        self.assertIn(" mmd p 0.047 q 0.052 (0.048 without nulls) fd64 ", line)
+        self.assertTrue(line.endswith(" replicated"))
+        self.assertLessEqual(len(line), self.tool.rules().LINE_LIMIT)
+        self.assertEqual(self.tool.rules().safe_line(line), line)
+        self.assertTrue(study_report().MEASURES[4][1].search(line))
+        del found["mmd"]["q_without_nulls"]
+        self.assertIn(" mmd p 0.047 q 0.052 fd64 ", self.tool.replication_line("flexray_replica|flexray_reference", found))
+
+    def test_the_claim_report_names_the_family_its_lines_show(self):
+        report = study_report()
+        before = " replication a vs b persons 26/26 n 52/52 auc 0.50 [0.50, 0.50] p 1.000 knn 0.50 mmd p 0.047 q 0.048 fd64 0.0"
+        after = before.replace("q 0.048", "q 0.052 (0.048 without nulls)")
+        self.assertIn("over its contrasts alone, the split-half nulls adjusted among themselves", report.mmd_family([before]))
+        self.assertIn("over its contrasts and its split-half nulls as PREREG.md section 3 says", report.mmd_family([after]))
+        self.assertEqual(report.mmd_family([" flexray_drr vs film auc 1.00 [1.00, 1.00] p 0.167 knn 1.00 fd64 323.1"]), "")
 
 
 @unittest.skipIf(MISSING_BASE, f"needs {', '.join(MISSING_BASE)}")

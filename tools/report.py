@@ -1014,7 +1014,20 @@ def study_uncertainty(run):
         return missing("needs summary.txt's contrast lines, an AUC with its interval: it holds none")
     count = {name: sum(1 for line in lines if pattern.search(line)) for name, pattern in MEASURES[:5]}
     return met(f"summary.txt: {count[MEASURES[0][0]]} AUCs with an interval, {count[MEASURES[1][0]]} with a C2ST permutation p, {count[MEASURES[3][0]]} MMD permutation p and {count[MEASURES[4][0]]} Benjamini-Hochberg q;"
-               f" each interval the 95 percent percentile interval of a person-cluster bootstrap of 1,000 draws, the C2ST's p from 100 permutations and the MMD's from 1,000, all by person, and the q by Benjamini-Hochberg within a space ({at_commit(run)} and tools/domain_gap_stats.py, README section 4)")
+               f" each interval the 95 percent percentile interval of a person-cluster bootstrap of 1,000 draws, the C2ST's p from 100 permutations and the MMD's from 1,000, all by person, and the q by Benjamini-Hochberg within a space{mmd_family(lines)} ({at_commit(run)} and tools/domain_gap_stats.py, README section 4)")
+
+
+def mmd_family(lines):
+    """Which family the run's MMD q was taken over, read from the lines that print one: since
+    DEVIATIONS.md item 11 such a line prints the q over the contrasts alone beside the q over the
+    contrasts and the split-half nulls, and a run before it printed one q, over the contrasts
+    alone; where no line prints a q there is nothing to say."""
+    printed = [line for line in lines if MEASURES[4][1].search(line)]
+    if not printed:
+        return ""
+    if any(" without nulls)" in line for line in printed):
+        return ", the MMD's over its contrasts and its split-half nulls as PREREG.md section 3 says, the q over the contrasts alone beside it (DEVIATIONS.md, item 11)"
+    return ", the MMD's over its contrasts alone, the split-half nulls adjusted among themselves (DEVIATIONS.md, items 8 and 11)"
 
 
 def study_internal_evaluation(run):

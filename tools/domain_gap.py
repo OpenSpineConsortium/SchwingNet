@@ -1588,17 +1588,31 @@ def gap_ratios(frame, result, synthetic):
 
 
 def adjust(result):
-    """Benjamini-Hochberg over every MMD p of the space's contrasts, the replication pairs among
-    them, and over its C2ST permutation p-values; the split-half nulls are adjusted among
-    themselves (flagged_nulls)."""
+    """Benjamini-Hochberg over every MMD p of the space, the split-half nulls' among them as
+    PREREG.md section 3 says, and over its C2ST permutation p-values, which the nulls do not have.
+    Each contrast's MMD carries q from that family and q_without_nulls from its contrasts alone,
+    the family the first sharded run used (DEVIATIONS.md, item 11), so the report can show both.
+    A null's own flag stays its BH among the nulls (flagged_nulls, DEVIATIONS.md, item 8)."""
     pure = rules()
     for key in ("mmd", "c2st"):
         found = list(p_values(result, key))
         if not found:
             continue
-        adjusted = pure.benjamini_hochberg(tuple(p for _, p in found))
+        nulls = tuple(null_mmd_p_values(result)) if key == "mmd" else ()
+        adjusted = pure.benjamini_hochberg(tuple(p for _, p in found) + nulls)
         for (holder, _), q in zip(found, adjusted):
             holder["q"] = q
+        if key == "mmd":
+            alone = pure.benjamini_hochberg(tuple(p for _, p in found))
+            for (holder, _), q in zip(found, alone):
+                holder["q_without_nulls"] = q
+
+
+def null_mmd_p_values(result):
+    """The MMD p of every split-half null of the space, in the calibration's order."""
+    for null in result.get("calibration", {}).get("groups", {}).values():
+        if "p" in null.get("mmd", {}):
+            yield float(null["mmd"]["p"])
 
 
 def p_values(result, key):
@@ -3548,19 +3562,26 @@ def replication_summary(space):
 def replication_line(pair, c):
     """A pair's line: the persons and rows a side first, since the word at its end is a
     non-rejection rule that a small sample satisfies for want of power (verdict_line), then the
-    measures a family line carries with the MMD's q, the word's second input (the C2ST's q stays
-    in results.json, since with it the line of a worded pair would pass the report's limit), the
-    last of them left off whole where the line would still pass it, so a cut never takes the
-    word."""
+    measures a family line carries with the MMD's q, the word's second input, and its q over the
+    contrasts alone beside it (DEVIATIONS.md, item 11; the C2ST's q stays in results.json, since
+    with it the line of a worded pair would pass the report's limit), the last of them left off
+    whole where the line would still pass it, so a cut never takes the word."""
     a, b = pair.split("|")
     if "skipped" in c:
         return f" replication {a} vs {b} not tested, {c['skipped'][:130]}"
     prdc = c.get("prdc", {})
     numbers = [f"auc {auc_text(c['auc_logistic'])}", f"knn {fmt(c['auc_knn']['auc'])}",
-               f"mmd p {fmt(c['mmd']['p'], 3)} q {fmt(c['mmd'].get('q'), 3)}",
+               f"mmd p {fmt(c['mmd']['p'], 3)} q {fmt(c['mmd'].get('q'), 3)}{without_nulls(c['mmd'])}",
                f"fd64 {fmt(c['fd64'], 1)}", f"kid64 {fmt(c['kid64']['kid'], 3)}",
                f"prdc {' '.join(fmt(prdc.get(k)) for k in ('precision', 'recall', 'density', 'coverage'))}"]
     return within_limit(f" replication {a} vs {b} {counts_text(c)}", numbers, c.get("word", ""))
+
+
+def without_nulls(mmd):
+    """The MMD's q over the space's contrasts alone, in parentheses, where adjust set one."""
+    if mmd.get("q_without_nulls") is None:
+        return ""
+    return f" ({fmt(mmd['q_without_nulls'], 3)} without nulls)"
 
 
 def within_limit(head, numbers, word):
