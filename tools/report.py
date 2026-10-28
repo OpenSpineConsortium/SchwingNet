@@ -593,7 +593,7 @@ BASELINE = re.compile(r" (?:calibration split-half auc median |real-real auc med
 # (tools/domain_gap.py, calibration_summary); a flagged group's contrasts in the space are not read
 # (docs/research/drr-domain-gap/DEVIATIONS.md, item 8).
 CALIBRATION = re.compile(r" calibration split-half auc median \S+ range \S+ to \S+ over [0-9]+, mmd flagged (?P<count>[0-9]+),"
-                         r" auc interval above half [0-9]+")
+                         r" auc interval above half [0-9]+(?P<nulls_in_family>, nulls in the mmd q family)?")
 FLAGGED = " calibration flagged "
 # The measures a contrast line can carry, each by the words that show it.
 MEASURES = (
@@ -1014,19 +1014,19 @@ def study_uncertainty(run):
         return missing("needs summary.txt's contrast lines, an AUC with its interval: it holds none")
     count = {name: sum(1 for line in lines if pattern.search(line)) for name, pattern in MEASURES[:5]}
     return met(f"summary.txt: {count[MEASURES[0][0]]} AUCs with an interval, {count[MEASURES[1][0]]} with a C2ST permutation p, {count[MEASURES[3][0]]} MMD permutation p and {count[MEASURES[4][0]]} Benjamini-Hochberg q;"
-               f" each interval the 95 percent percentile interval of a person-cluster bootstrap of 1,000 draws, the C2ST's p from 100 permutations and the MMD's from 1,000, all by person, and the q by Benjamini-Hochberg within a space{mmd_family(lines)} ({at_commit(run)} and tools/domain_gap_stats.py, README section 4)")
+               f" each interval the 95 percent percentile interval of a person-cluster bootstrap of 1,000 draws, the C2ST's p from 100 permutations and the MMD's from 1,000, all by person, and the q by Benjamini-Hochberg within a space{mmd_family(run, lines)} ({at_commit(run)} and tools/domain_gap_stats.py, README section 4)")
 
 
-def mmd_family(lines):
-    """Which family the run's MMD q was taken over, read from the lines that print one: since
-    DEVIATIONS.md item 11 such a line prints the q over the contrasts alone beside the q over the
-    contrasts and the split-half nulls, and a run before it printed one q, over the contrasts
-    alone; where no line prints a q there is nothing to say."""
-    printed = [line for line in lines if MEASURES[4][1].search(line)]
-    if not printed:
+def mmd_family(run, lines):
+    """Which family the run's MMD q was taken over, where a contrast line prints one: since
+    DEVIATIONS.md item 11 a space's calibration line ends by saying its split-half nulls are in
+    the MMD's family, and a run before it, or a space with no null tested, took the q over the
+    contrasts alone."""
+    if not any(MEASURES[4][1].search(line) for line in lines):
         return ""
-    if any(" without nulls)" in line for line in printed):
-        return ", the MMD's over its contrasts and its split-half nulls as PREREG.md section 3 says, the q over the contrasts alone beside it (DEVIATIONS.md, item 11)"
+    calibrations = [m for space in run["body"]["spaces"].values() for m in map(CALIBRATION.fullmatch, space["lines"]) if m]
+    if any(m["nulls_in_family"] for m in calibrations):
+        return ", the MMD's over its contrasts and its split-half nulls as PREREG.md section 3 says, the worded pairs' q over the contrasts alone on their verdict lines (DEVIATIONS.md, item 11)"
     return ", the MMD's over its contrasts alone, the split-half nulls adjusted among themselves (DEVIATIONS.md, items 8 and 11)"
 
 

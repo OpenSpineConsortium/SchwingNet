@@ -547,7 +547,14 @@ class WholeRunTest(unittest.TestCase):
         self.assertEqual((auc["auc"], auc["lo"], auc["hi"], same["auc_knn"]["auc"]), (0.5, 0.5, 0.5, 0.5))
         self.assertEqual(shifted["word"], "not replicated")
         self.assertLess(shifted["mmd"]["q"], 0.05)
-        self.assertLessEqual(shifted["mmd"]["q_without_nulls"], shifted["mmd"]["q"])
+        physics = results["spaces"]["physics"]
+        nulls = tuple(tool.null_mmd_p_values(physics))
+        self.assertEqual(len(nulls), 7)
+        held = list(tool.p_values(physics, "mmd"))
+        frozen = tool.rules().benjamini_hochberg(tuple(p for _, p in held) + nulls)
+        index = next(i for i, (holder, _) in enumerate(held) if holder is shifted["mmd"])
+        self.assertEqual(shifted["mmd"]["q"], frozen[index])
+        self.assertLess(shifted["mmd"]["q_without_nulls"], shifted["mmd"]["q"])
         self.assert_worded_lines(lines)
         self.assert_read_as_before(tool, before, shifted)
 
@@ -1039,27 +1046,63 @@ class FamilyTest(unittest.TestCase):
         self.tool.adjust(result)
         self.assertEqual(result["calibration"]["groups"]["null0"]["mmd"], {"p": 0.5})  # a null's flag is flagged_nulls'
 
-    def test_the_replication_line_shows_both_q_values_and_keeps_the_word(self):
-        found = {"persons": [26, 26], "n": [52, 52], "word": "replicated", "paired": True,
-                 "auc_logistic": {"auc": 0.5, "lo": 0.5, "hi": 0.5, "p": 1.0}, "auc_knn": {"auc": 0.5},
-                 "mmd": {"mmd2": 0.0, "p": 0.047, "q": 0.052, "q_without_nulls": 0.048}, "fd64": 0.0,
-                 "kid64": {"kid": -0.467}, "prdc": {"precision": 1.0, "recall": 1.0, "density": 1.0, "coverage": 1.0}}
-        line = self.tool.replication_line("flexray_replica|flexray_reference", found)
-        self.assertIn(" mmd p 0.047 q 0.052 (0.048 without nulls) fd64 ", line)
-        self.assertTrue(line.endswith(" replicated"))
-        self.assertLessEqual(len(line), self.tool.rules().LINE_LIMIT)
-        self.assertEqual(self.tool.rules().safe_line(line), line)
-        self.assertTrue(study_report().MEASURES[4][1].search(line))
-        del found["mmd"]["q_without_nulls"]
-        self.assertIn(" mmd p 0.047 q 0.052 fd64 ", self.tool.replication_line("flexray_replica|flexray_reference", found))
+    def test_the_word_is_read_on_the_frozen_family(self):
+        """A pair's p of 0.035 is under the bar over the contrasts alone (q 0.035, "not
+        replicated") and over it with the nulls (q 0.058, "replicated"), so the word says which q
+        it was read on: the frozen family's."""
+        result = self.space((0.001, 0.002), (0.6, 0.9))
+        pair = "|".join(self.tool.REPLICATION_WORDED[0])
+        result["replication"][pair] = {"persons": [26, 26], "n": [104, 104], "auc_logistic": {"lo": 0.5, "p": 1.0},
+                                       "mmd": {"p": 0.035}}
+        self.tool.adjust(result)
+        self.tool.replication_words(result)
+        mmd = result["replication"][pair]["mmd"]
+        self.assertAlmostEqual(mmd["q"], 0.035 * 5 / 3)
+        self.assertAlmostEqual(mmd["q_without_nulls"], 0.035)
+        self.assertEqual(result["replication"][pair]["word"], "replicated")
+        self.assertEqual(self.tool.rules().replication_word(0.5, mmd["q_without_nulls"]), "not replicated")
 
-    def test_the_claim_report_names_the_family_its_lines_show(self):
+    def test_the_verdict_line_shows_both_q_values_and_the_replication_line_keeps_its_prdc(self):
+        """At the first run's widths a worded replication line was 196 characters; the q over the
+        contrasts alone on it would cost its PRDC, so it is on the verdict line instead."""
+        found = {"persons": [26, 26], "n": [104, 104], "word": "not replicated", "paired": True,
+                 "auc_logistic": {"auc": 0.5, "lo": 0.5, "hi": 0.5, "p": 0.911}, "auc_knn": {"auc": 0.49},
+                 "mmd": {"mmd2": 0.0, "p": 0.047, "q": 0.048, "q_without_nulls": 0.048}, "fd64": 0.0,
+                 "kid64": {"kid": -992.963}, "prdc": {"precision": 1.0, "recall": 1.0, "density": 1.08, "coverage": 1.0}}
+        pair = "flexray_replica|flexray_reference"
+        line = self.tool.replication_line(pair, found)
+        self.assertEqual(line, " replication flexray_replica vs flexray_reference persons 26/26 n 104/104 auc 0.50 [0.50, 0.50]"
+                               " p 0.911 knn 0.49 mmd p 0.047 q 0.048 fd64 0.0 kid64 -992.963 prdc 1.00 1.00 1.08 1.00 not replicated")
+        results = {"spaces": {"flexray": {"replication": {pair: found}}}}
+        verdict = self.tool.pair_verdict(results, pair)
+        self.assertEqual((verdict["q"], verdict["q_without_nulls"]), (0.048, 0.048))
+        head = self.tool.verdict_line(pair, verdict, {"space": "flexray", "reading": "invariant"})
+        self.assertEqual(head, "replication flexray_replica vs flexray_reference in flexray (invariant): not replicated"
+                               " (persons 26/26 n 104/104; mmd q 0.048, 0.048 without nulls)")
+        widest = dict(verdict, persons=[1000, 999], n=[1000, 996], word="not replicated")
+        self.assertLessEqual(len(self.tool.verdict_line("fluxray_raw|fluxray_raw_reference", widest, {"space": "flexray_as_stored", "reading": "invariant"})),
+                             self.tool.rules().LINE_LIMIT)
+        del verdict["q_without_nulls"]
+        self.assertTrue(self.tool.verdict_line(pair, verdict, {"space": "flexray", "reading": "invariant"}).endswith("; mmd q 0.048)"))
+
+    def test_the_calibration_line_says_the_nulls_are_in_the_family_and_the_claim_report_reads_it(self):
         report = study_report()
-        before = " replication a vs b persons 26/26 n 52/52 auc 0.50 [0.50, 0.50] p 1.000 knn 0.50 mmd p 0.047 q 0.048 fd64 0.0"
-        after = before.replace("q 0.048", "q 0.052 (0.048 without nulls)")
-        self.assertIn("over its contrasts alone, the split-half nulls adjusted among themselves", report.mmd_family([before]))
-        self.assertIn("over its contrasts and its split-half nulls as PREREG.md section 3 says", report.mmd_family([after]))
-        self.assertEqual(report.mmd_family([" flexray_drr vs film auc 1.00 [1.00, 1.00] p 0.167 knn 1.00 fd64 323.1"]), "")
+        cal = {"auc_median": 0.46, "auc_range": [0.40, 0.69], "flagged": [], "auc_above": ["a"],
+               "groups": {"a": {"mmd": {"p": 0.3}}, "b": {"mmd": {"p": 0.7}}}}
+        tested = self.tool.calibration_summary({"calibration": cal})[0]
+        self.assertEqual(tested, " calibration split-half auc median 0.46 range 0.40 to 0.69 over 2, mmd flagged 0,"
+                                 " auc interval above half 1, nulls in the mmd q family")
+        untested = self.tool.calibration_summary({"calibration": dict(cal, groups={"a": {}, "b": {"mmd": {}}})})[0]
+        self.assertTrue(untested.endswith(" auc interval above half 1"))
+        self.assertEqual(report.flagged_of({"lines": [tested]}), ([], 0))
+        line = " replication a vs b persons 26/26 n 104/104 auc 0.50 [0.50, 0.50] p 1.000 knn 0.50 mmd p 0.047 q 0.048 fd64 0.0"
+        def run(*calibrations):
+            return {"body": {"spaces": {"flexray": {"lines": [*calibrations, line]}}}}
+        self.assertIn("over its contrasts and its split-half nulls as PREREG.md section 3 says", report.mmd_family(run(tested), [line]))
+        self.assertIn("over its contrasts alone, the split-half nulls adjusted among themselves", report.mmd_family(run(untested), [line]))
+        self.assertIn("over its contrasts alone", report.mmd_family(run(), [line]))
+        family_only = " flexray_drr vs film auc 1.00 [1.00, 1.00] p 0.167 knn 1.00 fd64 323.1"
+        self.assertEqual(report.mmd_family(run(tested), [family_only]), "")
 
 
 @unittest.skipIf(MISSING_BASE, f"needs {', '.join(MISSING_BASE)}")
@@ -1077,8 +1120,8 @@ class SummaryLineTest(unittest.TestCase):
     def contrast(self, **changes):
         found = {"persons": [250, 250], "n": [1000, 1000], "word": "not replicated", "paired": True,
                  "auc_logistic": {"auc": 0.5, "lo": 0.42, "hi": 0.57, "p": 0.5, "q": 0.5}, "auc_knn": {"auc": 0.5},
-                 "mmd": {"mmd2": 0.0, "p": 0.5, "q": 0.5}, "fd64": 1234.5, "fd_rows": 250, "kid64": {"kid": 0.012},
-                 "prdc": {"precision": 0.5, "recall": 0.5, "density": 1.34, "coverage": 0.5}}
+                 "mmd": {"mmd2": 0.0, "p": 0.5, "q": 0.5, "q_without_nulls": 0.5}, "fd64": 1234.5, "fd_rows": 250,
+                 "kid64": {"kid": 0.012}, "prdc": {"precision": 0.5, "recall": 0.5, "density": 1.34, "coverage": 0.5}}
         found.update(changes)
         return found
 
@@ -1095,7 +1138,8 @@ class SummaryLineTest(unittest.TestCase):
                                        " fluxray_raw_reference: the render failed"))
         results = {"spaces": {"flexray": {"replication": {self.PAIR: self.contrast()}}}}
         self.assertEqual(self.tool.pair_verdict(results, self.PAIR),
-                         {"word": "not replicated", "reason": "", "persons": [250, 250], "n": [1000, 1000]})
+                         {"word": "not replicated", "reason": "", "persons": [250, 250], "n": [1000, 1000],
+                          "q": 0.5, "q_without_nulls": 0.5})
 
     def test_the_replication_line_carries_the_counts_and_keeps_the_word_within_the_limit(self):
         line = self.tool.replication_line(self.PAIR, self.contrast())

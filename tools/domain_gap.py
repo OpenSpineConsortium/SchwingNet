@@ -1591,7 +1591,8 @@ def adjust(result):
     """Benjamini-Hochberg over every MMD p of the space, the split-half nulls' among them as
     PREREG.md section 3 says, and over its C2ST permutation p-values, which the nulls do not have.
     Each contrast's MMD carries q from that family and q_without_nulls from its contrasts alone,
-    the family the first sharded run used (DEVIATIONS.md, item 11), so the report can show both.
+    the family the first sharded run used (DEVIATIONS.md, item 11), in results.json, and the
+    worded pairs' verdict lines print both.
     A null's own flag stays its BH among the nulls (flagged_nulls, DEVIATIONS.md, item 8)."""
     pure = rules()
     for key in ("mmd", "c2st"):
@@ -1606,6 +1607,11 @@ def adjust(result):
             alone = pure.benjamini_hochberg(tuple(p for _, p in found))
             for (holder, _), q in zip(found, alone):
                 holder["q_without_nulls"] = q
+
+
+# The calibration line's last words where the split-half nulls' MMD p-values are in the space's
+# MMD family, which tools/report.py reads to say which family a run's q came from.
+NULLS_IN_FAMILY = ", nulls in the mmd q family"
 
 
 def null_mmd_p_values(result):
@@ -1706,7 +1712,8 @@ def replication_verdict(results):
 
 def pair_verdict(results, pair):
     """One pair's word in the primary space's inversion-invariant reading, with the persons and
-    rows a side it was read from, or why there is none."""
+    rows a side it was read from and the MMD's q it was read on, beside its q over the contrasts
+    alone (DEVIATIONS.md, item 11), or why there is none."""
     verdict = {"word": None, "reason": ""}
     space = results["spaces"].get(PRIMARY_SPACE, {})
     found = space.get("replication", {}).get(pair, {})
@@ -1714,6 +1721,7 @@ def pair_verdict(results, pair):
         verdict["reason"] = f"space {PRIMARY_SPACE} not run, {space['invalid']}"
     elif "word" in found:
         verdict.update(word=found["word"], persons=found["persons"], n=found["n"])
+        verdict.update({key: found["mmd"][key] for key in ("q", "q_without_nulls") if key in found["mmd"]})
     else:
         verdict["reason"] = found.get("skipped", "the pair was not tested")
     return verdict
@@ -3419,13 +3427,23 @@ def verdict_line(pair, found, verdict):
     word is a non-rejection rule (replication_word: an AUC bound at most 0.6 and an MMD q at least
     0.05) that a small sample satisfies for want of power, and the segment job may have labelled
     fewer CTs than the study asked for, so a reader of "replicated" sees at once how many CTs it
-    rests on. A pair with no word gives its reason, cut to what the report's line holds."""
+    rests on; then the MMD's q the word was read on and its q over the contrasts alone, the family
+    the first sharded run read (DEVIATIONS.md, item 11), so a reader sees whether the family
+    moves the word. A pair with no word gives its reason, cut to what the report's line holds."""
     a, b = pair.split("|")
     if found.get("word"):
         return (f"replication {a} vs {b} in {verdict['space']} ({verdict['reading']}): {found['word']}"
-                f" ({counts_text(found)})")
+                f" ({counts_text(found)}{verdict_q(found)})")
     head = f"replication {a} vs {b}: no verdict, "
     return head + found["reason"][:rules().LINE_LIMIT - len(head)]
+
+
+def verdict_q(found):
+    """The verdict's MMD q and its q over the contrasts alone, where the verdict carries them."""
+    if found.get("q") is None:
+        return ""
+    alone = found.get("q_without_nulls")
+    return f"; mmd q {fmt(found['q'], 3)}" + ("" if alone is None else f", {fmt(alone, 3)} without nulls")
 
 
 def counts_text(c):
@@ -3562,26 +3580,21 @@ def replication_summary(space):
 def replication_line(pair, c):
     """A pair's line: the persons and rows a side first, since the word at its end is a
     non-rejection rule that a small sample satisfies for want of power (verdict_line), then the
-    measures a family line carries with the MMD's q, the word's second input, and its q over the
-    contrasts alone beside it (DEVIATIONS.md, item 11; the C2ST's q stays in results.json, since
-    with it the line of a worded pair would pass the report's limit), the last of them left off
-    whole where the line would still pass it, so a cut never takes the word."""
+    measures a family line carries with the MMD's q, the word's second input (the C2ST's q and
+    the MMD's q over the contrasts alone stay in results.json, since with either the line of a
+    worded pair at the first run's widths would pass the report's limit and give up its PRDC;
+    the worded pairs' q over the contrasts alone is on their verdict lines, verdict_line), the
+    last of them left off whole where the line would still pass it, so a cut never takes the
+    word."""
     a, b = pair.split("|")
     if "skipped" in c:
         return f" replication {a} vs {b} not tested, {c['skipped'][:130]}"
     prdc = c.get("prdc", {})
     numbers = [f"auc {auc_text(c['auc_logistic'])}", f"knn {fmt(c['auc_knn']['auc'])}",
-               f"mmd p {fmt(c['mmd']['p'], 3)} q {fmt(c['mmd'].get('q'), 3)}{without_nulls(c['mmd'])}",
+               f"mmd p {fmt(c['mmd']['p'], 3)} q {fmt(c['mmd'].get('q'), 3)}",
                f"fd64 {fmt(c['fd64'], 1)}", f"kid64 {fmt(c['kid64']['kid'], 3)}",
                f"prdc {' '.join(fmt(prdc.get(k)) for k in ('precision', 'recall', 'density', 'coverage'))}"]
     return within_limit(f" replication {a} vs {b} {counts_text(c)}", numbers, c.get("word", ""))
-
-
-def without_nulls(mmd):
-    """The MMD's q over the space's contrasts alone, in parentheses, where adjust set one."""
-    if mmd.get("q_without_nulls") is None:
-        return ""
-    return f" ({fmt(mmd['q_without_nulls'], 3)} without nulls)"
 
 
 def within_limit(head, numbers, word):
@@ -3599,15 +3612,19 @@ def within_limit(head, numbers, word):
 
 
 def calibration_summary(space):
-    """The split-half nulls' line, its counts first, then the flagged groups' names on lines of
-    their own within the report's limit, so no cut ever takes a count or a name (DEVIATIONS.md,
-    item 8: every contrast of a flagged group in the space is not read)."""
+    """The split-half nulls' line, its counts first and, where a null has an MMD p, that the nulls
+    are in the MMD's false-discovery family (adjust, DEVIATIONS.md, item 11), then the flagged
+    groups' names on lines of their own within the report's limit, so no cut ever takes a count
+    or a name (DEVIATIONS.md, item 8: every contrast of a flagged group in the space is not
+    read)."""
     cal = space.get("calibration", {})
     if cal.get("auc_median") is None:
         return []
     head = (f" calibration split-half auc median {fmt(cal['auc_median'])} range {fmt(cal['auc_range'][0])} to"
             f" {fmt(cal['auc_range'][1])} over {len(cal['groups'])}, mmd flagged {len(cal['flagged'])},"
             f" auc interval above half {len(cal.get('auc_above', []))}")
+    if any(True for _ in null_mmd_p_values(space)):
+        head += NULLS_IN_FAMILY
     return [head] + name_lines(" calibration flagged", cal["flagged"])
 
 
