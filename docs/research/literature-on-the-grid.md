@@ -77,9 +77,12 @@ at 00:32 stopped before the gate, since the organization secrets did not reach s
 job until the owner gave them Selected repositories), and grid job 40819848 ran
 `literature synthetic_spine` on csc1 at commit 76838c4, 8 minutes 36 seconds by sacct's elapsed time. Of the 42 papers,
 3 were held already, 17 were got (19 files, 13.2 MB) and 22 were not got. Thirteen of the 17 came
-as Europe PMC's JATS XML; for eleven of those PMC's PDF link answered 403, so their figures, and a
-table printed as an image such as Pierro 2017's, are only on PMC's own pages. Four came as the open-access
-PDF Semantic Scholar named (tan2004, chen2011, yadav2020, ahn2001).
+as Europe PMC's JATS XML; for eleven of those the PDF link answered 403, so their figures, and a
+table printed as an image such as Pierro 2017's, were not landed. The tool's first source for those
+PDFs, PMC's open-access web service, closed with the PMC Article Dataset Changes announced on 12
+February 2026, which leaves Europe PMC's rendered PDFs as the links that answered 403; the fetch now
+takes them from PMC's Cloud Service instead (below). Four came as the open-access PDF Semantic
+Scholar named (tan2004, chen2011, yadav2020, ahn2001).
 
 - Elsevier answered 403 to the entitlement check for both of its papers, bach2019 and shin2024.
   shin2024 is open access, which Elsevier serves to any key it accepts, and Elsevier documents a 403
@@ -127,3 +130,35 @@ critic over both (the thread's workflow of 2026-10-28):
 
 So all 42 are found: 20 on the grid or held, 10 sent by the owner, 11 free to read by hand and one
 through the library. The owner was asked on 2026-10-28 to send the twelve as he sent the ten.
+
+Which of the twelve a program may fetch, checked the same day by one reader and one skeptic per
+paper, through WebFetch alone, with no bot check passed or sought:
+
+- Five a script may download from the publisher with a plain GET: griffith2016
+  (qims.amegroups.org/article/download/13035/13345, which redirects to the publisher's CDN),
+  twomey1985 (actaorthop.org/actao/article/download/23300/27230/71833), alonge2021
+  (www.ojshostng.com/index.php/ajmms/article/download/1782/1196), ahmed2019
+  (caims.in/assets/journal/2019_1/CAIMS%20JOURNAL___05.pdf) and chaudhary2015
+  (www.journalijar.com/uploads/2015/08/684_IJAR-4961.pdf). The cloud session's proxy refused every
+  one of these hosts until the owner gave the project's threads full network access that day, and
+  the grid word reached none of these addresses: alonge2021, ahmed2019 and chaudhary2015 have no DOI
+  or PMC id, so no source was asked; for griffith2016 Semantic Scholar names
+  qims.amegroups.com/article/viewFile/13035/pdf, which redirects to qims.amegroups.org and returns a
+  page, not the PDF; for twomey1985 it names Taylor & Francis's PDF, which answered 403.
+- The six PMC papers only a person may get. Their PDF links answer a script with a reCAPTCHA or a
+  "Preparing to download" page. PMC's copyright notice, read that day, forbids automated downloading
+  except through its OAI-PMH, FTP and Cloud services, which carry only the Article Datasets (the
+  open-access subset, the author manuscripts and the historical OCR set), and a listing of the Cloud
+  Service bucket holds none of the six. Springer's copies of lien2007 and makino2012 are paywalled
+  (its page asks USD 39.95 for the PDF, although Unpaywall calls them bronze); Wiley's page for
+  kunkel2011 could not be read, and Europe PMC lists its DOI link as subscription required while
+  Unpaywall knows no free publisher copy; the three J Anat scans of 1982 and 1985 have no DOI.
+- eisenstein1977 only through the library: Bone & Joint's PDF and article pages are paywalled,
+  although Semantic Scholar marks a bronze copy; OpenAlex calls it closed.
+
+PMC's Cloud Service is also where a script may take the PDF of a paper in the open-access subset: a
+public S3 bucket, pmc-oa-opendata, holding each article under PMCID.version/ as PDF, JATS XML, plain
+text and figures (a listing for bonczar2024, PMC11624215, showed its 736,145-byte PDF on
+2026-10-28). The fetch now lists the bucket for the PMC id and a dot, since the id alone also lists
+longer ids that begin with it, and takes the newest version's PDF, so the next send should land the
+PDFs the bucket holds for the eleven papers that came as XML alone.
