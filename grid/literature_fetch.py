@@ -39,9 +39,11 @@ owner's word, since a session sends what it reads to Anthropic's API. Standard l
 
 import argparse
 import csv
+import email.utils
 import http.client
 import json
 import os
+import random
 import re
 import stat
 import sys
@@ -59,6 +61,8 @@ TIMEOUT_SECONDS = 60
 DOWNLOAD_SECONDS = 900
 INDEX_BYTES = 10**6
 PAUSE_SECONDS = 1.0
+TRIES = 6
+RETRY_AFTER_CAP_SECONDS = 120
 DEFAULTS = {
     "epmc": "https://www.ebi.ac.uk/europepmc/webservices/rest",
     "pmc_oa": "https://www.ncbi.nlm.nih.gov/pmc/utils/oa/oa.fcgi",
@@ -123,10 +127,17 @@ def base(service):
 
 def plain(text, limit=80):
     """TEXT with nothing but letters, digits, spaces and . _ - left, cut to LIMIT, for a reason
-    that a server or an exception wrote; a run of 20 or more letters and digits, the shape of a key a
-    server may echo in an error, is withheld."""
+    that a server or an exception wrote; a run of 20 or more letters, digits, underscores or hyphens,
+    the shape of a key a server may echo in an error, is withheld. A run of capitals and underscores
+    alone stays, since it is an error code such as Elsevier's AUTHENTICATION_ERROR, which says the
+    request was refused before any article's rights were looked at, and no key these services issue
+    has that shape."""
     kept = re.sub(r"[^A-Za-z0-9 ._-]", "", str(text))
-    return re.sub(r"[A-Za-z0-9_-]{20,}", "withheld", kept)[:limit].strip()
+    return re.sub(r"[A-Za-z0-9_-]{20,}", error_code_or_withheld, kept)[:limit].strip()
+
+
+def error_code_or_withheld(run):
+    return run.group(0) if re.fullmatch(r"[A-Z_]+", run.group(0)) else "withheld"
 
 
 def loopback(url):
@@ -134,8 +145,39 @@ def loopback(url):
     return url.startswith("http://127.0.0.1:")
 
 
+def pause_seconds():
+    return float(os.environ.get("LITERATURE_PAUSE", PAUSE_SECONDS))
+
+
 def pause():
-    time.sleep(float(os.environ.get("LITERATURE_PAUSE", PAUSE_SECONDS)))
+    time.sleep(pause_seconds())
+
+
+def retry_wait(attempt, headers):
+    """Seconds to wait before asking again after a 429 or 503, or None where the server's Retry-After
+    asks for longer than the cap, which a job with a wall time does not wait out. The wait is about
+    2, 4, 8, 16 and 32 pauses, each spread by half either way so retries from one run do not fall in
+    step, and never less than a Retry-After the cap allows. The first run of 2026-10-28 lost four keyed
+    Semantic Scholar lookups to a 429 that outlasted waits of 3 and 6 seconds."""
+    asked = retry_after_seconds(headers.get("Retry-After", "") if headers is not None else "")
+    if asked is not None and asked > RETRY_AFTER_CAP_SECONDS:
+        return None
+    return max(pause_seconds() * 2 ** (attempt + 1) * random.uniform(0.5, 1.5), asked or 0)
+
+
+def retry_after_seconds(text):
+    """A Retry-After as seconds from now, given as seconds or as an HTTP date, or None if it is
+    neither; digits are bounded before they are read."""
+    text = (text or "").strip()
+    if re.fullmatch(r"\d+", text):
+        return int(text) if len(text) <= 9 else 10**9
+    try:
+        when = email.utils.parsedate_to_datetime(text)
+    except (TypeError, ValueError, IndexError):
+        return None
+    if when is None or when.tzinfo is None:
+        return None
+    return max(0, int(when.timestamp() - time.time()))
 
 
 def read_list(path):
@@ -256,9 +298,10 @@ def request_of(url, headers, method="GET"):
 
 
 def ask(url, headers=None, keyed="", method="GET", limit=SMALL_BYTES):
-    """One small request, read into memory and never written: an Answer. A 429 is asked twice more."""
+    """One small request, read into memory and never written: an Answer. A 429 or 503 is asked again,
+    up to TRIES in all, after a back-off."""
     check_target(url, keyed)
-    for attempt in range(3):
+    for attempt in range(TRIES):
         try:
             with opener(keyed).open(request_of(url, headers, method), timeout=TIMEOUT_SECONDS) as answer:
                 body = b"" if method == "HEAD" else answer.read(limit + 1)
@@ -268,10 +311,13 @@ def ask(url, headers=None, keyed="", method="GET", limit=SMALL_BYTES):
                 body = error.read(64 * 1024) if error.fp else b""
             except NETWORK_ERRORS:
                 body = b""
-            if error.code == 429 and attempt < 2:
-                time.sleep(3 * (attempt + 1))
+            wait = retry_wait(attempt, error.headers) if error.code in (429, 503) else None
+            if wait is not None and attempt < TRIES - 1:
+                time.sleep(wait)
                 continue
             reason = redirect_reason(error, keyed) if 300 <= error.code < 400 else f"http {error.code}"
+            if error.code in (429, 503) and wait is None:
+                reason += f", asked to wait more than {RETRY_AFTER_CAP_SECONDS} s"
             return Answer(error.code, body, error.headers, reason)
         except NETWORK_ERRORS as error:
             return Answer(0, b"", None, plain(getattr(error, "reason", error)) or error.__class__.__name__)
@@ -360,11 +406,14 @@ def pmc_items(row):
 
 
 def elsevier_status(answer):
-    """Elsevier's own word for an answer, from its X-ELS-Status header or its error's status code."""
+    """Elsevier's own word for an answer and its text, from its error's status or else its X-ELS-Status
+    header. The word alone does not tell a token bound to another key ("Institution Token is not
+    associated with API Key") from a key Elsevier does not recognise; the text does."""
     said = answer.headers.get("X-ELS-Status", "") if answer.headers is not None else ""
     error = (json_of(answer) or {}).get("service-error", {})
     error = error.get("status", {}) if isinstance(error, dict) else {}
-    word = plain(error.get("statusCode", "") if isinstance(error, dict) else "") or plain(said)
+    error = error if isinstance(error, dict) else {}
+    word = plain(f"{error.get('statusCode', '')} {error.get('statusText', '')}", 160) or plain(said, 160)
     return f" ({word})" if word else ""
 
 

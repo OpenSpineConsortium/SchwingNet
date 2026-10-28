@@ -192,6 +192,64 @@ class MissingRecordLineTest(StudyFolder):
         self.assertIn("the checkout moved", code["evidence"])
 
 
+class RunLogTest(StudyFolder):
+    # the owner's ask of 2026-10-28 00:23 UTC, "make sure there is realtime logging in the
+    # CLAIMS/REPORT": the run log the merge wrote into BENCH.md is copied whole into the report's
+    # section Run log, its span cited by REFORMS 2c, and a report with none says why
+    def bench(self):
+        return (self.run / "BENCH.md").read_text(encoding="utf-8")
+
+    def test_the_run_log_is_copied_whole_and_its_span_is_cited(self):
+        compute = self.rows("reforms")["2c"]
+        self.assertEqual(compute["state"], "met")
+        self.assertIn("run log: 6 lines in BENCH.md, 2000-01-01 00:00:00 to 2000-01-01 00:00:07 UTC, shown in the section Run log",
+                      compute["evidence"])
+        text = self.text()
+        self.assertIn("- BENCH.md's run log: 6 lines in BENCH.md, 2000-01-01 00:00:00 to 2000-01-01 00:00:07 UTC", text)
+        section = text[text.index("## Run log\n"):]
+        logged = [line[2:] for line in self.bench().splitlines() if line.startswith("  2000-")]
+        self.assertEqual(len(logged), 6)
+        self.assertIn("```text\n" + "\n".join(logged) + "\n```\n", section)
+        self.assertLess(text.index("## REFORMS"), text.index("## Run log"))
+
+    def test_lines_after_the_run_log_and_an_earlier_one_are_not_its_own(self):
+        bench = self.bench().replace("- run log, UTC: ", "- run log, UTC: an earlier one\n  2000-01-01 00:00:00 old line\n- next\n- run log, UTC: ", 1)
+        (self.run / "BENCH.md").write_text(bench + "  2000-01-01 00:00:09 after the exit\n", encoding="utf-8")
+        self.assertIn("run log: 6 lines in BENCH.md", self.rows("reforms")["2c"]["evidence"])
+        section = self.text().split("## Run log\n", 1)[1]
+        self.assertNotIn("old line", section)
+        self.assertNotIn("after the exit", section)
+        self.assertIn("merge: results.json, the figures and summary.txt written\n```", section)
+
+    def test_a_report_with_no_run_log_says_why(self):
+        kept = [line for line in self.bench().splitlines() if not line.startswith(("- run log", "  2000-"))]
+        (self.run / "BENCH.md").write_text("\n".join(kept) + "\n", encoding="utf-8")
+        self.assertIn("run log: none (BENCH.md carries no run log: the run began 2000-01-01 00:00:00 UTC, before the study wrote"
+                      " one (2026-10-28))", self.rows("reforms")["2c"]["evidence"])
+        self.assertIn("## Run log\n\nNone: BENCH.md carries no run log", self.text())
+        # a run its header dates after the study began writing one is never said to have come before
+        later = [line.replace("2000-01-01 00:00:00 UTC", "2026-11-02 09:00:00 UTC", 1) if line.startswith("# bench ") else line
+                 for line in kept]
+        self.assertNotEqual(later, kept)
+        (self.run / "BENCH.md").write_text("\n".join(later) + "\n", encoding="utf-8")
+        evidence = self.rows("reforms")["2c"]["evidence"]
+        self.assertIn("run log: none (BENCH.md carries no run log line, though the run began 2026-11-02 09:00:00 UTC)", evidence)
+        self.assertNotIn("before the study", evidence)
+        (self.run / "BENCH.md").write_text("\n".join(kept[:-1] + ["- run log: not read, since the study's environment was not made.", kept[-1]]) + "\n",
+                                           encoding="utf-8")
+        self.assertIn("run log: none (not read, since the study's environment was not made)", self.rows("reforms")["2c"]["evidence"])
+        self.assertIn("None: not read, since the study's environment was not made.\n", self.text())
+
+    def test_no_line_of_the_run_log_can_close_its_block(self):
+        bench = self.bench().replace("- exit ", "  ```\n  2000-01-01 00:00:08 a line with ```` four\n- exit ", 1)
+        (self.run / "BENCH.md").write_text(bench, encoding="utf-8")
+        self.assertIn("run log: 8 lines in BENCH.md", self.rows("reforms")["2c"]["evidence"])
+        section = self.text().split("## Run log\n", 1)[1]
+        self.assertIn("\n`````text\n", section)
+        self.assertIn("written\n```\n2000-01-01 00:00:08 a line with ```` four\n`````\n", section)
+        self.assertEqual(section.count("`````"), 2)
+
+
 class NotApplicableTest(StudyFolder):
     def test_what_the_design_leaves_out_says_why_and_names_the_run(self):
         claim, reforms = self.rows("claim"), self.rows("reforms")
