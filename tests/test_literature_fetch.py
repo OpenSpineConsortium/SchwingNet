@@ -4,7 +4,8 @@ lands from the source that allows it or is listed with the reason it did not; El
 token travel only in Elsevier's request headers, Semantic Scholar's only in its own, never through a
 redirect, and never into a file, the output or the report; the landing is 0700 and every file 0600;
 a body past its bound or one that is not what it promised is deleted; the job lands nothing until
-the size rule admits the plan. Standard library only.
+the size rule admits the plan; a body cut short, a chunked body cut off and a redirect onto a host
+the tool never scripts are each named with why and land nothing. Standard library only.
 
     python3 -m unittest tests/test_literature_fetch.py
 """
@@ -119,6 +120,10 @@ class Services(BaseHTTPRequestHandler):
             return self.answer(401, b'{"service-error":{"status":{"statusCode":"AUTHENTICATION_ERROR"}}}')
         if doi == "10.1016/j.redir.1":
             return self.answer(302, b"", headers={"Location": f"{self.base()}/elsewhere"})
+        if doi == "10.1016/j.echo.1":
+            # a gateway's page, not Elsevier's JSON, with the key echoed in the status header
+            return self.answer(401, b"<html>denied</html>", "text/html",
+                               {"X-ELS-Status": f"APIKey {ELSEVIER_KEY} with IP address 192.0.2.1 is unrecognized"})
         verdict = doi in ("10.1016/j.ok.1", "10.1016/j.abs.1")
         body = {"entitlement-response": {"document-entitlement": {"entitled": verdict, "status": "found"}}}
         self.answer(200, json.dumps(body).encode())
@@ -141,11 +146,31 @@ class Services(BaseHTTPRequestHandler):
         links = {"10.1007/closed.1": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC222/pdf/x.pdf",
                  "10.1234/s2.got": f"{self.base()}/files/s2got.pdf",
                  "10.1234/s2.html": f"{self.base()}/files/page.html",
-                 "10.1234/s2.liar": f"{self.base()}/files/liar.pdf"}
+                 "10.1234/s2.liar": f"{self.base()}/files/liar.pdf",
+                 "10.1234/s2.cut": f"{self.base()}/files/cut.pdf",
+                 "10.1234/s2.chunk": f"{self.base()}/files/chunk.pdf",
+                 "10.1234/s2.away": f"{self.base()}/files/away.pdf"}
+        if doi == "10.1234/s2.chunkmeta":
+            return self.chunked_and_cut()
         found = {"url": links[doi], "status": "GREEN", "license": "CCBY"} if doi in links else None
         self.answer(200, json.dumps({"isOpenAccess": found is not None, "openAccessPdf": found}).encode())
 
+    def chunked_and_cut(self):
+        """A chunked body that ends in the middle of its chunk, the connection closed."""
+        self.send_response(200)
+        self.send_header("Transfer-Encoding", "chunked")
+        self.end_headers()
+        self.wfile.write(b"100\r\n" + PDF[:10])
+
     def file(self, name):
+        if name == "cut.pdf":
+            # the length stated for the whole file, the connection closed after part of it
+            return self.answer(200, PDF[:100], "application/pdf", {"Content-Length": str(len(PDF))})
+        if name == "chunk.pdf":
+            return self.answer(200, b"", "application/pdf", {"Content-Length": str(len(PDF))}) \
+                if self.command == "HEAD" else self.chunked_and_cut()
+        if name == "away.pdf":
+            return self.answer(302, b"", headers={"Location": "https://www.sciencedirect.com/science/article/pii/x"})
         if name == "page.html":
             return self.answer(200, b"<html>sign in</html>", "text/html")
         if name == "liar.pdf":
@@ -166,7 +191,8 @@ def serve(test):
 
 def service_env(address):
     return {"LITERATURE_EPMC": f"{address}/epmc", "LITERATURE_PMC_OA": f"{address}/pmc_oa",
-            "LITERATURE_ELSEVIER": f"{address}/elsevier", "LITERATURE_S2": f"{address}/s2", "LITERATURE_PAUSE": "0"}
+            "LITERATURE_ELSEVIER": f"{address}/elsevier", "LITERATURE_S2": f"{address}/s2", "LITERATURE_PAUSE": "0",
+            "LITERATURE_STAND_INS": "yes"}
 
 
 def home_with_keys(folder, elsevier=True, s2=True, mode=0o600):
@@ -178,9 +204,9 @@ def home_with_keys(folder, elsevier=True, s2=True, mode=0o600):
         path.write_text(f"ELSEVIER_API_KEY={ELSEVIER_KEY}\nELSEVIER_INSTTOKEN={ELSEVIER_TOKEN}\n", encoding="utf-8")
         path.chmod(mode)
     if s2:
-        (home / ".fluorocap").mkdir(parents=True, mode=0o700)
-        path = home / ".fluorocap" / "credentials.env"
-        path.write_text(f"KAGGLE_USERNAME=someone\nS2_API_KEY={S2_KEY}\n", encoding="utf-8")
+        (home / ".s2").mkdir(parents=True, mode=0o700)
+        path = home / ".s2" / "token.env"
+        path.write_text(f"S2_API_KEY={S2_KEY}\n", encoding="utf-8")
         path.chmod(0o600)
     home.mkdir(exist_ok=True)
     return home
@@ -234,7 +260,7 @@ class FetchToolTest(unittest.TestCase):
         self.assertIn("got elsevier xml", line["elsgot"])
         self.assertIn("elsevier pdf", line["elsgot"])
         self.assertIn("not got; elsevier xml: abstract only", line["elsabs"])
-        self.assertIn("elsevier pdf: http 403", line["elsabs"])
+        self.assertIn("elsevier pdf: not asked: Elsevier's XML held no full text", line["elsabs"])
         self.assertIn("not got; Elsevier: not entitled to the full text under the key and insttoken", line["elsno"])
         self.assertIn("no open-access copy that Semantic Scholar knows of", line["elsno"])
         self.assertIn("PMC holds it outside the open-access subset, which no script may fetch", line["closedpmc"])
@@ -330,7 +356,7 @@ class FetchToolTest(unittest.TestCase):
 
     def test_with_no_key_files_semantic_scholar_is_asked_with_no_key(self):
         shutil.rmtree(self.home / ".elsevier")
-        shutil.rmtree(self.home / ".fluorocap")
+        shutil.rmtree(self.home / ".s2")
         code, said = self.plan()
         self.assertEqual(code, 0, said)
         self.assertIn("Elsevier key: none (no file); Semantic Scholar key: none (no file)", said)
@@ -345,6 +371,84 @@ class FetchToolTest(unittest.TestCase):
             code, said = self.plan()
             self.assertEqual(code, 2, (text, said))
             self.assertFalse(Services.calls)
+
+    def test_a_body_cut_off_or_a_redirect_onto_an_unscripted_host_lands_nothing(self):
+        self.list.write_text("id,doi,pmcid,held\ncut,10.1234/s2.cut,,\nchunk,10.1234/s2.chunk,,\n"
+                             "away,10.1234/s2.away,,\nchunkmeta,10.1234/s2.chunkmeta,,\necho,10.1016/j.echo.1,,\n"
+                             "s2got,10.1234/s2.got,,\n", encoding="ascii")
+        code, planned = self.plan()
+        self.assertEqual(code, 0, planned)
+        code, fetched = self.fetch()
+        self.assertEqual(code, 0, fetched)
+        report = self.report.read_text(encoding="ascii")
+        line = self.lines_of(report.split("## Every paper", 1)[1])
+        self.assertIn("not got; s2 pdf: the body ended before the length its server stated, so deleted", line["cut"])
+        self.assertIn("not got; s2 pdf: IncompleteRead", line["chunk"])
+        self.assertIn("not got; s2 pdf: redirect onto www.sciencedirect.com refused as not scripted here", line["away"])
+        self.assertIn("not got; Semantic Scholar: IncompleteRead", line["chunkmeta"])
+        self.assertIn("not got; Elsevier entitlement check: http 401 (APIKey withheld with IP address", line["echo"])
+        self.assertIn("got s2 pdf", line["s2got"])
+        self.assertFalse([path for path in self.landing.rglob("*") if path.name.endswith(".part")])
+        self.assertFalse((self.landing / "text" / "cut" / "cut.s2.pdf").exists())
+        for text in (planned, fetched, report, (self.landing / "INDEX.md").read_text(encoding="utf-8"),
+                     (self.landing / "meta" / "PLAN.json").read_text(encoding="utf-8")):
+            for key in KEYS:
+                self.assertNotIn(key, text)
+
+    def test_the_index_asks_the_owners_word_before_a_session_reads_elseviers_text(self):
+        self.plan()
+        self.fetch()
+        index = (self.landing / "INDEX.md").read_text(encoding="utf-8")
+        marked = [line for line in index.splitlines() if "owner's word before a session reads it" in line]
+        self.assertTrue(marked)
+        self.assertTrue(all(".elsevier." in line for line in marked), marked)
+        self.assertIn("text-mining amendment", (self.landing / "README.md").read_text(encoding="utf-8"))
+
+    def test_where_elsevier_withholds_the_text_its_pdf_is_never_asked_for(self):
+        self.plan()
+        self.fetch()
+        asked = [(path, headers.get("accept")) for _, path, headers in Services.calls if path.startswith("/elsevier/doi/")]
+        self.assertIn(("/elsevier/doi/10.1016/j.ok.1", "application/pdf"), asked)
+        self.assertNotIn(("/elsevier/doi/10.1016/j.abs.1", "application/pdf"), asked)
+
+    def test_a_paper_landed_before_stays_listed_when_its_source_fails_later(self):
+        self.plan()
+        self.fetch()
+        # the next send finds no key file and Semantic Scholar refusing, so the plan offers neither again
+        shutil.rmtree(self.home / ".elsevier")
+        os.environ["LITERATURE_S2"] = f"{self.address}/nowhere"
+        self.plan()
+        self.report.unlink()
+        self.fetch()
+        report = self.report.read_text(encoding="ascii")
+        line = self.lines_of(report.split("## Every paper", 1)[1])
+        self.assertIn("got elsevier xml", line["elsgot"])
+        self.assertIn("from an earlier send", line["elsgot"])
+        self.assertIn("got s2 pdf", line["s2got"])
+        missing = report.split("## Not got", 1)[1].split("## Every paper", 1)[0]
+        self.assertNotIn("- elsgot:", missing)
+        self.assertNotIn("- s2got:", missing)
+        index = (self.landing / "INDEX.md").read_text(encoding="utf-8")
+        self.assertIn("text/elsgot/elsgot.elsevier.pdf", index)
+        self.assertIn("text/s2got/s2got.s2.pdf: s2 pdf, licence CCBY, open-access route GREEN", index)
+
+    def test_a_stand_in_address_counts_only_under_the_stand_in_switch(self):
+        del os.environ["LITERATURE_STAND_INS"]
+        self.assertEqual(self.tool.base("elsevier"), "https://api.elsevier.com/content/article")
+        os.environ["LITERATURE_STAND_INS"] = "yes"
+        self.assertEqual(self.tool.base("elsevier"), f"{self.address}/elsevier")
+
+    def test_a_redirect_moves_freely_except_onto_a_host_never_scripted(self):
+        handler = self.tool.ScriptedOnly()
+        for start, target in (("https://doi.org/10.1/x", "https://linkinghub.elsevier.com/retrieve/pii/x"),
+                              ("https://www.mdpi.com/x.pdf", "https://pmc.ncbi.nlm.nih.gov/articles/PMC1/"),
+                              ("https://doi.org/10.1/x", "https://pdf.sciencedirectassets.com/x.pdf")):
+            request = self.tool.request_of(start, {})
+            with self.assertRaises(self.tool.urllib.error.HTTPError):
+                handler.redirect_request(request, None, 302, "Found", {}, target)
+        for start, target in (("https://europepmc.org/articles/PMC1?pdf=render", "https://europepmc.org/api/x.pdf"),
+                              ("https://doi.org/10.1/x", "https://www.frontiersin.org/x.pdf")):
+            self.assertIsNotNone(handler.redirect_request(self.tool.request_of(start, {}), None, 302, "Found", {}, target))
 
     def test_a_keyed_call_goes_only_to_its_own_service(self):
         with self.assertRaises(ValueError):
@@ -409,7 +513,9 @@ class LiteratureJobTest(unittest.TestCase):
         self.assertIn("literature_testlist: admitted", out)
         state, job = (self.landing / "meta" / "SIZE").read_text(encoding="utf-8").split()[:2]
         self.assertEqual((state, job), ("admitted", "77"))
-        report = (self.repo / "grid" / "logs" / "LITERATURE-testlist.md").read_text(encoding="ascii")
+        path = self.repo / "grid" / "logs" / "LITERATURE-testlist.md"
+        self.assertEqual(path.stat().st_mode & 0o777, 0o600)
+        report = path.read_text(encoding="ascii")
         lines = report.splitlines()
         self.assertRegex(lines[0], r"^# literature testlist: job 77 on .*, commit unknown, ")
         self.assertRegex(lines[-1], r"^- exit 0 at ")

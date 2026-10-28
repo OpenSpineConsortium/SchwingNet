@@ -3294,6 +3294,18 @@ esac
         # and the send after that fetches again what is still missing
         self.assertEqual(self.gate("literature", "synthetic_spine").returncode, 0)
         self.assertEqual(len(self.submitted()), 2)
+        # a job killed before it wrote its exit leaves its report unfinished: printed and kept, nothing queued
+        (self.fake / "queue").write_text("", encoding="utf-8")
+        part = logs / "LITERATURE-synthetic_spine.md.part"
+        part.write_text("# literature synthetic_spine: job 4242 on node1, commit abc1234, 2026-10-28 02:00:00 UTC\n"
+                        "- admitted under the size rule: 400000000 bytes at most\n", encoding="utf-8")
+        done = self.gate("literature", "synthetic_spine")
+        self.assertEqual(done.returncode, 0, done.stdout)
+        self.assertIn("unfinished: the job ended before it wrote its exit", done.stdout)
+        self.assertIn("admitted under the size rule", done.stdout)
+        self.assertEqual(len(self.submitted()), 2)
+        self.assertFalse(part.exists())
+        self.assertTrue((logs / "LITERATURE-synthetic_spine-4242-unfinished.md").exists())
 
     def test_status_shows_the_sample_manifest_whole(self):
         logs = self.repo / "grid" / "logs"

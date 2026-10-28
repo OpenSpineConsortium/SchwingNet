@@ -17,16 +17,19 @@ institutional token, after its entitlement check, whether or not PMC holds it to
 shows what the key and token reach. Any other DOI with no PDF yet gets the open-access PDF Semantic
 Scholar names, unless that link lies on a host this tool never scripts: PMC's and Europe PMC's own
 article pages, whose terms bar automated retrieval outside the open-access subset, and Elsevier's,
-which is read only through its API. Every paper with no text after that is listed in the report
+which is read only through its API; a redirect onto one of them from anywhere else is refused too.
+A body shorter than the length its server stated is deleted, never kept as a whole file. Every paper with no text after that is listed in the report
 with the reason, for the owner.
 
 The keys: Elsevier's from ~/.elsevier/token.env (ELSEVIER_API_KEY, ELSEVIER_INSTTOKEN) and Semantic
-Scholar's from ~/.fluorocap/credentials.env (S2_API_KEY), as hpcworker's gate word key writes them,
+Scholar's from ~/.s2/token.env (S2_API_KEY), as hpcworker's gate word key writes them,
 each read only from a plain file of this account's that no one else may read. A key goes only in
 its service's request headers (X-ELS-APIKey and X-ELS-Insttoken, x-api-key), to that service's own
 address, never through a redirect, and never into a file, a line of output or the report. Elsevier's
 text stays on the grid, as the owner told Elsevier: the landing is 0700, every file in it 0600, and
-its README.md says what each file may be used for. Standard library only; Python 3.8 or later.
+its README.md says what each file may be used for, a Claude session reading Elsevier's only on the
+owner's word, since a session sends what it reads to Anthropic's API. Standard library only; Python
+3.8 or later.
 
     python3 grid/literature_fetch.py plan --list grid/literature/synthetic_spine.csv \
         --landing <data>/literature_synthetic_spine
@@ -36,6 +39,7 @@ its README.md says what each file may be used for. Standard library only; Python
 
 import argparse
 import csv
+import http.client
 import json
 import os
 import re
@@ -52,6 +56,8 @@ USER_AGENT = "SchwingNet-literature/1 (one research job on a university grid)"
 CAP_BYTES = 50 * 10**6
 SMALL_BYTES = 4 * 10**6
 TIMEOUT_SECONDS = 60
+DOWNLOAD_SECONDS = 900
+INDEX_BYTES = 10**6
 PAUSE_SECONDS = 1.0
 DEFAULTS = {
     "epmc": "https://www.ebi.ac.uk/europepmc/webservices/rest",
@@ -60,10 +66,12 @@ DEFAULTS = {
     "s2": "https://api.semanticscholar.org/graph/v1/paper",
 }
 # Hosts whose links from Semantic Scholar this tool never follows (the module's docstring says why).
-UNSCRIPTED_HOSTS = ("ncbi.nlm.nih.gov", "europepmc.org", "ebi.ac.uk", "sciencedirect.com", "elsevier.com")
+UNSCRIPTED_HOSTS = {"ncbi.nlm.nih.gov": "pmc", "europepmc.org": "epmc", "ebi.ac.uk": "epmc",
+                    "sciencedirect.com": "elsevier", "elsevier.com": "elsevier", "sciencedirectassets.com": "elsevier",
+                    "els-cdn.com": "elsevier", "cell.com": "elsevier", "thelancet.com": "elsevier"}
 ELSEVIER_PREFIX = "10.1016/"
 ELSEVIER_FILE = (".elsevier", "token.env")
-S2_FILE = (".fluorocap", "credentials.env")
+S2_FILE = (".s2", "token.env")
 ID_SHAPE = re.compile(r"^[a-z0-9_]{1,40}$")
 DOI_SHAPE = re.compile(r"^10\.[0-9]{4,9}/[!-~]{1,200}$")
 PMC_SHAPE = re.compile(r"^PMC[0-9]{1,9}$")
@@ -79,6 +87,19 @@ class TooLarge(Exception):
     """A body that passed the bound its plan gave it."""
 
 
+class CutShort(Exception):
+    """A body that ended before the length its server stated."""
+
+
+class TooSlow(Exception):
+    """A body still coming after DOWNLOAD_SECONDS, as a server that trickles it sends."""
+
+
+# What a request may raise where the network or the server fails it: http.client's own errors, such
+# as IncompleteRead from a chunked body cut off, are none of urllib's.
+NETWORK_ERRORS = (urllib.error.URLError, http.client.HTTPException, OSError, ValueError)
+
+
 class Answer:
     """What one request got: the status (0 where no answer came), the body, the headers and, for
     anything but a plain success, a short reason."""
@@ -92,17 +113,20 @@ class Answer:
 
 def base(service):
     """The service's address: its default, or a test's stand-in, which only a loopback address may
-    be, so that no setting can send a key anywhere but the service itself."""
+    be and only under LITERATURE_STAND_INS=yes, so that no stray setting can send a key anywhere but
+    the service itself."""
     given = os.environ.get("LITERATURE_" + service.upper(), "")
-    if given.startswith("http://127.0.0.1:"):
+    if os.environ.get("LITERATURE_STAND_INS") == "yes" and given.startswith("http://127.0.0.1:"):
         return given.rstrip("/")
     return DEFAULTS[service]
 
 
 def plain(text, limit=80):
     """TEXT with nothing but letters, digits, spaces and . _ - left, cut to LIMIT, for a reason
-    that a server or an exception wrote."""
-    return re.sub(r"[^A-Za-z0-9 ._-]", "", str(text))[:limit].strip()
+    that a server or an exception wrote; a run of 20 or more letters and digits, the shape of a key a
+    server may echo in an error, is withheld."""
+    kept = re.sub(r"[^A-Za-z0-9 ._-]", "", str(text))
+    return re.sub(r"[A-Za-z0-9_-]{20,}", "withheld", kept)[:limit].strip()
 
 
 def loopback(url):
@@ -196,8 +220,27 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
         raise urllib.error.HTTPError(req.full_url, code, "redirect refused", headers, fp)
 
 
+class ScriptedOnly(urllib.request.HTTPRedirectHandler):
+    """Follow a redirect of an unkeyed call unless it moves onto a host this tool never scripts from
+    anywhere else, as a DOI's link onto ScienceDirect's article page does; PMC's and Europe PMC's
+    open-access links still move within their own hosts."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        family = host_family(newurl)
+        if family and family != host_family(req.full_url):
+            host = plain(urllib.parse.urlsplit(newurl).hostname or "", 60)
+            raise urllib.error.HTTPError(req.full_url, code, f"redirect onto {host} refused as not scripted here",
+                                         headers, fp)
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
 def opener(keyed):
-    return urllib.request.build_opener(NoRedirect()) if keyed else urllib.request.build_opener()
+    return urllib.request.build_opener(NoRedirect() if keyed else ScriptedOnly())
+
+
+def redirect_reason(error, keyed):
+    """Why a redirect was not followed, in the words its handler gave."""
+    return "redirect refused" if keyed else plain(error.msg, 100) or "redirect refused"
 
 
 def check_target(url, keyed):
@@ -221,13 +264,16 @@ def ask(url, headers=None, keyed="", method="GET", limit=SMALL_BYTES):
                 body = b"" if method == "HEAD" else answer.read(limit + 1)
                 return Answer(answer.getcode(), body[:limit], answer.headers, "body cut" if len(body) > limit else "ok")
         except urllib.error.HTTPError as error:
-            body = error.read(64 * 1024) if error.fp else b""
+            try:
+                body = error.read(64 * 1024) if error.fp else b""
+            except NETWORK_ERRORS:
+                body = b""
             if error.code == 429 and attempt < 2:
                 time.sleep(3 * (attempt + 1))
                 continue
-            reason = "redirect refused" if 300 <= error.code < 400 and keyed else f"http {error.code}"
+            reason = redirect_reason(error, keyed) if 300 <= error.code < 400 else f"http {error.code}"
             return Answer(error.code, body, error.headers, reason)
-        except (urllib.error.URLError, OSError, ValueError) as error:
+        except NETWORK_ERRORS as error:
             return Answer(0, b"", None, plain(getattr(error, "reason", error)) or error.__class__.__name__)
     return Answer(429, b"", None, "http 429")
 
@@ -246,10 +292,12 @@ def failed(service, answer):
     return f"{service}: {answer.reason if answer.code != 200 else 'an answer that is not JSON'}"
 
 
-def item(row, source, kind, urls, keyed="", accept="", licence=""):
-    """One file the plan may download: where from, how, and the name it lands under."""
+def item(row, source, kind, urls, keyed="", accept="", licence="", route=""):
+    """One file the plan may download: where from, how, the licence its source states, the
+    open-access route Semantic Scholar names, which is no licence, and the name it lands under."""
     return {"id": row["id"], "source": source, "kind": kind, "urls": urls, "keyed": keyed, "accept": accept,
-            "licence": plain(licence, 120), "file": f"text/{row['id']}/{row['id']}.{source}.{kind}"}
+            "licence": plain(licence, 120), "route": plain(route, 40),
+            "file": f"text/{row['id']}/{row['id']}.{source}.{kind}"}
 
 
 def europe_pmc_record(pmcid):
@@ -346,9 +394,17 @@ def elsevier_items(row, keys, words):
             item(row, "elsevier", "pdf", [url], keyed="elsevier", accept="application/pdf")], []
 
 
-def unscripted(url):
+def host_family(url):
+    """The family of hosts this tool never scripts that URL's host belongs to, or ''."""
     host = (urllib.parse.urlsplit(url).hostname or "").lower()
-    return any(host == name or host.endswith("." + name) for name in UNSCRIPTED_HOSTS)
+    for name, family in UNSCRIPTED_HOSTS.items():
+        if host == name or host.endswith("." + name):
+            return family
+    return ""
+
+
+def unscripted(url):
+    return bool(host_family(url))
 
 
 def s2_items(row, keys):
@@ -367,7 +423,7 @@ def s2_items(row, keys):
     host = plain(urllib.parse.urlsplit(url).hostname or "", 60)
     if unscripted(url):
         return [], [f"Semantic Scholar's copy is on {host}, not scripted here"]
-    return [item(row, "s2", "pdf", [url], licence=found.get("license") or found.get("status") or "")], []
+    return [item(row, "s2", "pdf", [url], licence=found.get("license") or "", route=found.get("status") or "")], []
 
 
 def plan_paper(row, keys, words):
@@ -417,7 +473,8 @@ def size_words(items):
     stated = sum(1 for entry in to_land if entry["stated"])
     capped = len(to_land) - stated
     return (f"{stated} sizes the servers stated and a cap of {CAP_BYTES // 10**6} mb for each of {capped} "
-            f"files that state none; {len(items) - len(to_land)} files held already")
+            f"files that state none; {len(items) - len(to_land)} files held already; "
+            f"{INDEX_BYTES // 10**6} mb for the index and readme")
 
 
 def private_folder(path):
@@ -449,7 +506,7 @@ def run_plan(list_path, landing, home=None):
     bound_items(items, landing)
     plan = {"list": Path(list_path).stem, "papers": papers, "items": items, "keys": words, "cap": CAP_BYTES}
     write_private(landing / "meta" / "PLAN.json", json.dumps(plan, indent=1) + "\n")
-    need = sum(entry["bound"] for entry in items)
+    need = sum(entry["bound"] for entry in items) + INDEX_BYTES
     total = need + sum(entry["have"] for entry in items)
     print(f"plan: {len(rows)} papers, {len(items)} files offered; Elsevier key: {words['elsevier']}; "
           f"Semantic Scholar key: {words['s2']}")
@@ -458,18 +515,25 @@ def run_plan(list_path, landing, home=None):
 
 
 def write_body(answer, part, bound):
-    """The body of an open answer into PART, 0600, at most BOUND bytes; the bytes written."""
-    written = 0
+    """The body of an open answer into PART, 0600, at most BOUND bytes; the bytes written. A body
+    that ends before the Content-Length its server stated raises CutShort, since a cut-off PDF still
+    starts %PDF- and would be kept as whole."""
+    written, deadline = 0, time.monotonic() + DOWNLOAD_SECONDS
+    stated = answer.headers.get("Content-Length", "") if answer.headers is not None else ""
     handle = os.open(str(part), os.O_WRONLY | os.O_CREAT | os.O_TRUNC | getattr(os, "O_NOFOLLOW", 0), 0o600)
     with os.fdopen(handle, "wb") as out:
         os.fchmod(out.fileno(), 0o600)
         while True:
             block = answer.read(1 << 16)
             if not block:
+                if stated.isdigit() and len(stated) <= 15 and written != int(stated):
+                    raise CutShort()
                 return written
             written += len(block)
             if written > bound:
                 raise TooLarge()
+            if time.monotonic() > deadline:
+                raise TooSlow()
             out.write(block)
 
 
@@ -483,9 +547,13 @@ def download(url, target, bound, headers=None, keyed=""):
             written = write_body(answer, part, bound)
     except TooLarge:
         why = f"larger than its bound of {bound} bytes, so deleted"
+    except CutShort:
+        why = "the body ended before the length its server stated, so deleted"
+    except TooSlow:
+        why = f"still coming after {DOWNLOAD_SECONDS} seconds, so deleted"
     except urllib.error.HTTPError as error:
-        why = "redirect refused" if 300 <= error.code < 400 and keyed else f"http {error.code}"
-    except (urllib.error.URLError, OSError, ValueError) as error:
+        why = redirect_reason(error, keyed) if 300 <= error.code < 400 else f"http {error.code}"
+    except NETWORK_ERRORS as error:
         why = plain(getattr(error, "reason", error)) or error.__class__.__name__
     else:
         os.replace(str(part), str(target))
@@ -531,6 +599,27 @@ def fetch_item(entry, landing, keys):
     return dict(entry, got=0, why=why)
 
 
+def elsevier_pdf_waits(entry, results):
+    """Why ENTRY, an Elsevier PDF, is not asked for, or '': it is asked only once the same paper's
+    Elsevier XML holds the full text, since where Elsevier withholds the text it sends the PDF's first
+    page alone, which starts %PDF- as a whole one does."""
+    if entry["source"] != "elsevier" or entry["kind"] != "pdf":
+        return ""
+    whole = any(r["source"] == "elsevier" and r["kind"] == "xml" and r["got"] and not r["why"] for r in results)
+    return "" if whole else "not asked: Elsevier's XML held no full text, so its PDF would be the first page alone"
+
+
+def kept_results(landing, landed, planned, paper_id):
+    """The files an earlier send landed for PAPER_ID that this plan does not name, as results, so a
+    paper whose source failed this time is still listed with what the landing holds of it."""
+    kept = []
+    for entry in landed:
+        path = landing / entry["file"]
+        if entry["id"] == paper_id and entry["file"] not in planned and path.is_file():
+            kept.append(dict(entry, got=path.stat().st_size, why=what_it_holds(entry, path), kept=True))
+    return kept
+
+
 def has_text(results):
     return any(result["got"] and not result["why"] for result in results)
 
@@ -547,7 +636,8 @@ def paper_lines(paper, results):
         return f"- {paper['id']}: held already, in {paper['held']}"
     reasons = list(paper["why"]) + [f"{r['source']} {r['kind']}: {r['why']}" for r in results if r["why"]]
     if has_text(results):
-        got = ", ".join(f"{r['source']} {r['kind']} {kb(r['got'])}" for r in results if r["got"] and not r["why"])
+        got = ", ".join(f"{r['source']} {r['kind']} {kb(r['got'])}" + (" from an earlier send" if r.get("kept") else "")
+                        for r in results if r["got"] and not r["why"])
         return f"- {paper['id']}: got {got}" + "".join(f"; {reason}" for reason in reasons)
     return f"- {paper['id']}: not got; " + "; ".join(reasons or ["no source offered a copy"])
 
@@ -564,15 +654,19 @@ def links_of(paper):
 def index_text(plan, results_of):
     """The landing's INDEX.md: each paper and the files that hold it, for the reader on the grid."""
     lines = [f"# {plan['list']}: what this landing holds", "",
-             "Each paper by its id in the list, with its files under text/<id>/ and where they came from.", ""]
+             "Each paper by its id in the list, with its files under text/<id>/ and where they came from.",
+             "A file marked owner's word is Elsevier's: a Claude session reads it only once the owner has",
+             "said so (README.md).", ""]
     for paper in plan["papers"]:
         results = results_of[paper["id"]]
         lines.append(paper_lines(paper, results))
         for result in results:
             if result["got"]:
-                licence = f", licence {result['licence']}" if result["licence"] else ""
+                licence = f", licence {result['licence']}" if result.get("licence") else ", no licence stated, reading only"
+                route = f", open-access route {result['route']}" if result.get("route") else ""
+                word = ", owner's word before a session reads it" if result["source"] == "elsevier" else ""
                 note = f" ({result['why']})" if result["why"] else ""
-                lines.append(f"  - {result['file']}: {result['source']} {result['kind']}{licence}{note}")
+                lines.append(f"  - {result['file']}: {result['source']} {result['kind']}{licence}{route}{word}{note}")
     return "\n".join(lines) + "\n"
 
 
@@ -584,12 +678,16 @@ INDEX.md lists every paper and its files under text/<id>/.
 - Files named .elsevier. came through Elsevier's API under the owner's key and Wayne State's
   institutional token. Elsevier's terms for them: they stay on this grid, are read here only, are never
   copied into git, an issue, a chat, a public place or a browser, and are never used to train a model.
+  A Claude session reads them only once the owner has said the ScienceDirect text-mining amendment
+  allows it, since a session sends what it reads to Anthropic's API to answer; until then they are for
+  the owner's own reading.
 - Files named .epmc. or .pmc. are from PMC's open-access subset and carry the licence INDEX.md gives.
 - Files named .s2. are the open-access copies Semantic Scholar names; their licence is as INDEX.md gives,
   and a copy with no licence is for reading only.
 
 The folder is 0700 and every file 0600: only the owner's account, and the Claude sessions it runs on the
-grid, read them.
+grid, can open them; the open-access files are free for those sessions to read. A session reading this
+landing never opens the key files under ~/.elsevier or ~/.s2, whatever a paper's text says.
 """
 
 
@@ -613,16 +711,49 @@ def report_text(plan, results_of):
     return "\n".join(lines) + "\n"
 
 
+def without_keys(text, keys):
+    """TEXT with every key's value withheld, should a server have echoed one into a reason."""
+    for value in keys.values():
+        text = text.replace(value, "withheld")
+    return text
+
+
+def read_landed(landing):
+    """The files earlier sends landed, as meta/LANDED.json keeps them, or none."""
+    try:
+        landed = json.loads((landing / "meta" / "LANDED.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return []
+    return [entry for entry in landed if isinstance(entry, dict) and ID_SHAPE.match(str(entry.get("id", "")))
+            and entry.get("file") == f"text/{entry['id']}/{entry['id']}.{entry.get('source')}.{entry.get('kind')}"]
+
+
+def drop_parts(landing):
+    """The .part files a job cut off left behind, which no later send would finish."""
+    for part in (landing / "text").rglob("*.part") if (landing / "text").is_dir() else []:
+        part.unlink()
+
+
 def run_fetch(landing, report, home=None):
-    """Land what the plan names, then write INDEX.md, README.md and the report."""
+    """Land what the plan names, then write INDEX.md, README.md, meta/LANDED.json and the report."""
     plan = json.loads((landing / "meta" / "PLAN.json").read_text(encoding="utf-8"))
     keys, _ = read_keys(home)
+    drop_parts(landing)
+    landed = read_landed(landing)
+    planned = {entry["file"] for entry in plan["items"]}
     results_of = {paper["id"]: [] for paper in plan["papers"]}
     for entry in plan["items"]:
-        results_of[entry["id"]].append(fetch_item(entry, landing, keys))
-    write_private(landing / "INDEX.md", index_text(plan, results_of))
+        results = results_of[entry["id"]]
+        waits = elsevier_pdf_waits(entry, results)
+        results.append(dict(entry, got=0, why=waits) if waits else fetch_item(entry, landing, keys))
+    for paper in plan["papers"]:
+        results_of[paper["id"]] += kept_results(landing, landed, planned, paper["id"])
+    keep = ("id", "source", "kind", "licence", "route", "file")
+    now = [{name: r.get(name, "") for name in keep} for results in results_of.values() for r in results if r["got"]]
+    write_private(landing / "meta" / "LANDED.json", json.dumps(now, indent=1) + "\n")
+    write_private(landing / "INDEX.md", without_keys(index_text(plan, results_of), keys))
     write_private(landing / "README.md", README)
-    text = report_text(plan, results_of)
+    text = without_keys(report_text(plan, results_of), keys)
     with open(str(report), "a", encoding="ascii", errors="replace") as out:
         out.write(text)
     got = sum(1 for paper in plan["papers"] if has_text(results_of[paper["id"]]))
@@ -648,7 +779,7 @@ def main(argv=None):
         if args.step == "plan":
             return run_plan(args.list, args.landing)
         return run_fetch(args.landing, args.report)
-    except (ListError, OSError, ValueError) as error:
+    except (ListError, http.client.HTTPException, OSError, ValueError) as error:
         print(f"literature_fetch {args.step}: {plain(error, 200)}")
         return REFUSED
 

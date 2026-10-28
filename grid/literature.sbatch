@@ -10,7 +10,8 @@
 # job lands a byte only once that fits the room left under the lab volume's quota after what the
 # running fetches owe. The landing is literature_<list> under the data root, 0700, every file 0600,
 # so only the owner's account reads Elsevier's text. The report goes to logs/LITERATURE-<list>.md,
-# which the next `literature <list>` prints; it names papers and sources, never a key or a text.
+# which the next `literature <list>` prints; it names papers and sources, never a key or a text, and
+# is 0600, as the landing is, since it names the papers of confidential work.
 # The tool is copied before it runs, so a checkout the gate moves meanwhile changes nothing.
 #   LIST_ID   the list, grid/literature/<LIST_ID>.csv
 set -uo pipefail
@@ -29,20 +30,24 @@ mkdir -p "$REPO/grid/logs"
 report() { echo "- $*" >> "$REPORT.part"; }
 finish() {
   report "exit $1 at $(date -u '+%F %T') UTC"
-  mv "$REPORT.part" "$REPORT" && chmod 644 "$REPORT"
+  mv "$REPORT.part" "$REPORT" && chmod 600 "$REPORT"
   echo "SN_LITERATURE_RC=$1"
   exit "$1"
 }
+# Slurm's warning before its time limit, or a scancel, still ends the report, so the next send prints it.
+trap 'finish 143' TERM
 started_at=$(git -C "$REPO" rev-parse --short=7 HEAD 2>/dev/null || echo unknown)
 echo "# literature $id: job ${SLURM_JOB_ID:-none} on $(hostname), commit $started_at, $(date -u '+%F %T') UTC" > "$REPORT.part"
 echo "LITERATURE start $id $(date '+%F %T') on $(hostname) job ${SLURM_JOB_ID:-}"
 list=$REPO/grid/literature/$id.csv
 [ -f "$list" ] || { report "FAILED: no list grid/literature/$id.csv at this commit"; finish 2; }
 
-# The interpreter: a test's, else the acquisition environment's, which the fetches run natively on a
-# compute node with its own certificates, else the train-cpu environment's inside the container.
-PY=""
-for cand in "${LITERATURE_PYTHON:-}" "$ACQ_ENV/bin/python" "$REPO/grid/bin/train-cpu-python"; do
+# The interpreter: a test's, only under LITERATURE_STAND_INS=yes, else the acquisition environment's,
+# which the fetches run natively on a compute node with its own certificates, else the train-cpu
+# environment's inside the container.
+PY="" test_py=""
+[ "${LITERATURE_STAND_INS:-}" = yes ] && test_py=${LITERATURE_PYTHON:-}
+for cand in "$test_py" "$ACQ_ENV/bin/python" "$REPO/grid/bin/train-cpu-python"; do
   [ -n "$cand" ] && [ -x "$cand" ] || continue
   if "$cand" -c 'import sys, ssl; sys.exit(sys.version_info < (3, 8))' >/dev/null 2>&1; then PY=$cand; break; fi
 done

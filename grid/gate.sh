@@ -1412,6 +1412,14 @@ word_literature() {  # one reading list fetched onto the grid: queued once, its 
     mv "$report" "$LOGS/LITERATURE-$id-$(bench_job_of "$report").md" || return 1
     return 0
   fi
+  if [ -f "$report.part" ]; then
+    # A job killed past its own trap, by memory or a node's failure, leaves its report unfinished:
+    # printed and kept the same way, so a failed run is never followed by a silent new one.
+    echo "## $(basename "$report") unfinished: the job ended before it wrote its exit ($(date -r "$report.part" '+%F %T'))"
+    head -n 200 "$report.part" | LC_ALL=C tr -cd '\11\12\40-\176' | masked | head -c 30000
+    mv "$report.part" "$LOGS/LITERATURE-$id-$(bench_job_of "$report.part")-unfinished.md" || return 1
+    return 0
+  fi
   submit literature batch LIST_ID="$id" DATA_ROOT="$DATA_ROOT" VOLUME="$VOLUME" -- literature.sbatch > /dev/null || return 1
   echo "submitted one job. It lands a byte only once the size rule admits it; send literature $id again once it ends to read its report, logs/LITERATURE-$id.md."
 }
