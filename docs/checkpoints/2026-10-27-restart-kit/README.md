@@ -9,6 +9,10 @@ The paste-ready texts, the new project's goal, its instructions, the repositorie
 - memory/: the project's memory, compacted to one file per subject, each under 4 KB, in the shape a claude.ai project's memory takes (a name, a one-line description, a type, then the fact with its why and how to apply). The new coordinator writes every file into the new project's memory as it stands, MEMORY.md as the index.
 - FINDINGS.md: every study's results with the record each rests on, for a thread to read when it needs one; memory points to its sections and does not copy it.
 
+## The old project's shared folder, on the grid
+
+The claude.ai project's shared folder does not follow the owner to a new project, so its four folders were carried to the grid on the owner's word of 2026-10-28 17:24 UTC ("push these to the grid to the new project to fine there"): gold3-ct (with thread-handoff-2026-10-28), enhance-pet-repair, drr-domain-gap-monitor and mask-free-import, 3,332 files and 1,107,335,194 bytes as they stood at 17:32 UTC, with a README and SHA256SUMS over every other file. They landed at 18:31 UTC as `/rs/rs_grp_oschome/go2432/data/project_files_2026_10_28/`, 0700, each file checked against SHA256SUMS by the gate (grid/carry/project_files_2026_10_28.txt, #444; the word `schwingnet-fetch-project_files_2026_10_28` checks them again). A new project's cloud session can also fetch them from bordercall's private branch claude/project-thread-rr7in4 at 01435c1, until the owner deletes it.
+
 ## How it was compacted
 
 - Kept: the owner's priority of 2026-10-27 05:48 UTC and its gate; the owner's standing rules and working style; how the repositories are checked, pushed and merged; every approved grid count with what was sent; each paused thread's pull request, branch, handoff and first step; the owner's open steps; and the findings, in memory as headlines and in FINDINGS.md in full.
