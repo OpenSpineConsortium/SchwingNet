@@ -79,6 +79,8 @@ The rib masks show what the unusual lumbar counts are. Of the 39 named with four
 
 The autoPET studies are 900 persons, and their CTs are already held as FDG-PET-CT-Lesions. Its 979 whole studies are 865 to 900 persons, more than the 720 the tiers sort guessed, and that count now stands in gold 4 above. ENHANCE.PET's masks of those scans would move them to gold 3 with no new CT, once the masks are copied beside the held CTs on the grid, which waits for the owner's word, and each mask is matched to its held study by the shape and affine its NIfTI carries, which has not been tried. Leipzig's and Careggi's 578 whole studies are not held, and the study table gives no person id for them; their CTs, with the repaired three, take 45.2 GB. So the set gives at most 1,478 gold 3 persons, at least 865 of them autoPET's.
 
+Since 27 October the gold 3 CT persons are kept as one dataset of their own, at the owner's ask: ENHANCE.PET's 1,557 whole studies, VerSe's 17 and TotalSegmentator's 142, in one read-only, versioned index built from the committed records with no grid job, with the anomaly classes and their intervals and the checks of each study's masks. Agreement between the names and the ribs, two masks the same readers checked, is not a read of the CT, so no anomaly there is a reader's yet; TotalSegmentator's rows and VerSe's sacrum wait for the grid ([docs/research/gold3-ct/README.md](../../docs/research/gold3-ct/README.md)).
+
 ## What exists for each task, and how far the project reaches it
 
 ### Intraoperative fluoroscopy and cine
