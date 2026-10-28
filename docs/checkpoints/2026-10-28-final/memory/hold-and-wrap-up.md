@@ -14,7 +14,7 @@ Every thread pushed and stopped. The entry point is SchwingNet docs/checkpoints/
 
 - Hold grid/WSU-data use for the Bayesian work until greg's own attorney advises. Nothing goes to the grid. It holds back decisions 1, 3 and 6 of [[decisions-2026-10-28]] (the pilot, the NHANES fetch to the grid, spending C-ArmLSpine and COBRA people).
 - Start nothing until greg names it; restart no paused thread ([[paused-threads]]). The README's first message names the two he may start: finishing bordercall PR 20 (the chain of levels) and PR 21 (the clinical reread), neither of which uses the grid or Wayne State's data.
-- Why the hold stands is greg's own question, held by the thread "Decide how to handle the provisional patent"; where its notes go in git is his choice, open at 2026-10-28 21:35 UTC. Ask him for the place; copy nothing of it anywhere else.
+- Why the hold stands is greg's own question; its record is bordercall research_notes/provisional/README.md (bordercall PR 22, merge 391571a). Read it only when he names that work; copy nothing of it anywhere else.
 - What the hold names is the grid and Wayne State's data used for the Bayesian work. Work in bordercall on published tables and synthetic columns in a cloud session uses neither; if a step is in doubt, ask greg once.
 
 **Why:** greg moved the work to another account at the end of 2026-10-28; a thread that starts on its own or sends a grid word breaks his word.
