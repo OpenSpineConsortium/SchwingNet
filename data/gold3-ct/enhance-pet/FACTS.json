@@ -1,0 +1,17 @@
+{
+ "bordercall_commit": "6bd3d1cf5dfacbd07fe01b55ea5a8bc555adc3a7",
+ "ct_details_sha256": "331a3a062b1b4f5510503aef74ed1ca04a68bae2e930c3e0fc60d84a516e349e",
+ "date": "2026-10-28",
+ "facts_b": "data/gold3-ct/enhance-pet/facts-b.jsonl, read by bordercall's holdings/enhance_facts_check.py",
+ "masks_sha256sums_sha256": "88d1c96fcf6cc2500c215c3b51d3314515d64660a7ff1d5dc53c4d46e675bee3",
+ "read_on": "the thread's container, 2026-10-28: the first reading by holdings/enhance_facts.py from a copy older than 782d531, with the 11 Careggi rows whose head-foot extents 0be8f0c rounds once (1568, 1579 to 1583, 1589, 1591, 1594, 1596 and 1597) read again at 0be8f0c; the second reading by the script that became holdings/enhance_facts_check.py; the committed code gave the same rows byte for byte on every study read again with it (8 controls and 1134r at 0be8f0c, six studies at fe2bbae)",
+ "repaired_rows": {
+  "bordercall_commit": "a2d8e8d2ced5ba6935ae25a4a4c88c2a63891d09",
+  "date": "2026-10-28",
+  "first_read_at": "782d531c0d589e738c606bed099d8348eeaa6c63",
+  "read_on": "the thread's container, from the repair record's repaired masks and the published ribs",
+  "tool": "bordercall holdings/enhance_facts.py"
+ },
+ "rows": 1600,
+ "tool": "bordercall holdings/enhance_facts.py"
+}
