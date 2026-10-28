@@ -50,11 +50,12 @@ A session may end between the fetch and the job, or during the job, and a new on
 ```
 E="$HOME/work/gold3/env.sh"; sed 's/=.*//' "$E" | tr '\n' ' '; echo; grep -E '^(FETCH|JOB)=' "$E"
 ls "$HOME/work/gold3/out" 2>/dev/null; ls "$HOME/work/gold3/gold3-facts.sbatch" 2>/dev/null
-squeue -h -u "$USER" -o '%i %j %T %M' 2>/dev/null | grep gold3; sacct -X -n -S now-3days -o JobID,JobName%30,State 2>/dev/null | grep gold3
+{ squeue -h -u "${USER:-$(id -un)}" -o '%i %j %T %M' || echo "squeue did not answer"; } | grep -E 'gold3|did not answer'
+{ sacct -X -n -S now-3days -o JobID,JobName%30,State%20 || echo "sacct did not answer"; } | grep -E 'gold3|did not answer'
 grep ' fetch:aws_enhance_pet_labels ' "$HOME/SchwingNet/grid/logs/GATE_JOBS.txt" 2>/dev/null | cut -d' ' -f1,2,4
 ```
 
-With JOB in env.sh, go to step 7.6. With VERT and no JOB: if squeue or sacct lists a gold3 job, a submission went out that env.sh does not name; tell the owner its number and state and ask before anything else. If neither lists one but gold3-facts.sbatch is in the work folder, step 7.4 began and may or may not have queued: tell the owner what squeue and sacct printed and go on only on the owner's word. Otherwise step 7 from its first item (the hash check again, which is quick; the members.json line may be flipped already, which its grep shows). With FETCH and no VERT, step 6.4. With none of them: if the gate's job list (the last line above) names a fetch of aws_enhance_pet_labels, a fetch went out, this work's or an earlier one; tell the owner its number and date and ask before going on. Otherwise the owner's yes is still to come: print the count of step 0 again and wait.
+A read that did not answer is not "none listed": tell the owner the queue could not be read, send nothing, and read again when the owner comes back. With JOB in env.sh, go to step 7.6. With VERT and no JOB: if squeue or sacct lists a gold3 job, a submission went out that env.sh does not name; tell the owner its number and state and ask before anything else. If neither lists one but gold3-facts.sbatch is in the work folder, step 7.4 began and may or may not have queued: tell the owner what squeue and sacct printed and go on only on the owner's word. Otherwise step 7 from its first item (the hash check again, which is quick; the members.json line may be flipped already, which its grep shows). With FETCH and no VERT, step 6.4. With none of them: if the gate's job list (the last line above) names a fetch of aws_enhance_pet_labels, a fetch went out, this work's or an earlier one; tell the owner its number and date and ask before going on. Otherwise the owner's yes is still to come: print the count of step 0 again and wait.
 
 ## 5. The work folder, before the yes
 
@@ -157,7 +158,9 @@ The hash should be 2f96f917292b85416d1b803230732624a3dde0bae7c2c29f54abc4f2a30dc
 . "$HOME/work/gold3/env.sh"; cd "$W"
 cp SchwingNet/docs/checkpoints/2026-10-28-gold3-ct-grid/gold3-facts.sbatch "$W/"
 queue() { env W="$W" VERT="$VERT" RIBS="$RIBS" DATA_ROOT="$DATA_ROOT" GOLD3_BORDERCALL_COMMIT="$(cd bordercall && git rev-parse HEAD)" GOLD3_SCHWINGNET_COMMIT="$(cd SchwingNet && git rev-parse HEAD)" bash "$HPCWORKER" job submit --project schwingnet --name gold3_facts --class batch --dir "$W" "$@" -- gold3-facts.sbatch 2>&1; }
-if grep -q '^JOB=' env.sh || squeue -h -u "$USER" -o '%j' | grep -q gold3; then echo "a job is recorded or queued already: stop"
+if grep -q '^JOB=' env.sh; then echo "a job is recorded already: stop"
+elif ! q=$(squeue -h -u "${USER:-$(id -un)}" -o '%j'); then echo "squeue did not answer: stop, send nothing"
+elif printf '%s\n' "$q" | grep -q gold3; then echo "a gold3 job is queued already: stop"
 elif queue --check; then
   out=$(queue); printf '%s\n' "$out"
   id=$(printf '%s\n' "$out" | sed -n 's/^HPCW-JOB submitted \([0-9][0-9]*\) .*/\1/p' | tail -n 1)
@@ -165,18 +168,18 @@ elif queue --check; then
 fi
 ```
 
-It must end with the recorded line. A refused check prints hpcworker's reason and queues nothing; a submission with no recorded line, or the stop line, goes to the owner as it printed, and nothing is sent again.
+It must end with the recorded line. A refused check prints hpcworker's reason and queues nothing; a submission with no recorded line, or any stop line, goes to the owner as it printed, and nothing is sent again.
 
 5. Tell the owner the job's number, that it should take 8 to 14 hours once it starts and 24 at most, and to tell you when it has ended. End the turn.
 6. When the owner comes back, read the job's state once, then its log:
 
 ```
 . "$HOME/work/gold3/env.sh"
-squeue -h -j "$JOB" -o '%T %M' 2>/dev/null; sacct -X -n -j "$JOB" -o State,ExitCode,Elapsed 2>/dev/null | head -n 3
+squeue -h -j "$JOB" -o '%T %M' 2>/dev/null; sacct -X -n -j "$JOB" -o State%20,ExitCode,Elapsed 2>/dev/null | head -n 3
 bash "$HPCWORKER" job log --project schwingnet "$JOB" | tail -n 80
 ```
 
-The state decides first. If squeue lists the job, or sacct says PENDING, RUNNING, REQUEUED, SUSPENDED or COMPLETING, it has not ended: tell the owner the state and the time so far, and end the turn (a queued job's log says no output yet, and a running one's ends on a step's starting line). If neither answers, say so and end the turn. Only for a job that has ended does the log say how: each step prints a starting and a finished line; a job that finished ends with GOLD3_FACTS_DONE, after the take-facts and store logs; a job that stopped itself ends with GOLD3_FACTS_STOPPED and its exit code, after a FAILED line naming the step with the last lines of its log ($W/out/<step>.log), paths under the data root already cut, and exit 69 means the node had no sandbox or no apptainer. A log with neither marker was ended by Slurm, and sacct's state names how: TIMEOUT, OUT_OF_MEMORY, NODE_FAIL, PREEMPTED or CANCELLED.
+The state decides first. If squeue lists the job, or sacct says PENDING, RUNNING, REQUEUED, SUSPENDED or COMPLETING, it has not ended: tell the owner the state and the time so far, and end the turn (a queued job's log says no output yet, and a running one's ends on a step's starting line). If neither answers, say so and end the turn. Only for a job that has ended does the log say how: each step prints a starting and a finished line; a job that finished ends with GOLD3_FACTS_DONE, after the take-facts and store logs; a job that stopped itself ends with GOLD3_FACTS_STOPPED and its exit code, after a FAILED line naming the step with the last lines of its log ($W/out/<step>.log), paths under the data root already cut, and exit 69 means the node had no sandbox or no apptainer. A log with neither marker was ended by Slurm, and sacct's state names how: TIMEOUT, OUT_OF_MEMORY, NODE_FAIL, PREEMPTED or CANCELLED. A TIMEOUT whose log carries slurmstepd's "Detected ... oom-kill event" line was a reading's worker killed for memory: its pool then waits for the lost study until the time limit, so the owner hears both, the time-out and the memory.
 7. For a stop or a Slurm end, tell the owner which step and what its log or sacct says, and change nothing. Queuing it again is a second job, which needs the owner's word; if given, take the JOB line out of env.sh (`sed -i '/^JOB=/d' "$HOME/work/gold3/env.sh"`) and run step 7.4's block again, which skips every finished step and resumes both readings from their partial rows.
 
 ## 8. What the job holds to
