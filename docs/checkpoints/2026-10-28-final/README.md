@@ -29,6 +29,8 @@ The directions at the end of the 42-papers note (docs/research/morphometry-beyon
 6. Spend some C-ArmLSpine and COBRA people to fit CT against fluoroscopy measure differences; which people is still his to name. Held by the hold: both are grid data.
 7. Later: applications, NMDID first, then NAKO and UK Biobank, agreements he signs. NMDID's agreement bars derivative works and its CTs are over 50 TB.
 
+An eighth item, which the source check added and the owner has not seen (#446's HANDOFF.md, section 2): the rule's age range. TotalSegmentator v3 has 291 paediatric CTs and the census marks 556 CTs as children's; until he sets the range, children's CTs stay out of any table or form an arm of their own.
+
 What the hold names is the grid and Wayne State's data, used for the Bayesian work. Work in bordercall on published tables and synthetic columns in a cloud session uses neither; if a step is in doubt, ask the owner once.
 
 ## 3. Where every piece of work stopped
@@ -37,7 +39,7 @@ What the hold names is the grid and Wayne State's data, used for the Bayesian wo
 - The clinical reread of all 43 papers: bordercall draft PR 21 (https://github.com/OpenSpineConsortium/bordercall/pull/21, branch claude/project-thread-y719tr, head 0d4b49b). research_notes/clinical-reread/HANDOFF.md: 39 of 43 notes checked; check kunkel2011, moncadahabib2025, otsuki2021 and twomey1985; run the synthesis; send the anomaly priors to whoever holds PR 20; two corrections for the owner's word; which papers a new project must get again.
 - The closed papers checked from the page: spine-program #239 (https://github.com/OpenSpineConsortium/spine-program/pull/239, head 2b7d62d), ready, check green. Merges only on the owner's word, after one adversarial review of its last commit (2b7d62d, Eisenstein's own five values). Its HANDOFF.md lists the owner's decisions.
 - The 42-papers note: SchwingNet #446 (https://github.com/OpenSpineConsortium/SchwingNet/pull/446), merged at 21:28 UTC (main fe6c856), with its handoff docs/checkpoints/2026-10-28-literature-and-assumptions/HANDOFF.md. The note docs/research/morphometry-beyond-the-42-papers.md is the version to trust: its Claude Doc lacks the last four groups of corrections.
-- The owner's own question behind the hold: the thread "Decide how to handle the provisional patent" put its notes in private bordercall as PR 22 (merge 391571a), research_notes/provisional/README.md; read them only when the owner names that work.
+- The owner's own question behind the hold: the thread "Decide how to handle the provisional patent" put its notes in private bordercall as PR 22 (https://github.com/OpenSpineConsortium/bordercall/pull/22, merged, merge 391571a), research_notes/provisional/README.md; read them only when the owner names that work.
 - The project's status, read across every account: docs/research/project-status-2026-10-28.md, from the private page https://claude.ai/artifact/LfgEsaZYmkxf8oBxNwVrE6, which only this account opens.
 - The other account's gold tier 3 CT dataset: merged (#437); its handoff is draft #443 (branch claude/project-thread-cne00q), with the owner's disagreement over VerSe and TotalSegmentator and every candidate pool. It conflicts with main in the restart kit's README; bring main in before merging it.
 - The other account's DRR domain-gap study: first run done; handoff merged as #442 (docs/checkpoints/2026-10-28-drr-comparison/HANDOFF.md). The FluXray rerun the owner approved at 16:28 UTC needs one pull request to grid/gate.sh first, and the hold.
