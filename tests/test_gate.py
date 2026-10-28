@@ -3315,6 +3315,54 @@ esac
         self.assertEqual(self.gate("unpack", "kaggle_scoliosis_yolov5").returncode, 75)
         self.assertEqual(len(self.submitted()), 1)
 
+    def test_literature_queues_once_then_prints_and_keeps_its_report(self):
+        # a list the checkout does not hold, and a malformed send, are refused and queue nothing
+        self.assertEqual(self.gate("literature", "no_such_list").returncode, 64)
+        self.assertEqual(self.gate("literature", "a", "b").returncode, 64)
+        self.assertEqual(self.gate("literature", "Bad-List").returncode, 64)
+        self.assertEqual(self.submitted(), [])
+        done = self.gate("literature", "synthetic_spine")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        lines = self.submitted()
+        self.assertEqual(len(lines), 1, lines)
+        self.assertIn("--class batch --name literature", lines[0])
+        self.assertIn("literature.sbatch", lines[0])
+        self.assertIn("LIST_ID=synthetic_spine", lines[0])
+        self.assertIn(f"DATA_ROOT={self.data}", lines[0])
+        job = self.recorded()["literature"]
+        # while it is live, a second send is refused
+        self.live(job)
+        self.assertEqual(self.gate("literature", "synthetic_spine").returncode, 75)
+        self.assertEqual(len(self.submitted()), 1)
+        # once it has ended, its report is printed once, kept under its job's number, and nothing is queued
+        (self.fake / "queue").write_text("", encoding="utf-8")
+        logs = self.repo / "grid" / "logs"
+        report = logs / "LITERATURE-synthetic_spine.md"
+        report.write_text(f"# literature synthetic_spine: job {job} on node1, commit abc1234, 2026-10-28 01:00:00 UTC\n"
+                          "- bach2019: not got; Elsevier: not entitled to the full text under the key and insttoken\n"
+                          "- exit 0 at 2026-10-28 01:05:00 UTC\n", encoding="utf-8")
+        done = self.gate("literature", "synthetic_spine")
+        self.assertEqual(done.returncode, 0, done.stdout)
+        self.assertIn("- bach2019: not got; Elsevier: not entitled to the full text under the key and insttoken", done.stdout)
+        self.assertEqual(len(self.submitted()), 1)
+        self.assertFalse(report.exists())
+        self.assertTrue((logs / f"LITERATURE-synthetic_spine-{job}.md").exists())
+        # and the send after that fetches again what is still missing
+        self.assertEqual(self.gate("literature", "synthetic_spine").returncode, 0)
+        self.assertEqual(len(self.submitted()), 2)
+        # a job killed before it wrote its exit leaves its report unfinished: printed and kept, nothing queued
+        (self.fake / "queue").write_text("", encoding="utf-8")
+        part = logs / "LITERATURE-synthetic_spine.md.part"
+        part.write_text("# literature synthetic_spine: job 4242 on node1, commit abc1234, 2026-10-28 02:00:00 UTC\n"
+                        "- admitted under the size rule: 400000000 bytes at most\n", encoding="utf-8")
+        done = self.gate("literature", "synthetic_spine")
+        self.assertEqual(done.returncode, 0, done.stdout)
+        self.assertIn("unfinished: the job ended before it wrote its exit", done.stdout)
+        self.assertIn("admitted under the size rule", done.stdout)
+        self.assertEqual(len(self.submitted()), 2)
+        self.assertFalse(part.exists())
+        self.assertTrue((logs / "LITERATURE-synthetic_spine-4242-unfinished.md").exists())
+
     def test_status_shows_the_sample_manifest_whole(self):
         logs = self.repo / "grid" / "logs"
         logs.mkdir(parents=True, exist_ok=True)

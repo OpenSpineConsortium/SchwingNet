@@ -126,6 +126,13 @@
 #                   job (grid/realism.sbatch, tools/realism.py) once its inputs have landed and the stage before
 #                   it has finished; the next send prints logs/REALISM-<stage>.md, and every later one prints it
 #                   again and queues nothing
+#   literature <list>  one reading list's papers fetched onto the grid (the owner's word of 2026-10-27
+#                   23:00 UTC; grid/literature.sbatch, grid/literature_fetch.py, the list grid/literature/<list>.csv):
+#                   PMC's open-access copies, Elsevier's through its API with the key and institutional token
+#                   the key route wrote, and the open copies Semantic Scholar names, under the size rule, into
+#                   the landing literature_<list>, 0700; queued as one batch job, the next send prints
+#                   logs/LITERATURE-<list>.md, which names every paper it could not get, keeps it under its job's
+#                   number and queues nothing, and the send after that fetches again what is still missing
 #   stop            cancel the gate's own jobs that are still queued or running, and nothing else
 #   cancel <job>    cancel one of the gate's own live jobs and every other live job its word queued
 #                   with it (a fetch's bank and catalog, the DRR domain-gap study's three jobs), and nothing else
@@ -189,18 +196,18 @@ DRR_GAP_TASKS=4
 H200=(--partition gmsap)
 LOGS=$REPO/grid/logs
 STATE=$LOGS/GATE_JOBS.txt
-WORDS="start status leaks v1 latency fetch explore dropzip unpack nodequota folders samples sweep bank experiment bench anomaly bordercall realism stop cancel"
+WORDS="start status leaks v1 latency fetch explore dropzip unpack nodequota folders samples sweep bank experiment bench anomaly bordercall realism literature stop cancel"
 ENVS="default train-cpu train-gpu telemetry"
 
 word=${1:-}
 id=${2:-}
 # Matched whole, so one argument holding two words ("v1 latency") is refused and never runs nothing.
 case "$word" in
-  start|status|leaks|v1|latency|fetch|explore|dropzip|unpack|nodequota|folders|samples|sweep|bank|experiment|bench|anomaly|bordercall|realism|stop|cancel) ;;
+  start|status|leaks|v1|latency|fetch|explore|dropzip|unpack|nodequota|folders|samples|sweep|bank|experiment|bench|anomaly|bordercall|realism|literature|stop|cancel) ;;
   "") echo "refusing: no word; one of: $WORDS"; exit 64 ;;
   *) echo "refusing: '$word' is not one of: $WORDS"; exit 64 ;;
 esac
-if [ "$word" = fetch ] || [ "$word" = explore ] || [ "$word" = dropzip ] || [ "$word" = unpack ] || [ "$word" = sweep ] || [ "$word" = bank ] || [ "$word" = bench ] || [ "$word" = anomaly ] || [ "$word" = bordercall ] || [ "$word" = realism ]; then
+if [ "$word" = fetch ] || [ "$word" = explore ] || [ "$word" = dropzip ] || [ "$word" = unpack ] || [ "$word" = sweep ] || [ "$word" = bank ] || [ "$word" = bench ] || [ "$word" = anomaly ] || [ "$word" = bordercall ] || [ "$word" = realism ] || [ "$word" = literature ]; then
   [ $# -eq 2 ] || { echo "refusing: $word takes exactly one id"; exit 64; }
   case "$id" in ""|*[!a-z0-9_]*) echo "refusing: an id is lower-case letters, digits and _"; exit 64 ;; esac
   [ ${#id} -le 40 ] || { echo "refusing: an id is at most 40 characters"; exit 64; }
@@ -1417,6 +1424,31 @@ word_bordercall() {  # the bordercall corpus, pilot then full (the owner's count
   echo "submitted the bordercall stage $id. Send bordercall $id again once it ends to read its report, logs/BORDERCALL-$id.md."
 }
 
+word_literature() {  # one reading list fetched onto the grid: queued once, its report printed and kept on the next send
+  local report=$LOGS/LITERATURE-$id.md busy
+  [ -f "$REPO/grid/literature/$id.csv" ] || { echo "refusing: no reading list grid/literature/$id.csv"; return 64; }
+  busy=$(live_of literature "literature:$id")
+  [ -z "$busy" ] || { echo "refusing: the fetch of the list $id is still queued or running (job $busy); send literature $id again once it ends"; return 75; }
+  if [ -f "$report" ]; then
+    # Printed once and kept under its job's number, so the send after this one fetches again what
+    # is still missing (an Elsevier paper once its access opens) while the landing keeps what came.
+    echo "## $(basename "$report") ($(date -r "$report" '+%F %T'))"
+    head -n 200 "$report" | LC_ALL=C tr -cd '\11\12\40-\176' | masked | head -c 30000
+    mv "$report" "$LOGS/LITERATURE-$id-$(bench_job_of "$report").md" || return 1
+    return 0
+  fi
+  if [ -f "$report.part" ]; then
+    # A job killed past its own trap, by memory or a node's failure, leaves its report unfinished:
+    # printed and kept the same way, so a failed run is never followed by a silent new one.
+    echo "## $(basename "$report") unfinished: the job ended before it wrote its exit ($(date -r "$report.part" '+%F %T'))"
+    head -n 200 "$report.part" | LC_ALL=C tr -cd '\11\12\40-\176' | masked | head -c 30000
+    mv "$report.part" "$LOGS/LITERATURE-$id-$(bench_job_of "$report.part")-unfinished.md" || return 1
+    return 0
+  fi
+  submit literature batch LIST_ID="$id" DATA_ROOT="$DATA_ROOT" VOLUME="$VOLUME" -- literature.sbatch > /dev/null || return 1
+  echo "submitted one job. It lands a byte only once the size rule admits it; send literature $id again once it ends to read its report, logs/LITERATURE-$id.md."
+}
+
 realism_class() {  # the job class a stage of the realism programme runs as, else nothing
   case "$1" in
     edit|stats|lora|eval) echo gpu ;;
@@ -1797,6 +1829,7 @@ case "$word" in
   anomaly) word_anomaly ;;
   bordercall) word_bordercall ;;
   realism) word_realism ;;
+  literature) word_literature ;;
   samples) word_samples ;;
   sweep) word_sweep ;;
   bank) word_bank ;;
