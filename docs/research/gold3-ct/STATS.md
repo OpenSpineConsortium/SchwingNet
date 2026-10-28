@@ -55,6 +55,6 @@ Persons the SPINEPS to FleXray route holds out or deals into folds (data/splits/
 - data/gold3-ct/enhance-pet/facts-b.jsonl: not committed
 - data/gold3-ct/enhance-pet/facts.jsonl: not committed
 - data/gold3-ct/enhance-pet/record.json: 143d447a7dc5c1aab4c33abb0e68999b08e268acf1fa7067539f097545c946d3
-- data/gold3-ct/members.json: 74200e3657906158a25b28a6c295141a148a89572db2f8ba0f7bab84082ec5f5
+- data/gold3-ct/members.json: c0b755877541fcc4f7ac43e61ad04d68e03087d8982a36fa3b73fbe031e8eaf6
 - data/gold3-ct/totalsegmentator.json: 99d8594b5aef8532d9da8488a7bd4f90d820fb7c970ce12f6fb2af6c237e6a0d
 - data/gold3-ct/verse.json: f398383d474889fefcb360b7792f1f6fd95808ef3ffb6232f2c49728faa8fcd0

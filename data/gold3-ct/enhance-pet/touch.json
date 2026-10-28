@@ -1,0 +1,990 @@
+{
+ "0005": {
+  "L4_sacrum": 1.0,
+  "group": "no_l5"
+ },
+ "0037": {
+  "L4_sacrum": 0.9,
+  "group": "no_l5"
+ },
+ "0052": {
+  "L4_sacrum": 0.8,
+  "group": "no_l5"
+ },
+ "0075": {
+  "L4_sacrum": 0.7,
+  "group": "no_l5"
+ },
+ "0123": {
+  "L4_sacrum": 0.8,
+  "group": "no_l5"
+ },
+ "0146": {
+  "L4_sacrum": 1.0,
+  "group": "no_l5"
+ },
+ "0180": {
+  "L4_sacrum": 0.9,
+  "group": "no_l5"
+ },
+ "0242": {
+  "L4_sacrum": 0.9,
+  "group": "no_l5"
+ },
+ "0245": {
+  "L4_sacrum": 0.8,
+  "group": "no_l5"
+ },
+ "0530": {
+  "L4_sacrum": 0.7,
+  "group": "no_l5"
+ },
+ "0548": {
+  "L4_sacrum": 0.7,
+  "group": "no_l5"
+ },
+ "0681": {
+  "L4_sacrum": 0.8,
+  "group": "no_l5"
+ },
+ "0696": {
+  "L4_sacrum": 0.9,
+  "group": "no_l5"
+ },
+ "0702": {
+  "L4_sacrum": 0.9,
+  "group": "no_l5"
+ },
+ "0703": {
+  "L4_sacrum": 0.9,
+  "group": "no_l5"
+ },
+ "0704": {
+  "L4_sacrum": 0.9,
+  "group": "no_l5"
+ },
+ "0717": {
+  "L4_sacrum": 0.9,
+  "group": "no_l5"
+ },
+ "0730": {
+  "L4_sacrum": 0.9,
+  "group": "no_l5"
+ },
+ "0755": {
+  "L4_sacrum": 0.8,
+  "group": "no_l5"
+ },
+ "0833": {
+  "L4_sacrum": 0.9,
+  "group": "no_l5"
+ },
+ "0893": {
+  "L4_sacrum": 0.9,
+  "group": "no_l5"
+ },
+ "0894": {
+  "L4_sacrum": 1.0,
+  "group": "no_l5"
+ },
+ "0910": {
+  "L4_sacrum": 0.9,
+  "group": "no_l5"
+ },
+ "0926": {
+  "L4_sacrum": 0.8,
+  "group": "no_l5"
+ },
+ "0928": {
+  "L4_sacrum": 1.0,
+  "group": "no_l5"
+ },
+ "1028": {
+  "L4_sacrum": 1.0,
+  "group": "no_l5"
+ },
+ "1037": {
+  "L4_sacrum": 1.0,
+  "group": "no_l5"
+ },
+ "1145": {
+  "L4_sacrum": 1.0,
+  "group": "no_l5"
+ },
+ "1181": {
+  "L4_sacrum": 1.0,
+  "group": "no_l5"
+ },
+ "1186": {
+  "L4_sacrum": 1.0,
+  "group": "no_l5"
+ },
+ "1189": {
+  "L4_sacrum": 1.0,
+  "group": "no_l5"
+ },
+ "1190": {
+  "L4_sacrum": 1.0,
+  "group": "no_l5"
+ },
+ "1233": {
+  "L4_sacrum": 1.0,
+  "group": "no_l5"
+ },
+ "1276": {
+  "L4_sacrum": 1.0,
+  "group": "no_l5"
+ },
+ "1394": {
+  "L4_sacrum": 1.0,
+  "group": "no_l5"
+ },
+ "1400": {
+  "L4_sacrum": 1.2,
+  "group": "no_l5"
+ },
+ "1456": {
+  "L4_sacrum": 1.2,
+  "group": "no_l5"
+ },
+ "1534": {
+  "L4_sacrum": 1.2,
+  "group": "no_l5"
+ },
+ "1578": {
+  "L4_sacrum": 1.2,
+  "group": "no_l5"
+ },
+ "0179": {
+  "L4_sacrum": 2.5,
+  "L5_sacrum": 0.8,
+  "L4_L5": 0.8,
+  "L5_voxels": 1036,
+  "L4_voxels": 39282,
+  "group": "fragments"
+ },
+ "0213": {
+  "L4_sacrum": 2.5,
+  "L5_sacrum": 0.9,
+  "L4_L5": 0.9,
+  "L5_voxels": 8531,
+  "L4_voxels": 47727,
+  "group": "fragments"
+ },
+ "0270": {
+  "L4_sacrum": 0.8,
+  "L5_sacrum": 0.8,
+  "L4_L5": 0.8,
+  "L5_voxels": 3322,
+  "L4_voxels": 94219,
+  "group": "fragments"
+ },
+ "1240": {
+  "L4_sacrum": 1.0,
+  "L5_sacrum": 1.0,
+  "L4_L5": 1.0,
+  "L5_voxels": 1886,
+  "L4_voxels": 25999,
+  "group": "fragments"
+ },
+ "0001": {
+  "L4_sacrum": 15.3,
+  "L5_sacrum": 0.9,
+  "L4_L5": 0.9,
+  "L5_voxels": 34785,
+  "L4_voxels": 36049,
+  "group": "controls"
+ },
+ "0002": {
+  "L4_sacrum": 17.8,
+  "L5_sacrum": 0.8,
+  "L4_L5": 0.8,
+  "L5_voxels": 32371,
+  "L4_voxels": 33277,
+  "group": "controls"
+ },
+ "0003": {
+  "L4_sacrum": 15.9,
+  "L5_sacrum": 0.9,
+  "L4_L5": 0.9,
+  "L5_voxels": 37199,
+  "L4_voxels": 38027,
+  "group": "controls"
+ },
+ "0004": {
+  "L4_sacrum": 17.4,
+  "L5_sacrum": 0.9,
+  "L4_L5": 0.9,
+  "L5_voxels": 82026,
+  "L4_voxels": 79320,
+  "group": "controls"
+ },
+ "0006": {
+  "L4_sacrum": 11.2,
+  "L5_sacrum": 0.7,
+  "L4_L5": 0.7,
+  "L5_voxels": 115099,
+  "L4_voxels": 112880,
+  "group": "controls"
+ },
+ "0007": {
+  "L4_sacrum": 12.9,
+  "L5_sacrum": 0.9,
+  "L4_L5": 0.9,
+  "L5_voxels": 37044,
+  "L4_voxels": 39567,
+  "group": "controls"
+ },
+ "0008": {
+  "L4_sacrum": 17.6,
+  "L5_sacrum": 0.9,
+  "L4_L5": 0.9,
+  "L5_voxels": 44475,
+  "L4_voxels": 44175,
+  "group": "controls"
+ },
+ "0010": {
+  "L4_sacrum": 10.3,
+  "L5_sacrum": 0.9,
+  "L4_L5": 0.9,
+  "L5_voxels": 83741,
+  "L4_voxels": 94755,
+  "group": "controls"
+ },
+ "0011": {
+  "L4_sacrum": 11.5,
+  "L5_sacrum": 0.7,
+  "L4_L5": 0.7,
+  "L5_voxels": 119868,
+  "L4_voxels": 125236,
+  "group": "controls"
+ },
+ "0012": {
+  "L4_sacrum": 12.1,
+  "L5_sacrum": 0.7,
+  "L4_L5": 0.7,
+  "L5_voxels": 111371,
+  "L4_voxels": 110562,
+  "group": "controls"
+ },
+ "0013": {
+  "L4_sacrum": 16.7,
+  "L5_sacrum": 0.8,
+  "L4_L5": 0.8,
+  "L5_voxels": 42634,
+  "L4_voxels": 42025,
+  "group": "controls"
+ },
+ "0014": {
+  "L4_sacrum": 16.7,
+  "L5_sacrum": 0.9,
+  "L4_L5": 0.9,
+  "L5_voxels": 33323,
+  "L4_voxels": 32897,
+  "group": "controls"
+ },
+ "0015": {
+  "L4_sacrum": 15.0,
+  "L5_sacrum": 0.8,
+  "L4_L5": 0.8,
+  "L5_voxels": 42760,
+  "L4_voxels": 45009,
+  "group": "controls"
+ },
+ "0016": {
+  "L4_sacrum": 10.3,
+  "L5_sacrum": 0.8,
+  "L4_L5": 0.8,
+  "L5_voxels": 47956,
+  "L4_voxels": 47275,
+  "group": "controls"
+ },
+ "0017": {
+  "L4_sacrum": 12.6,
+  "L5_sacrum": 0.9,
+  "L4_L5": 0.9,
+  "L5_voxels": 34038,
+  "L4_voxels": 34067,
+  "group": "controls"
+ },
+ "0018": {
+  "L4_sacrum": 15.0,
+  "L5_sacrum": 0.9,
+  "L4_L5": 0.9,
+  "L5_voxels": 30838,
+  "L4_voxels": 30512,
+  "group": "controls"
+ },
+ "0019": {
+  "L4_sacrum": 14.0,
+  "L5_sacrum": 0.9,
+  "L4_L5": 0.9,
+  "L5_voxels": 84906,
+  "L4_voxels": 83220,
+  "group": "controls"
+ },
+ "0020": {
+  "L4_sacrum": 16.0,
+  "L5_sacrum": 1.0,
+  "L4_L5": 1.0,
+  "L5_voxels": 81191,
+  "L4_voxels": 80843,
+  "group": "controls"
+ },
+ "0021": {
+  "L4_sacrum": 12.5,
+  "L5_sacrum": 0.9,
+  "L4_L5": 0.9,
+  "L5_voxels": 34204,
+  "L4_voxels": 34488,
+  "group": "controls"
+ },
+ "0022": {
+  "L4_sacrum": 12.5,
+  "L5_sacrum": 0.7,
+  "L4_L5": 0.7,
+  "L5_voxels": 45575,
+  "L4_voxels": 47554,
+  "group": "controls"
+ },
+ "0023": {
+  "L4_sacrum": 14.1,
+  "L5_sacrum": 0.8,
+  "L4_L5": 0.8,
+  "L5_voxels": 112920,
+  "L4_voxels": 114378,
+  "group": "controls"
+ },
+ "0025": {
+  "L4_sacrum": 13.0,
+  "L5_sacrum": 0.8,
+  "L4_L5": 0.8,
+  "L5_voxels": 127954,
+  "L4_voxels": 143942,
+  "group": "controls"
+ },
+ "0026": {
+  "L4_sacrum": 18.5,
+  "L5_sacrum": 0.8,
+  "L4_L5": 0.8,
+  "L5_voxels": 51930,
+  "L4_voxels": 49570,
+  "group": "controls"
+ },
+ "0027": {
+  "L4_sacrum": 12.7,
+  "L5_sacrum": 1.0,
+  "L4_L5": 1.0,
+  "L5_voxels": 29228,
+  "L4_voxels": 29731,
+  "group": "controls"
+ },
+ "0028": {
+  "L4_sacrum": 14.3,
+  "L5_sacrum": 1.0,
+  "L4_L5": 1.0,
+  "L5_voxels": 24795,
+  "L4_voxels": 25294,
+  "group": "controls"
+ },
+ "0029": {
+  "L4_sacrum": 15.6,
+  "L5_sacrum": 0.9,
+  "L4_L5": 0.9,
+  "L5_voxels": 36575,
+  "L4_voxels": 37357,
+  "group": "controls"
+ },
+ "0030": {
+  "L4_sacrum": 15.1,
+  "L5_sacrum": 0.9,
+  "L4_L5": 0.9,
+  "L5_voxels": 33757,
+  "L4_voxels": 34274,
+  "group": "controls"
+ },
+ "0031": {
+  "L4_sacrum": 15.2,
+  "L5_sacrum": 0.7,
+  "L4_L5": 0.8,
+  "L5_voxels": 117014,
+  "L4_voxels": 119559,
+  "group": "controls"
+ },
+ "0032": {
+  "L4_sacrum": 13.4,
+  "L5_sacrum": 1.0,
+  "L4_L5": 1.0,
+  "L5_voxels": 36708,
+  "L4_voxels": 39880,
+  "group": "controls"
+ },
+ "0033": {
+  "L4_sacrum": 15.0,
+  "L5_sacrum": 0.8,
+  "L4_L5": 0.8,
+  "L5_voxels": 33985,
+  "L4_voxels": 33450,
+  "group": "controls"
+ },
+ "0034": {
+  "L4_sacrum": 13.8,
+  "L5_sacrum": 0.7,
+  "L4_L5": 0.7,
+  "L5_voxels": 183346,
+  "L4_voxels": 208343,
+  "group": "controls"
+ },
+ "0035": {
+  "L4_sacrum": 15.0,
+  "L5_sacrum": 0.9,
+  "L4_L5": 0.9,
+  "L5_voxels": 41564,
+  "L4_voxels": 42779,
+  "group": "controls"
+ },
+ "0036": {
+  "L4_sacrum": 17.4,
+  "L5_sacrum": 0.7,
+  "L4_L5": 0.7,
+  "L5_voxels": 132184,
+  "L4_voxels": 127125,
+  "group": "controls"
+ },
+ "0038": {
+  "L4_sacrum": 2.3,
+  "L5_sacrum": 0.8,
+  "L4_L5": 0.8,
+  "L5_voxels": 94596,
+  "L4_voxels": 100797,
+  "group": "controls"
+ },
+ "0039": {
+  "L4_sacrum": 15.6,
+  "L5_sacrum": 0.8,
+  "L4_L5": 0.8,
+  "L5_voxels": 40770,
+  "L4_voxels": 39883,
+  "group": "controls"
+ },
+ "0040": {
+  "L4_sacrum": 15.0,
+  "L5_sacrum": 0.9,
+  "L4_L5": 0.9,
+  "L5_voxels": 14138,
+  "L4_voxels": 14714,
+  "group": "controls"
+ },
+ "0041": {
+  "L4_sacrum": 12.5,
+  "L5_sacrum": 0.9,
+  "L4_L5": 0.9,
+  "L5_voxels": 43777,
+  "L4_voxels": 43083,
+  "group": "controls"
+ },
+ "0042": {
+  "L4_sacrum": 14.5,
+  "L5_sacrum": 0.9,
+  "L4_L5": 0.9,
+  "L5_voxels": 44389,
+  "L4_voxels": 43154,
+  "group": "controls"
+ },
+ "0043": {
+  "L4_sacrum": 15.0,
+  "L5_sacrum": 0.8,
+  "L4_L5": 0.8,
+  "L5_voxels": 43379,
+  "L4_voxels": 42772,
+  "group": "controls"
+ },
+ "0044": {
+  "L4_sacrum": 14.1,
+  "L5_sacrum": 1.0,
+  "L4_L5": 1.0,
+  "L5_voxels": 80514,
+  "L4_voxels": 88990,
+  "group": "controls"
+ },
+ "0045": {
+  "L4_sacrum": 12.5,
+  "L5_sacrum": 0.9,
+  "L4_L5": 0.9,
+  "L5_voxels": 23455,
+  "L4_voxels": 23603,
+  "group": "controls"
+ },
+ "0046": {
+  "L4_sacrum": 20.0,
+  "L5_sacrum": 0.7,
+  "L4_L5": 0.7,
+  "L5_voxels": 43651,
+  "L4_voxels": 45119,
+  "group": "controls"
+ },
+ "0047": {
+  "L4_sacrum": 18.0,
+  "L5_sacrum": 1.0,
+  "L4_L5": 1.0,
+  "L5_voxels": 28600,
+  "L4_voxels": 27139,
+  "group": "controls"
+ },
+ "0048": {
+  "L4_sacrum": 12.3,
+  "L5_sacrum": 0.7,
+  "L4_L5": 0.7,
+  "L5_voxels": 115269,
+  "L4_voxels": 114980,
+  "group": "controls"
+ },
+ "0049": {
+  "L4_sacrum": 14.3,
+  "L5_sacrum": 0.7,
+  "L4_L5": 0.7,
+  "L5_voxels": 175736,
+  "L4_voxels": 175756,
+  "group": "controls"
+ },
+ "0050": {
+  "L4_sacrum": 15.0,
+  "L5_sacrum": 0.9,
+  "L4_L5": 0.9,
+  "L5_voxels": 27455,
+  "L4_voxels": 29717,
+  "group": "controls"
+ },
+ "0051": {
+  "L4_sacrum": 15.0,
+  "L5_sacrum": 1.0,
+  "L4_L5": 1.0,
+  "L5_voxels": 34657,
+  "L4_voxels": 33477,
+  "group": "controls"
+ },
+ "0053": {
+  "L4_sacrum": 17.5,
+  "L5_sacrum": 0.8,
+  "L4_L5": 0.8,
+  "L5_voxels": 24858,
+  "L4_voxels": 24464,
+  "group": "controls"
+ },
+ "0054": {
+  "L4_sacrum": 15.6,
+  "L5_sacrum": 0.8,
+  "L4_L5": 1.2,
+  "L5_voxels": 20940,
+  "L4_voxels": 21426,
+  "group": "controls"
+ },
+ "0055": {
+  "L4_sacrum": 15.3,
+  "L5_sacrum": 0.9,
+  "L4_L5": 0.9,
+  "L5_voxels": 36418,
+  "L4_voxels": 40592,
+  "group": "controls"
+ },
+ "0056": {
+  "L4_sacrum": 15.5,
+  "L5_sacrum": 0.8,
+  "L4_L5": 0.8,
+  "L5_voxels": 37637,
+  "L4_voxels": 37826,
+  "group": "controls"
+ },
+ "0057": {
+  "L4_sacrum": 22.5,
+  "L5_sacrum": 0.9,
+  "L4_L5": 0.9,
+  "L5_voxels": 43347,
+  "L4_voxels": 36403,
+  "group": "controls"
+ },
+ "0058": {
+  "L4_sacrum": 15.1,
+  "L5_sacrum": 0.9,
+  "L4_L5": 0.9,
+  "L5_voxels": 40050,
+  "L4_voxels": 42032,
+  "group": "controls"
+ },
+ "0059": {
+  "L4_sacrum": 17.5,
+  "L5_sacrum": 0.8,
+  "L4_L5": 0.8,
+  "L5_voxels": 42070,
+  "L4_voxels": 42922,
+  "group": "controls"
+ },
+ "0061": {
+  "L4_sacrum": 15.1,
+  "L5_sacrum": 0.8,
+  "L4_L5": 0.8,
+  "L5_voxels": 98939,
+  "L4_voxels": 98984,
+  "group": "controls"
+ },
+ "0062": {
+  "L4_sacrum": 15.1,
+  "L5_sacrum": 0.9,
+  "L4_L5": 0.9,
+  "L5_voxels": 32407,
+  "L4_voxels": 34521,
+  "group": "controls"
+ },
+ "0063": {
+  "L4_sacrum": 14.6,
+  "L5_sacrum": 0.8,
+  "L4_L5": 0.8,
+  "L5_voxels": 107346,
+  "L4_voxels": 116466,
+  "group": "controls"
+ },
+ "0064": {
+  "L4_sacrum": 12.5,
+  "L5_sacrum": 0.9,
+  "L4_L5": 0.9,
+  "L5_voxels": 31261,
+  "L4_voxels": 31335,
+  "group": "controls"
+ },
+ "0065": {
+  "L4_sacrum": 17.5,
+  "L5_sacrum": 0.9,
+  "L4_L5": 0.9,
+  "L5_voxels": 35850,
+  "L4_voxels": 38152,
+  "group": "controls"
+ },
+ "0066": {
+  "L4_sacrum": 15.2,
+  "L5_sacrum": 0.9,
+  "L4_L5": 0.9,
+  "L5_voxels": 42398,
+  "L4_voxels": 45529,
+  "group": "controls"
+ },
+ "0067": {
+  "L4_sacrum": 17.9,
+  "L5_sacrum": 0.9,
+  "L4_L5": 0.9,
+  "L5_voxels": 130889,
+  "L4_voxels": 123107,
+  "group": "controls"
+ },
+ "0068": {
+  "L4_sacrum": 15.0,
+  "L5_sacrum": 0.9,
+  "L4_L5": 0.9,
+  "L5_voxels": 29855,
+  "L4_voxels": 28515,
+  "group": "controls"
+ },
+ "0069": {
+  "L4_sacrum": 12.5,
+  "L5_sacrum": 0.8,
+  "L4_L5": 0.8,
+  "L5_voxels": 34899,
+  "L4_voxels": 34720,
+  "group": "controls"
+ },
+ "0071": {
+  "L4_sacrum": 15.9,
+  "L5_sacrum": 0.9,
+  "L4_L5": 0.9,
+  "L5_voxels": 45585,
+  "L4_voxels": 45112,
+  "group": "controls"
+ },
+ "0072": {
+  "L4_sacrum": 16.0,
+  "L5_sacrum": 0.8,
+  "L4_L5": 0.8,
+  "L5_voxels": 119027,
+  "L4_voxels": 121854,
+  "group": "controls"
+ },
+ "0073": {
+  "L4_sacrum": 15.5,
+  "L5_sacrum": 0.9,
+  "L4_L5": 0.9,
+  "L5_voxels": 38160,
+  "L4_voxels": 38915,
+  "group": "controls"
+ },
+ "0074": {
+  "L4_sacrum": 15.5,
+  "L5_sacrum": 0.9,
+  "L4_L5": 0.9,
+  "L5_voxels": 31226,
+  "L4_voxels": 32536,
+  "group": "controls"
+ },
+ "0076": {
+  "L4_sacrum": 15.0,
+  "L5_sacrum": 0.8,
+  "L4_L5": 0.8,
+  "L5_voxels": 43965,
+  "L4_voxels": 45183,
+  "group": "controls"
+ },
+ "0077": {
+  "L4_sacrum": 17.5,
+  "L5_sacrum": 0.9,
+  "L4_L5": 0.9,
+  "L5_voxels": 41262,
+  "L4_voxels": 42300,
+  "group": "controls"
+ },
+ "0078": {
+  "L4_sacrum": 17.5,
+  "L5_sacrum": 0.8,
+  "L4_L5": 0.8,
+  "L5_voxels": 26118,
+  "L4_voxels": 27063,
+  "group": "controls"
+ },
+ "0079": {
+  "L4_sacrum": 10.9,
+  "L5_sacrum": 0.7,
+  "L4_L5": 0.7,
+  "L5_voxels": 83859,
+  "L4_voxels": 81669,
+  "group": "controls"
+ },
+ "0081": {
+  "L4_sacrum": 17.0,
+  "L5_sacrum": 0.7,
+  "L4_L5": 0.7,
+  "L5_voxels": 123639,
+  "L4_voxels": 117437,
+  "group": "controls"
+ },
+ "0082": {
+  "L4_sacrum": 13.6,
+  "L5_sacrum": 0.8,
+  "L4_L5": 0.8,
+  "L5_voxels": 33376,
+  "L4_voxels": 33638,
+  "group": "controls"
+ },
+ "0084": {
+  "L4_sacrum": 15.2,
+  "L5_sacrum": 0.8,
+  "L4_L5": 0.8,
+  "L5_voxels": 27862,
+  "L4_voxels": 30020,
+  "group": "controls"
+ },
+ "0085": {
+  "L4_sacrum": 5.9,
+  "L5_sacrum": 0.8,
+  "L4_L5": 0.8,
+  "L5_voxels": 34399,
+  "L4_voxels": 32926,
+  "group": "controls"
+ },
+ "0086": {
+  "L4_sacrum": 6.3,
+  "L5_sacrum": 0.9,
+  "L4_L5": 0.9,
+  "L5_voxels": 23054,
+  "L4_voxels": 24880,
+  "group": "controls"
+ },
+ "0087": {
+  "L4_sacrum": 12.2,
+  "L5_sacrum": 0.7,
+  "L4_L5": 0.7,
+  "L5_voxels": 96177,
+  "L4_voxels": 98017,
+  "group": "controls"
+ },
+ "0088": {
+  "L4_sacrum": 4.1,
+  "L5_sacrum": 0.8,
+  "L4_L5": 0.8,
+  "L5_voxels": 147965,
+  "L4_voxels": 151589,
+  "group": "controls"
+ },
+ "0089": {
+  "L4_sacrum": 13.6,
+  "L5_sacrum": 0.9,
+  "L4_L5": 0.9,
+  "L5_voxels": 77820,
+  "L4_voxels": 84836,
+  "group": "controls"
+ },
+ "0090": {
+  "L4_sacrum": 12.3,
+  "L5_sacrum": 0.8,
+  "L4_L5": 0.8,
+  "L5_voxels": 120576,
+  "L4_voxels": 119970,
+  "group": "controls"
+ },
+ "0091": {
+  "L4_sacrum": 12.5,
+  "L5_sacrum": 0.8,
+  "L4_L5": 0.8,
+  "L5_voxels": 36197,
+  "L4_voxels": 34691,
+  "group": "controls"
+ },
+ "0092": {
+  "L4_sacrum": 12.5,
+  "L5_sacrum": 0.9,
+  "L4_L5": 0.9,
+  "L5_voxels": 38339,
+  "L4_voxels": 35874,
+  "group": "controls"
+ },
+ "0093": {
+  "L4_sacrum": 17.7,
+  "L5_sacrum": 0.9,
+  "L4_L5": 0.9,
+  "L5_voxels": 41184,
+  "L4_voxels": 42982,
+  "group": "controls"
+ },
+ "0094": {
+  "L4_sacrum": 7.0,
+  "L5_sacrum": 0.7,
+  "L4_L5": 0.7,
+  "L5_voxels": 114790,
+  "L4_voxels": 115963,
+  "group": "controls"
+ },
+ "0095": {
+  "L4_sacrum": 17.6,
+  "L5_sacrum": 0.9,
+  "L4_L5": 0.9,
+  "L5_voxels": 27943,
+  "L4_voxels": 27784,
+  "group": "controls"
+ },
+ "0096": {
+  "L4_sacrum": 15.4,
+  "L5_sacrum": 0.8,
+  "L4_L5": 1.2,
+  "L5_voxels": 33847,
+  "L4_voxels": 39347,
+  "group": "controls"
+ },
+ "0098": {
+  "L4_sacrum": 12.5,
+  "L5_sacrum": 0.9,
+  "L4_L5": 0.9,
+  "L5_voxels": 36429,
+  "L4_voxels": 39413,
+  "group": "controls"
+ },
+ "0099": {
+  "L4_sacrum": 21.6,
+  "L5_sacrum": 0.9,
+  "L4_L5": 0.9,
+  "L5_voxels": 106457,
+  "L4_voxels": 97736,
+  "group": "controls"
+ },
+ "0100": {
+  "L4_sacrum": 17.5,
+  "L5_sacrum": 0.8,
+  "L4_L5": 0.8,
+  "L5_voxels": 31268,
+  "L4_voxels": 31755,
+  "group": "controls"
+ },
+ "0101": {
+  "L4_sacrum": 15.5,
+  "L5_sacrum": 0.8,
+  "L4_L5": 0.8,
+  "L5_voxels": 36356,
+  "L4_voxels": 37414,
+  "group": "controls"
+ },
+ "0102": {
+  "L4_sacrum": 15.0,
+  "L5_sacrum": 0.8,
+  "L4_L5": 0.8,
+  "L5_voxels": 39819,
+  "L4_voxels": 40452,
+  "group": "controls"
+ },
+ "0103": {
+  "L4_sacrum": 10.5,
+  "L5_sacrum": 0.7,
+  "L4_L5": 0.7,
+  "L5_voxels": 57163,
+  "L4_voxels": 56933,
+  "group": "controls"
+ },
+ "0104": {
+  "L4_sacrum": 15.0,
+  "L5_sacrum": 1.0,
+  "L4_L5": 1.0,
+  "L5_voxels": 32169,
+  "L4_voxels": 34307,
+  "group": "controls"
+ },
+ "0105": {
+  "L4_sacrum": 5.1,
+  "L5_sacrum": 0.8,
+  "L4_L5": 0.8,
+  "L5_voxels": 30065,
+  "L4_voxels": 34323,
+  "group": "controls"
+ },
+ "0106": {
+  "L4_sacrum": 13.0,
+  "L5_sacrum": 0.9,
+  "L4_L5": 0.9,
+  "L5_voxels": 40025,
+  "L4_voxels": 40988,
+  "group": "controls"
+ },
+ "0107": {
+  "L4_sacrum": 10.8,
+  "L5_sacrum": 0.8,
+  "L4_L5": 0.8,
+  "L5_voxels": 41768,
+  "L4_voxels": 40196,
+  "group": "controls"
+ },
+ "0109": {
+  "L4_sacrum": 12.7,
+  "L5_sacrum": 0.8,
+  "L4_L5": 0.8,
+  "L5_voxels": 38299,
+  "L4_voxels": 39091,
+  "group": "controls"
+ },
+ "0110": {
+  "L4_sacrum": 20.0,
+  "L5_sacrum": 0.8,
+  "L4_L5": 0.8,
+  "L5_voxels": 37787,
+  "L4_voxels": 38427,
+  "group": "controls"
+ },
+ "0111": {
+  "L4_sacrum": 12.2,
+  "L5_sacrum": 0.8,
+  "L4_L5": 0.8,
+  "L5_voxels": 91227,
+  "L4_voxels": 90173,
+  "group": "controls"
+ },
+ "0112": {
+  "L4_sacrum": 12.5,
+  "L5_sacrum": 0.8,
+  "L4_L5": 0.8,
+  "L5_voxels": 34123,
+  "L4_voxels": 35975,
+  "group": "controls"
+ }
+}

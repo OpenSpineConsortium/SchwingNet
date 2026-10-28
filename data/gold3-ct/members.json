@@ -17,7 +17,7 @@
    "source": "scidb_enhance_pet_1_6k",
    "name": "ENHANCE.PET 1.6k (sites autoPET, Leipzig, Careggi)",
    "rows": "data/gold3-ct/enhance-pet/facts.jsonl",
-   "rows_made_by": "bordercall holdings/enhance_facts.py from the published masks, read in the thread's container on the owner's word (spec section 2); FACTS.json beside the rows records the tool, its commit, the input hashes and the row count",
+   "rows_made_by": "bordercall holdings/enhance_facts.py from the published masks, on the owner's word, in the thread's container or on the grid (docs/checkpoints/2026-10-28-gold3-ct-grid/HANDOFF.md), the three repaired rows from the repair record in the thread's container; FACTS.json beside the rows records where (read_on), the tool, its commit, the input hashes and the row count",
    "studies_listed": 1597,
    "gold3": 1557,
    "gold4": 3,
@@ -46,7 +46,7 @@
    "grid": {
     "root": "$DATA_ROOT/aws_enhance_pet_labels/raw",
     "held": false,
-    "note": "not on the grid: the existing word `fetch aws_enhance_pet_labels` lands the whole ground-truth prefix, and waits for the owner's word. autoPET's CTs are held as FDG-PET-CT-Lesions (/rs/rs_grp_oschome/go2432/data/tcia_fdg_pet_ct_lesions) but no mask has been matched to its CT yet (shape and affine, the scanner columns breaking ties); Leipzig's and Careggi's CTs are not held."
+    "note": "the existing word `fetch aws_enhance_pet_labels` lands the whole ground-truth prefix on the owner's word; held says whether it has, set by the grid session once the vertebra and rib masks hash to SHA256SUMS (docs/checkpoints/2026-10-28-gold3-ct-grid/HANDOFF.md), and FACTS.json says where the facts were read and read again. autoPET's CTs are held as FDG-PET-CT-Lesions (/rs/rs_grp_oschome/go2432/data/tcia_fdg_pet_ct_lesions) but no mask has been matched to its CT yet (shape and affine, the scanner columns breaking ties); Leipzig's and Careggi's CTs are not held."
    },
    "repair_record": "the Claude project's files, folder enhance-pet-repair (README, SHA256SUMS, repaired/<id>.nii.gz)",
    "persons_by_records": [865, 1478],

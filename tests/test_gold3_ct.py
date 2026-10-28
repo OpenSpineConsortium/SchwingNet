@@ -1074,5 +1074,104 @@ class VerseReads(Scratch):
         self.assertEqual(rows["verse:verse108"], ("not_assessed", "none"))
 
 
+class TakeFacts(Scratch):
+    """take-facts joins a reading of the published masks to the repaired rows read elsewhere, as a grid
+    run of the handoff does, and only compares where facts are committed already."""
+    COMMIT = "0123456789abcdef0123456789abcdef01234567"
+
+    def setUp(self):
+        super().setUp()
+        rows = synthetic_facts()
+        self.repo = mini_repo(self.tmp / "repo", rows)
+        (self.repo / gold3.FACTS).unlink()
+        (self.repo / gold3.FACTS_RECORD).unlink()
+        for rel in (gold3.MASK_SUMS, gold3.CT_DETAILS):
+            (self.repo / rel).write_text(f"{rel}\n", encoding="utf-8")
+        self.published = [r for r in rows if "repaired_from" not in r]
+        self.repaired = [r for r in rows if "repaired_from" in r]
+        self.second = [{"id": r["id"], "ribs": r["ribs"], "distances_mm": r["distances_mm"]} for r in self.published]
+
+    def reading(self, name, rows):
+        path = self.tmp / name
+        path.write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
+        return path
+
+    def take(self, first=None, second=None):
+        first = self.reading("a.jsonl", self.published if first is None else first)
+        second = self.reading("b.jsonl", self.second if second is None else second)
+        return run("--repo", self.repo, "take-facts", first, second, "--read-on", "the grid, job 1",
+                   "--bordercall-commit", self.COMMIT, "--date", "2026-10-28")
+
+    def side_file(self, rows):
+        (self.repo / gold3.FACTS_REPAIRED).write_text("".join(gold3.row_line(r) for r in rows), encoding="utf-8")
+
+    def test_a_grid_reading_takes_the_repaired_rows_from_the_side_file(self):
+        self.side_file(self.repaired)
+        code, out, err = self.take()
+        self.assertEqual(code, 0, err)
+        inputs = gold3.load_inputs(self.repo)
+        self.assertEqual([r["id"] for r in inputs["facts"]], sorted(r["id"] for r in self.published + self.repaired))
+        self.assertEqual(gold3.facts_problems(inputs["facts"], inputs["record"], inputs["bucket"]), [])
+        self.assertEqual(gold3.facts_record_problems(inputs["facts"], inputs["facts_record"]), [])
+        self.assertEqual(inputs["facts_record"]["read_on"], "the grid, job 1")
+        self.assertEqual(inputs["facts_record"]["bordercall_commit"], self.COMMIT)
+        self.assertEqual(len(inputs["facts_b"]), len(self.published))
+        self.assertFalse((self.repo / gold3.FACTS_REPAIRED).exists())
+        self.assertIn(f"removed {gold3.FACTS_REPAIRED}", out)
+
+    def test_a_reading_that_holds_the_repaired_rows_needs_no_side_file(self):
+        code, _, err = self.take(first=self.published + self.repaired)
+        self.assertEqual(code, 0, err)
+        self.assertEqual(len(gold3.load_inputs(self.repo)["facts"]), len(self.published) + len(self.repaired))
+
+    def test_with_facts_committed_a_reading_that_reproduces_them_is_recorded_and_no_row_moves(self):
+        self.side_file(self.repaired)
+        self.assertEqual(self.take()[0], 0)
+        before = (self.repo / gold3.FACTS).read_bytes()
+        code, out, _ = self.take()
+        self.assertEqual((code, json.loads(out.splitlines()[0])["reproduces"]), (0, True))
+        self.assertEqual((self.repo / gold3.FACTS).read_bytes(), before)
+        record = gold3.load_inputs(self.repo)["facts_record"]
+        self.assertEqual(record["reproduced_on"], [{"bordercall_commit": self.COMMIT, "date": "2026-10-28",
+                                                    "read_on": "the grid, job 1"}])
+        self.assertEqual(self.take()[0], 0)
+        self.assertEqual(len(gold3.load_inputs(self.repo)["facts_record"]["reproduced_on"]), 1)
+        recorded = (self.repo / gold3.FACTS_RECORD).read_bytes()
+        moved = copy.deepcopy(self.published)
+        moved[0]["sternum_voxels"] += 1
+        code, out, _ = self.take(first=moved)
+        self.assertEqual(code, 1)
+        self.assertEqual(json.loads(out)["differ"], {"facts": [moved[0]["id"]], "facts_b": []})
+        self.assertEqual((self.repo / gold3.FACTS).read_bytes(), before)
+        self.assertEqual((self.repo / gold3.FACTS_RECORD).read_bytes(), recorded)
+
+    def test_a_reading_with_no_repaired_rows_anywhere_is_refused(self):
+        code, _, err = self.take()
+        self.assertEqual(code, 1)
+        self.assertIn("repaired rows []", err)
+        self.assertFalse((self.repo / gold3.FACTS).exists())
+
+    def test_a_repaired_row_that_differs_from_the_side_file_is_refused(self):
+        self.side_file(self.repaired)
+        other = copy.deepcopy(self.repaired)
+        other[0]["sternum_voxels"] += 1
+        code, _, err = self.take(first=self.published + other)
+        self.assertEqual(code, 1)
+        self.assertIn("differs from", err)
+
+    def test_a_second_reading_short_of_a_study_is_refused(self):
+        self.side_file(self.repaired)
+        code, _, err = self.take(second=self.second[1:])
+        self.assertEqual(code, 1)
+        self.assertIn("the second reading covers", err)
+
+    def test_a_short_commit_id_is_refused(self):
+        self.side_file(self.repaired)
+        first, second = self.reading("a.jsonl", self.published), self.reading("b.jsonl", self.second)
+        code, _, err = run("--repo", self.repo, "take-facts", first, second, "--read-on", "x", "--bordercall-commit", "abc123")
+        self.assertEqual(code, 1)
+        self.assertIn("no full commit id", err)
+
+
 if __name__ == "__main__":
     unittest.main()

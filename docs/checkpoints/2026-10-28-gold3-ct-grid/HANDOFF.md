@@ -2,145 +2,167 @@
 
 Thread "Finish scan import and tier counts". The owner's ask, 2026-10-27 22:49 UTC, verbatim: "well whenvever this finishes i want all the gold tier 3 CT data as its own dataset, with a indexable database, an artefact, and anything i need to use it in the workflow, including anomaly statistics, and quality assurance they are true anomalies". Then, 2026-10-28 00:04 UTC: "maybe these steps should jsut work on the grid? can you write a handoff for this to run over the beethoven extension on the grid?"
 
-This page is for a Claude Code session the owner opens on the grid with the Beethoven extension. It says what to run, in what order, and what must hold before anything is committed. The design is docs/research/gold3-ct/ (README.md where the programme stands, SPEC.md the build plan, BRIEF.md what exists with file and line references); this page carries none of it. Confidential like the rest of SchwingNet and bordercall: nothing here or made from it goes to a public place, and no path under the data root, no DICOM UID and no PatientID leaves the grid.
-
-## Why the grid
-
-Reading the masks takes about 50 seconds and 1.6 GB per study for the first reading (more for the 0.7 mm whole-body studies, the largest 695 million voxels), so 1,600 studies is most of a day on the thread's 4-CPU container, and running two readings side by side there ran it out of memory twice on 2026-10-27. On a 16-CPU batch job it is about two hours. The grid also holds what the container never can: the TotalSegmentator and VerSe members' masks, the autoPET CTs, and the lab volume where the store belongs ($DATA_ROOT/_gold3_ct).
+This page is for a Claude Code session the owner opens on the grid with the Beethoven extension. The whole computation is one batch job, gold3-facts.sbatch beside this page, which builds its own Python, runs the tests, reads the masks twice, checks the readings against each other and against the count, takes them into the dataset, writes its pages and builds its store. The session does only what needs no Python: it clones, sends the fetch word, checks the masks' hashes, flips one line of members.json, queues the job, and commits what the job leaves. The design is docs/research/gold3-ct/ (README.md where the programme stands, SPEC.md the build plan, BRIEF.md what exists); this page carries none of it. Confidential like the rest of SchwingNet and bordercall: nothing here or made from it goes to a public place, and no path under the data root, no DICOM UID and no PatientID leaves the grid, in a commit, a message or anywhere else.
 
 ## 0. The owner's count, before anything runs
 
-Print this block in the session and wait for the owner's yes. Nothing below step 2 runs without it, and nothing beyond it runs at all.
+Print this block in the session and wait for the owner's yes. Nothing from step 5 on runs without it, and nothing beyond it runs at all.
 
-1. One fetch, through the gate word so the size rule reads the exact size first and refuses it whole if it would pass the CephFS quota: `fetch aws_enhance_pet_labels`, 11,256,936,591 bytes (the public bucket's whole ground-truth prefix, seven label folders, listed 2026-10-27). This work reads two of them, Vertebrae (381,439,888 bytes) and Ribs (312,882,241 bytes); the gate word has no narrower form, and the other five serve the paused Flux realism programme when it is restarted.
-2. One CPU job, hpcworker's batch class (16 CPUs, 64 GB, 12 hours; requeued on preemption, and every step resumes where it stopped): both readings of the masks, their comparison, the count's own cross-check reading, and the store build. It writes only in the work folder and under $DATA_ROOT/_gold3_ct.
+1. One fetch, through the gate word, so the size rule reads the exact size and refuses it whole if it would pass the CephFS quota: `fetch aws_enhance_pet_labels`. The word's line states 2.5 GB; the prefix it lands is the public bucket's whole ground-truth folder, 11,256,936,591 bytes listed on 2026-10-27, of which this work reads two folders, Vertebrae (381,439,888 bytes) and Ribs (312,882,241 bytes). The word has no narrower form; the other five folders serve the paused Flux realism programme.
+2. One CPU job, hpcworker's batch class, 16 CPUs, 64 GB, 24 hours: gold3-facts.sbatch. It builds its Python in the work folder (pixi, about 0.4 GB), runs both repositories' tests, runs the two readings and the count's two steps side by side, compares them, takes the facts, writes the dataset's pages and builds the store with two CSV exports under $DATA_ROOT/_gold3_ct. It writes only in the work folder and there. Slurm requeues it on preemption, and a requeued run skips every finished step; a time-out is not requeued.
+3. Two reads with no job: the sha256 of the 3,194 fetched masks, and the sha256 and line count of TotalSegmentator's subject list in the grid home.
 
-Not in this count, each its own yes later: the Leipzig and Careggi CTs (45,207,300,328 bytes, a new url-route line) for CT views and the lumbosacral reads no mask can settle; any SPINEPS or bordercall run (the bordercall pilot of 2 CPU jobs is approved and unsent, and belongs to its own word). Never: CT-RATE without the owner's terabytes, Radiopaedia by script, usage credits, a segmenter run, TotalSegmentator as a segmenter.
+Not in this count, each its own word later: a second fetch, or a second job (a time-out, an out-of-memory end or a failed step does not license one); the Leipzig and Careggi CTs (45,207,300,328 bytes, a new url-route line); the grid index job (autoPET masks matched to held CTs, TotalSegmentator's rows, VerSe's sacrum); any SPINEPS or bordercall run (the bordercall pilot of 2 CPU jobs is approved and unsent, and belongs to its own word). Never: CT-RATE without the owner's terabytes, Radiopaedia by script, usage credits, a segmenter run, TotalSegmentator as a segmenter.
 
 ## 1. Where things are
 
 | what | where |
 | --- | --- |
-| The plan | SchwingNet, branch claude/project-thread-cne00q: docs/research/gold3-ct/README.md, SPEC.md, BRIEF.md |
-| Dataset records | SchwingNet, same branch: data/gold3-ct/members.json, verse.json, totalsegmentator.json; data/gold3-ct/enhance-pet/record.json, bucket.json (the listing with exact bytes), SHA256SUMS (the 3,194 masks this thread read), ct-details.json (CT-details.xlsx's rows, so no second fetch is needed) |
-| The store tool | SchwingNet, same branch: tools/gold3_ct.py (build, query, stats, qa, export, page, check; standard library only) and tests/test_gold3_ct.py; STATS.md, QA.md and page-data.json under docs/research/gold3-ct/, made with no facts yet |
-| The mask readers | bordercall, branch claude/project-thread-cne00q: holdings/enhance_facts.py (the first reading, reusing the count's own rules), holdings/enhance_facts_check.py (the second, written blind from the plan, with `compare`), holdings/enhance_views.py (front and side pictures for a reader), tests under holdings/tests/ |
-| The count | bordercall main: holdings/count_enhance_pet.py, whose extents and ribs steps are the cross-check |
-| The draft pull requests | bordercall #17 and SchwingNet's, both from claude/project-thread-cne00q; their bodies are the record |
+| This page and the job script | SchwingNet, branch claude/project-thread-cne00q: docs/checkpoints/2026-10-28-gold3-ct-grid/HANDOFF.md and gold3-facts.sbatch |
+| The plan | the same branch: docs/research/gold3-ct/README.md, SPEC.md, BRIEF.md |
+| Dataset records | the same branch: data/gold3-ct/members.json, verse.json, totalsegmentator.json; data/gold3-ct/enhance-pet/record.json, bucket.json (the listing with exact bytes), SHA256SUMS (the 3,194 masks the thread read), ct-details.json (CT-details.xlsx's rows), touch.json (the repair record's 3-D distances for 143 studies), facts-repaired.jsonl (the three repaired rows, until the facts are taken) |
+| The dataset tool | the same branch: tools/gold3_ct.py (take-facts, build, query, stats, qa, export, page, check; standard library only) and tests/test_gold3_ct.py |
+| The mask readers | bordercall, branch claude/project-thread-cne00q: holdings/enhance_facts.py (the first reading, reusing the count's own rules), holdings/enhance_facts_check.py (the second, written blind from SPEC.md, with `compare`), holdings/enhance_facts_cross.py (the first reading against the count's outputs and touch.json), tests under holdings/tests/ |
+| The count | bordercall: holdings/count_enhance_pet.py, whose extents and ribs steps the job runs again |
+| The draft pull requests | SchwingNet #437 and bordercall #17, both from claude/project-thread-cne00q; their bodies are the record |
 
-Container paths in SPEC.md and BRIEF.md map to the grid as follows: /tmp/claude-0/enh/masks is $VERT and /tmp/claude-0/enh/ribs is $RIBS (step 4); /mnt/project-files/enhance-pet-repair, which holds the three repaired vertebra masks, is not on the grid (bordercall keeps no mask in git), so the three repaired rows, 1134r, 1283r and 1347r, come from the thread's container (step 8); CT-details.xlsx is SchwingNet's data/gold3-ct/enhance-pet/ct-details.json; the seed outputs of the count are made again in step 6.
+SPEC.md and BRIEF.md speak of the thread's container. On the grid: /tmp/claude-0/enh/masks is $VERT and /tmp/claude-0/enh/ribs is $RIBS (step 5); CT-details.xlsx is ct-details.json; seed/extents.json is the job's $W/out/count/extents.json, and seed/ribs_contacts.json and seed/ribs_pairs.json are both in its $W/out/count/ribs.json, which tallies the lowest ribs' contacts for all 1,597; /mnt/project-files/enhance-pet-repair/touch.json is touch.json on the branch; the three repaired vertebra masks are not on the grid (bordercall keeps no mask in git), so their rows come from facts-repaired.jsonl, or from facts.jsonl where the thread has committed the facts already.
 
 ## 2. Open the session
 
 1. Start a Beethoven worker on the grid and open its session (Beethoven's New session, or the Claude project's own Work locally from the + menu, docs/memory/beethoven-worker-and-claude-projects.md).
 2. Tell it: "Read docs/checkpoints/2026-10-28-gold3-ct-grid/HANDOFF.md on SchwingNet's branch claude/project-thread-cne00q and follow it."
-3. The session runs as a worker under the owner's login (docs/agents/WORKERS.md) and works only on the branch above in each repository.
+3. The session runs as a worker under the owner's login (docs/agents/WORKERS.md), changes nothing in bordercall, and in SchwingNet works only on the branch above.
 
-## 3. The work folder
+## 3. How commands run here
 
-Never work in ~/SchwingNet: it is the grid gate's own checkout, brought to main by every gate word and held by running jobs (grid/logs/HOLD).
+- A Bash call keeps its working folder but no variable. So the work folder's env.sh holds every name the page uses, and every block from step 5 on starts with `. "$HOME/work/gold3/env.sh"`.
+- The nodes run CentOS 7, whose python3 is 3.6 and python 2.7. No step runs Python outside the job; the session needs only git, find, ls, grep, sed, wc, sha256sum and hpcworker.
+- Submit, estimate, stop: after the fetch word and after the job's submission, tell the owner the job's number, an estimate and what to say when it ends, and end the turn. Never sleep or poll. When the owner comes back, read the state once.
+- Never work in ~/SchwingNet and never pull it: it is the gate's own checkout. The gate reads its own copy of the fetch word; the job runs from the work folder's clones.
+
+## 4. The work folder, before the yes
 
 ```
-W=$HOME/work/gold3; mkdir -p "$W" && cd "$W"
+mkdir -p "$HOME/work/gold3" && cd "$HOME/work/gold3"
 git clone --branch claude/project-thread-cne00q https://github.com/OpenSpineConsortium/SchwingNet.git
 git clone --branch claude/project-thread-cne00q https://github.com/OpenSpineConsortium/bordercall.git
 ```
 
 Both repositories are private: if git cannot reach them with the owner's own credentials on the grid, stop and tell the owner exactly that; never ask for or handle a token.
 
-Then step 0: print the count and wait for the owner's yes.
-
-## 4. The fetch, after the yes
-
-1. Read the room first: `bash ~/SchwingNet/grid/gate.sh status | sed -n '1,30p'`.
-2. Send the word once: `bash ~/SchwingNet/grid/gate.sh fetch aws_enhance_pet_labels`. It prints the exact size, the admission and the job. Never send it a second time while its job is queued or running.
-3. When `status` shows the job ended, find the two folders and count them; both counts must be 1,597:
+Find the gate's hpcworker and check it, then write env.sh:
 
 ```
-DATA_ROOT=/rs/rs_grp_oschome/go2432/data
+HPCWORKER=$HOME/hpcworker/framework/bin/hpcworker
+bash "$HPCWORKER" job version
+grep -c '^aws_enhance_pet_labels|' "$HOME/SchwingNet/grid/run-platform-fetch.sh"
+printf 'W=%q\nDATA_ROOT=%q\nHPCWORKER=%q\n' "$HOME/work/gold3" /rs/rs_grp_oschome/go2432/data "$HPCWORKER" > "$HOME/work/gold3/env.sh"
+```
+
+`job version` must print `HPCW-JOB version N interface ...` with N at 27 or later, since an older hpcworker hands the job its own environment and not the caller's, and the job needs W, VERT, RIBS and DATA_ROOT from the caller. The grep must print 1. If the file is missing or N is older, ask the owner; never install or update hpcworker.
+
+Then say which case this is: `ls "$HOME/work/gold3/SchwingNet/data/gold3-ct/enhance-pet/"`. With facts-repaired.jsonl and no facts.jsonl, the job writes the facts (case A). With facts.jsonl, the thread has committed facts read in its container, and the job only checks that the grid's reading gives them again and records that it does (case B). The thread pushes nothing under data/gold3-ct or docs/research/gold3-ct to this branch while the grid run may be under way, so the case does not change under the job.
+
+Then print the count of step 0 and wait for the owner's yes.
+
+## 5. The fetch, after the yes
+
+1. Read the room: `. "$HOME/work/gold3/env.sh"; bash "$HOME/SchwingNet/grid/gate.sh" status | sed -n '1,30p'`.
+2. Send the word once: `. "$HOME/work/gold3/env.sh"; HPCWORKER="$HPCWORKER" bash "$HOME/SchwingNet/grid/gate.sh" fetch aws_enhance_pet_labels`. It prints the room, the line's stated size (2.5 GB, printed as "3 GB stated") and the job's number. The job reads the exact size from the bucket's listing when it starts, and is admitted or refused whole there; a refusal ends it with exit 4 having fetched nothing. Never send the word again while its job is queued or running, and never after a refusal.
+3. Tell the owner the job's number, that 11.3 GB from the public bucket should take well under an hour, and to tell you when `status` shows it ended. End the turn.
+4. When the owner comes back, read `status` once. If the job was refused or failed, tell the owner what status says and stop. If it ended well, find the two folders, count them and record them, in one call:
+
+```
+. "$HOME/work/gold3/env.sh"
 VERT=$(dirname "$(find "$DATA_ROOT/aws_enhance_pet_labels/raw" -path '*/Vertebrae/0001.nii.gz' | head -n 1)")
 RIBS=$(dirname "$(find "$DATA_ROOT/aws_enhance_pet_labels/raw" -path '*/Ribs/0001.nii.gz' | head -n 1)")
+test -f "$VERT/0001.nii.gz" && test -f "$RIBS/0001.nii.gz" && [ "$(dirname "$VERT")" = "$(dirname "$RIBS")" ] && echo found
 ls "$VERT" | grep -c 'nii.gz$'; ls "$RIBS" | grep -c 'nii.gz$'
+printf 'VERT=%q\nRIBS=%q\n' "$VERT" "$RIBS" >> "$W/env.sh"
 ```
 
-4. The grid's copy must be byte for byte the copy the thread read. In a batch job or the worker's own allocation (never on the login node, where python is killed by name; sha256sum is fine anywhere):
+It must print found, then 1597 twice; anything else stops the work.
+
+## 6. The hashes, and the record that the grid holds the masks
+
+1. The grid's copy must be byte for byte the copy the thread read (sha256sum is fine on any node):
 
 ```
-cd "$(dirname "$VERT")" && sha256sum --quiet -c "$W/SchwingNet/data/gold3-ct/enhance-pet/SHA256SUMS"
+. "$HOME/work/gold3/env.sh"
+cd "$(dirname "$VERT")" && sha256sum --quiet -c "$W/SchwingNet/data/gold3-ct/enhance-pet/SHA256SUMS" && echo "3194 masks match"
 ```
 
-Any mismatch stops the work: tell the owner which files, and change nothing.
+Any mismatch stops the work: tell the owner how many files, and change nothing.
 
-## 5. The environment
-
-The same versions the thread's container used, so every float rounds the same way and the facts are the same bytes:
+2. Only then, members.json says the grid holds them. The job's pages read members.json, so this comes before the job:
 
 ```
-python3 -m venv "$W/venv" && "$W/venv/bin/pip" install numpy==2.5.4 scipy==1.18.1 nibabel==5.4.2 pillow==13.0.0
-cd "$W/bordercall" && "$W/venv/bin/python" -m unittest discover -s holdings/tests -t .
+. "$HOME/work/gold3/env.sh"; cd "$W/SchwingNet"
+sed -i 's/^    "held": false,$/    "held": true,/' data/gold3-ct/members.json
+grep -c '"held": false' data/gold3-ct/members.json; git diff --stat
 ```
 
-The tests must pass before the job is queued.
+It must print 0, then one file with one line changed.
 
-## 6. The job
-
-Write the job script in the work folder, never in either repository (a .sbatch header keeps only time, CPUs and memory; hpcworker's site profile places the job, docs/memory/grid-jobs-go-through-hpcworker-job-submit.md):
+3. TotalSegmentator's subject list, for the owner's message only; nothing of it is committed:
 
 ```
-cat > "$W/gold3-facts.sbatch" <<'EOF'
-#!/bin/bash
-#SBATCH --time=12:00:00
-#SBATCH --cpus-per-task=16
-#SBATCH --mem=64G
-set -euo pipefail
-export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1
-PY="$W/venv/bin/python"; OUT="$W/out"; mkdir -p "$OUT/a" "$OUT/b" "$OUT/count"
-DATA="$W/SchwingNet/data/gold3-ct/enhance-pet"
-# The bucket listing as the first reading takes it, a JSON list of [key, bytes] per folder.
-"$PY" - "$DATA/bucket.json" "$OUT" <<'PYEOF'
-import json, sys
-bucket = json.load(open(sys.argv[1]))
-for name in ("vertebrae", "ribs"):
-    column = bucket["columns"].index(name)
-    rows = [[bucket["prefixes"][name] + sid + ".nii.gz", sizes[column]] for sid, sizes in sorted(bucket["studies"].items())]
-    json.dump(rows, open("%s/%s_keys.json" % (sys.argv[2], name), "w"))
-PYEOF
-cd "$W/bordercall"
-"$PY" -m holdings.enhance_facts facts "$VERT" "$RIBS" "$DATA/ct-details.json" "$OUT/a/facts.jsonl" \
-    --listing "$OUT/vertebrae_keys.json" "$OUT/ribs_keys.json" --repair-record "" --workers 10
-"$PY" -m holdings.enhance_facts_check --masks "$VERT" --ribs "$RIBS" --out "$OUT/b/facts_b.jsonl" --workers 6
-"$PY" -m holdings.enhance_facts_check compare "$OUT/a/facts.jsonl" "$OUT/b/facts_b.jsonl" "$OUT/agreement.json"
-"$PY" -m holdings.count_enhance_pet extents "$VERT" "$OUT/count/extents.json" --workers 3
-"$PY" -m holdings.count_enhance_pet ribs "$VERT" "$RIBS" all "$OUT/count/ribs.json" --workers 3
-echo GOLD3_FACTS_DONE
-EOF
-hpcworker job submit --project schwingnet --name gold3_facts --class batch --dir "$W" --check -- gold3-facts.sbatch
-W="$W" VERT="$VERT" RIBS="$RIBS" hpcworker job submit --project schwingnet --name gold3_facts --class batch --dir "$W" -- gold3-facts.sbatch
+sha256sum "$HOME/model_night/ts_clean_subjects.txt"; wc -l < "$HOME/model_night/ts_clean_subjects.txt"
 ```
 
-Check the exact options each reader takes with `--help` before writing the script; the readers' own docstrings are the authority where this page and they differ. Read the job's output with `hpcworker job log`; a requeued job carries on, since each reader keeps its partial rows.
+The hash should be 2f96f917292b85416d1b803230732624a3dde0bae7c2c29f54abc4f2a30dc1b7; say whether it is, and the line count. A missing file or another hash is reported, not a stop.
 
-## 7. What must hold before anything is committed
+## 7. The job
 
-Each is a stop: if one fails, find why before anything else, write it down, and tell the owner.
+1. Copy the script into the work folder, then let hpcworker check it, then queue it:
 
-1. The masks' hashes equal SHA256SUMS (step 4).
-2. The first reading's voxels per label equal the count's extents.json for all 1,597; its rib voxels equal the count's ribs.json; and on each side the lowest rib's contacts, lead and tie equal the count's for all 1,597 (the count reads only the lowest rib, the first reading every rib).
-3. The two readings agree (agreement.json): every study's label voxels, rib voxels and sternum voxels equal, every distance within 0.1 mm, and every rib's lead and tie equal. Contact counts may differ by a few voxels where two spine labels lie at exactly the same distance from a rib voxel, since the count gives such a voxel to whichever scipy names and the second reading to the head-most label; any study where that changes a lead is a fail of the dataset's check Q14 and is listed, never smoothed over.
-4. The thread checked three studies in its container on 2026-10-28 with the first reading of that hour (0001, 0529, 0603): voxels, head-foot extents, rib voxels, the lowest ribs' contacts and the L4-to-sacrum distance all equalled the count. The grid's rows for those three must say the same: 0001's lowest ribs meet label 19 (108 contacts left, 121 right) and its 23-28, 24-28 and 23-24 distances are 15.3, 0.9 and 0.9 mm; 0603's label 13 has two pieces and its ribs 6 to 11 lead one label below their own (the split T6 of the labelling errors).
-5. The 1,597 facts reproduce the note's numbers: docs/research/enhance-pet-gold-tier-3.md and the README's counts (1,557 whole; 3 repaired at gold 4; 37 with no C2; the rib table of the 107 unusual studies and 100 controls; L4 touching the sacrum in 3-D in all 39 four-lumbar spines).
+```
+. "$HOME/work/gold3/env.sh"; cd "$W"
+cp SchwingNet/docs/checkpoints/2026-10-28-gold3-ct-grid/gold3-facts.sbatch "$W/"
+env W="$W" VERT="$VERT" RIBS="$RIBS" DATA_ROOT="$DATA_ROOT" bash "$HPCWORKER" job submit --project schwingnet --name gold3_facts --class batch --dir "$W" --check -- gold3-facts.sbatch
+```
 
-## 8. The dataset
+If the check passes, queue it once, with the same line less `--check`, and record its number: `printf 'JOB=%q\n' <the number it printed> >> "$HOME/work/gold3/env.sh"`.
 
-1. Copy $W/out/a/facts.jsonl to SchwingNet's data/gold3-ct/enhance-pet/facts.jsonl, keeping the three repaired rows (1134r, 1283r, 1347r) the thread's container wrote there if the branch holds them, or leaving them to the thread if it does not, with its FACTS.json beside it (the tool, bordercall's commit, the masks' SHA256SUMS hash, ct-details.json's sha256, the date, the row count), as SPEC.md section 5 says.
-2. If tools/gold3_ct.py is on the branch, run its build (root $DATA_ROOT/_gold3_ct), stats, qa, export and page; if it is not, write it first to SPEC.md sections 3 to 5, with its tests. Commit STATS.md, QA.md and the page's data file; the store itself stays on the lab volume.
-3. The grid-only members, from files already on the volume and nothing fetched or segmented: TotalSegmentator's 142 (read ${HOME}/model_night/ts_clean_subjects.txt and check its sha256, 2f96f917292b85416d1b803230732624a3dde0bae7c2c29f54abc4f2a30dc1b7, before anything; BRIEF.md "Need the grid") and VerSe's 17 (the sacrum, by the SPINEPS masks already on the volume, BRIEF.md). Only counts and the committed ids leave the grid; rows with paths stay in the store.
-4. The anomaly statuses follow SPEC.md section 3 exactly: "confirmed_by_masks" means two masks of the same readers agree and every structural check passes, which is not a person's read of the CT; "reader_confirmed" comes only from a recorded reader verdict; every lumbosacral question says needs_ct.
+2. Tell the owner the job's number, that it should take 8 to 14 hours once it starts and 24 at most, and to tell you when it has ended. End the turn.
+3. When the owner comes back, read its log once: `. "$HOME/work/gold3/env.sh"; bash "$HPCWORKER" job log --project schwingnet "$JOB" | tail -n 80`. Each step prints a starting and a finished line; a failed step prints FAILED with the last lines of its own log, $W/out/<step>.log. The last line of a finished job is GOLD3_FACTS_DONE, after the take-facts and store logs.
+4. A job that is still running when the owner asks is left alone. A job that ended without GOLD3_FACTS_DONE and without a FAILED line ran out of time or memory: tell the owner, with the last finished step. Queuing it again is a second job, which needs the owner's word; if given, it is the same submit line, and it skips every finished step and resumes both readings from their partial rows.
 
-## 9. Gates, pull requests, and the way back
+## 8. What the job holds to
 
-1. bordercall: `python -m unittest discover -s holdings/tests -t .` passes; never touch schwingcheck/, the root tests/, tests/test_schwingcheck_*.py or requirements-schwingcheck.txt, which are another account's.
-2. SchwingNet: `bash scripts/check.sh` passes, run in a throwaway copy of the clone (docs/memory/run-the-checks-in-a-throwaway-copy.md); the pre-push hook runs the gate and refuses a push from a tree with anything uncommitted.
-3. Commit on claude/project-thread-cne00q in each, push with `git push -u origin claude/project-thread-cne00q` (never main, never a force), and write what ran, the counts, the cross-checks and an adversarial review into each draft pull request's body under "## Adversarial review".
-4. Tell the owner in the session what the job found, in a few lines, with the two pull request links. The thread "Finish scan import and tier counts" then publishes the private artifact from the page's data file (a grid session has no Artifact tool) and draws the reader pictures with holdings/enhance_views.py.
-5. Do not mark either pull request ready or merge it from the grid unless the owner says so in the session; the thread finishes them.
+Every step is a stop: the job ends at the first that fails, and nothing reaches the clone before the readings agree. If one fails, read its log, write down what it says, tell the owner, and change nothing.
+
+1. environment and versions: Python 3.13 with numpy 2.5.4, scipy 1.18.1, nibabel 5.4.2 and pillow 13.0.0, the thread's versions, so every float rounds as there. The thread built this environment with pixi 0.81, the grid's, and both readings gave the container's bytes on six studies.
+2. tests: bordercall's holdings tests and SchwingNet's tests/test_gold3_ct.py pass in that Python.
+3. compare (agreement.json): the two readings agree on every study's label voxels, rib voxels, sternum voxels, distances to 0.1 mm, and every rib's lead and tie; only contact counts may differ, by voxels lying at the same distance from two labels, since each reading takes scipy's nearest label over a box of its own (the count's 30 mm around the rib; the second reading's own box, with the head-most label only above 12 million voxels, which the container's run never reached). A lead or tie that differs is a fail.
+4. cross (cross.json): the first reading gives the count's own results on all 1,597: voxels per label, head-foot extents to 0.05 mm and the grid, rib voxels with the sternum as label 27, and on each side the lowest rib with its contacts, lead and tie; and touch.json's 3-D distances, measured by the repair record's own touch.py, for its 143 studies. The count measures no distance.
+5. take_facts. Case A: it writes facts.jsonl (1,600 rows, the 1,597 and 1134r, 1283r, 1347r), facts-b.jsonl (1,597 rows) and FACTS.json (where and by what the rows were read, with the hashes of SHA256SUMS and ct-details.json), and removes facts-repaired.jsonl. Case B: it prints `"reproduces": true` and adds this run to FACTS.json's reproduced_on; a reading that differs prints the ids, writes nothing and stops the job.
+6. pages: stats, qa and page are written from the rows, and check prints current. check holds ENHANCE.PET to members.json's 1,557 gold 3, 3 gold 4 and 37 silver 3 and to the note's table, so the job ends here unless the rows give the note's numbers.
+7. store: version 1 or later under $DATA_ROOT/_gold3_ct, the two CSV exports beside it, and the persons by member.
+
+The thread then checks, from the pushed rows, the three studies it read by hand on 2026-10-28: 0001's lowest ribs meet label 19 with 108 contacts on the left and 121 on the right, and its 23-28, 24-28 and 23-24 distances are 15.3, 0.9 and 0.9 mm; in 0603 label 13 has two pieces and ribs 6 to 11 lead one label below their own; 0529 equals the row the container read.
+
+## 9. Commit, push, and tell the owner
+
+1. After GOLD3_FACTS_DONE, see what the job changed:
+
+```
+. "$HOME/work/gold3/env.sh"; cd "$W/SchwingNet"; git status --short
+```
+
+Case A: members.json, STATS.md, QA.md and page-data.json modified; facts-repaired.jsonl deleted; facts.jsonl, facts-b.jsonl and FACTS.json new. Case B: members.json, FACTS.json, STATS.md, QA.md and page-data.json modified. Anything else stops the work: tell the owner what, and commit nothing.
+
+2. Commit and push, never to main and never with a force:
+
+```
+. "$HOME/work/gold3/env.sh"; cd "$W/SchwingNet"
+git add -A data/gold3-ct docs/research/gold3-ct
+git commit -m "Take ENHANCE.PET's mask facts read on the grid" -m "hpcworker job $JOB on the grid: both readings of the 1,597 published vertebra and rib masks, which hash to SHA256SUMS, agree but for contact counts, and the first gives the count's own results and touch.json's distances. members.json says the grid holds the masks; the pages are written from the rows and check says current; the store is built on the lab volume."
+git push -u origin claude/project-thread-cne00q
+```
+
+If git has no name and e-mail on the grid, ask the owner which to use; never make one up. A fresh clone sets no pre-push hook, so CI's check on the draft pull request is the gate, and the thread reads it. If the push is refused because the branch moved, `git pull --no-rebase origin claude/project-thread-cne00q` and push again; if that merge conflicts, `git merge --abort`, stop, and tell the owner.
+
+3. Tell the owner, in a few lines and with no path under the data root: the case; take_facts' and the store's lines from the job's log (the rows, or that the reading reproduces the thread's; the store's version and items; the persons by member); the TotalSegmentator list's hash and lines; and the pull request, https://github.com/OpenSpineConsortium/SchwingNet/pull/437. The thread "Finish scan import and tier counts" then checks CI and the three studies above, draws the reader pictures with holdings/enhance_views.py, publishes the private artifact from the page's data (a grid session has no Artifact tool), and finishes both pull requests.
+4. Do not mark either pull request ready or merge it from the grid unless the owner says so in the session.

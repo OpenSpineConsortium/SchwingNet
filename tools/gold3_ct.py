@@ -21,6 +21,8 @@ masks never enter the repository, only facts read from them.
     python3 tools/gold3_ct.py export [--format json|csv] [--tier gold3] [--training-only] [--root DIR]
     python3 tools/gold3_ct.py page                        # writes docs/research/gold3-ct/page-data.json
     python3 tools/gold3_ct.py check                       # exit 1 when a written file is stale or a row breaks its schema
+    python3 tools/gold3_ct.py take-facts FACTS.jsonl FACTS_B.jsonl --read-on TEXT --bordercall-commit SHA
+                                                          # a reading of the masks into the facts files
 
 The store is tools/catalog.py's pattern, in a folder outside the repository (--root, or GOLD3_ROOT; on
 the grid $DATA_ROOT/_gold3_ct): versions/gold3-NNNNNN-<12 hex>.sqlite, each sealed at mode 0444,
@@ -72,6 +74,12 @@ FACTS_RECORD = f"{ENHANCE}/FACTS.json"
 # A second, independent reading of the same masks, where one is committed: check Q14 compares its
 # rib leads and lumbosacral distances with the first's.
 FACTS_B = f"{ENHANCE}/facts-b.jsonl"
+# The three repaired rows, read from the repair record in the thread's container: bordercall keeps no
+# mask in git, so a reading on the grid has the 1,597 published studies alone, and take-facts joins
+# these to it. The file goes once facts.jsonl holds them; nothing else reads it.
+FACTS_REPAIRED = f"{ENHANCE}/facts-repaired.jsonl"
+MASK_SUMS = f"{ENHANCE}/SHA256SUMS"
+CT_DETAILS = f"{ENHANCE}/ct-details.json"
 RECORD = f"{ENHANCE}/record.json"
 BUCKET = f"{ENHANCE}/bucket.json"
 RULE = "data/splits/rule.json"
@@ -2266,6 +2274,12 @@ def parser():
     export.add_argument("--root", default=None, help="read the store's current version instead of building in memory")
     export.add_argument("--out", default=None, help="a file to write; else standard output")
     sub.add_parser("check", help="exit 1 when a written file is stale or the committed data breaks its schema")
+    take = sub.add_parser("take-facts", help=f"take a reading of the masks into {FACTS}, {FACTS_B} and {FACTS_RECORD}")
+    take.add_argument("facts", help="the first reading's rows (holdings/enhance_facts.py)")
+    take.add_argument("facts_b", help="the second reading's rows (holdings/enhance_facts_check.py)")
+    take.add_argument("--read-on", required=True, help="where the masks were read, for FACTS.json; no path under the data root")
+    take.add_argument("--bordercall-commit", required=True, help="bordercall's commit the readers ran at")
+    take.add_argument("--date", default=time.strftime("%Y-%m-%d", time.gmtime()), help="the day the masks were read, UTC")
     return top
 
 
@@ -2338,6 +2352,89 @@ def command_export(args):
     return 0
 
 
+def row_line(row):
+    """One facts row as bordercall's holdings/enhance_facts.py writes it."""
+    return json.dumps(row, sort_keys=True, ensure_ascii=True) + "\n"
+
+
+def joined_rows(reading, repaired):
+    """The reading's rows with the repaired rows it lacks, sorted by id. A reading that has a repaired
+    row too must have the side file's, field for field, or neither is taken."""
+    have = {row["id"]: row for row in reading}
+    for row in repaired or ():
+        if have.setdefault(row["id"], row) != row:
+            raise Gold3Error(f"the reading's row {row['id']} differs from {FACTS_REPAIRED}'s")
+    return [have[sid] for sid in sorted(have)]
+
+
+def published_differences(rows, committed):
+    """The study ids whose row from the published masks differs between two readings, or one lacks."""
+    mine = {row["id"]: row for row in rows if "repaired_from" not in row}
+    theirs = {row["id"]: row for row in committed if "repaired_from" not in row}
+    return sorted(sid for sid in mine.keys() | theirs.keys() if mine.get(sid) != theirs.get(sid))
+
+
+def second_reading_problems(rows, bucket):
+    ids = [row.get("id") for row in rows]
+    if len(set(ids)) != len(ids) or (bucket and set(ids) != set(bucket["studies"])):
+        return [f"the second reading covers {len(set(ids))} studies, the bucket lists {len(bucket['studies'])}"]
+    return []
+
+
+def facts_record_of(repo, rows, args):
+    """FACTS.json: where and by what the rows were read, the inputs' hashes, and the row count check reads."""
+    return {"bordercall_commit": args.bordercall_commit, "ct_details_sha256": sha256_of(Path(repo) / CT_DETAILS),
+            "date": args.date, "facts_b": f"{FACTS_B}, read by bordercall's holdings/enhance_facts_check.py",
+            "masks_sha256sums_sha256": sha256_of(Path(repo) / MASK_SUMS), "read_on": args.read_on,
+            "repaired_rows": "read from the repair record in the thread's container", "rows": len(rows),
+            "tool": "bordercall holdings/enhance_facts.py"}
+
+
+def reproduced_record(record, args):
+    """FACTS.json with this reading added to the readings that gave its rows again, once."""
+    entry = {"bordercall_commit": args.bordercall_commit, "date": args.date, "read_on": args.read_on}
+    readings = record.setdefault("reproduced_on", [])
+    if entry not in readings:
+        readings.append(entry)
+    return record
+
+
+def command_take_facts(args):
+    """A reading of the published masks into the facts files: the first reading with the repaired rows
+    joined, the second beside it, and FACTS.json. Where facts are committed already, the rows are left as
+    they are: a reading that gives them again is added to FACTS.json's reproduced_on, and one that does
+    not changes nothing and exits 1."""
+    if not re.fullmatch(r"[0-9a-f]{40}", args.bordercall_commit):
+        raise Gold3Error(f"--bordercall-commit {args.bordercall_commit!r} is no full commit id")
+    repo = Path(args.repo)
+    inputs = load_inputs(repo)
+    repaired = optional(repo, FACTS_REPAIRED, read_jsonl)
+    if repaired is None and inputs["facts"] is not None:
+        repaired = [row for row in inputs["facts"] if "repaired_from" in row]
+    rows = joined_rows(read_jsonl(args.facts), repaired)
+    second = sorted(read_jsonl(args.facts_b), key=lambda row: row.get("id", ""))
+    problems = facts_problems(rows, inputs["record"], inputs["bucket"]) + second_reading_problems(second, inputs["bucket"])
+    if problems:
+        raise Gold3Error("the reading is not taken: " + "; ".join(problems[:10]))
+    if inputs["facts"] is not None:
+        differ = {"facts": published_differences(rows, inputs["facts"]),
+                  "facts_b": published_differences(second, inputs["facts_b"] or [])}
+        reproduces = not any(differ.values())
+        print(json.dumps({"reproduces": reproduces, "differ": differ}, sort_keys=True))
+        if not reproduces:
+            return 1
+        record = reproduced_record(inputs["facts_record"], args)
+        write_file(repo, FACTS_RECORD, json.dumps(record, indent=1, sort_keys=True) + "\n")
+        return 0
+    write_file(repo, FACTS, "".join(map(row_line, rows)))
+    write_file(repo, FACTS_B, "".join(map(row_line, second)))
+    write_file(repo, FACTS_RECORD, json.dumps(facts_record_of(repo, rows, args), indent=1, sort_keys=True) + "\n")
+    if (repo / FACTS_REPAIRED).is_file():
+        (repo / FACTS_REPAIRED).unlink()
+        print(f"removed {FACTS_REPAIRED}")
+    return 0
+
+
 def command_check(args):
     problems, notes = check(args.repo)
     for note in notes:
@@ -2351,7 +2448,7 @@ def command_check(args):
 
 
 HANDLERS = {"build": command_build, "query": command_query, "stats": command_pages, "qa": command_pages,
-            "page": command_page, "export": command_export, "check": command_check}
+            "page": command_page, "export": command_export, "check": command_check, "take-facts": command_take_facts}
 
 
 def main(argv=None):
