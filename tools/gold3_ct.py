@@ -82,7 +82,9 @@ MASK_SUMS = f"{ENHANCE}/SHA256SUMS"
 CT_DETAILS = f"{ENHANCE}/ct-details.json"
 # Where and by what the three repaired rows of FACTS_REPAIRED were read: the repaired masks are only
 # in the Claude project's files, so no grid run reads them, and FACTS.json carries this beside its own.
+# The rows were written at first_read_at and read again at bordercall_commit, byte for byte the same.
 REPAIRED_ROWS_READ = {"bordercall_commit": "a2d8e8d2ced5ba6935ae25a4a4c88c2a63891d09", "date": "2026-10-28",
+                      "first_read_at": "782d531c0d589e738c606bed099d8348eeaa6c63",
                       "read_on": "the thread's container, from the repair record's repaired masks and the published ribs",
                       "tool": "bordercall holdings/enhance_facts.py"}
 RECORD = f"{ENHANCE}/record.json"

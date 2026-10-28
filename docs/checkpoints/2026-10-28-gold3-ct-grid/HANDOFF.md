@@ -26,7 +26,7 @@ Not in this count, each its own word later: a second fetch, or a second job (a t
 | The count | bordercall: holdings/count_enhance_pet.py, whose extents and ribs steps the job runs again |
 | The draft pull requests | SchwingNet #437 and bordercall #17, both from claude/project-thread-cne00q; their bodies are the record |
 
-SPEC.md and BRIEF.md speak of the thread's container. On the grid: /tmp/claude-0/enh/masks is $VERT and /tmp/claude-0/enh/ribs is $RIBS (step 6); CT-details.xlsx is ct-details.json; seed/extents.json is the job's $W/out/count/extents.json, and seed/ribs_contacts.json and seed/ribs_pairs.json are both in its $W/out/count/ribs.json, which tallies the lowest ribs' contacts for all 1,597; /mnt/project-files/enhance-pet-repair/touch.json is touch.json on the branch; the three repaired vertebra masks are not on the grid (bordercall keeps no mask in git), so their rows come from facts-repaired.jsonl, read in the thread's container at the bordercall commit FACTS.json names, or from facts.jsonl where the thread has committed the facts already.
+SPEC.md and BRIEF.md speak of the thread's container. On the grid: /tmp/claude-0/enh/masks is $VERT and /tmp/claude-0/enh/ribs is $RIBS (step 6); CT-details.xlsx is ct-details.json; seed/extents.json is the job's $W/out/count/extents.json, and seed/ribs_contacts.json and seed/ribs_pairs.json are both in its $W/out/count/ribs.json, which tallies the lowest ribs' contacts for all 1,597; /mnt/project-files/enhance-pet-repair/touch.json is touch.json on the branch; the three repaired vertebra masks are not on the grid (bordercall keeps no mask in git), so their rows come from facts-repaired.jsonl, read in the thread's container by bordercall's holdings/enhance_facts.py at 782d531 and again, byte for byte, at the commit FACTS.json names, or from facts.jsonl where the thread has committed the facts already.
 
 ## 2. Open the session
 
@@ -37,20 +37,24 @@ SPEC.md and BRIEF.md speak of the thread's container. On the grid: /tmp/claude-0
 ## 3. How commands run here
 
 - A Bash call keeps its working folder but no variable. So the work folder's env.sh holds every name the page uses, and every block from step 6 on starts with `. "$HOME/work/gold3/env.sh"`.
-- The nodes run CentOS 7, whose python3 is 3.6, python 2.7 and git 1.8. No step runs Python outside the job; the session needs only git, find, ls, grep, sed, wc, sha256sum and hpcworker.
+- The nodes run CentOS 7, whose python3 is 3.6, python 2.7 and git 1.8. No step runs Python outside the job; the session needs only git, find, ls, grep, sed, wc, sha256sum, squeue, sacct and hpcworker.
 - Submit, estimate, stop: after the fetch word and after the job's submission, tell the owner the job's number, an estimate and what to say when it ends, and end the turn. Never sleep or poll. When the owner comes back, read the state once.
+- A job's number is written to env.sh by the same call that sends it (steps 6.2 and 7.4), so a session cut short never leaves a job out there that env.sh does not name.
 - Never work in ~/SchwingNet and never pull it: it is the gate's own checkout. The gate reads its own copy of the fetch word; the job runs from the work folder's clones.
 - Never paste a path under the data root into a message or a commit, a failure's included. The job cuts them from what it prints; anything read elsewhere is cut by hand.
 
 ## 4. Coming back to this work
 
-A session may end between the fetch and the job, or during the job, and a new one may be told the same thing. If `$HOME/work/gold3/env.sh` exists, this work has begun: never clone again, never delete or reset anything under ~/work/gold3, never write env.sh afresh, and never send the fetch word or queue the job again without the owner's word. Read where it stands and carry on from there:
+A session may end between the fetch and the job, or during the job, and a new one may be told the same thing. If `$HOME/work/gold3/env.sh` exists, this work has begun: never clone again, never delete or reset anything under ~/work/gold3, never write env.sh afresh, and never send the fetch word or queue the job again without the owner's word. Read where it stands, by the names env.sh holds and not their values (VERT and RIBS are paths under the data root), and carry on from there:
 
 ```
-cat "$HOME/work/gold3/env.sh"; ls "$HOME/work/gold3/out" 2>/dev/null
+E="$HOME/work/gold3/env.sh"; sed 's/=.*//' "$E" | tr '\n' ' '; echo; grep -E '^(FETCH|JOB)=' "$E"
+ls "$HOME/work/gold3/out" 2>/dev/null; ls "$HOME/work/gold3/gold3-facts.sbatch" 2>/dev/null
+squeue -h -u "$USER" -o '%i %j %T %M' 2>/dev/null | grep gold3; sacct -X -n -S now-3days -o JobID,JobName%30,State 2>/dev/null | grep gold3
+grep ' fetch:aws_enhance_pet_labels ' "$HOME/SchwingNet/grid/logs/GATE_JOBS.txt" 2>/dev/null | cut -d' ' -f1,2,4
 ```
 
-With JOB in env.sh, go to step 7.6. With VERT and no JOB, step 7 from its first item (the hash check again, which is quick; the members.json line may be flipped already, which its grep shows). With FETCH and no VERT, step 6.4. With none of them, the owner's yes is still to come: print the count of step 0 again and wait.
+With JOB in env.sh, go to step 7.6. With VERT and no JOB: if squeue or sacct lists a gold3 job, a submission went out that env.sh does not name; tell the owner its number and state and ask before anything else. If neither lists one but gold3-facts.sbatch is in the work folder, step 7.4 began and may or may not have queued: tell the owner what squeue and sacct printed and go on only on the owner's word. Otherwise step 7 from its first item (the hash check again, which is quick; the members.json line may be flipped already, which its grep shows). With FETCH and no VERT, step 6.4. With none of them: if the gate's job list (the last line above) names a fetch of aws_enhance_pet_labels, a fetch went out, this work's or an earlier one; tell the owner its number and date and ask before going on. Otherwise the owner's yes is still to come: print the count of step 0 again and wait.
 
 ## 5. The work folder, before the yes
 
@@ -77,25 +81,46 @@ grep -c '^aws_enhance_pet_labels|' "$HOME/SchwingNet/grid/run-platform-fetch.sh"
 
 3. Say which case this is: `ls "$HOME/work/gold3/SchwingNet/data/gold3-ct/enhance-pet/"`. With facts-repaired.jsonl and no facts.jsonl, the job writes the facts (case A). With facts.jsonl, the thread has committed facts read in its container, and the job only checks that the grid's reading gives them again and records that it does (case B). The thread pushes nothing under data/gold3-ct or docs/research/gold3-ct to this branch while the grid run may be under way, so the case does not change under the job.
 
-4. Print the count of step 0 and wait for the owner's yes.
+4. See whether the labels have been fetched before, by any word:
+
+```
+. "$HOME/work/gold3/env.sh"; ls "$DATA_ROOT/aws_enhance_pet_labels" 2>/dev/null | head -n 5
+grep ' fetch:aws_enhance_pet_labels ' "$HOME/SchwingNet/grid/logs/GATE_JOBS.txt" 2>/dev/null | cut -d' ' -f1,2,4
+```
+
+If either prints, say so with the count: the masks may be on the grid already, and the owner may answer that the fetch is not needed, in which case step 6.4 follows the yes in place of 6.1 to 6.3.
+
+5. Print the count of step 0 and wait for the owner's yes.
 
 ## 6. The fetch, after the yes
 
 1. Read the room: `. "$HOME/work/gold3/env.sh"; HPCWORKER="$HPCWORKER" bash "$HOME/SchwingNet/grid/gate.sh" status | sed -n '1,30p'`.
-2. Send the word once: `. "$HOME/work/gold3/env.sh"; HPCWORKER="$HPCWORKER" bash "$HOME/SchwingNet/grid/gate.sh" fetch aws_enhance_pet_labels`. It prints the room, the line's stated size (2.5 GB, printed as "3 GB stated") and the job's number, with `(afterany:...)` when it waits for fetches already running. Record the number at once: `printf 'FETCH=%q\n' <the number> >> "$HOME/work/gold3/env.sh"`. The job reads the exact size from the bucket's listing when it starts, and is admitted or refused whole there; a refusal ends it with exit 4 having fetched nothing. Never send the word again while its job is queued or running, and never after a refusal.
+2. Send the word once, and record its job's number in the same call:
+
+```
+. "$HOME/work/gold3/env.sh"
+if grep -q '^FETCH=' "$W/env.sh"; then echo "a fetch is recorded already: stop"; else
+  out=$(HPCWORKER="$HPCWORKER" bash "$HOME/SchwingNet/grid/gate.sh" fetch aws_enhance_pet_labels 2>&1); printf '%s\n' "$out"
+  id=$(printf '%s\n' "$out" | sed -n 's/^ *dp_aws_enhance_pet_labels: job \([0-9][0-9]*\).*/\1/p' | tail -n 1)
+  [ -n "$id" ] && printf 'FETCH=%q\n' "$id" >> "$W/env.sh" && echo "recorded FETCH=$id"
+fi
+```
+
+It prints the room, the line's stated size (2.5 GB, printed as "3 GB stated"), the job's number, with `(afterany:...)` when it waits for fetches already running, and the line recorded. With no recorded line, the gate refused or queued nothing: tell the owner what it printed and stop. The job reads the exact size from the bucket's listing when it starts, and is admitted or refused whole there; a refusal ends it with exit 4 having fetched nothing. Never send the word again while its job is queued or running, and never after a refusal.
 3. Tell the owner the job's number; that 11.3 GB from the public bucket should take well under an hour once it starts, and that with `(afterany:...)` it starts only after those fetches end; and to tell you when `status` shows it ended. End the turn.
 4. When the owner comes back, read `. "$HOME/work/gold3/env.sh"; HPCWORKER="$HPCWORKER" bash "$HOME/SchwingNet/grid/gate.sh" status | sed -n '1,40p'` once. If the job is still queued or running, say so and end the turn. If it was refused or failed, tell the owner what status says and stop. If it ended well, find the two folders, count them and record them, in one call:
 
 ```
 . "$HOME/work/gold3/env.sh"
-VERT=$(dirname "$(find "$DATA_ROOT/aws_enhance_pet_labels/raw" -path '*/Vertebrae/0001.nii.gz' | head -n 1)")
-RIBS=$(dirname "$(find "$DATA_ROOT/aws_enhance_pet_labels/raw" -path '*/Ribs/0001.nii.gz' | head -n 1)")
-test -f "$VERT/0001.nii.gz" && test -f "$RIBS/0001.nii.gz" && [ "$(dirname "$VERT")" = "$(dirname "$RIBS")" ] && echo found
-ls "$VERT" | grep -c 'nii.gz$'; ls "$RIBS" | grep -c 'nii.gz$'
-grep -q '^VERT=' "$W/env.sh" || printf 'VERT=%q\nRIBS=%q\n' "$VERT" "$RIBS" >> "$W/env.sh"
+VERT=$(dirname "$(find "$DATA_ROOT/aws_enhance_pet_labels/raw" -path '*/Vertebrae/0001.nii.gz' 2>/dev/null | head -n 1)")
+RIBS=$(dirname "$(find "$DATA_ROOT/aws_enhance_pet_labels/raw" -path '*/Ribs/0001.nii.gz' 2>/dev/null | head -n 1)")
+nv=$(ls "$VERT" 2>/dev/null | grep -c 'nii.gz$'); nr=$(ls "$RIBS" 2>/dev/null | grep -c 'nii.gz$'); echo "$nv $nr"
+if test -f "$VERT/0001.nii.gz" && test -f "$RIBS/0001.nii.gz" && [ "$(dirname "$VERT")" = "$(dirname "$RIBS")" ] && [ "$nv" = 1597 ] && [ "$nr" = 1597 ]; then
+  echo found; grep -q '^VERT=' "$W/env.sh" || printf 'VERT=%q\nRIBS=%q\n' "$VERT" "$RIBS" >> "$W/env.sh"
+fi
 ```
 
-It must print found, then 1597 twice; anything else stops the work.
+It must print 1597 1597, then found; anything else stops the work, and env.sh is left without VERT, so the way back comes here again.
 
 ## 7. The hashes, the record that the grid holds the masks, and the job
 
@@ -126,19 +151,33 @@ sha256sum "$HOME/model_night/ts_clean_subjects.txt"; wc -l < "$HOME/model_night/
 
 The hash should be 2f96f917292b85416d1b803230732624a3dde0bae7c2c29f54abc4f2a30dc1b7; say whether it is, and the line count. A missing file or another hash is reported, not a stop.
 
-4. Copy the script into the work folder, let hpcworker check it, then queue it once and record its number:
+4. Copy the script into the work folder, let hpcworker check it, then queue it once and record its number, all in one call:
 
 ```
 . "$HOME/work/gold3/env.sh"; cd "$W"
 cp SchwingNet/docs/checkpoints/2026-10-28-gold3-ct-grid/gold3-facts.sbatch "$W/"
-env W="$W" VERT="$VERT" RIBS="$RIBS" DATA_ROOT="$DATA_ROOT" GOLD3_BORDERCALL_COMMIT="$(cd bordercall && git rev-parse HEAD)" GOLD3_SCHWINGNET_COMMIT="$(cd SchwingNet && git rev-parse HEAD)" bash "$HPCWORKER" job submit --project schwingnet --name gold3_facts --class batch --dir "$W" --check -- gold3-facts.sbatch
+queue() { env W="$W" VERT="$VERT" RIBS="$RIBS" DATA_ROOT="$DATA_ROOT" GOLD3_BORDERCALL_COMMIT="$(cd bordercall && git rev-parse HEAD)" GOLD3_SCHWINGNET_COMMIT="$(cd SchwingNet && git rev-parse HEAD)" bash "$HPCWORKER" job submit --project schwingnet --name gold3_facts --class batch --dir "$W" "$@" -- gold3-facts.sbatch 2>&1; }
+if grep -q '^JOB=' env.sh || squeue -h -u "$USER" -o '%j' | grep -q gold3; then echo "a job is recorded or queued already: stop"
+elif queue --check; then
+  out=$(queue); printf '%s\n' "$out"
+  id=$(printf '%s\n' "$out" | sed -n 's/^HPCW-JOB submitted \([0-9][0-9]*\) .*/\1/p' | tail -n 1)
+  [ -n "$id" ] && printf 'JOB=%q\n' "$id" >> env.sh && echo "recorded JOB=$id"
+fi
 ```
 
-If the check passes, queue it with the same line less `--check`, and at once `printf 'JOB=%q\n' <the number it printed> >> "$HOME/work/gold3/env.sh"`.
+It must end with the recorded line. A refused check prints hpcworker's reason and queues nothing; a submission with no recorded line, or the stop line, goes to the owner as it printed, and nothing is sent again.
 
 5. Tell the owner the job's number, that it should take 8 to 14 hours once it starts and 24 at most, and to tell you when it has ended. End the turn.
-6. When the owner comes back, read its log once: `. "$HOME/work/gold3/env.sh"; bash "$HPCWORKER" job log --project schwingnet "$JOB" | tail -n 80`. Each step prints a starting and a finished line. A job that finished ends with GOLD3_FACTS_DONE, after the take-facts and store logs. A job that stopped ends with GOLD3_FACTS_STOPPED and its exit code, after a FAILED line naming the step with the last lines of its log ($W/out/<step>.log), paths under the data root already cut; exit 69 means the node had no sandbox or no apptainer. A log with neither marker was ended by Slurm (time, memory or the node). A job still running is left alone.
-7. For a stop or a Slurm end, tell the owner which step and what its log says, and change nothing. Queuing it again is a second job, which needs the owner's word; if given, it is the same submit line, and it skips every finished step and resumes both readings from their partial rows.
+6. When the owner comes back, read the job's state once, then its log:
+
+```
+. "$HOME/work/gold3/env.sh"
+squeue -h -j "$JOB" -o '%T %M' 2>/dev/null; sacct -X -n -j "$JOB" -o State,ExitCode,Elapsed 2>/dev/null | head -n 3
+bash "$HPCWORKER" job log --project schwingnet "$JOB" | tail -n 80
+```
+
+The state decides first. If squeue lists the job, or sacct says PENDING, RUNNING, REQUEUED, SUSPENDED or COMPLETING, it has not ended: tell the owner the state and the time so far, and end the turn (a queued job's log says no output yet, and a running one's ends on a step's starting line). If neither answers, say so and end the turn. Only for a job that has ended does the log say how: each step prints a starting and a finished line; a job that finished ends with GOLD3_FACTS_DONE, after the take-facts and store logs; a job that stopped itself ends with GOLD3_FACTS_STOPPED and its exit code, after a FAILED line naming the step with the last lines of its log ($W/out/<step>.log), paths under the data root already cut, and exit 69 means the node had no sandbox or no apptainer. A log with neither marker was ended by Slurm, and sacct's state names how: TIMEOUT, OUT_OF_MEMORY, NODE_FAIL, PREEMPTED or CANCELLED.
+7. For a stop or a Slurm end, tell the owner which step and what its log or sacct says, and change nothing. Queuing it again is a second job, which needs the owner's word; if given, take the JOB line out of env.sh (`sed -i '/^JOB=/d' "$HOME/work/gold3/env.sh"`) and run step 7.4's block again, which skips every finished step and resumes both readings from their partial rows.
 
 ## 8. What the job holds to
 

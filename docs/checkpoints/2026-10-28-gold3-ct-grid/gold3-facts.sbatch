@@ -17,19 +17,20 @@
 #SBATCH --cpus-per-task=16
 #SBATCH --mem=64G
 set -euo pipefail
-: "${W:?W names the work folder}" "${VERT:?VERT names the vertebra masks}" "${RIBS:?RIBS names the rib masks}"
-: "${DATA_ROOT:?DATA_ROOT names the data root}"
-SN="$W/SchwingNet" BC="$W/bordercall"
-
 say() { printf '%s %s\n' "$(date -u +%FT%TZ)" "$*"; }
 
-# Every end but a finished one says so, so a log with neither this nor GOLD3_FACTS_DONE was ended by
-# Slurm (time, memory or the node). Only the outermost run says it, once.
+# Every end the script makes itself, a missing variable's included, says so; an end by Slurm (time,
+# memory, the node or a preemption) leaves neither this nor GOLD3_FACTS_DONE, and sacct's state names
+# it (HANDOFF.md, step 7.6). Only the outermost run says it, once.
 stopped() {
   local status=$?
   [ "$status" = 0 ] || say "GOLD3_FACTS_STOPPED: exit $status"
 }
 [ -n "${GOLD3_OUTER:-}" ] || trap stopped EXIT
+
+: "${W:?W names the work folder}" "${VERT:?VERT names the vertebra masks}" "${RIBS:?RIBS names the rib masks}"
+: "${DATA_ROOT:?DATA_ROOT names the data root}"
+SN="$W/SchwingNet" BC="$W/bordercall"
 
 # The nodes run CentOS 7 (glibc 2.17, git 1.8), and numpy 2.5.4 and scipy 1.18.1 need a newer glibc, so
 # the job runs again inside SchwingNet's sandbox (grid/box.sh: Debian bookworm, glibc 2.36, the home
@@ -153,7 +154,8 @@ count_ribs() {
 }
 
 read_side_by_side() {  # the four readings at once, each with its own log; the first to fail ends the job,
-  # and Slurm ends the rest with it. A requeue skips the finished and resumes the two readings.
+  # and Slurm ends the rest with the batch step, whose processes they are (apptainer exec keeps them in
+  # the step's process tree). A requeue skips the finished and resumes the two readings.
   once first_reading first_reading &
   once second_reading second_reading &
   once count_extents count_extents &
