@@ -21,6 +21,7 @@ import sys
 import tempfile
 import threading
 import unittest
+from unittest import mock
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlsplit
@@ -120,6 +121,10 @@ class Services(BaseHTTPRequestHandler):
             return self.answer(401, b'{"service-error":{"status":{"statusCode":"AUTHENTICATION_ERROR"}}}')
         if doi == "10.1016/j.redir.1":
             return self.answer(302, b"", headers={"Location": f"{self.base()}/elsewhere"})
+        if doi == "10.1016/j.deny.1":
+            # Elsevier's own code and text for a token bound to another key, the code a capitals word of 20 letters
+            return self.answer(403, b'{"service-error":{"status":{"statusCode":"AUTHENTICATION_ERROR",'
+                                    b'"statusText":"Institution Token is not associated with API Key"}}}')
         if doi == "10.1016/j.echo.1":
             # a gateway's page, not Elsevier's JSON, with the key echoed in the status header
             return self.answer(401, b"<html>denied</html>", "text/html",
@@ -149,9 +154,18 @@ class Services(BaseHTTPRequestHandler):
                  "10.1234/s2.liar": f"{self.base()}/files/liar.pdf",
                  "10.1234/s2.cut": f"{self.base()}/files/cut.pdf",
                  "10.1234/s2.chunk": f"{self.base()}/files/chunk.pdf",
-                 "10.1234/s2.away": f"{self.base()}/files/away.pdf"}
+                 "10.1234/s2.away": f"{self.base()}/files/away.pdf",
+                 "10.1234/s2.busy": f"{self.base()}/files/s2got.pdf",
+                 "10.1234/s2.down": f"{self.base()}/files/s2got.pdf"}
         if doi == "10.1234/s2.chunkmeta":
             return self.chunked_and_cut()
+        asked = sum(1 for _, path, _ in Services.calls if path.startswith(f"/s2/DOI:{doi}?"))
+        if doi == "10.1234/s2.jammed" or (doi == "10.1234/s2.busy" and asked <= 5):
+            return self.answer(429, b'{"message":"Too Many Requests"}')
+        if doi == "10.1234/s2.slow":
+            return self.answer(429, b'{"message":"Too Many Requests"}', headers={"Retry-After": "300"})
+        if doi == "10.1234/s2.down" and asked <= 2:
+            return self.answer(503, b'{"message":"Service Unavailable"}')
         found = {"url": links[doi], "status": "GREEN", "license": "CCBY"} if doi in links else None
         self.answer(200, json.dumps({"isOpenAccess": found is not None, "openAccessPdf": found}).encode())
 
@@ -375,7 +389,7 @@ class FetchToolTest(unittest.TestCase):
     def test_a_body_cut_off_or_a_redirect_onto_an_unscripted_host_lands_nothing(self):
         self.list.write_text("id,doi,pmcid,held\ncut,10.1234/s2.cut,,\nchunk,10.1234/s2.chunk,,\n"
                              "away,10.1234/s2.away,,\nchunkmeta,10.1234/s2.chunkmeta,,\necho,10.1016/j.echo.1,,\n"
-                             "s2got,10.1234/s2.got,,\n", encoding="ascii")
+                             "s2got,10.1234/s2.got,,\ndeny,10.1016/j.deny.1,,\n", encoding="ascii")
         code, planned = self.plan()
         self.assertEqual(code, 0, planned)
         code, fetched = self.fetch()
@@ -388,12 +402,45 @@ class FetchToolTest(unittest.TestCase):
         self.assertIn("not got; Semantic Scholar: IncompleteRead", line["chunkmeta"])
         self.assertIn("not got; Elsevier entitlement check: http 401 (APIKey withheld with IP address", line["echo"])
         self.assertIn("got s2 pdf", line["s2got"])
+        self.assertIn("not got; Elsevier entitlement check: http 403 (AUTHENTICATION_ERROR Institution Token is not "
+                      "associated with API Key)", line["deny"])
         self.assertFalse([path for path in self.landing.rglob("*") if path.name.endswith(".part")])
         self.assertFalse((self.landing / "text" / "cut" / "cut.s2.pdf").exists())
         for text in (planned, fetched, report, (self.landing / "INDEX.md").read_text(encoding="utf-8"),
                      (self.landing / "meta" / "PLAN.json").read_text(encoding="utf-8")):
             for key in KEYS:
                 self.assertNotIn(key, text)
+
+    def test_a_busy_service_is_asked_again_after_a_back_off_and_a_jammed_one_is_named(self):
+        self.list.write_text("id,doi,pmcid,held\nbusy,10.1234/s2.busy,,\njammed,10.1234/s2.jammed,,\n"
+                             "down,10.1234/s2.down,,\nslow,10.1234/s2.slow,,\n", encoding="ascii")
+        code, planned = self.plan()
+        self.assertEqual(code, 0, planned)
+        code, fetched = self.fetch()
+        self.assertEqual(code, 0, fetched)
+        line = self.lines_of(self.report.read_text(encoding="ascii").split("## Every paper", 1)[1])
+        self.assertIn("got s2 pdf", line["busy"])
+        self.assertIn("got s2 pdf", line["down"])
+        self.assertIn("not got; Semantic Scholar: http 429", line["jammed"])
+        self.assertIn("not got; Semantic Scholar: http 429, asked to wait more than 120 s", line["slow"])
+        self.assertEqual(len(self.asked_semantic_scholar("10.1234/s2.busy")), 6)
+        self.assertEqual(len(self.asked_semantic_scholar("10.1234/s2.jammed")), 6)
+        self.assertEqual(len(self.asked_semantic_scholar("10.1234/s2.slow")), 1)
+
+    def asked_semantic_scholar(self, doi):
+        return [path for _, path, _ in Services.calls if path.startswith(f"/s2/DOI:{doi}?")]
+
+    def test_the_wait_doubles_and_never_falls_short_of_a_retry_after_up_to_two_minutes(self):
+        with mock.patch.dict(os.environ, LITERATURE_PAUSE="1"), mock.patch.object(self.tool.random, "uniform",
+                                                                                  return_value=1.0):
+            self.assertEqual([self.tool.retry_wait(attempt, {}) for attempt in range(5)], [2, 4, 8, 16, 32])
+            self.assertEqual(self.tool.retry_wait(0, {"Retry-After": "30"}), 30)
+            self.assertEqual(self.tool.retry_wait(0, {"Retry-After": "soon"}), 2)
+            self.assertIsNone(self.tool.retry_wait(0, {"Retry-After": "300"}))
+            self.assertIsNone(self.tool.retry_wait(0, {"Retry-After": "86400"}))
+            self.assertIsNone(self.tool.retry_wait(0, {"Retry-After": "1" * 400}))
+            later = self.tool.email.utils.formatdate(self.tool.time.time() + 60, usegmt=True)
+            self.assertAlmostEqual(self.tool.retry_wait(0, {"Retry-After": later}), 60, delta=2)
 
     def test_the_index_asks_the_owners_word_before_a_session_reads_elseviers_text(self):
         self.plan()

@@ -72,13 +72,58 @@ request and fetched by sending the word again.
 
 ## Where it stands
 
-The code and its tests are merged with this note; the first run waits for the key route's sends and
-one `literature synthetic_spine`, which the owner's word of 2026-10-27 covers. Of the 42 papers, the
-list itself already says that 3 are held (Panjabi), 3 have no DOI or PMC id, 10 sit in PMC outside
-the open-access subset and 13 have no PMC copy; bach2019 (World Neurosurgery) is the one paper that
-only Elsevier's route can bring, so its answer is the probe for the institutional token and the
-amendment; shin2024 (Brain and Spine) is gold open access at both PMC and Elsevier, and Elsevier's
-API serves open-access full text to any valid key, so its answer shows only that the key works. The
-PMC open-access service's PDF links point into the ftp tree's oa_pdf folder, which NCBI is moving to
-its PMC Article Datasets; where those links fail the PDF comes from Europe PMC's own link. What the
-run got and could not get is added here from its report.
+The first run, on 2026-10-28: the key route sent both keys at 01:00 and 01:01 UTC (the first sends
+at 00:32 stopped before the gate, since the organization secrets did not reach symphony-template's
+job until the owner gave them Selected repositories), and grid job 40819848 ran
+`literature synthetic_spine` on csc1 at commit 76838c4, 8 minutes 36 seconds by sacct's elapsed time. Of the 42 papers,
+3 were held already, 17 were got (19 files, 13.2 MB) and 22 were not got. Thirteen of the 17 came
+as Europe PMC's JATS XML; for eleven of those PMC's PDF link answered 403, so their figures, and a
+table printed as an image such as Pierro 2017's, are only on PMC's own pages. Four came as the open-access
+PDF Semantic Scholar named (tan2004, chen2011, yadav2020, ahn2001).
+
+- Elsevier answered 403 to the entitlement check for both of its papers, bach2019 and shin2024.
+  shin2024 is open access, which Elsevier serves to any key it accepts, and Elsevier documents a 403
+  here as a request it could not authenticate or whose entitlements it could not validate, while a
+  recognised requester without rights gets 200 with entitled false: so Elsevier refused the request
+  before it looked at any article's rights. Two causes fit equally well: the institutional token is
+  not bound to this key ("Institution Token is not associated with API Key" in public reports), or
+  the key's ScienceDirect configuration is not switched on ("Requestor configuration settings
+  undefined or insufficient"), which may be tied to the text-mining amendment Elsevier's email of
+  16 October says full text waits for. Elsevier's own status word was lost to the report's scrub,
+  which withheld every run of 20 or more letters, digits, underscores or hyphens. The scrub now lets
+  a word of capitals and underscores through, which no key these services issue looks like, and the
+  report now carries Elsevier's status text beside it, so the next send names Elsevier's status word
+  and its status text, which tell the causes apart. The questions for Elsevier (case 260924-003406)
+  are which API key the institutional token is bound to, and whether that key is enabled for the
+  ScienceDirect APIs.
+- Semantic Scholar answered 429 to four keyed lookups (kunkel2011, tang2016, robertson2000 and
+  yu2015) even after waits of 3 and 6 seconds, though every call came more than a second after the
+  last, the keyed limit Semantic Scholar documents. The fetch now asks up to six times in all, again
+  after about 2, 4, 8, 16 and 32 seconds spread by half either way, waits as long as a Retry-After of
+  up to two minutes asks, and gives up at once on a longer one, naming the wait it was asked for. A
+  503 is asked again the same way. Every paper those four touched was found by hand.
+- Europe PMC answered the job's search with no matching record for kunkel2011, although PMC holds
+  it as PMC3171774; the cause is not known.
+
+The 22 not got, each checked on the source's own page by one reader and again by a second, with a
+critic over both (the thread's workflow of 2026-10-28):
+
+- The owner had sent 10 of them as PDFs at 01:02 UTC, for spine-program #238's reading: zindrick1987,
+  krag1988, olsewski1990, hou1993, robertson2000, mitra2002, yu2015, hinck1966, tang2016 and
+  bach2019. These are closed except tang2016, of which CDC Stacks holds a copy whose version is not
+  stated (stacks.cdc.gov/view/cdc/216558).
+- Six are free to read on PMC outside the open-access subset, which PMC's terms leave to a person:
+  gilad1985 (PMC1166429), amonookuofi1985 (PMC1165137), amonookuofi1982 (PMC1168228), kunkel2011
+  (PMC3171774), lien2007 (PMC2200778) and makino2012 (PMC3535235).
+- Five are free from their publishers: griffith2016 (Quant Imaging Med Surg, CC BY-NC-ND 4.0),
+  twomey1985 (Acta Orthopaedica's whole archive is free, so no interlibrary loan is needed),
+  alonge2021 (Afr J Med Med Sci 50(2), June 2021, 69-76: issue 2, which the list leaves out), ahmed2019 ("Radiological
+  Anatomy of the Lumbar Canal: A MRI study", J Chalmeda Anand Rao Inst Med Sci 17(1), pages 21-26 as
+  printed) and chaudhary2015 ("A Radiographic Study of Interpedicular Distance of the Lumbar Vertebrae
+  Measured in Plain Antero-Posterior Radiographs", Int J Adv Res 3(8):33-36, 2015). None of these
+  three has a DOI or a PMID, which is why the list found none; the last was thought not to exist.
+- One is closed with no free copy: eisenstein1977 (J Bone Joint Surg Br), through the library.
+- Three citations of the list name one author as "et al.": both Amonoo-Kuofi papers and Eisenstein.
+
+So all 42 are found: 20 on the grid or held, 10 sent by the owner, 11 free to read by hand and one
+through the library. The owner was asked on 2026-10-28 to send the twelve as he sent the ten.
