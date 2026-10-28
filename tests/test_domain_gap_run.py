@@ -521,9 +521,13 @@ class WholeRunTest(unittest.TestCase):
         before the fix, the classifier learns each CT from the other side, the AUC falls far
         below one half and the free permutation's MMD p sits at one, which the pre-registered
         rule reads as "replicated" whatever the engines differ by. A gamma curve on the reference
-        alone reads "not replicated" under the paired reading and "replicated" under the other."""
+        alone reads "not replicated" under the paired reading and "replicated" under the other.
+        The MMD takes the study's own 1,000 permutations: its q is read over the space's contrasts
+        and its split-half nulls (PREREG.md section 3, DEVIATIONS.md item 11), here 12 p-values,
+        and 200 permutations floor a p at 0.005, which those 12 lift to a q of 0.06, over the bar
+        however far the gamma moves the reference."""
         tool = load_tool()
-        tool.PERMUTATIONS_C2ST, tool.PERMUTATIONS_MMD, tool.BOOTSTRAP = 5, 200, 50
+        tool.PERMUTATIONS_C2ST, tool.PERMUTATIONS_MMD, tool.BOOTSTRAP = 5, 1000, 50
         tool.SPLIT_PERSONS = 12
         with tempfile.TemporaryDirectory() as temporary:
             folder = Path(temporary)
@@ -543,6 +547,14 @@ class WholeRunTest(unittest.TestCase):
         self.assertEqual((auc["auc"], auc["lo"], auc["hi"], same["auc_knn"]["auc"]), (0.5, 0.5, 0.5, 0.5))
         self.assertEqual(shifted["word"], "not replicated")
         self.assertLess(shifted["mmd"]["q"], 0.05)
+        physics = results["spaces"]["physics"]
+        nulls = tuple(tool.null_mmd_p_values(physics))
+        self.assertEqual(len(nulls), 7)
+        held = list(tool.p_values(physics, "mmd"))
+        frozen = tool.rules().benjamini_hochberg(tuple(p for _, p in held) + nulls)
+        index = next(i for i, (holder, _) in enumerate(held) if holder is shifted["mmd"])
+        self.assertEqual(shifted["mmd"]["q"], frozen[index])
+        self.assertLess(shifted["mmd"]["q_without_nulls"], shifted["mmd"]["q"])
         self.assert_worded_lines(lines)
         self.assert_read_as_before(tool, before, shifted)
 
@@ -986,6 +998,114 @@ class SummaryBudgetTest(unittest.TestCase):
 
 
 @unittest.skipIf(MISSING_BASE, f"needs {', '.join(MISSING_BASE)}")
+class FamilyTest(unittest.TestCase):
+    """The MMD's Benjamini-Hochberg family is every MMD p of the space, the split-half nulls'
+    among them, as PREREG.md section 3 says; each contrast keeps its q over the contrasts alone
+    beside it, the family the first sharded run read (DEVIATIONS.md, item 11). The nulls move a
+    contrast's q either way, and the C2ST's family, which no null enters, does not move."""
+
+    def setUp(self):
+        self.tool = load_tool()
+
+    def space(self, contrasts, nulls):
+        """A space's result with the contrasts' MMD p-values on its family contrasts and the
+        nulls' on its calibration; a null given as None was not tested."""
+        def contrast(p):
+            return {"mmd": {"p": p}, "auc_logistic": {"p": p}}
+        return {"vs_group": {}, "real_real": {}, "replication": {},
+                "vs_family": {"synthetic": {f"family{i}": contrast(p) for i, p in enumerate(contrasts)}},
+                "calibration": {"groups": {f"null{i}": {"mmd": {} if p is None else {"p": p}} for i, p in enumerate(nulls)}}}
+
+    def q_values(self, result, key):
+        return [c["mmd"][key] for c in result["vs_family"]["synthetic"].values()]
+
+    def test_the_nulls_raise_a_q_over_the_bar_where_they_lie_above_its_p(self):
+        result = self.space((0.001, 0.03, 0.2), (0.6, 0.9))
+        self.tool.adjust(result)
+        for found, expected in zip(self.q_values(result, "q"), (0.005, 0.075, 1 / 3)):
+            self.assertAlmostEqual(found, expected)
+        for found, expected in zip(self.q_values(result, "q_without_nulls"), (0.003, 0.045, 0.2)):
+            self.assertAlmostEqual(found, expected)
+        pure = self.tool.rules()
+        self.assertEqual(self.q_values(result, "q"), list(pure.benjamini_hochberg((0.001, 0.03, 0.2, 0.6, 0.9))[:3]))
+        self.assertEqual([c["auc_logistic"]["q"] for c in result["vs_family"]["synthetic"].values()],
+                         list(pure.benjamini_hochberg((0.001, 0.03, 0.2))))
+
+    def test_the_nulls_lower_a_q_where_they_lie_below_its_p(self):
+        result = self.space((0.04, 0.3), (0.001, 0.002))
+        self.tool.adjust(result)
+        self.assertAlmostEqual(self.q_values(result, "q")[0], 0.04 * 4 / 3)
+        self.assertAlmostEqual(self.q_values(result, "q_without_nulls")[0], 0.08)
+
+    def test_a_null_not_tested_and_a_space_with_no_null_leave_the_family_to_the_contrasts(self):
+        for nulls in ((), (None,)):
+            result = self.space((0.001, 0.03, 0.2), nulls)
+            self.tool.adjust(result)
+            self.assertEqual(self.q_values(result, "q"), self.q_values(result, "q_without_nulls"))
+        result = self.space((0.001,), (0.5,))
+        self.tool.adjust(result)
+        self.assertEqual(result["calibration"]["groups"]["null0"]["mmd"], {"p": 0.5})  # a null's flag is flagged_nulls'
+
+    def test_the_word_is_read_on_the_frozen_family(self):
+        """A pair's p of 0.035 is under the bar over the contrasts alone (q 0.035, "not
+        replicated") and over it with the nulls (q 0.058, "replicated"), so the word says which q
+        it was read on: the frozen family's."""
+        result = self.space((0.001, 0.002), (0.6, 0.9))
+        pair = "|".join(self.tool.REPLICATION_WORDED[0])
+        result["replication"][pair] = {"persons": [26, 26], "n": [104, 104], "auc_logistic": {"lo": 0.5, "p": 1.0},
+                                       "mmd": {"p": 0.035}}
+        self.tool.adjust(result)
+        self.tool.replication_words(result)
+        mmd = result["replication"][pair]["mmd"]
+        self.assertAlmostEqual(mmd["q"], 0.035 * 5 / 3)
+        self.assertAlmostEqual(mmd["q_without_nulls"], 0.035)
+        self.assertEqual(result["replication"][pair]["word"], "replicated")
+        self.assertEqual(self.tool.rules().replication_word(0.5, mmd["q_without_nulls"]), "not replicated")
+
+    def test_the_verdict_line_shows_both_q_values_and_the_replication_line_keeps_its_prdc(self):
+        """At the first run's widths a worded replication line was 196 characters; the q over the
+        contrasts alone on it would cost its PRDC, so it is on the verdict line instead."""
+        found = {"persons": [26, 26], "n": [104, 104], "word": "not replicated", "paired": True,
+                 "auc_logistic": {"auc": 0.5, "lo": 0.5, "hi": 0.5, "p": 0.911}, "auc_knn": {"auc": 0.49},
+                 "mmd": {"mmd2": 0.0, "p": 0.047, "q": 0.048, "q_without_nulls": 0.048}, "fd64": 0.0,
+                 "kid64": {"kid": -992.963}, "prdc": {"precision": 1.0, "recall": 1.0, "density": 1.08, "coverage": 1.0}}
+        pair = "flexray_replica|flexray_reference"
+        line = self.tool.replication_line(pair, found)
+        self.assertEqual(line, " replication flexray_replica vs flexray_reference persons 26/26 n 104/104 auc 0.50 [0.50, 0.50]"
+                               " p 0.911 knn 0.49 mmd p 0.047 q 0.048 fd64 0.0 kid64 -992.963 prdc 1.00 1.00 1.08 1.00 not replicated")
+        results = {"spaces": {"flexray": {"replication": {pair: found}}}}
+        verdict = self.tool.pair_verdict(results, pair)
+        self.assertEqual((verdict["q"], verdict["q_without_nulls"]), (0.048, 0.048))
+        head = self.tool.verdict_line(pair, verdict, {"space": "flexray", "reading": "invariant"})
+        self.assertEqual(head, "replication flexray_replica vs flexray_reference in flexray (invariant): not replicated"
+                               " (persons 26/26 n 104/104; mmd q 0.048, 0.048 without nulls)")
+        widest = dict(verdict, persons=[1000, 999], n=[1000, 996], word="not replicated")
+        self.assertLessEqual(len(self.tool.verdict_line("fluxray_raw|fluxray_raw_reference", widest, {"space": "flexray_as_stored", "reading": "invariant"})),
+                             self.tool.rules().LINE_LIMIT)
+        del verdict["q_without_nulls"]
+        self.assertTrue(self.tool.verdict_line(pair, verdict, {"space": "flexray", "reading": "invariant"}).endswith("; mmd q 0.048)"))
+
+    def test_the_calibration_line_says_the_nulls_are_in_the_family_and_the_claim_report_reads_it(self):
+        report = study_report()
+        cal = {"auc_median": 0.46, "auc_range": [0.40, 0.69], "flagged": [], "auc_above": ["a"],
+               "groups": {"a": {"mmd": {"p": 0.3}}, "b": {"mmd": {"p": 0.7}}}}
+        tested = self.tool.calibration_summary({"calibration": cal})[0]
+        self.assertEqual(tested, " calibration split-half auc median 0.46 range 0.40 to 0.69 over 2, mmd flagged 0,"
+                                 " auc interval above half 1, nulls in the mmd q family")
+        untested = self.tool.calibration_summary({"calibration": dict(cal, groups={"a": {}, "b": {"mmd": {}}})})[0]
+        self.assertTrue(untested.endswith(" auc interval above half 1"))
+        self.assertEqual(report.flagged_of({"lines": [tested]}), ([], 0))
+        line = " replication a vs b persons 26/26 n 104/104 auc 0.50 [0.50, 0.50] p 1.000 knn 0.50 mmd p 0.047 q 0.048 fd64 0.0"
+        def run(*calibrations):
+            return {"body": {"spaces": {"flexray": {"lines": [*calibrations, line]}}}}
+        self.assertIn("over its contrasts and its split-half nulls as PREREG.md section 3 says", report.mmd_family(run(tested), [line]))
+        self.assertIn("over its contrasts alone, the split-half nulls adjusted among themselves", report.mmd_family(run(untested), [line]))
+        self.assertIn("over its contrasts alone", report.mmd_family(run(), [line]))
+        family_only = " flexray_drr vs film auc 1.00 [1.00, 1.00] p 0.167 knn 1.00 fd64 323.1"
+        self.assertEqual(report.mmd_family(run(tested), [family_only]), "")
+
+
+@unittest.skipIf(MISSING_BASE, f"needs {', '.join(MISSING_BASE)}")
 class SummaryLineTest(unittest.TestCase):
     """The verdict and replication lines: each carries the persons and rows a side the word rests
     on, since the word is a non-rejection rule a small sample satisfies for want of power, and each
@@ -1000,8 +1120,8 @@ class SummaryLineTest(unittest.TestCase):
     def contrast(self, **changes):
         found = {"persons": [250, 250], "n": [1000, 1000], "word": "not replicated", "paired": True,
                  "auc_logistic": {"auc": 0.5, "lo": 0.42, "hi": 0.57, "p": 0.5, "q": 0.5}, "auc_knn": {"auc": 0.5},
-                 "mmd": {"mmd2": 0.0, "p": 0.5, "q": 0.5}, "fd64": 1234.5, "fd_rows": 250, "kid64": {"kid": 0.012},
-                 "prdc": {"precision": 0.5, "recall": 0.5, "density": 1.34, "coverage": 0.5}}
+                 "mmd": {"mmd2": 0.0, "p": 0.5, "q": 0.5, "q_without_nulls": 0.5}, "fd64": 1234.5, "fd_rows": 250,
+                 "kid64": {"kid": 0.012}, "prdc": {"precision": 0.5, "recall": 0.5, "density": 1.34, "coverage": 0.5}}
         found.update(changes)
         return found
 
@@ -1018,7 +1138,8 @@ class SummaryLineTest(unittest.TestCase):
                                        " fluxray_raw_reference: the render failed"))
         results = {"spaces": {"flexray": {"replication": {self.PAIR: self.contrast()}}}}
         self.assertEqual(self.tool.pair_verdict(results, self.PAIR),
-                         {"word": "not replicated", "reason": "", "persons": [250, 250], "n": [1000, 1000]})
+                         {"word": "not replicated", "reason": "", "persons": [250, 250], "n": [1000, 1000],
+                          "q": 0.5, "q_without_nulls": 0.5})
 
     def test_the_replication_line_carries_the_counts_and_keeps_the_word_within_the_limit(self):
         line = self.tool.replication_line(self.PAIR, self.contrast())

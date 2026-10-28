@@ -270,7 +270,7 @@
    "basis": "code",
    "fact": "uncertainty",
    "state": "met",
-   "evidence": "summary.txt: 42 AUCs with an interval, 41 with a C2ST permutation p, 41 MMD permutation p and 5 Benjamini-Hochberg q; each interval the 95 percent percentile interval of a person-cluster bootstrap of 1,000 draws, the C2ST's p from 100 permutations and the MMD's from 1,000, all by person, and the q by Benjamini-Hochberg within a space (tools/domain_gap.py at commit d3fe578 and tools/domain_gap_stats.py, README section 4)"
+   "evidence": "summary.txt: 42 AUCs with an interval, 41 with a C2ST permutation p, 41 MMD permutation p and 5 Benjamini-Hochberg q; each interval the 95 percent percentile interval of a person-cluster bootstrap of 1,000 draws, the C2ST's p from 100 permutations and the MMD's from 1,000, all by person, and the q by Benjamini-Hochberg within a space, the MMD's over its contrasts alone, the split-half nulls adjusted among themselves (DEVIATIONS.md, items 8 and 11) (tools/domain_gap.py at commit d3fe578 and tools/domain_gap_stats.py, README section 4)"
   },
   {
    "id": "7c",
