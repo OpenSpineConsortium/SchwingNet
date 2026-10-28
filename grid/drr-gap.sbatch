@@ -47,9 +47,9 @@
 # it with the units' quarter marks, which tools/report.py carries into the CLAIM report. Only
 # summary.txt, five record lines and at most 80 lines of numbers and group names, and the run log,
 # lines of times, steps, nodes, cards, counts and unit names, leave the grid, each line through
-# grid/redact.sed; the plan, results.json, RUNLOG.txt with every unit's line and the logs name files
-# or hold more and stay in the run folder, the owner's alone (umask 077); the figures go to W&B
-# where the grid's key is found.
+# grid/redact.sed; the plan, results.json, RUNLOG.txt with the line of every unit this chain did
+# and the logs name files or hold more and stay in the run folder, the owner's alone (umask 077);
+# the figures go to W&B where the grid's key is found.
 set -uo pipefail
 REPO=${SCHWINGNET:-$HOME/SchwingNet}
 DATA=${DATA_ROOT:-/rs/rs_grp_oschome/go2432/data}
@@ -239,7 +239,7 @@ step_prepare() {
     --spineps "$DATA/spineps" --moose "$DATA/moose" > "$OUT/prepare.log" 2>&1; rc=$?
   [ "$rc" = 0 ] || { report "FAILED: domain_gap.py prepare ended $rc ($(last_line_of "$OUT/prepare.log"))"; step_end "$rc"; }
   # PREPARED.json is the one file a shard reads to tell that prepare finished (rule 3), so an exit 0
-  # that left none is a failure here rather than four tasks that find nothing to claim.
+  # that left none is a failure here rather than the array's tasks finding nothing to claim.
   [ -s "$ANALYSIS/PREPARED.json" ] || { report "FAILED: domain_gap.py prepare ended 0 and wrote no analysis/PREPARED.json"; step_end 2; }
   report "prepared: analysis/PREPARED.json written, so the shards claim its units"
   step_end 0

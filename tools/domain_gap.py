@@ -19,6 +19,7 @@ train-gpu's torch), once the owner gives the word and the count.
     python tools/domain_gap.py shard --out <dir> [--task N --tasks T] [--workers W] [--device cuda]
     python tools/domain_gap.py merge --out <dir> --groups data/domain_gap/groups.json [--wandb auto|off]
     python tools/domain_gap.py progress --out <dir>
+    python tools/domain_gap.py runlog --out <dir>
 
 `run` does the whole study in one process. On the grid it runs as three steps instead (the owner's
 word of 2026-10-27, grid/drr-gap.sbatch): `prepare` makes every stage up to the analysis and each
@@ -66,7 +67,9 @@ with masks under every segmenter named but the ones the segment job makes (MADE_
 them all and a smaller one, said in the plan and the summary, where it has not.
 
 What leaves the grid is summary.txt, five record lines and at most 80 lines of numbers and group
-names that the bench report carries; results.json, the figures and the plan, which names files, stay in --out (umask 077)
+names that the bench report carries, and the run log, lines of times, steps, nodes, cards, counts
+and unit names, at most RUNLOG_REPORT of them in the bench report and RUNLOG_TAIL in PROGRESS.txt,
+which the status word shows; results.json, the figures and the plan, which names files, stay in --out (umask 077)
 and the figures and the map coordinates go to W&B where the grid's key is found. tools/ never goes
 on sys.path, since tools/profile.py would shadow the standard library's profile, which torch
 imports.
@@ -1750,8 +1753,9 @@ def stages_of(out):
 
 
 def note_stage(out, stage, state, detail=""):
-    """One stage's state (running, done, failed or skipped) with when it began and what it is on;
-    a change of state is a line of the run log too, and a new detail of a running stage is not."""
+    """One stage's state (running, done, failed, stopped by Slurm's TERM or skipped) with when it
+    began and what it is on; a change of state is a line of the run log too, and a new detail of a
+    running stage is not."""
     stages = stages_of(out)
     entry = stages.get(stage, {})
     before = entry.get("state")
@@ -1776,7 +1780,7 @@ def note_seconds(out, stage, seconds):
 
 def stage_note(stage, entry):
     """A stage's change of state as the run log says it, with its seconds once it has them."""
-    state = {"running": "started", "failed": "FAILED"}.get(entry["state"], entry["state"])
+    state = {"running": "started", "failed": "FAILED", "stopped": "ended by Slurm (TERM)"}.get(entry["state"], entry["state"])
     took = f" after {entry['seconds']:.0f} s" if entry["state"] != "running" and "seconds" in entry else ""
     return f"{RUNLOG_WHO[0]}: stage {stage} {state}{took}"
 
@@ -1787,6 +1791,9 @@ def staged(out, stage, step):
     log(f"stage {stage}: started")
     try:
         result = step()
+    except Terminated:
+        note_stage(out, stage, "stopped")
+        raise
     except BaseException:
         note_stage(out, stage, "failed")
         raise
@@ -1990,9 +1997,11 @@ def runlog_start(out, who):
     earlier chain's lines gone, so no later step reads them as this one's; then this step's first."""
     RUNLOG_WHO[0] = who
     folder = runlog_folder(out)
-    if folder.is_dir():
-        for path in folder.iterdir():
+    try:
+        for path in folder.iterdir() if folder.is_dir() else ():
             path.unlink(missing_ok=True)
+    except OSError as error:  # a record of the run, never a reason to end it; the job's log says what stayed
+        log(f"the earlier run log not cleared: {type(error).__name__}")
     with _RUNLOG_LOCK:
         for key in [k for k in _RUNLOG_WRITTEN if Path(k).parent == folder]:
             del _RUNLOG_WRITTEN[key]
@@ -2123,7 +2132,7 @@ def run_log_lines(out, every_unit):
         events = chain_events(events_of(record), chain_start(entries))
         entries += unit_entries(record, events) if every_unit else mark_entries(record, events, kept_units(record, events))
     if not every_unit:
-        entries = fold_tasks(entries)
+        entries = fold_moved(fold_tasks(entries))
     entries.sort(key=lambda entry: entry[0])
     return [rules().safe_line(f"{time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(at))} {text}") for at, text in entries]
 
@@ -2136,8 +2145,8 @@ def fold_tasks(entries):
     """The array's routine lines, each task's start and its finish with nothing left to claim, as
     one line each where there are several, at the first start and the last finish: sixteen tasks
     would otherwise fill the report's room, which every failure and quarter mark needs."""
-    starts = [(at, m) for at, text in entries if (m := TASK_STARTED.fullmatch(text))]
-    ends = [(at, m) for at, text in entries if (m := TASK_FINISHED.fullmatch(text))]
+    starts = sorted(((at, m) for at, text in entries if (m := TASK_STARTED.fullmatch(text))), key=lambda found: found[0])
+    ends = sorted(((at, m) for at, text in entries if (m := TASK_FINISHED.fullmatch(text))), key=lambda found: found[0])
     if len(starts) < 2 and len(ends) < 2:
         return entries
     kept = [(at, text) for at, text in entries
@@ -2157,27 +2166,42 @@ def fold_tasks(entries):
     return kept
 
 
+MOVED = re.compile(r"task \d+: unit \S+ ran its MMD on the CPU \([^)]*\), since the card had no room left for it")
+
+
+def fold_moved(entries):
+    """The units whose MMD a full card sent to the CPU, as one line where there are several, at
+    the first: a small card may send hundreds, each a line RUNLOG.txt keeps, and the report keeps
+    their count, so its room holds every failure and quarter mark."""
+    moved = sorted(at for at, text in entries if MOVED.fullmatch(text))
+    if len(moved) < 2:
+        return entries
+    return [(at, text) for at, text in entries if not MOVED.fullmatch(text)] + [
+        (moved[0], f"units: {len(moved)} ran their MMD on the CPU from {clock(moved[0])} to {clock(moved[-1])},"
+                   " since their cards had no room left for it")]
+
+
 def clock(at):
     return time.strftime("%H:%M:%S", time.gmtime(at))
 
 
+RUNLOG_MARK = re.compile(r"units: \d+ of")
 RUNLOG_TELLING = re.compile(r"units: \d+ of|FAILED|failed \(|took over|died|broke|ended by Slurm|stopped after|refused"
                             r"|replaced|on the CPU|ended \d")
 
 
 def cut_keeping(lines, most):
-    """At most most lines, every line that says how far the units got or that something went wrong
-    kept, and of the others the first and the last, with a line where the first left out stood
-    saying how many are not shown and where they are; the middle cut alone where the telling lines
-    are too many to keep."""
+    """At most most lines, kept in turn: every quarter mark, then every line that says something
+    went wrong, then the others, each kind the first and the last of it where its room is short,
+    with a line where the first left out stood saying how many are not shown and where they are."""
     if len(lines) <= most:
         return lines
-    telling = [bool(RUNLOG_TELLING.search(line)) for line in lines]
-    room = most - 1 - sum(telling)
-    if room < 2:
-        return cut_middle(lines, most)
-    others = [i for i, keep in enumerate(telling) if not keep]
-    shown = {i for i, keep in enumerate(telling) if keep} | set(others[:room - room // 2]) | set(others[len(others) - room // 2:])
+    room, shown = most - 1, set()
+    for kind in (RUNLOG_MARK, RUNLOG_TELLING, None):
+        found = [i for i, line in enumerate(lines) if i not in shown and (kind is None or kind.search(line))]
+        take = min(room, len(found))
+        shown |= set(found[:take - take // 2]) | set(found[len(found) - take // 2:])
+        room -= take
     out, marked = [], False
     for i, line in enumerate(lines):
         if i in shown:
@@ -2188,22 +2212,12 @@ def cut_keeping(lines, most):
     return out
 
 
-def cut_middle(lines, most):
-    """At most most lines, the first and the last kept and a line in the middle saying how many
-    are left out and where they are."""
-    if len(lines) <= most:
-        return lines
-    head = most // 2
-    tail = most - head - 1
-    return [*lines[:head], f"... {len(lines) - head - tail} lines not shown here; the run folder's RUNLOG.txt holds them",
-            *lines[len(lines) - tail:]]
-
-
 def runlog(args):
     """The runlog subcommand: the whole run log, every unit done among its lines, written to
     RUNLOG.txt in the run folder, and printed as the bench report carries it, the units' quarter
-    marks in place of each unit, the tasks' routine lines folded, and at most RUNLOG_REPORT lines,
-    every quarter mark and every line of something gone wrong among them."""
+    marks in place of each unit, the tasks' routine lines and the units sent to the CPU folded, and
+    at most RUNLOG_REPORT lines, every quarter mark among them and then every line of something gone
+    wrong that the room holds (cut_keeping)."""
     out = Path(args.out)
     try:
         part = own_part(out / "RUNLOG.txt")
@@ -2221,12 +2235,17 @@ class Terminated(BaseException):
     in the run log can say so; a BaseException, so no handler of one unit's failure counts it."""
 
 
+_ENDING = [False]   # the step has begun to write how it ended, which no TERM may cut
+
+
 def on_term(signum, frame):
     """Slurm signals every process of the step and Apptainer's starter passes its own TERM on, so
     a second one comes a moment after the first: ignored from the first on, so it cannot cut the
-    step's closing line, the task's record or the restore of the handler main makes last."""
+    step's closing line, the task's record or the restore of the handler main makes last; and one
+    that comes once the step is ending raises nothing, since its closing lines are being written."""
     signal.signal(signal.SIGTERM, signal.SIG_IGN)
-    raise Terminated()
+    if not _ENDING[0]:
+        raise Terminated()
 
 
 # --- the analysis in a Slurm array: prepare, shard, merge -----------------------------------------
@@ -2472,6 +2491,7 @@ class Task:
         self.token = f"{self.job} task {task} on {self.host} pid {os.getpid()} at {utc_now()}"
         self.counts = {"done": 0, "failed": 0}
         self.held = 0
+        self.running = {}   # claim_loop's units in the pool now, which a TERM's line counts
         self.replaced = False
         self.events = folder / "events" / f"{task:04d}-{os.getpid()}.jsonl"
 
@@ -2528,10 +2548,12 @@ def shard(args):
         f" {len(record['units'])} units in the list")
     task.note(f"started as job {task.job} of {args.tasks} tasks on {task.host}, {gpu},"
               f" {args.workers} worker{'s' if args.workers != 1 else ''}, {len(record['units'])} units in the list")
+    _ENDING[0] = False
     try:
         code = claim_loop(out, record, task, args.workers)
+        _ENDING[0] = True
     except Terminated:
-        running = f", {task.held} running when it came" if task.held else ""
+        running = f", {len(task.running)} running when it came" if task.running else ""
         task.note(f"ended by Slurm (TERM: its time, or a cancel) with {task.counts['done']} done and"
                   f" {task.counts['failed']} failed here{running}")
         task.beat([], state="terminated")
@@ -2561,6 +2583,7 @@ def claim_loop(out, record, task, workers):
     folder, stamp, units = Path(out) / ANALYSIS, record["stamp"], record["units"]
     order = sorted(range(len(units)), key=lambda i: (-unit_cost(units[i]), i))
     todo, others, held, streak, size = [i for i in order if not settled(folder, i, stamp)], [], {}, 0, workers
+    task.running = held
     pool = unit_pool(size)
     try:
         while streak < FAILURE_STREAK:
@@ -2886,9 +2909,9 @@ def merge(args):
         raise StageError(f"{sum(missing.values())} of {len(record['units'])} units not done {words_by_kind(missing)}"
                          f" and {sum(failed.values())} failed {words_by_kind(failed)}")
     joined = array_record(out, record)
-    runlog_note(out, f"merge: every one of the {len(record['units'])} units read back as done, from"
-                     f" {joined['jobs']['tasks']} tasks; the jobs ran on {', '.join(f'{n} x{c}' for n, c in sorted(joined['gpus'].items()))},"
-                     " prepare's among them")
+    tasks, cards = joined["jobs"]["tasks"], ", ".join(f"{n} x{c}" for n, c in sorted(joined["gpus"].items()))
+    runlog_note(out, f"merge: every one of the {len(record['units'])} units read back as done, from {tasks}"
+                     f" task{'s' if tasks != 1 else ''}; the jobs ran on {cards}, prepare's among them")
     note_seconds(out, "analysis", joined["analysis_seconds"])
     plan, rows = read_json(out / "plan.json"), read_json(out / "rows.json")
     results, all_maps = new_results(plan, rows), {}
@@ -3698,29 +3721,39 @@ def step_note(args, how):
 def main(argv=None):
     args = parse(argv)
     # Slurm's TERM raises where the step stands, so its run log says how it ended; a signal is the
-    # main thread's alone, and the handler before is put back once the step returns.
+    # main thread's alone, and the handler before is put back once the step's last lines are
+    # written. The job's log ends with the step's reason, which the bench report quotes as its last
+    # line, so it is printed after the run log's line and PROGRESS.txt, whose own failures print.
+    _ENDING[0] = False
     previous = signal.signal(signal.SIGTERM, on_term) if threading.current_thread() is threading.main_thread() else None
+    ending = None
     try:
         return COMMANDS[args.command](args)
     except StageError as error:
-        print(f"drr-gap FAILED: {error}", flush=True)
+        _ENDING[0] = True
+        ending = f"drr-gap FAILED: {error}"
         if args.command in LOGGED:
             step_note(args, "FAILED, as its step's line in the bench report says")
         return 2
     except Terminated:
-        print("drr-gap: ended by Slurm (TERM)", flush=True)
+        _ENDING[0] = True
+        ending = "drr-gap: ended by Slurm (TERM)"
         if args.command in LOGGED:
             step_note(args, "ended by Slurm (TERM: its time, or a cancel)")
         return 143
     except Exception as error:
+        _ENDING[0] = True
         if args.command in LOGGED:
             step_note(args, f"FAILED with {type(error).__name__}, as its job's log says")
         raise
     finally:
-        if previous is not None:
-            signal.signal(signal.SIGTERM, previous)
+        _ENDING[0] = True
         if args.command in LOGGED:
             last_progress(args.out)
+        if previous is not None:
+            signal.signal(signal.SIGTERM, previous)
+        if ending:
+            print(ending, flush=True)
 
 
 def last_progress(out):

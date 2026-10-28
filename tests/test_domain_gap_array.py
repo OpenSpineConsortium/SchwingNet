@@ -570,6 +570,9 @@ class ArrayTest(unittest.TestCase):
         tool.stage_features = lambda *args: (_ for _ in ()).throw(tool.Terminated())
         with self.assertRaises(tool.Terminated):
             tool.prepare(self.args)
+        # Slurm's TERM in a stage is said as such, never as the stage's failure
+        self.assertRegex(self.logged()[-1], r"^prepare: stage features ended by Slurm \(TERM\) after \d+ s$")
+        self.assertFalse(any("FAILED" in line for line in self.logged()), self.logged())
         self.assertEqual(len([e for e in tool.events_of(tool.units_record(self.out)) if e["event"] == "done"]), total)
         newest = [line for line in (self.out / "PROGRESS.txt").read_text(encoding="ascii").splitlines() if line.startswith("log: ")]
         self.assertTrue(newest)
@@ -674,6 +677,87 @@ class ArrayTest(unittest.TestCase):
         self.assertEqual(self.logged()[-1], "merge: ended by Slurm (TERM: its time, or a cancel)")
         self.assertIs(signal.getsignal(signal.SIGTERM), before)
 
+    def test_a_term_once_a_step_is_ending_cuts_nothing_and_the_reason_is_its_job_log_s_last_line(self):
+        # a TERM while a task writes how it finished, or while main notes a step's failure, ends
+        # nothing more: the step's closing lines stand and its code is the one it was ending with
+        self.prepared()
+        tool = self.tool
+        before = signal.getsignal(signal.SIGTERM)
+        beat, claim_loop, sent = tool.Task.beat, tool.claim_loop, []
+
+        def term_at_finish(task, claims, state="running"):
+            if state == "finished" and not sent:
+                sent.append(True)
+                os.kill(os.getpid(), signal.SIGTERM)
+            return beat(task, claims, state=state)
+
+        tool.Task.beat, tool.claim_loop = term_at_finish, lambda *args: 0
+        argv = ["shard", "--out", str(self.out), "--tasks", "16", "--device", "cpu"]
+        self.assertEqual(self.main_of(tool, argv + ["--task", "4"])[0], 0)
+        self.assertEqual(sent, [True])
+        ends = [line for line in self.logged() if line.startswith("task 4: ")]
+        self.assertEqual(ends[1:], ["task 4: finished, nothing left to claim: 0 done and 0 failed here"])
+        self.assertEqual(read(self.analysis / "tasks" / "0004.json")["state"], "finished")
+        tool.Task.beat, tool.claim_loop = beat, claim_loop
+        # a TERM while main writes the failure's line: the line stands, the code is 2, no traceback
+        runlog_note, code_digest = tool.runlog_note, tool.code_digest
+        sent.clear()
+
+        def term_on_failure(out, text, writer=None):
+            if "FAILED" in text and not sent:
+                sent.append(True)
+                os.kill(os.getpid(), signal.SIGTERM)
+            return runlog_note(out, text, writer)
+
+        tool.runlog_note, tool.code_digest = term_on_failure, lambda: "not the code prepare planned the units with"
+        code, printed = self.main_of(tool, argv + ["--task", "6"])
+        self.assertEqual((code, sent), (2, [True]))
+        self.assertIn("task 6: FAILED, as its step's line in the bench report says", self.logged())
+        self.assertEqual(printed.splitlines()[-1], "drr-gap FAILED: the code differs from the code prepare planned the units with")
+        self.assertIs(signal.getsignal(signal.SIGTERM), before)
+        # where the volume takes neither the run log's line nor PROGRESS.txt, the job's log still
+        # ends with the reason, which the bench report quotes as the step's last line
+        tool.runlog_note = runlog_note
+        blocked = self.out / "not-a-folder"
+        blocked.write_text("", encoding="ascii")
+        runlog_folder, own_part = tool.runlog_folder, tool.own_part
+        tool.runlog_folder = lambda out: blocked / "runlog"
+        tool.own_part = lambda path: blocked / "progress.part"
+        code, printed = self.main_of(tool, argv + ["--task", "7"])
+        self.assertEqual(code, 2)
+        self.assertIn("run log not written: ", printed)
+        self.assertEqual(printed.splitlines()[-1], "drr-gap FAILED: the code differs from the code prepare planned the units with")
+        tool.runlog_folder, tool.own_part, tool.code_digest = runlog_folder, own_part, code_digest
+        # an earlier run log prepare cannot clear ends nothing: prepare goes on and says it started
+        (tool.runlog_folder(self.out) / "a-folder").mkdir()
+        self.assertEqual(tool.prepare(self.args), 0)
+        self.assertIn("prepare: started as job local on " + socket_name(), self.logged())
+
+    def test_a_term_counts_the_units_running_when_it_came(self):
+        # a TERM while the task waits on a unit it handed the pool names that unit as running, so
+        # the done count with it says what the task left half done
+        self.prepared()
+        tool = self.tool
+        release = threading.Event()
+
+        def held_until_released(head, unit, seed=0):
+            # writes nothing once released, so the folder is left as the TERM found it
+            release.wait(30)
+            raise RuntimeError("released by the test")
+
+        tool.run_unit = held_until_released
+        timer = threading.Timer(1.5, os.kill, (os.getpid(), signal.SIGTERM))
+        timer.start()
+        try:
+            code, _ = self.main_of(tool, ["shard", "--out", str(self.out), "--task", "0", "--tasks", "1", "--device", "cpu"])
+        finally:
+            timer.cancel()
+            release.set()
+            time.sleep(0.5)
+        self.assertEqual(code, 143)
+        self.assertEqual(self.logged()[-1], "task 0: ended by Slurm (TERM: its time, or a cancel) with 0 done and 0 failed"
+                                            " here, 1 running when it came")
+
     def test_a_card_with_no_room_sends_the_mmd_to_the_cpu_and_fails_no_unit(self):
         # a shard's workers share one card of whatever size the gpu class gave the task: a test the
         # card has no room for runs with numpy, whose permutations are drawn the same, so its numbers
@@ -718,8 +802,14 @@ class ArrayTest(unittest.TestCase):
         self.assertEqual(len(backends), total)
         self.assertLessEqual(set(backends), {"numpy", "torch-cuda"})
         moved = [line for line in self.logged() if line.endswith("ran its MMD on the CPU (numpy), since the card had no room left for it")]
-        self.assertGreater(len(moved), 0)
+        self.assertGreater(len(moved), 1)
         self.assertEqual(len(moved), backends.count("numpy"))
+        # the report keeps their count, one line, so its room holds every failure and quarter mark
+        report = [line[20:] for line in tool.run_log_lines(self.out, every_unit=False)]
+        self.assertFalse(any(" ran its MMD on the CPU (" in line for line in report), report)
+        folded = [line for line in report if line.startswith(f"units: {len(moved)} ran their MMD on the CPU from ")]
+        self.assertEqual(len(folded), 1, report)
+        self.assertTrue(folded[0].endswith(", since their cards had no room left for it"))
         # an error that is not the card's room is the unit's failure as before
         stats.mmd_test = lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("CUDA error: an illegal memory access"))
         try:
@@ -737,12 +827,12 @@ class ArrayTest(unittest.TestCase):
                          ["task 2: line 0", "task 2: line 1",
                           "task 2: this step's run log is full, so its later lines are in its job's log alone"])
         lines = [f"line {n}" for n in range(60)]
-        cut = tool.cut_middle(lines, 50)
+        cut = tool.cut_keeping(lines, 50)
         self.assertEqual(len(cut), 50)
         self.assertEqual(cut[:25], lines[:25])
         self.assertEqual(cut[26:], lines[-24:])
         self.assertEqual(cut[25], "... 11 lines not shown here; the run folder's RUNLOG.txt holds them")
-        self.assertEqual(tool.cut_middle(lines[:50], 50), lines[:50])
+        self.assertEqual(tool.cut_keeping(lines[:50], 50), lines[:50])
         # the report's cut keeps every quarter mark and every line of something gone wrong, wherever
         # it falls, and of the rest the first and the last
         telling = {7: "units: 1 of 64 done, the first", 30: "task 4: unit physics/fd_all FAILED after 3 s (ValueError; ...)",
@@ -757,7 +847,19 @@ class ArrayTest(unittest.TestCase):
         self.assertEqual(len([line for line in cut if line.startswith("... ")]), 1)
         self.assertIn("... 21 lines not shown here; the run folder's RUNLOG.txt holds them", cut)
         self.assertEqual(tool.cut_keeping(lines[:50], 50), lines[:50])
-        self.assertEqual(tool.cut_keeping(["units: 1 of 2 done"] * 60, 50), tool.cut_middle(["units: 1 of 2 done"] * 60, 50))
+        marks = [f"units: {n} of 60 done ({n / 60:.0%})" for n in range(1, 61)]
+        self.assertEqual(tool.cut_keeping(marks, 50),
+                         marks[:25] + ["... 11 lines not shown here; the run folder's RUNLOG.txt holds them"] + marks[-24:])
+        # more lines of something gone wrong than the room holds: every quarter mark still, then the
+        # first and the last of the failures, then none of the routine lines
+        lines = ([f"task {n % 16}: unit physics/u{n} FAILED after 1 s (ValueError)" for n in range(60)]
+                 + [f"units: {n} of 64 done ({n / 64:.0%})" for n in (16, 32, 48, 64)] + ["prepare: started as job 1 on node1"])
+        cut = tool.cut_keeping(lines, 50)
+        self.assertEqual(len(cut), 50)
+        self.assertEqual(cut[-4:], lines[-5:-1])
+        self.assertEqual(cut[:23], lines[:23])
+        self.assertEqual(cut[23], "... 16 lines not shown here; the run folder's RUNLOG.txt holds them")
+        self.assertEqual(cut[24:46], lines[38:60])
         # a line cut short before its time was whole, or one with no time, is passed over
         with open(tool.runlog_folder(self.out) / "task-0009-1.txt", "a", encoding="ascii") as stream:
             stream.write("not a time\n12")
