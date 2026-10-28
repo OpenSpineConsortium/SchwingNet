@@ -270,27 +270,49 @@ def index_rows(index, sources):
         return connection.execute(query, sorted(names)).fetchall()
 
 
-def keep_index_row(group, row):
-    """Whether an index row is an image of the group: its format, its modality, a single plane,
-    its size, its path's globs and words."""
+REFUSALS = ("format", "planes", "modality", "size", "path")
+
+
+def refusal(group, row):
+    """Why an index row is not an image of the group, the first of REFUSALS it fails (its format,
+    a single plane, its modality, its size, its path's globs and words), or None where it is one."""
     path, relative, form, width, height, depth, modality, _, _ = row
-    formats = group.formats or DEFAULT_FORMATS
-    if form not in formats or (depth or 1) > 1:
-        return False
-    if form == "dicom":
-        allowed = group.modalities or PROJECTION_MODALITIES
-        if (modality or "").upper() not in allowed:
-            return False
+    if form not in (group.formats or DEFAULT_FORMATS):
+        return "format"
+    if (depth or 1) > 1:
+        return "planes"
+    if form == "dicom" and (modality or "").upper() not in (group.modalities or PROJECTION_MODALITIES):
+        return "modality"
     if group.min_side and width and height and min(width, height) < group.min_side:
-        return False
-    return matches(relative, group.globs) and not excluded(relative, group.exclude_words)
+        return "size"
+    if not matches(relative, group.globs) or excluded(relative, group.exclude_words):
+        return "path"
+    return None
+
+
+def keep_index_row(group, row):
+    """Whether an index row is an image of the group (refusal)."""
+    return refusal(group, row) is None
 
 
 def index_candidates(group, index):
-    """(file, relative path, patient id, study uid) of every index row the group keeps."""
+    """(file, relative path, patient id, study uid) of every index row the group keeps; where it
+    keeps none, how many rows each rule refused, or that the index listed none under the group's
+    sources, so the report says what left the group empty without naming a file (VinDr-SpineXR's
+    DICOMs gave none in the first sharded run, which could not say which). The message names the
+    rules that refused any row, and the summary keeps it whole (group_line)."""
     if not index or not Path(index).is_file():
         raise StageError("no sample index (samples.sqlite) to read")
-    rows = [r for r in index_rows(index, group.index_sources) if keep_index_row(group, r)]
+    listed = index_rows(index, group.index_sources)
+    rows = [r for r in listed if keep_index_row(group, r)]
+    if listed and not rows:
+        counts = {reason: 0 for reason in REFUSALS}
+        for r in listed:
+            counts[refusal(group, r)] += 1
+        raise StageError(f"{len(listed)} index rows, none kept: "
+                         + ", ".join(f"{reason} {count}" for reason, count in counts.items() if count))
+    if not listed:
+        raise StageError("the index lists no image row under its sources")
     return [(r[0], r[1], r[7] or "", r[8] or "") for r in rows]
 
 
@@ -326,20 +348,38 @@ def thunder_root(group, data_root):
 
 
 _THUNDER = {}
+_THUNDER_DB = {}
+
+
+def thunder_db(root):
+    """FleXray's read-only opener of a FluXray ThunderDB, once a process. LMDB forbids opening one
+    environment twice in one process, and py-lmdb 2.0 and later refuse the second open with
+    lmdb.Error, which kept FluXray out of the first sharded run (DEVIATIONS.md item 10); so the
+    split list and every split's reader share this one open database, as FleXray's own smoke load
+    does (fxr.datasets.packaging), each decoding worker opening its own."""
+    key = str(root)
+    if key not in _THUNDER_DB:
+        from fxr.datasets._thunderdb import open_thunderdb
+
+        _THUNDER_DB[key] = open_thunderdb(root)
+    return _THUNDER_DB[key]
 
 
 def thunder_backend(root, split):
-    """FleXray's own reader of a split of a FluXray ThunderDB, opened once a process."""
+    """FleXray's own reader of a split of a FluXray ThunderDB, made once a process over the shared
+    open database, which it borrows and never closes."""
     key = (str(root), split)
     if key not in _THUNDER:
         from fxr.datasets.storage import SplitThunderDBStorageBackend
 
+        db = thunder_db(root)
         backend = None
         for grouping in ("subject", "sample"):
             try:
                 backend = SplitThunderDBStorageBackend(
-                    str(root), dataset_name="FluXray", modality="xray", split=split, label_key=None,
-                    affine_key=None, spacing_key=None, subject_grouping=grouping, lazy_payload_refs=True)
+                    db, dataset_name="FluXray", modality="xray", split=split, label_key=None,
+                    affine_key=None, spacing_key=None, subject_grouping=grouping, lazy_payload_refs=True,
+                    owns_database=False)
                 break
             except (KeyError, ValueError, TypeError):
                 continue
@@ -350,10 +390,7 @@ def thunder_backend(root, split):
 
 
 def thunder_splits(root):
-    from fxr.datasets._thunderdb import open_thunderdb
-
-    with open_thunderdb(root) as db:
-        return sorted(db["_splits"].keys())
+    return sorted(thunder_db(root)["_splits"].keys())
 
 
 def thunder_candidates(group, data_root):
@@ -444,7 +481,7 @@ def plan_group(group, args, salt, frozen, renders):
         return row
     except Exception as error:  # one group's broken index or reader never stops the others
         traceback.print_exc(file=sys.stderr)
-        row["skipped"] = f"its files could not be listed ({type(error).__name__})"
+        row["skipped"] = f"its files could not be listed ({error_kind(error)})"
         return row
     rule = dicom_person_rule(group, candidates)
     pairs, fallback = persons_of(group, candidates, rule)
@@ -457,6 +494,23 @@ def plan_group(group, args, salt, frozen, renders):
     if not chosen:
         row["skipped"] = "nothing found under its rules"
     return row
+
+
+def error_kind(error):
+    """What went wrong, never the error's text, which can name a file: the class with its module
+    where it is not a builtin, since lmdb.Error and zstd.Error share a name, and the errno's symbol
+    where the error carries one, as errno or as py-lmdb's code (ENOLCK, ESTALE), each cut to a
+    shape the summary keeps whole (group_line)."""
+    import errno
+
+    kind = type(error).__qualname__
+    if type(error).__module__ != "builtins":
+        kind = f"{type(error).__module__}.{kind}"
+    kind = re.sub(r"[^A-Za-z0-9_.]", "", kind)[:60]
+    code = getattr(error, "errno", None) or getattr(error, "code", None)
+    if isinstance(code, int) and not isinstance(code, bool) and code in errno.errorcode:
+        kind += " " + errno.errorcode[code]
+    return kind
 
 
 def candidate_rows(group, args, renders):
@@ -477,20 +531,27 @@ def candidate_rows(group, args, renders):
 
 
 def stage_plan(args, table, renders=None, folders=None):
-    """plan.json: every group's chosen files, made once for the same table, frozen list and
-    renders (what stage_render returned: each render group's record, and each CT folder's choice
-    of subjects with the mask counts it was made from), so a render that fails in one run and
-    succeeds in the next is planned again."""
+    """plan.json: every group's chosen files, made once for the same table, frozen list, renders
+    (what stage_render returned: each render group's record, and each CT folder's choice of
+    subjects with the mask counts it was made from) and code, so a render that fails in one run and
+    succeeds in the next is planned again, and so is a plan an older code made (DEVIATIONS.md, item
+    10). A kept plan where a group could not be listed at all, its folder not there or its reader
+    failing, is made again too, since nothing in the stamp says the data or the reader has come
+    right since; a plan made again the same is not written again, and one made again with the same
+    groups keeps its digest, and so the images and features keyed by it."""
     renders, folders = renders or {}, folders or {}
     path = Path(args.out) / "plan.json"
     stamp = {"table": sha256_of(args.groups), "frozen": sha256_of(args.frozen) if args.frozen else "",
-             "index": index_stamp(args.index), "renders": digest_of(renders), "folders": digest_of(folders)}
-    if path.is_file() and read_json(path).get("stamp") == stamp:
-        return read_json(path)
+             "index": index_stamp(args.index), "renders": digest_of(renders), "folders": digest_of(folders),
+             "code": code_digest()}
+    kept = read_json(path) if path.is_file() else None
+    if kept and kept.get("stamp") == stamp and all("found" in g for g in kept["groups"]):
+        return kept
     frozen = frozen_persons(args.frozen)
     groups = [plan_group(g, args, table.salt, frozen, renders) for g in table.groups]
     plan = {"version": 1, "salt": table.salt, "stamp": stamp, "groups": groups, "renders": folders}
-    write_json(path, plan)
+    if plan != kept:  # a plan made again the same is left as it was written
+        write_json(path, plan)
     return plan
 
 
@@ -814,13 +875,16 @@ def decode_one(reference):
 
 def stage_images(args, plan):
     """images.npy (n x 256 x 256, float16) and rows.json (group, family, person, file index) for
-    every chosen file that decodes; the failures are counted by group and kind."""
+    every chosen file that decodes; the failures are counted by group and kind. They are kept for
+    the same plan and the same code, so the code the run's record names made every array."""
     import numpy as np
 
     out = Path(args.out)
     rows_path, images_path = out / "rows.json", out / "images.npy"
-    if rows_path.is_file() and images_path.is_file() and read_json(rows_path).get("plan") == plan_digest(plan):
-        return read_json(rows_path), np.load(images_path, mmap_mode="r")
+    if rows_path.is_file() and images_path.is_file():
+        kept = read_json(rows_path)
+        if kept.get("plan") == plan_digest(plan) and kept.get("code") == code_digest():
+            return kept, np.load(images_path, mmap_mode="r")
     files = [(g["id"], g["family"], f, p) for g in plan["groups"] for f, p in g["chosen"]]
     log(f"decoding {len(files)} images with {args.workers} workers")
     decoded = decode_all([f for _, _, f, _ in files], args.workers)
@@ -832,7 +896,7 @@ def stage_images(args, plan):
             failures[group][why] += 1
     images = np.stack([decoded[i][0] for i in keep]) if keep else np.zeros((0, SIDE, SIDE), np.float16)
     np.save(images_path, images)
-    rows = {"plan": plan_digest(plan), "failures": failures,
+    rows = {"plan": plan_digest(plan), "code": code_digest(), "failures": failures,
             "rows": [{"group": files[i][0], "family": files[i][1], "person": files[i][3]} for i in keep]}
     write_json(rows_path, rows)
     return rows, np.load(images_path, mmap_mode="r")
@@ -1003,7 +1067,7 @@ def stage_features(args, images, rows):
         if why:
             done[space] = why
             continue
-        if features_kept(path, rows["plan"]):
+        if features_kept(path, rows["plan"], rows["code"]):
             done[space] = None
             continue
         log(f"features: {space} over {len(images)} images")
@@ -1017,21 +1081,24 @@ def stage_features(args, images, rows):
                 note_stage(args.out, "features", "running", f"{space} {start} of {len(images)} images")
         part = folder / f"{space}.npz.part"
         with open(part, "wb") as handle:
-            np.savez(handle, stored=np.concatenate(stored), inverse=np.concatenate(inverse), plan=rows["plan"])
+            np.savez(handle, stored=np.concatenate(stored), inverse=np.concatenate(inverse), plan=rows["plan"],
+                     code=rows["code"])
         os.replace(part, path)
         done[space] = None
     return done
 
 
-def features_kept(path, plan):
-    """Whether a space's features are there whole for this plan; a file a cut job left half
-    written, which np.load cannot open, counts as none."""
+def features_kept(path, plan, code):
+    """Whether a space's features are there whole for this plan and this code; a file a cut job
+    left half written, which np.load cannot open, counts as none, and so does one an older code
+    made, since the run's record names the code it ran (DEVIATIONS.md, item 10)."""
     import numpy as np
 
     if not path.is_file():
         return False
     try:
-        return str(np.load(path)["plan"]) == plan
+        kept = np.load(path)
+        return str(kept["plan"]) == plan and str(kept["code"]) == code
     except (OSError, ValueError, KeyError, EOFError, zipfile.BadZipFile):
         return False
 
@@ -3402,9 +3469,11 @@ def group_summary(groups):
 
 
 def group_line(g):
-    """A group's line: its counts, or why it was skipped."""
+    """A group's line: its counts, or why it was skipped, the reason cut at 150 characters, which
+    keeps a listing's error kind or every rule's count of refused rows whole and, after the longest
+    group's head of 47 characters, the line within the report's limit."""
     if g["skipped"] and not g["decoded"]:
-        return f"group {g['id']} {g['family']} skipped, {g['skipped'][:90]}"
+        return f"group {g['id']} {g['family']} skipped, {g['skipped'][:150]}"
     flag = " persons by file" if g["person_fallback"] and g["person_fallback"] >= g["chosen"] else ""
     fails = sum(g["failures"].values())
     return (f"group {g['id']} {g['family']} found {g['found']} chosen {g['chosen']} decoded {g['decoded']}"

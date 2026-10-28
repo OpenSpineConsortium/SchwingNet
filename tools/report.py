@@ -1157,7 +1157,7 @@ def study_reproduce(run):
     if gap:
         return missing(gap)
     prereg = f"the frozen pre-registration PREREG.md {study['prereg']}" if study["prereg"] != "none" else "no frozen pre-registration (PREREG none)"
-    return met(f"at commit {study['commit']}, the gate words and local commands of docs/research/drr-domain-gap/README.md section 7, over the groups table {study['groups']} with seed {study['seed']}, the plan the run made being {study['plan']}, with {prereg} (summary.txt record)")
+    return met(f"at commit {study['commit']}, the gate words and local commands of docs/research/drr-domain-gap/README.md section 7, over the groups table {study['groups']} with seed {study['seed']}, the plan the run ran on being {study['plan']}, with {prereg} (summary.txt record)")
 
 
 @recorded("study")

@@ -35,6 +35,7 @@ import sqlite3
 import sys
 import tempfile
 import unittest
+import unittest.mock
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -1107,6 +1108,252 @@ class PlanSubcommandTest(unittest.TestCase):
                 self.assertIn(f"render {CT_FOLDER}: 0 CTs chosen of 0 with every mask of 30 CTs", printed.getvalue())
                 self.assertIn(f"no CT chosen for {CT_FOLDER} (too few CTs with the masks the data root should"
                               f" already hold: spineps {len(held)})", printed.getvalue())
+
+
+def fake_fxr(splits):
+    """Stand-ins for FleXray's ThunderDB opener and split reader, holding LMDB's rule that one
+    environment opens once a process: a second open of a root still open raises a class named
+    Error from a module named lmdb, as py-lmdb 2.0 and later do. Each split's records are its
+    samples, two to a subject, and a sample's image is a gradient whose level names its split."""
+    import types
+
+    import numpy as np
+
+    lmdb = types.ModuleType("lmdb")
+    lmdb.Error = type("Error", (Exception,), {"__module__": "lmdb"})
+    opened, live = [], set()
+
+    class Database:
+        def __init__(self, root):
+            self.root = root
+
+        def __getitem__(self, key):
+            if key != "_splits":
+                raise KeyError(key)
+            return {name: {} for name in splits}
+
+        def close(self):
+            live.discard(self.root)
+
+    def open_thunderdb(root):
+        root = str(root)
+        if root in live:
+            raise lmdb.Error(f"The environment '{root}' is already open in this process.")
+        live.add(root)
+        opened.append(root)
+        return Database(root)
+
+    class Record:
+        def __init__(self, data_id, subject_id):
+            self.data_id, self.subject_id = data_id, subject_id
+
+    class Backend:
+        def __init__(self, db, *, split, owns_database=True, **_):
+            if not isinstance(db, Database):
+                db = open_thunderdb(db)  # FleXray's reader opens a path itself
+            self.db, self.split = db, split
+            self.records = [Record(f"{split}-{i}", f"{split}-s{i // 2}") for i in range(splits[split])]
+
+        def load(self, record, key):
+            level = sorted(splits).index(self.split) + 1
+            return np.linspace(0, level, 64 * 64).reshape(1, 64, 64)
+
+    modules = {"lmdb": lmdb}
+    for name in ("fxr", "fxr.datasets", "fxr.datasets._thunderdb", "fxr.datasets.storage"):
+        modules[name] = types.ModuleType(name)
+    modules["fxr.datasets._thunderdb"].open_thunderdb = open_thunderdb
+    modules["fxr.datasets.storage"].SplitThunderDBStorageBackend = Backend
+    return modules, opened
+
+
+@unittest.skipIf(MISSING_BASE, f"needs {', '.join(MISSING_BASE)}")
+class ThunderTest(unittest.TestCase):
+    """FluXray's ThunderDB is opened once a process and every split's reader borrows it, since
+    LMDB refuses a second open of one environment in one process; the first sharded run gave each
+    split's reader the root's path, so each reader opened the environment itself and kept it open,
+    the second split's reader was refused, and FluXray was skipped as "(Error)" (DEVIATIONS.md,
+    item 10)."""
+
+    def setUp(self):
+        self.tool = load_tool()
+        self.temporary = tempfile.TemporaryDirectory()
+        self.folder = Path(self.temporary.name)
+        database = self.folder / "data" / "hf_flexray_data" / "raw" / "FluXray" / "thunder_dbs" / "1.0"
+        database.mkdir(parents=True)
+        (database / "data.mdb").write_bytes(b"")
+        group = {"id": "fluxray", "label": "FluXray", "family": "synthetic", "source": "thunderdb",
+                 "folder": "hf_flexray_data/raw", "cap": 100, "per_person": 4}
+        self.group = self.tool.read_table(table(self.folder, [group, PlanTest.groups(None)[0]])).groups[0]
+
+    def tearDown(self):
+        self.temporary.cleanup()
+
+    def test_every_split_is_listed_and_read_through_one_open(self):
+        splits = {"train": 6, "val": 4, "test": 2}
+        modules, opened = fake_fxr(splits)
+        with unittest.mock.patch.dict(sys.modules, modules):
+            rows = self.tool.thunder_candidates(self.group, self.folder / "data")
+            self.assertEqual(len(rows), 12)
+            self.assertEqual(sorted({r[0].split("|")[1] for r in rows}), sorted(splits))
+            self.assertEqual(len({r[2] for r in rows}), 6)
+            levels = {r[0].split("|")[1]: float(self.tool.grey_of(r[0]).max()) for r in rows}
+            self.assertEqual(levels, {"test": 1.0, "train": 2.0, "val": 3.0})
+        self.assertEqual(len(opened), 1)
+
+    def test_a_reader_that_opened_the_root_again_is_the_error_the_first_run_had(self):
+        modules, _ = fake_fxr({"train": 2, "val": 2})
+        with unittest.mock.patch.dict(sys.modules, modules):
+            db = self.tool.thunder_db(next(self.folder.rglob("data.mdb")).parent)
+            backend = modules["fxr.datasets.storage"].SplitThunderDBStorageBackend
+            with self.assertRaises(modules["lmdb"].Error) as raised:
+                backend(str(db.root), split="train")
+            self.assertEqual(self.tool.error_kind(raised.exception), "lmdb.Error")
+
+    def test_the_skip_names_the_error_by_module_and_errno_and_never_its_text(self):
+        import errno
+        import types
+
+        lmdb = types.ModuleType("lmdb")
+        lmdb.Error = type("Error", (Exception,), {"__module__": "lmdb"})
+        locked = lmdb.Error("/rs/secret/path: No locks available")
+        locked.errno = errno.ENOLCK
+        self.assertEqual(self.tool.error_kind(locked), "lmdb.Error ENOLCK")
+        self.assertEqual(self.tool.error_kind(KeyError("/rs/secret/path")), "KeyError")
+        self.assertEqual(self.tool.error_kind(OSError(errno.ESTALE, "stale", "/rs/secret")), "OSError ESTALE")
+        odd = type("Odd<x>", (Exception,), {"__module__": "a b"})("text")
+        self.assertEqual(self.tool.error_kind(odd), "ab.Oddx")
+        missing = lmdb.Error("/rs/secret: No such file")  # py-lmdb sets code, never errno
+        missing.code = errno.ENOENT
+        self.assertEqual(self.tool.error_kind(missing), "lmdb.Error ENOENT")
+        for code in (0, True, -30792, "x", 10 ** 30):
+            other = lmdb.Error("/rs/secret")
+            other.code = code
+            self.assertEqual(self.tool.error_kind(other), "lmdb.Error")
+        long = type("C" * 80, (Exception,), {"__module__": "m" * 80})()
+        long.code = errno.ENOLCK
+        line = self.tool.group_line({"id": "fluxray_raw_reference", "family": "synthetic", "decoded": 0,
+                                     "skipped": f"its files could not be listed ({self.tool.error_kind(long)})"})
+        self.assertTrue(line.endswith(" ENOLCK)"), line)
+        for error in (locked, KeyError("/rs/secret/path"), odd):
+            self.assertNotIn("secret", self.tool.error_kind(error))
+        args = args_for(self.tool, self.folder, table(self.folder, [{
+            "id": "fluxray", "label": "FluXray", "family": "synthetic", "source": "thunderdb",
+            "folder": "hf_flexray_data/raw", "cap": 100, "per_person": 4}, PlanTest.groups(None)[0]]))
+        Path(args.out).mkdir(parents=True)
+
+        def refuse(group, data_root):
+            raise locked
+
+        with unittest.mock.patch.object(self.tool, "thunder_candidates", refuse), \
+                contextlib.redirect_stderr(io.StringIO()):
+            row = self.tool.stage_plan(args, self.tool.read_table(args.groups))["groups"][0]
+        self.assertEqual(row["skipped"], "its files could not be listed (lmdb.Error ENOLCK)")
+
+
+@unittest.skipIf(MISSING_BASE, f"needs {', '.join(MISSING_BASE)}")
+class PlanCodeTest(unittest.TestCase):
+    """The plan is made again when the study's code changes, since the first sharded run read a
+    plan.json the cancelled V100 job had written under older code, so a group that code could not
+    list stayed skipped (DEVIATIONS.md, item 10); a plan made again with the same content keeps its
+    digest, so the images and features keyed by it are kept."""
+
+    def setUp(self):
+        self.tool = load_tool()
+        self.temporary = tempfile.TemporaryDirectory()
+        self.folder = Path(self.temporary.name)
+
+    def tearDown(self):
+        self.temporary.cleanup()
+
+    def test_new_code_makes_the_plan_again_and_the_same_content_keeps_its_digest(self):
+        rows = PlanTest.index_rows(None)
+        index = index_of(self.folder, rows)
+        groups = table(self.folder, PlanTest.groups(None)[:2])
+        args = args_for(self.tool, self.folder, groups, index)
+        Path(args.out).mkdir(parents=True)
+        first = self.tool.stage_plan(args, self.tool.read_table(groups))
+        self.assertEqual(first["stamp"]["code"], self.tool.code_digest())
+        made = []
+        real = self.tool.plan_group
+
+        def counted(*a, **k):
+            made.append(1)
+            return real(*a, **k)
+
+        with unittest.mock.patch.object(self.tool, "plan_group", counted):
+            self.tool.stage_plan(args, self.tool.read_table(groups))
+            self.assertEqual(made, [])
+            with unittest.mock.patch.object(self.tool, "code_digest", lambda: "0" * 64):
+                again = self.tool.stage_plan(args, self.tool.read_table(groups))
+            self.assertEqual(len(made), 2)  # each of the two groups planned again
+        self.assertEqual(again["stamp"]["code"], "0" * 64)
+        self.assertEqual(self.tool.plan_digest(again), self.tool.plan_digest(first))
+
+    def test_a_group_the_index_lists_and_refuses_says_which_rule_refused_it(self):
+        rows = [(f"/v/{i}.dicom", f"{i}.dicom", "dicom", "2000", "2000", None, "", "", f"study{i}", "image", None,
+                 "vindr_spinexr") for i in range(3)]
+        rows.append(("/v/x.png", "x.png", "png", "2000", "2000", None, None, "", "", "image", None, "vindr_spinexr"))
+        index = index_of(self.folder, rows)
+        vindr, absent = PlanTest.groups(None)[1:]
+        args = args_for(self.tool, self.folder, table(self.folder, [vindr, absent]), index)
+        Path(args.out).mkdir(parents=True)
+        row = self.tool.stage_plan(args, self.tool.read_table(args.groups))["groups"][0]
+        self.assertEqual(row["skipped"], "4 index rows, none kept: format 1, modality 3")
+        self.assertEqual(self.tool.rules().safe_line(row["skipped"]), row["skipped"])
+        many = "1046600 index rows, none kept: " + ", ".join(f"{r} 209320" for r in self.tool.REFUSALS)
+        line = self.tool.group_line({"id": "vindr_spinexr", "family": "film", "decoded": 0, "skipped": many})
+        self.assertTrue(line.endswith(many), line)  # the summary keeps every count
+        (self.folder / "empty").mkdir()
+        args = args_for(self.tool, self.folder, table(self.folder, [vindr, absent]), index_of(self.folder / "empty", []))
+        row = self.tool.stage_plan(args, self.tool.read_table(args.groups))["groups"][0]
+        self.assertEqual(row["skipped"], "the index lists no image row under its sources")
+
+
+    def test_a_kept_plan_where_a_group_could_not_be_listed_is_made_again(self):
+        """A group whose folder was not there, or whose reader failed, is listed again on the next
+        run at the same code, since nothing in the stamp says the data has come since."""
+        groups = [{"id": "lumos", "label": "lumos", "family": "film", "source": "walk", "folder": "lumos/bank",
+                   "formats": ["png"], "person": "regex:lumos_x_(?P<person>[0-9]{3})_[0-9]+[.]png$", "cap": 10,
+                   "per_person": 1}, PlanTest.groups(None)[0]]
+        args = args_for(self.tool, self.folder, table(self.folder, groups), index_of(self.folder, []))
+        Path(args.out).mkdir(parents=True)
+        first = self.tool.stage_plan(args, self.tool.read_table(args.groups))["groups"][0]
+        self.assertIn("no folder lumos/bank", first["skipped"])
+        bank = self.folder / "data" / "lumos" / "bank"
+        bank.mkdir(parents=True)
+        (bank / "lumos_x_001_1.png").write_bytes(b"")
+        again = self.tool.stage_plan(args, self.tool.read_table(args.groups))["groups"][0]
+        self.assertEqual((again["found"], again["skipped"]), (1, ""))
+
+    def test_images_and_features_are_made_again_for_new_code(self):
+        import numpy as np
+
+        image = self.folder / "film" / "a.png"
+        save_png(image, np.linspace(0, 1, 300 * 300).reshape(300, 300))
+        plan = {"groups": [{"id": "film", "family": "film", "chosen": [[str(image), "film:a"]]}]}
+        args = args_for(self.tool, self.folder, table(self.folder, PlanTest.groups(None)[:2]))
+        Path(args.out).mkdir(parents=True)
+        calls = []
+        real = self.tool.decode_all
+
+        def counted(references, workers):
+            calls.append(len(references))
+            return real(references, workers)
+
+        with unittest.mock.patch.object(self.tool, "decode_all", counted):
+            rows, _ = self.tool.stage_images(args, plan)
+            self.tool.stage_images(args, plan)
+            self.assertEqual(calls, [1])
+            with unittest.mock.patch.object(self.tool, "code_digest", lambda: "0" * 64):
+                again, _ = self.tool.stage_images(args, plan)
+            self.assertEqual(calls, [1, 1])
+        self.assertEqual((rows["code"], again["code"]), (self.tool.code_digest(), "0" * 64))
+        features = self.folder / "f.npz"
+        np.savez(features, stored=np.zeros(1), inverse=np.zeros(1), plan=rows["plan"], code=rows["code"])
+        self.assertTrue(self.tool.features_kept(features, rows["plan"], rows["code"]))
+        self.assertFalse(self.tool.features_kept(features, rows["plan"], "0" * 64))
+        np.savez(features, stored=np.zeros(1), inverse=np.zeros(1), plan=rows["plan"])  # an older code's file
+        self.assertFalse(self.tool.features_kept(features, rows["plan"], rows["code"]))
 
 
 if __name__ == "__main__":
