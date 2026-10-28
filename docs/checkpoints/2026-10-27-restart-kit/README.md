@@ -9,6 +9,12 @@ The paste-ready texts, the new project's goal, its instructions, the repositorie
 - memory/: the project's memory, compacted to one file per subject, each under 4 KB, in the shape a claude.ai project's memory takes (a name, a one-line description, a type, then the fact with its why and how to apply). The new coordinator writes every file into the new project's memory as it stands, MEMORY.md as the index.
 - FINDINGS.md: every study's results with the record each rests on, for a thread to read when it needs one; memory points to its sections and does not copy it.
 
+## Later handoffs
+
+Threads that ran after this kit was written leave their state in their own handoff and add a memory file here, so the kit stays the one entry point.
+
+- 2026-10-28, the gold tier 3 CT dataset: docs/checkpoints/2026-10-28-gold3-ct-handoff/HANDOFF.md, memory/gold3-ct-dataset.md. It records the owner's disagreement of 17:08 UTC with 17 VerSe and no TotalSegmentator rows, with every candidate.
+
 ## How it was compacted
 
 - Kept: the owner's priority of 2026-10-27 05:48 UTC and its gate; the owner's standing rules and working style; how the repositories are checked, pushed and merged; every approved grid count with what was sent; each paused thread's pull request, branch, handoff and first step; the owner's open steps; and the findings, in memory as headlines and in FINDINGS.md in full.
