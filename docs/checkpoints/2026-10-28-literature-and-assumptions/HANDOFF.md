@@ -42,6 +42,8 @@ The check added an eighth item the owner has not seen: the rule's age range. Tot
 | The 42 papers | Claude project files, literature/synthetic_spine/, with MANIFEST.md (sha256 and origin of each); 22 the grid fetch did not get came from the owner's uploads and a thread on the open network, the other 20 from the grid fetch of 2026-10-28 (17 got, 3 held already); Eisenstein 1977 arrived last, at 18:54 UTC, so all 42 are held |
 | The verifier's findings | this thread's container only; their result is the text of the note |
 
+The Claude Doc carries every correction but four the note alone has: six more population cohorts with the completeness sentence, which data rows can feed the table, the licences, and the published summaries that are only on request with NAKO's access. The note is the record; the doc was not brought level before the wrap-up.
+
 Whether the grid copy of the project files (/rs/rs_grp_oschome/go2432/data/project_files_2026_10_28/, made by the other account) includes the uploads of 17:00 and 18:54 UTC was not checked.
 
 ## 4. What still waits on the owner from this thread
