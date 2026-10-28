@@ -123,4 +123,10 @@ python3 tools/report.py check-recorded
 # again, or a page edited by hand, fails here.
 python3 tools/storage_panel.py check
 
+# The gold tier 3 CT dataset (data/gold3-ct/, docs/research/gold3-ct/) is held by tools/gold3_ct.py, standard
+# library: a facts row that breaks its schema, ENHANCE.PET classes that no longer give the note's table, or
+# STATS.md, QA.md or page-data.json not written again from the committed files (python3 tools/gold3_ct.py
+# stats, qa, page) fails here; while the facts are not committed it passes with a note.
+python3 tools/gold3_ct.py check
+
 echo "checks ok"

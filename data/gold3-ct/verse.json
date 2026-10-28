@@ -1,0 +1,45 @@
+{
+ "about": "VerSe's 17 gold tier 3 CT series, one person each, with what the committed records say of each; no paths, which are in data/gold3-ct/members.json as a pattern. Gold 3 is provisional for all 17 until the sacrum is confirmed in each field on the grid, since VerSe labels no sacrum.",
+ "list_source": "pull request #420 (commit 4ff8301), data/corpus-tiers/sources.json rows verse and versefusion, from spinesurg-ct-nnunet's transitional_registry/verse/screened.csv columns mask and junction_ls_in_fov: 17 series of 17 distinct persons whose release masks run from C1 or C2 to L4-L6 with the lumbosacral junction in the field; bordercall holdings/gold-tier-3.md counts the same 17",
+ "variant_vocabulary": "tools/anomaly_route.py truth_of: L6, T13, four_lumbar, eleven, normal; unread where no read is recorded",
+ "series": [
+  {"id": "verse108", "person": "verse:verse108", "variant": "unread", "role": "none", "claims": [
+   {"says": "no read recorded", "source": "the list's source above names no read for it"}]},
+  {"id": "verse236", "person": "verse:verse236", "variant": "unread", "role": "none", "claims": [
+   {"says": "no read recorded", "source": "the list's source above names no read for it"}]},
+  {"id": "verse547", "person": "verse:verse547", "variant": "T13", "role": "holdout", "claims": [
+   {"says": "T13, read", "source": "data/splits/anomaly-holdout.json persons: variant T13, stratum T13, release 2020"},
+   {"says": "held out of the SPINEPS to FleXray route", "source": "data/splits/anomaly-holdout.json persons; docs/research/spineps-anomaly-route.md, T13: 2 held"}]},
+  {"id": "verse549", "person": "verse:verse549", "variant": "four_lumbar", "role": "holdout", "claims": [
+   {"says": "four lumbar, read", "source": "data/splits/anomaly-holdout.json persons: variant four_lumbar, release 2020"},
+   {"says": "held out of the SPINEPS to FleXray route", "source": "docs/research/spineps-anomaly-route.md, Four lumbar: 1 held, verse549"}]},
+  {"id": "verse563", "person": "verse:verse563", "variant": "unread", "role": "none", "claims": [
+   {"says": "no read recorded", "source": "the list's source above names no read for it"}]},
+  {"id": "verse573", "person": "verse:verse573", "variant": "normal", "role": "holdout", "claims": [
+   {"says": "a normal count with a sacralised L5, fused, read", "source": "data/splits/anomaly-holdout.json persons: variant normal, stratum sacralised_L5_fused, release 2020"},
+   {"says": "held out of the SPINEPS to FleXray route as a hard negative", "source": "docs/research/spineps-anomaly-route.md, Normals: 20 held, 2 sacralised L5"}]},
+  {"id": "verse581", "person": "verse:verse581", "variant": "L6", "role": "fold3", "claims": [
+   {"says": "L6, read", "source": "data/splits/anomaly-holdout.json folds: fold 3, the folds being the clean read VerSe L6 persons the holdout leaves"},
+   {"says": "eleven thoracic, six lumbar, Castellvi IIIb (read structure 7/11/6/5); its mask has no T12, which is the read and not a gap", "source": "pull request #420 (commit 4ff8301), data/corpus-tiers/sources.json row verse, truth_caveats (screened.csv read and mask_eleven_thoracic)"}]},
+  {"id": "verse585", "person": "verse:verse585", "variant": "L6", "role": "fold3", "claims": [
+   {"says": "L6, read", "source": "data/splits/anomaly-holdout.json folds: fold 3, the folds being the clean read VerSe L6 persons the holdout leaves"}]},
+  {"id": "verse602", "person": "verse:verse602", "variant": "T13", "role": "none", "claims": [
+   {"says": "T13, read; left to train by the route", "source": "docs/research/spineps-anomaly-route.md, T13: the rank leaves verse582, 588, 602 and 631 to train"}]},
+  {"id": "verse631", "person": "verse:verse631", "variant": "T13", "role": "none", "claims": [
+   {"says": "T13, read; left to train by the route", "source": "docs/research/spineps-anomaly-route.md, T13: the rank leaves verse582, 588, 602 and 631 to train"}]},
+  {"id": "verse644", "person": "verse:verse644", "variant": "unread", "role": "none", "claims": [
+   {"says": "no read recorded", "source": "the list's source above names no read for it"}]},
+  {"id": "verse649", "person": "verse:verse649", "variant": "unread", "role": "none", "claims": [
+   {"says": "no read recorded", "source": "the list's source above names no read for it"}]},
+  {"id": "verse758", "person": "verse:verse758", "variant": "unread", "role": "none", "claims": [
+   {"says": "no read recorded", "source": "the list's source above names no read for it"}]},
+  {"id": "verse759", "person": "verse:verse759", "variant": "normal", "role": "holdout", "claims": [
+   {"says": "a normal count, subtype unassigned, read", "source": "data/splits/anomaly-holdout.json persons: variant normal, stratum unassigned, release 2020"}]},
+  {"id": "verse766", "person": "verse:verse766", "variant": "unread", "role": "none", "claims": [
+   {"says": "no read recorded", "source": "the list's source above names no read for it"}]},
+  {"id": "verse809", "person": "verse:verse809", "variant": "normal", "role": "holdout", "claims": [
+   {"says": "a normal count, read", "source": "data/splits/anomaly-holdout.json persons: variant normal, stratum normal, release 2020"}]},
+  {"id": "verse823", "person": "verse:verse823", "variant": "unread", "role": "none", "claims": [
+   {"says": "no read recorded", "source": "the list's source above names no read for it"}]}
+ ]
+}

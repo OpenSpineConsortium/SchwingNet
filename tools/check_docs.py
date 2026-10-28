@@ -27,8 +27,10 @@ PLAIN_TEXT_FILES = (CLAUDE_MD, "README.md")
 # The dataset records are held the same way, because tools/sources.py copies
 # their text into docs/research/; so are the registry and the split files,
 # which tools/catalog.py reads into the catalog and quotes in its answers;
-# the rest of data/ is not a document.
-PLAIN_TEXT_FOLDERS = ("data/sources", "data/registry", "data/splits")
+# and the gold tier 3 CT dataset's records, whose text tools/gold3_ct.py
+# quotes into docs/research/gold3-ct/; the rest of data/ is not a document.
+PLAIN_TEXT_FOLDERS = ("data/sources", "data/registry", "data/splits", "data/gold3-ct",
+                      "data/gold3-ct/enhance-pet")
 
 # An import is any "@path" outside code spans and fenced code; Claude Code
 # follows it wherever it stands in the line, so the check must too. The
