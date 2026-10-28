@@ -80,6 +80,11 @@ FACTS_B = f"{ENHANCE}/facts-b.jsonl"
 FACTS_REPAIRED = f"{ENHANCE}/facts-repaired.jsonl"
 MASK_SUMS = f"{ENHANCE}/SHA256SUMS"
 CT_DETAILS = f"{ENHANCE}/ct-details.json"
+# Where and by what the three repaired rows of FACTS_REPAIRED were read: the repaired masks are only
+# in the Claude project's files, so no grid run reads them, and FACTS.json carries this beside its own.
+REPAIRED_ROWS_READ = {"bordercall_commit": "a2d8e8d2ced5ba6935ae25a4a4c88c2a63891d09", "date": "2026-10-28",
+                      "read_on": "the thread's container, from the repair record's repaired masks and the published ribs",
+                      "tool": "bordercall holdings/enhance_facts.py"}
 RECORD = f"{ENHANCE}/record.json"
 BUCKET = f"{ENHANCE}/bucket.json"
 RULE = "data/splits/rule.json"
@@ -829,12 +834,18 @@ def check_c7_t1(row, bounds):
 LUMBOSACRAL_KEYS = tuple(f"{label}-{SACRUM}" for label in range(L1, L6 + 1))
 
 
+def within_a_step(mine, theirs):
+    """Two distances kept to 0.1 mm agree within one step of that rounding, counted in whole tenths,
+    since 0.8 - 0.7 is more than 0.1 in binary floating point and 1.0 - 0.9 is not."""
+    return abs(round(mine * 10) - round(theirs * 10)) <= round(DISTANCE_AGREEMENT_MM * 10)
+
+
 def implementation_differences(row, other):
     """Where two readings of one study differ on what Q08 to Q10 read: lumbosacral distances, rib leads."""
     out = []
     for key in LUMBOSACRAL_KEYS:
         mine, theirs = row["distances_mm"].get(key), other["distances_mm"].get(key)
-        if (mine is None) != (theirs is None) or (mine is not None and abs(mine - theirs) > DISTANCE_AGREEMENT_MM):
+        if (mine is None) != (theirs is None) or (mine is not None and not within_a_step(mine, theirs)):
             out.append(f"distance {key}: {mine} against {theirs}")
     for label in sorted(set(row["ribs"]) | set(other["ribs"]), key=int):
         mine, theirs = row["ribs"].get(label, {}), other["ribs"].get(label, {})
@@ -2386,7 +2397,7 @@ def facts_record_of(repo, rows, args):
     return {"bordercall_commit": args.bordercall_commit, "ct_details_sha256": sha256_of(Path(repo) / CT_DETAILS),
             "date": args.date, "facts_b": f"{FACTS_B}, read by bordercall's holdings/enhance_facts_check.py",
             "masks_sha256sums_sha256": sha256_of(Path(repo) / MASK_SUMS), "read_on": args.read_on,
-            "repaired_rows": "read from the repair record in the thread's container", "rows": len(rows),
+            "repaired_rows": REPAIRED_ROWS_READ, "rows": len(rows),
             "tool": "bordercall holdings/enhance_facts.py"}
 
 

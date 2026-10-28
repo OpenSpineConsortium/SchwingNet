@@ -595,6 +595,13 @@ class Checks(unittest.TestCase):
         self.assertEqual((found["verdict"], len(found["value"])), ("fail", 2))
         self.assertEqual(verdict_of(gold3.check_two_implementations, normal(), None), "not_run")
 
+    def test_q14_a_distance_one_rounding_step_apart_agrees(self):
+        key = f"{L5}-{SACRUM}"
+        for mine, theirs, verdict in ((0.7, 0.8, "pass"), (1.0, 1.1, "pass"), (0.9, 1.0, "pass"), (0.7, 0.9, "fail")):
+            row, other = normal(), normal()
+            row["distances_mm"][key], other["distances_mm"][key] = mine, theirs
+            self.assertEqual(verdict_of(gold3.check_two_implementations, row, other), verdict, (mine, theirs))
+
     def test_q15_slice_spacing(self):
         row = normal()
         row["scanner"]["slice_thickness"] = "0.98"
@@ -1115,6 +1122,7 @@ class TakeFacts(Scratch):
         self.assertEqual(gold3.facts_record_problems(inputs["facts"], inputs["facts_record"]), [])
         self.assertEqual(inputs["facts_record"]["read_on"], "the grid, job 1")
         self.assertEqual(inputs["facts_record"]["bordercall_commit"], self.COMMIT)
+        self.assertRegex(inputs["facts_record"]["repaired_rows"]["bordercall_commit"], r"^[0-9a-f]{40}$")
         self.assertEqual(len(inputs["facts_b"]), len(self.published))
         self.assertFalse((self.repo / gold3.FACTS_REPAIRED).exists())
         self.assertIn(f"removed {gold3.FACTS_REPAIRED}", out)

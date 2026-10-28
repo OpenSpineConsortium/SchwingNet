@@ -3,7 +3,8 @@
 # owner's count. It reads ENHANCE.PET's published masks twice, sets both readings beside
 # each other and beside the count's own reading, takes them into the SchwingNet clone's facts files,
 # writes the dataset's pages and builds its store on the lab volume. It writes only under $W and
-# $DATA_ROOT/_gold3_ct; the session commits what it leaves in the clone.
+# $DATA_ROOT/_gold3_ct (pixi's downloads included, in $W/env/cache); the session commits what it
+# leaves in the clone.
 #
 # The session copies this file to $W and queues it with hpcworker's job submit, class batch, handing
 # it W, VERT, RIBS and DATA_ROOT in its environment. A header keeps only the time, the CPUs and the
@@ -20,17 +21,29 @@ set -euo pipefail
 : "${DATA_ROOT:?DATA_ROOT names the data root}"
 SN="$W/SchwingNet" BC="$W/bordercall"
 
-# The nodes run CentOS 7 (glibc 2.17), and numpy 2.5.4 and scipy 1.18.1 need Python 3.12 and glibc
-# 2.27 or later, so the job runs again inside SchwingNet's sandbox (grid/box.sh: Debian bookworm, glibc
-# 2.36, the home and the lab volume bound). Slurm runs a spooled copy, which the sandbox cannot see, so
-# the copy in $W is what re-enters. git runs here first, outside, where it is known to be.
-if [ -z "${APPTAINER_CONTAINER:-}${SINGULARITY_CONTAINER:-}" ] && [ "${SCHWINGNET_NATIVE:-}" != 1 ]; then
-  GOLD3_BORDERCALL_COMMIT=$(git -C "$BC" rev-parse HEAD)
-  GOLD3_SCHWINGNET_COMMIT=$(git -C "$SN" rev-parse HEAD)
-  export GOLD3_BORDERCALL_COMMIT GOLD3_SCHWINGNET_COMMIT
-  exec bash "$SN/grid/box.sh" bash "$W/gold3-facts.sbatch"
+say() { printf '%s %s\n' "$(date -u +%FT%TZ)" "$*"; }
+
+# Every end but a finished one says so, so a log with neither this nor GOLD3_FACTS_DONE was ended by
+# Slurm (time, memory or the node). Only the outermost run says it, once.
+stopped() {
+  local status=$?
+  [ "$status" = 0 ] || say "GOLD3_FACTS_STOPPED: exit $status"
+}
+[ -n "${GOLD3_OUTER:-}" ] || trap stopped EXIT
+
+# The nodes run CentOS 7 (glibc 2.17, git 1.8), and numpy 2.5.4 and scipy 1.18.1 need a newer glibc, so
+# the job runs again inside SchwingNet's sandbox (grid/box.sh: Debian bookworm, glibc 2.36, the home
+# and the lab volume bound). Whether it is inside is read from the file system: a Beethoven session
+# runs in the lab's own Apptainer image and hpcworker hands the job its environment, so
+# APPTAINER_CONTAINER may be set on the bare node, and box.sh, which reads it, would run nothing. Slurm
+# runs a spooled copy, which the sandbox cannot see, so the copy in $W is what re-enters.
+inside_sandbox() { [ -d /.singularity.d ] || [ "${GOLD3_ENTERED:-}" = 1 ]; }
+if ! inside_sandbox && [ "${SCHWINGNET_NATIVE:-}" != 1 ]; then
+  unset APPTAINER_CONTAINER SINGULARITY_CONTAINER APPTAINER_NAME SINGULARITY_NAME
+  export GOLD3_OUTER=1 GOLD3_ENTERED=1
+  bash "$SN/grid/box.sh" bash "$W/gold3-facts.sbatch"
+  exit 0
 fi
-: "${GOLD3_BORDERCALL_COMMIT:=$(git -C "$BC" rev-parse HEAD)}" "${GOLD3_SCHWINGNET_COMMIT:=$(git -C "$SN" rev-parse HEAD)}"
 
 export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1
 # glibc hands arrays of 1 MB or more back to the system when freed, so no worker keeps the heap of its
@@ -40,7 +53,17 @@ OUT="$W/out" ENV="$W/env" STORE="$DATA_ROOT/_gold3_ct"
 DATA="$SN/data/gold3-ct/enhance-pet"
 mkdir -p "$OUT/a" "$OUT/b" "$OUT/count" "$ENV"
 
-say() { printf '%s %s\n' "$(date -u +%FT%TZ)" "$*"; }
+# The commits the readers and the tool run at, read here, inside, where git is current; the session
+# may hand them in. FACTS.json and the store record them, so a wrong one stops the job now.
+: "${GOLD3_BORDERCALL_COMMIT:=$(cd "$BC" && git rev-parse HEAD)}" "${GOLD3_SCHWINGNET_COMMIT:=$(cd "$SN" && git rev-parse HEAD)}"
+if ! [[ $GOLD3_BORDERCALL_COMMIT =~ ^[0-9a-f]{40}$ && $GOLD3_SCHWINGNET_COMMIT =~ ^[0-9a-f]{40}$ ]]; then
+  say "commits: FAILED, no full commit id for bordercall or SchwingNet"
+  exit 1
+fi
+
+# A failed step's log is shown with every path under the data root cut, so nothing pasted from the job's
+# log carries one (the session relays failures to the owner).
+shown() { sed "s|$DATA_ROOT|<data root>|g"; }
 
 once() {  # once NAME COMMAND...: run COMMAND unless an earlier run of this job finished it, its log in $OUT/NAME.log
   local name=$1
@@ -55,13 +78,13 @@ once() {  # once NAME COMMAND...: run COMMAND unless an earlier run of this job 
     say "$name: finished"
   else
     say "$name: FAILED; the last lines of $OUT/$name.log:"
-    tail -n 15 "$OUT/$name.log"
+    tail -n 15 "$OUT/$name.log" | shown
     return 1
   fi
 }
 
-# The Python the thread's container used: 3.13 with exactly these four, from PyPI as there. A stand-in
-# (GOLD3_PY) is for a dry run off the grid only.
+# The Python the thread's container used: 3.13 with exactly these four, from PyPI as there. pixi's
+# downloads stay in the work folder. A stand-in (GOLD3_PY) is for a dry run off the grid only.
 write_environment() {
   cat > "$ENV/pixi.toml" <<'TOML'
 [workspace]
@@ -79,7 +102,7 @@ scipy = "==1.18.1"
 nibabel = "==5.4.2"
 pillow = "==13.0.0"
 TOML
-  pixi install --manifest-path "$ENV/pixi.toml"
+  PIXI_CACHE_DIR="$ENV/cache" pixi install --manifest-path "$ENV/pixi.toml"
 }
 
 check_versions() {
@@ -117,7 +140,7 @@ first_reading() {
     --listing "$OUT/vertebrae_keys.json" "$OUT/ribs_keys.json" --repair-record "" --workers 3
 }
 
-second_reading() {
+second_reading() {  # exits 1 where a study could not be read; a rerun reads those again
   cd "$BC" && "$PY" -m holdings.enhance_facts_check --masks "$VERT" --ribs "$RIBS" --out "$OUT/b/facts_b.jsonl" --workers 4
 }
 
@@ -129,17 +152,19 @@ count_ribs() {
   cd "$BC" && "$PY" -m holdings.count_enhance_pet ribs "$VERT" "$RIBS" all "$OUT/count/ribs.json" --workers 3
 }
 
-read_side_by_side() {  # the four readings at once; each keeps its own log, and a requeue skips the finished
-  local pids=() pid failed=0
-  once first_reading first_reading & pids+=($!)
-  once second_reading second_reading & pids+=($!)
-  once count_extents count_extents & pids+=($!)
-  once count_ribs count_ribs & pids+=($!)
-  for pid in "${pids[@]}"; do wait "$pid" || failed=1; done
-  return "$failed"
+read_side_by_side() {  # the four readings at once, each with its own log; the first to fail ends the job,
+  # and Slurm ends the rest with it. A requeue skips the finished and resumes the two readings.
+  once first_reading first_reading &
+  once second_reading second_reading &
+  once count_extents count_extents &
+  once count_ribs count_ribs &
+  local left
+  for left in 4 3 2 1; do
+    wait -n || return 1
+  done
 }
 
-compare_readings() {  # exits 1 unless the two readings agree but for contact counts (holdings/enhance_facts_check.py)
+compare_readings() {  # exits 1 unless the two readings agree but for contact counts the audit explains
   cd "$BC" && "$PY" -m holdings.enhance_facts_check compare "$OUT/a/facts.jsonl" "$OUT/b/facts_b.jsonl" "$OUT/agreement.json"
 }
 
@@ -148,10 +173,14 @@ cross_check() {  # exits 1 unless the first reading gives what the count gave (h
     "$OUT/count/ribs.json" "$OUT/cross.json" --touch "$DATA/touch.json"
 }
 
+# The facts folder is put back as the branch holds it first, so a run cut short inside take-facts, its
+# files half written, starts again from the same place, and the case (facts committed or not) is the
+# branch's, never what an earlier attempt left.
 take_facts() {
-  cd "$SN" && "$PY" tools/gold3_ct.py take-facts "$OUT/a/facts.jsonl" "$OUT/b/facts_b.jsonl" \
-    --read-on "the grid, Slurm job ${SLURM_JOB_ID:-unknown}, $(date -u +%F)" \
-    --bordercall-commit "$GOLD3_BORDERCALL_COMMIT"
+  cd "$SN" && git checkout -q -- data/gold3-ct/enhance-pet && git clean -fq -- data/gold3-ct/enhance-pet \
+    && "$PY" tools/gold3_ct.py take-facts "$OUT/a/facts.jsonl" "$OUT/b/facts_b.jsonl" \
+      --read-on "the grid, Slurm job ${SLURM_JOB_ID:-unknown}, $(date -u +%F)" \
+      --bordercall-commit "$GOLD3_BORDERCALL_COMMIT"
 }
 
 dataset_pages() {
@@ -175,15 +204,19 @@ else
   once environment write_environment
   PY="$ENV/.pixi/envs/default/bin/python"
 fi
-check_versions
+if ! check_versions; then
+  say "versions: FAILED"
+  exit 1
+fi
 once tests run_tests
 once listings write_listings
 read_side_by_side
-# Each is a stop: the readings must agree before anything reaches the clone (HANDOFF.md, section 7).
+# Each is a stop: the readings must agree before anything reaches the clone (HANDOFF.md, section 8).
 once compare compare_readings
 once cross cross_check
 once take_facts take_facts
 once pages dataset_pages
 once store dataset_store
-cat "$OUT/take_facts.log" "$OUT/store.log"
+shown < "$OUT/take_facts.log"
+shown < "$OUT/store.log"
 say "GOLD3_FACTS_DONE"
