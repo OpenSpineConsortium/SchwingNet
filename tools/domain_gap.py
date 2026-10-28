@@ -19,6 +19,7 @@ train-gpu's torch), once the owner gives the word and the count.
     python tools/domain_gap.py shard --out <dir> [--task N --tasks T] [--workers W] [--device cuda]
     python tools/domain_gap.py merge --out <dir> --groups data/domain_gap/groups.json [--wandb auto|off]
     python tools/domain_gap.py progress --out <dir>
+    python tools/domain_gap.py runlog --out <dir>
 
 `run` does the whole study in one process. On the grid it runs as three steps instead (the owner's
 word of 2026-10-27, grid/drr-gap.sbatch): `prepare` makes every stage up to the analysis and each
@@ -66,7 +67,9 @@ with masks under every segmenter named but the ones the segment job makes (MADE_
 them all and a smaller one, said in the plan and the summary, where it has not.
 
 What leaves the grid is summary.txt, five record lines and at most 80 lines of numbers and group
-names that the bench report carries; results.json, the figures and the plan, which names files, stay in --out (umask 077)
+names that the bench report carries, and the run log, lines of times, steps, nodes, cards, counts
+and unit names, at most RUNLOG_REPORT of them in the bench report and RUNLOG_TAIL in PROGRESS.txt,
+which the status word shows; results.json, the figures and the plan, which names files, stay in --out (umask 077)
 and the figures and the map coordinates go to W&B where the grid's key is found. tools/ never goes
 on sys.path, since tools/profile.py would shadow the standard library's profile, which torch
 imports.
@@ -82,6 +85,7 @@ import math
 import multiprocessing
 import os
 import re
+import signal
 import sqlite3
 import sys
 import threading
@@ -1133,12 +1137,49 @@ def contrast(frame, z64, a, b, seed, *, permute=False, prdc=False):
         result["auc_logistic"]["p"] = s.c2st_permutation_p(
             frame.x[rows], labels, persons, observed_auc=result["auc_logistic"]["auc"],
             perms=PERMUTATIONS_C2ST, seed=seed, paired=paired)
-    result["mmd"] = s.mmd_test(z64[a], z64[b], persons[:len(a)], persons[len(a):],
-                               perms=PERMUTATIONS_MMD, seed=seed, paired=paired)
+    result["mmd"] = mmd_where_it_fits(s, z64[a], z64[b], persons[:len(a)], persons[len(a):],
+                                      perms=PERMUTATIONS_MMD, seed=seed, paired=paired)
     result.update(distances(frame, z64, (a, b), seed))
     if prdc:
         result["prdc"] = s.prdc(z64[b], z64[a])
     return result
+
+
+# What this process's MMD tests ran on since the unit began: a shard's workers share one card of
+# whatever size the gpu class gave the task (DEVIATIONS.md item 9).
+_MMD_RUNS = {"tests": 0, "cpu": 0}
+
+
+def mmd_where_it_fits(s, *args, **kwargs):
+    """The MMD test on the card, or, where the card has no room left for it, the same test with
+    numpy on the CPU: the permutations are numpy's draws under the same seed either way, so the
+    numbers differ in their last digits alone, and a unit is never failed for the card's size."""
+    _MMD_RUNS["tests"] += 1
+    try:
+        return s.mmd_test(*args, **kwargs)
+    except Exception as error:
+        if not out_of_card_memory(error):
+            raise
+    free_card()
+    _MMD_RUNS["cpu"] += 1
+    return s.mmd_test(*args, **kwargs, backend="numpy")
+
+
+def out_of_card_memory(error):
+    """Whether torch said the card is full: a CUDA out-of-memory error, at an allocation or as the
+    process opened its context on the card."""
+    return isinstance(error, RuntimeError) and "out of memory" in str(error).lower()
+
+
+def free_card():
+    """The memory torch holds cached on the card given back, so the workers that share it are not
+    kept out by a unit already finished."""
+    torch = sys.modules.get("torch")
+    try:
+        if torch is not None and torch.cuda.is_initialized():
+            torch.cuda.empty_cache()
+    except Exception:  # a card that will not answer leaves nothing to give back
+        pass
 
 
 def distances(frame, z64, sides, seed):
@@ -1712,16 +1753,21 @@ def stages_of(out):
 
 
 def note_stage(out, stage, state, detail=""):
-    """One stage's state (running, done, failed or skipped) with when it began and what it is on."""
+    """One stage's state (running, done, failed, stopped by Slurm's TERM or skipped) with when it
+    began and what it is on; a change of state is a line of the run log too, and a new detail of a
+    running stage is not."""
     stages = stages_of(out)
     entry = stages.get(stage, {})
-    if state == "running" and entry.get("state") != "running":
+    before = entry.get("state")
+    if state == "running" and before != "running":
         entry["since"] = time.time()
     if state != "running" and "since" in entry:
         entry["seconds"] = round(time.time() - entry["since"], 1)
     entry.update(state=state, detail=detail)
     stages[stage] = entry
     write_json(analysis_folder(out) / "STAGES.json", stages)
+    if state != before:
+        runlog_note(out, stage_note(stage, entry))
     write_progress(out, force=True)
 
 
@@ -1729,6 +1775,14 @@ def note_seconds(out, stage, seconds):
     stages = stages_of(out)
     stages[stage] = {"state": "done", "seconds": round(seconds, 1), "detail": ""}
     write_json(analysis_folder(out) / "STAGES.json", stages)
+    runlog_note(out, stage_note(stage, stages[stage]))
+
+
+def stage_note(stage, entry):
+    """A stage's change of state as the run log says it, with its seconds once it has them."""
+    state = {"running": "started", "failed": "FAILED", "stopped": "ended by Slurm (TERM)"}.get(entry["state"], entry["state"])
+    took = f" after {entry['seconds']:.0f} s" if entry["state"] != "running" and "seconds" in entry else ""
+    return f"{RUNLOG_WHO[0]}: stage {stage} {state}{took}"
 
 
 def staged(out, stage, step):
@@ -1737,6 +1791,9 @@ def staged(out, stage, step):
     log(f"stage {stage}: started")
     try:
         result = step()
+    except Terminated:
+        note_stage(out, stage, "stopped")
+        raise
     except BaseException:
         note_stage(out, stage, "failed")
         raise
@@ -1762,18 +1819,24 @@ def write_progress(out, force=False):
         log(f"PROGRESS.txt not rewritten: {type(error).__name__}: {error}")
 
 
+PROGRESS_LINES = 60     # PROGRESS.txt's lines at most, the run log's newest always among them
+
+
 def progress_lines(out):
     """Where the study stands: the headline, the stages, each reading's units by kind, each task,
-    the rate with the time left, and the units done by five-minute step for the live view's chart."""
+    the rate with the time left, the units done by five-minute step for the live view's chart, and
+    last the run log's newest lines, which the rest gives way to where there is not room for all."""
     stages, record = stages_of(out), units_record(out)
     state = unit_state(out, record) if record else None
+    events = events_of(record) if record else []
     lines = [headline(stages, record, state)]
     lines += stage_lines(stages)
     if record:
         lines += reading_lines(record, state)
         lines += task_lines(out, state)
-        lines += rate_lines(record, state)
-    return lines[:60]
+        lines += rate_lines(record, state, events)
+    newest = log_lines(out, record, events)
+    return lines[:PROGRESS_LINES - len(newest)] + newest
 
 
 def headline(stages, record, state):
@@ -1853,10 +1916,10 @@ def task_lines(out, state):
     return lines
 
 
-def rate_lines(record, state):
+def rate_lines(record, state, events=None):
     """Units a minute over the last ten minutes, weighted by their cost for the time left, and the
     units done at each five minutes since the first was done."""
-    times = sorted(done_times(record))
+    times = sorted(done_times(record, events))
     if not times:
         return []
     now, first = time.time(), times[0][0]
@@ -1871,10 +1934,11 @@ def rate_lines(record, state):
     return lines
 
 
-def done_times(record):
+def done_times(record, events=None):
     """(time, cost) of every unit the tasks' event logs say is done."""
     units = record["units"]
-    return [(event["at"], unit_cost(units[event["index"]])) for event in events_of(record) if event["event"] == "done"]
+    events = events_of(record) if events is None else events
+    return [(event["at"], unit_cost(units[event["index"]])) for event in events if event["event"] == "done"]
 
 
 def events_of(record):
@@ -1897,6 +1961,291 @@ def events_of(record):
             if 0 <= event["index"] < len(record["units"]) and event.get("stamp", record["stamp"]) == record["stamp"]:
                 found.append(event)
     return found
+
+
+# --- the run log: what each step did, as it did it -------------------------------------------------
+#
+# The owner's ask of 2026-10-28 00:23 UTC: "make sure there is realtime logging in the
+# CLAIMS/REPORT". Each step notes what it does as it does it, one line with its time: prepare and
+# run each stage's start and end, each array task its start with its node and card, every unit it
+# fails (by the kind of error alone), every stale claim it takes over, every pool a dead worker
+# broke, how it ended, Slurm's TERM among the ends, and the merge what it read back and wrote.
+# PROGRESS.txt ends with the newest lines beside every unit the tasks' event logs say is done, so
+# the status word and the live page show the run moving; the merge's runlog writes the whole log
+# to RUNLOG.txt in the run folder and prints it, the middle cut, with the units' quarter marks in
+# place of each unit, for the bench report, whose run log tools/report.py carries into the CLAIM
+# report. One file per writer under analysis/runlog/, since appends to one file from the nodes of
+# an array are not atomic on the lab volume; every line is made safe for the grid's redaction as it
+# is written and again as it is read, and names no file and no person.
+
+RUNLOG = "runlog"
+RUNLOG_FILE_LINES = 400   # one writer's lines at most, the last of them saying the rest went unwritten
+RUNLOG_TAIL = 10          # the newest lines PROGRESS.txt ends with
+RUNLOG_REPORT = 50        # the lines the bench report carries, the middle cut where there are more
+RUNLOG_MARKS = (0.25, 0.5, 0.75, 1.0)  # the shares of the list done that the report marks
+RUNLOG_WHO = ["run"]      # the step this process notes its stages for: run, prepare or merge
+_RUNLOG_WRITTEN = {}
+_RUNLOG_LOCK = threading.Lock()
+
+
+def runlog_folder(out):
+    return Path(out) / ANALYSIS / RUNLOG
+
+
+def runlog_start(out, who):
+    """A new chain's run log, begun by the step that starts the chain (prepare, or run alone): an
+    earlier chain's lines gone, so no later step reads them as this one's; then this step's first."""
+    RUNLOG_WHO[0] = who
+    folder = runlog_folder(out)
+    try:
+        for path in folder.iterdir() if folder.is_dir() else ():
+            path.unlink(missing_ok=True)
+    except OSError as error:  # a record of the run, never a reason to end it; the job's log says what stayed
+        log(f"the earlier run log not cleared: {type(error).__name__}")
+    with _RUNLOG_LOCK:
+        for key in [k for k in _RUNLOG_WRITTEN if Path(k).parent == folder]:
+            del _RUNLOG_WRITTEN[key]
+    runlog_note(out, f"{who}: started as job {job_label()} on {host_name()}")
+
+
+def runlog_note(out, text, writer=None):
+    """One line of the run log as it happens, its time in seconds before it, appended to
+    analysis/runlog/<writer>.txt, the step's own file unless an array task names its own; a line
+    the volume will not take is said in the job's log and stops nothing, since the log is a record
+    of the run and never a reason to end it."""
+    folder = runlog_folder(out)
+    path = folder / f"{writer or RUNLOG_WHO[0]}.txt"
+    with _RUNLOG_LOCK:
+        count = _RUNLOG_WRITTEN.get(str(path), 0)
+        if count >= RUNLOG_FILE_LINES:
+            return
+        _RUNLOG_WRITTEN[str(path)] = count + 1
+        if count == RUNLOG_FILE_LINES - 1:
+            text = f"{text.split(':')[0]}: this step's run log is full, so its later lines are in its job's log alone"
+        try:
+            folder.mkdir(parents=True, exist_ok=True)
+            with open(path, "a", encoding="ascii") as stream:
+                stream.write(f"{time.time():.3f} {rules().safe_line(text)}\n")
+        except (OSError, ValueError) as error:
+            log(f"run log not written: {type(error).__name__}: {error}")
+    write_progress(out)
+
+
+def host_name():
+    import socket
+
+    return socket.gethostname()
+
+
+def runlog_entries(out):
+    """Every line of the run log as (time, text), oldest first, lines of one time in the order
+    their files and lines give them; a line with no time before it, as a job cut while writing
+    could leave, is passed over."""
+    entries = []
+    for path in sorted(runlog_folder(out).glob("*.txt")):
+        try:
+            lines = path.read_text(encoding="ascii", errors="replace").splitlines()
+        except OSError:
+            continue
+        for line in lines:
+            at, _, text = line.partition(" ")
+            try:
+                at = float(at)
+            except ValueError:
+                continue
+            if text and math.isfinite(at):
+                entries.append((at, text))
+    return sorted(entries, key=lambda entry: entry[0])
+
+
+def chain_start(entries):
+    """When this chain began: the time of the newest line a prepare, or a run alone, wrote as it
+    started, or None where the run log holds none, as a run from before the run log has."""
+    starts = [at for at, text in entries if text.startswith(("prepare: started as job", "run: started as job"))]
+    return max(starts) if starts else None
+
+
+def chain_events(events, start):
+    """The events of this chain alone: until a new prepare clears them after its heads, the events
+    folder still holds an earlier chain's, which must not read as this chain's units done; and with
+    no line saying when the chain began, no unit is this chain's."""
+    return [] if start is None else [event for event in events if event["at"] >= start]
+
+
+def kept_units(record, events):
+    """How many of the list's units an earlier chain left done, with this list's stamp, that this
+    chain has no done event for: prepare keeps them and no task runs them again."""
+    ran = {event["index"] for event in events if event["event"] == "done"}
+    folder = Path(record["out"]) / ANALYSIS
+    return sum(1 for index in range(len(record["units"]))
+               if index not in ran and unit_done(folder, index, record["stamp"]))
+
+
+def first_done(record, events):
+    """Each unit's first done event, oldest first: a unit taken over from a task that was only slow
+    is done twice, and counts once."""
+    seen, found = set(), []
+    for event in sorted((e for e in events if e["event"] == "done"), key=lambda e: e["at"]):
+        if event["index"] not in seen:
+            seen.add(event["index"])
+            found.append(event)
+    return found
+
+
+def unit_entries(record, events):
+    """Each unit done, as a run log line: which task, which unit and its seconds."""
+    entries = []
+    for event in first_done(record, events):
+        seconds = event.get("seconds")
+        took = f" in {seconds:.1f} s" if isinstance(seconds, (int, float)) and math.isfinite(seconds) else ""
+        entries.append((event["at"], f"task {event.get('task')}: unit {record['units'][event['index']]['id']} done{took}"))
+    return entries
+
+
+def mark_entries(record, events, kept=0):
+    """The times the list's units reached their first done and each share of RUNLOG_MARKS, as run
+    log lines, for a report that has no room for every unit; kept units an earlier chain left done
+    count from the start, so the marks reach the whole list and each count is the list's own."""
+    total, times = len(record["units"]), [event["at"] for event in first_done(record, events)]
+    counts = sorted({1, *(math.ceil(share * total) for share in RUNLOG_MARKS)})
+    return [(times[count - kept - 1], f"units: {count} of {total} done" + (f" ({count / total:.0%})" if count > 1 else ", the first"))
+            for count in counts if total and kept < count <= kept + len(times)]
+
+
+def log_lines(out, record, events):
+    """The run log's newest RUNLOG_TAIL lines for PROGRESS.txt, oldest first, each unit done among
+    them, with the time of day UTC each happened."""
+    entries = runlog_entries(out)
+    if record:
+        entries += unit_entries(record, chain_events(events, chain_start(entries)))
+    entries.sort(key=lambda entry: entry[0])
+    return [f"log: {time.strftime('%H:%M:%S', time.gmtime(at))} {text}" for at, text in entries[-RUNLOG_TAIL:]]
+
+
+def run_log_lines(out, every_unit):
+    """The whole run log, oldest first, each line with its date and time UTC: every unit done
+    among them, or, for the report, the quarter marks in their place and the tasks' routine starts
+    and finishes folded into one line each."""
+    entries = runlog_entries(out)
+    record = units_record(out)
+    if record:
+        events = chain_events(events_of(record), chain_start(entries))
+        entries += unit_entries(record, events) if every_unit else mark_entries(record, events, kept_units(record, events))
+    if not every_unit:
+        entries = fold_moved(fold_tasks(entries))
+    entries.sort(key=lambda entry: entry[0])
+    return [rules().safe_line(f"{time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(at))} {text}") for at, text in entries]
+
+
+TASK_STARTED = re.compile(r"task \d+: started as job \S+ of \d+ tasks on (?P<host>[^,]+), (?P<gpu>[^,]+), .*")
+TASK_FINISHED = re.compile(r"task \d+: finished, nothing left to claim: (?P<done>\d+) done and (?P<failed>\d+) failed here")
+
+
+def fold_tasks(entries):
+    """The array's routine lines, each task's start and its finish with nothing left to claim, as
+    one line each where there are several, at the first start and the last finish: sixteen tasks
+    would otherwise fill the report's room, which every failure and quarter mark needs."""
+    starts = sorted(((at, m) for at, text in entries if (m := TASK_STARTED.fullmatch(text))), key=lambda found: found[0])
+    ends = sorted(((at, m) for at, text in entries if (m := TASK_FINISHED.fullmatch(text))), key=lambda found: found[0])
+    if len(starts) < 2 and len(ends) < 2:
+        return entries
+    kept = [(at, text) for at, text in entries
+            if not (len(starts) > 1 and TASK_STARTED.fullmatch(text)) and not (len(ends) > 1 and TASK_FINISHED.fullmatch(text))]
+    if len(starts) > 1:
+        cards = {}
+        for _, m in starts:
+            cards[m["gpu"]] = cards.get(m["gpu"], 0) + 1
+        hosts = {m["host"] for _, m in starts}
+        kept.append((starts[0][0], f"tasks: {len(starts)} started from {clock(starts[0][0])} to {clock(starts[-1][0])} on"
+                                   f" {len(hosts)} node{'s' if len(hosts) != 1 else ''}, "
+                                   + ", ".join(f"{gpu} x{n}" for gpu, n in sorted(cards.items()))))
+    if len(ends) > 1:
+        done, failed = sum(int(m["done"]) for _, m in ends), sum(int(m["failed"]) for _, m in ends)
+        kept.append((ends[-1][0], f"tasks: {len(ends)} finished with nothing left to claim from {clock(ends[0][0])} to"
+                                  f" {clock(ends[-1][0])}, {done} units done and {failed} failed among them"))
+    return kept
+
+
+MOVED = re.compile(r"task \d+: unit \S+ ran its MMD on the CPU \([^)]*\), since the card had no room left for it")
+
+
+def fold_moved(entries):
+    """The units whose MMD a full card sent to the CPU, as one line where there are several, at
+    the first: a small card may send hundreds, each a line RUNLOG.txt keeps, and the report keeps
+    their count, so its room holds every failure and quarter mark."""
+    moved = sorted(at for at, text in entries if MOVED.fullmatch(text))
+    if len(moved) < 2:
+        return entries
+    return [(at, text) for at, text in entries if not MOVED.fullmatch(text)] + [
+        (moved[0], f"units: {len(moved)} ran their MMD on the CPU from {clock(moved[0])} to {clock(moved[-1])},"
+                   " since their cards had no room left for it")]
+
+
+def clock(at):
+    return time.strftime("%H:%M:%S", time.gmtime(at))
+
+
+RUNLOG_MARK = re.compile(r"units: \d+ of")
+RUNLOG_TELLING = re.compile(r"units: \d+ of|FAILED|failed \(|took over|died|broke|ended by Slurm|stopped after|refused"
+                            r"|replaced|on the CPU|ended \d")
+
+
+def cut_keeping(lines, most):
+    """At most most lines, kept in turn: every quarter mark, then every line that says something
+    went wrong, then the others, each kind the first and the last of it where its room is short,
+    with a line where the first left out stood saying how many are not shown and where they are."""
+    if len(lines) <= most:
+        return lines
+    room, shown = most - 1, set()
+    for kind in (RUNLOG_MARK, RUNLOG_TELLING, None):
+        found = [i for i, line in enumerate(lines) if i not in shown and (kind is None or kind.search(line))]
+        take = min(room, len(found))
+        shown |= set(found[:take - take // 2]) | set(found[len(found) - take // 2:])
+        room -= take
+    out, marked = [], False
+    for i, line in enumerate(lines):
+        if i in shown:
+            out.append(line)
+        elif not marked:
+            out.append(f"... {len(lines) - len(shown)} lines not shown here; the run folder's RUNLOG.txt holds them")
+            marked = True
+    return out
+
+
+def runlog(args):
+    """The runlog subcommand: the whole run log, every unit done among its lines, written to
+    RUNLOG.txt in the run folder, and printed as the bench report carries it, the units' quarter
+    marks in place of each unit, the tasks' routine lines and the units sent to the CPU folded, and
+    at most RUNLOG_REPORT lines, every quarter mark among them and then every line of something gone
+    wrong that the room holds (cut_keeping)."""
+    out = Path(args.out)
+    try:
+        part = own_part(out / "RUNLOG.txt")
+        part.write_text("".join(f"{line}\n" for line in run_log_lines(out, every_unit=True)), encoding="ascii")
+        os.replace(part, out / "RUNLOG.txt")
+    except (OSError, ValueError) as error:  # the printed log still reaches the report; this line, the job's log alone
+        print(f"drr-gap {time.strftime('%H:%M:%S')} RUNLOG.txt not written: {type(error).__name__}: {error}", file=sys.stderr, flush=True)
+    for line in cut_keeping(run_log_lines(out, every_unit=False), RUNLOG_REPORT):
+        print(line)
+    return 0
+
+
+class Terminated(BaseException):
+    """Slurm's TERM, at its time limit or a cancel, raised where the step stands so its last line
+    in the run log can say so; a BaseException, so no handler of one unit's failure counts it."""
+
+
+_ENDING = [False]   # the step has begun to write how it ended, which no TERM may cut
+
+
+def on_term(signum, frame):
+    """Slurm signals every process of the step and Apptainer's starter passes its own TERM on, so
+    a second one comes a moment after the first: ignored from the first on, so it cannot cut the
+    step's closing line, the task's record or the restore of the handler main makes last; and one
+    that comes once the step is ending raises nothing, since its closing lines are being written."""
+    signal.signal(signal.SIGTERM, signal.SIG_IGN)
+    if not _ENDING[0]:
+        raise Terminated()
 
 
 # --- the analysis in a Slurm array: prepare, shard, merge -----------------------------------------
@@ -1962,12 +2311,18 @@ def prepare(args):
     out.mkdir(parents=True, exist_ok=True)
     folder = analysis_folder(out)
     (folder / "PREPARED.json").unlink(missing_ok=True)
+    runlog_start(out, "prepare")
+    gpu = gpu_name(args.device)
+    runlog_note(out, f"prepare: computes on {gpu}")
     plan, rows = prepared_inputs(args, out)
     record = staged(out, "heads", lambda: write_heads(args, plan, rows))
     clear_array(folder)
-    gpu = gpu_name(args.device)
     write_json(folder / "PREPARED.json", {"job": job_label(), "utc": utc_now(), "gpu": gpu, "units": len(record["units"]),
                                           "stamp": record["stamp"], "run": run_block(args)})
+    kept = sum(1 for index in range(len(record["units"])) if unit_done(folder, index, record["stamp"]))
+    runlog_note(out, f"prepare: {len(record['units'])} units listed over {len(record['keys'])} readings"
+                     f" ({len(record['invalid'])} not read), so the array's tasks claim them"
+                     + (f"; {kept} of them an earlier chain left done, which count as done" if kept else ""))
     write_progress(out, force=True)
     log(f"prepared {len(record['units'])} units over {len(record['keys'])} readings, stamp {record['stamp'][:16]}")
     return 0
@@ -2085,20 +2440,21 @@ def settled(folder, index, stamp):
     return unit_done(folder, index, stamp) or failed_path(folder, index).exists()
 
 
-def try_claim(folder, index, token):
+def try_claim(folder, index, token, note=None):
     """Whether this task now holds unit index: a claim file made new, which only one creator wins,
-    or one whose holder has not beaten for STALE_SECONDS, taken over and read back."""
+    or one whose holder has not beaten for STALE_SECONDS, taken over and read back, a takeover told
+    to note for the run log."""
     path = claim_path(folder, index)
     try:
         handle = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
     except FileExistsError:
-        return take_over(path, token)
+        return take_over(path, token, note)
     with os.fdopen(handle, "w", encoding="ascii") as stream:
         stream.write(token)
     return True
 
 
-def take_over(path, token):
+def take_over(path, token, note=None):
     try:
         if time.time() - path.stat().st_mtime < STALE_SECONDS:
             return False
@@ -2111,6 +2467,8 @@ def take_over(path, token):
         return False
     if taken:
         log(f"took over the stale claim on unit {int(path.name)}")
+        if note:
+            note(f"took over the stale claim on unit {int(path.name)}, whose holder had not beaten for {STALE_SECONDS / 60:.0f} min")
     return taken
 
 
@@ -2133,7 +2491,13 @@ class Task:
         self.token = f"{self.job} task {task} on {self.host} pid {os.getpid()} at {utc_now()}"
         self.counts = {"done": 0, "failed": 0}
         self.held = 0
+        self.running = {}   # claim_loop's units in the pool now, which a TERM's line counts
+        self.replaced = False
         self.events = folder / "events" / f"{task:04d}-{os.getpid()}.jsonl"
+
+    def note(self, text):
+        """One line of the run log in this task's own file, named by the task as its event log is."""
+        runlog_note(self.folder.parent, f"task {self.task}: {text}", writer=task_writer(self.task))
 
     def event(self, what, index, unit_id_, **extra):
         if what in self.counts:
@@ -2175,15 +2539,37 @@ def shard(args):
     gpu, why = gpu_self_test(args.device)
     if gpu is None:
         log(f"shard: the GPU self-test failed ({why}); no unit claimed")
+        runlog_note(out, f"task {args.task}: on {host_name()}, the GPU self-test failed ({why.split(':')[0]}), so it claims no unit",
+                    writer=task_writer(args.task))
         return 4
     task = Task(folder, args.task, args.tasks, gpu, record["stamp"])
     task.beat([])
     log(f"shard: task {args.task} of {args.tasks} on {task.host}, {gpu}, {args.workers} workers,"
         f" {len(record['units'])} units in the list")
-    code = claim_loop(out, record, task, args.workers)
+    task.note(f"started as job {task.job} of {args.tasks} tasks on {task.host}, {gpu},"
+              f" {args.workers} worker{'s' if args.workers != 1 else ''}, {len(record['units'])} units in the list")
+    _ENDING[0] = False
+    try:
+        code = claim_loop(out, record, task, args.workers)
+        _ENDING[0] = True
+    except Terminated:
+        running = f", {len(task.running)} running when it came" if task.running else ""
+        task.note(f"ended by Slurm (TERM: its time, or a cancel) with {task.counts['done']} done and"
+                  f" {task.counts['failed']} failed here{running}")
+        task.beat([], state="terminated")
+        write_progress(out, force=True)
+        return 143
+    if not task.replaced:
+        task.note({0: f"finished, nothing left to claim: {task.counts['done']} done and {task.counts['failed']} failed here",
+                   3: f"stopped after {FAILURE_STREAK} failures in a row, {task.counts['done']} done here"}.get(code, f"ended {code}"))
     task.beat([], state="stopped" if code else "finished")
     write_progress(out, force=True)
     return code
+
+
+def task_writer(task):
+    """The run log file of one array task's process, named as its event log is."""
+    return f"task-{task:04d}-{os.getpid()}"
 
 
 def claim_loop(out, record, task, workers):
@@ -2197,15 +2583,18 @@ def claim_loop(out, record, task, workers):
     folder, stamp, units = Path(out) / ANALYSIS, record["stamp"], record["units"]
     order = sorted(range(len(units)), key=lambda i: (-unit_cost(units[i]), i))
     todo, others, held, streak, size = [i for i in order if not settled(folder, i, stamp)], [], {}, 0, workers
+    task.running = held
     pool = unit_pool(size)
     try:
         while streak < FAILURE_STREAK:
             if list_replaced(out, stamp):
                 log("shard: a new prepare replaced the list of units, so this task stops and claims nothing more")
+                task.note("a new prepare replaced the list of units, so it stops and claims nothing more")
+                task.replaced = True
                 return 0
             try:
                 while streak < FAILURE_STREAK and len(held) < max(1, size):
-                    index = next_unit(folder, todo, others, stamp, task.token)
+                    index = next_unit(folder, todo, others, stamp, task.token, note=task.note)
                     if index is None:
                         break
                     try:
@@ -2298,23 +2687,26 @@ def broken_pool(pool, held, folder, task, units, todo, size, workers):
                       ["its worker died running it alone"], "its worker died running it alone")
         log(f"shard: a worker died running unit {', '.join(units[i]['id'] for i, _ in entries) or 'none'} alone;"
             f" failed, and a pool of {workers} workers goes on")
+        task.note(f"a worker died running unit {', '.join(units[i]['id'] for i, _ in entries) or 'none'} alone, so it"
+                  f" is failed, and a pool of {workers} workers goes on")
         return unit_pool(workers, processes=True), workers, len(entries)
     smaller = max(1, size // 2)
     log(f"shard: a worker died and broke the pool; {len(entries)} units let go and claimed again by {smaller} workers")
+    task.note(f"a worker died and broke the pool of {size}: {len(entries)} units let go and claimed again by {smaller} workers")
     for index, _ in entries:
         release(folder, task, units, index)
         todo.insert(0, index)
     return unit_pool(smaller, processes=True), smaller, 0
 
 
-def next_unit(folder, todo, others, stamp, token):
+def next_unit(folder, todo, others, stamp, token, note=None):
     """The next unit this task claims, or None: a settled one is dropped and one another task holds
     is set aside, to be watched once nothing is left to claim."""
     while todo:
         index = todo.pop(0)
         if settled(folder, index, stamp):
             continue
-        if try_claim(folder, index, token):
+        if try_claim(folder, index, token, note):
             return index
         others.append(index)
     return None
@@ -2352,6 +2744,8 @@ def settle(folder, task, units, index, future, started):
         return False
     task.event("done", index, unit["id"], seconds=round(seconds, 1), backend=backend)
     log(f"unit {unit['id']} done in {seconds:.1f} s ({task.counts['done']} done by this task)")
+    if backend.endswith("numpy") and backend != chosen_backend():
+        task.note(f"unit {unit['id']} ran its MMD on the CPU ({backend}), since the card had no room left for it")
     return True
 
 
@@ -2360,6 +2754,7 @@ def fail_unit(folder, task, unit, index, started, kind, where, message):
     write_json(failed_path(folder, index), {"id": unit["id"], "error": kind, "where": where, "task": task.token})
     task.event("failed", index, unit["id"], seconds=round(time.time() - started, 1), error=kind)
     log(f"unit {unit['id']} FAILED after {time.time() - started:.0f} s: {kind}: {message}")
+    task.note(f"unit {unit['id']} FAILED after {time.time() - started:.0f} s ({kind}; its job's log has the message)")
 
 
 def where_raised(error):
@@ -2419,9 +2814,11 @@ def unit_task(out, index, unit, seed, stamp):
         raise ListChanged(f"unit {index} was claimed from list {stamp[:16]}, which a new prepare replaced")
     head = loaded((str(out), stamp, unit["key"]), lambda: load_head(out, unit["key"]))
     started = time.time()
+    _MMD_RUNS.update(tests=0, cpu=0)
     piece, arrays = run_unit(head, unit, seed)
     seconds = time.time() - started
     backend = mmd_backend()
+    free_card()
     if list_replaced(out, stamp):
         raise ListChanged(f"unit {index} of list {stamp[:16]} ran while a new prepare replaced the list")
     save_unit(Path(out) / ANALYSIS, index, unit, piece, arrays, stamp, seconds, backend)
@@ -2429,7 +2826,17 @@ def unit_task(out, index, unit, seed, stamp):
 
 
 def mmd_backend():
-    """Which backend the MMD's permutations ran on here, as domain_gap_stats chooses it."""
+    """Which backend the unit's MMD permutations ran on here, as domain_gap_stats chooses it, numpy
+    where a full card sent every test to the CPU and both where it sent some."""
+    chosen = chosen_backend()
+    if not _MMD_RUNS["cpu"] or chosen == "numpy":
+        return chosen
+    return "numpy" if _MMD_RUNS["cpu"] == _MMD_RUNS["tests"] else f"{chosen}+numpy"
+
+
+def chosen_backend():
+    """The backend domain_gap_stats chooses here for an MMD test that fits: torch on its device,
+    or numpy where torch or its card is missing."""
     torch, device = stats().torch_device("auto")
     return f"torch-{device.type}" if torch is not None else "numpy"
 
@@ -2487,6 +2894,8 @@ def merge(args):
     folder = out / ANALYSIS
     if not (folder / "PREPARED.json").is_file():
         raise StageError("prepare did not finish: there is no analysis/PREPARED.json")
+    RUNLOG_WHO[0] = "merge"
+    runlog_note(out, f"merge: started as job {job_label()} on {host_name()}")
     record = units_record(out)
     if record is None:
         raise StageError("analysis/units.json cannot be read whole")
@@ -2495,9 +2904,14 @@ def merge(args):
     missing, failed = open_units(folder, record)
     write_progress(out, force=True)
     if missing or failed:
+        runlog_note(out, f"merge: refused, {sum(missing.values())} of {len(record['units'])} units not done"
+                         f" {words_by_kind(missing)} and {sum(failed.values())} failed {words_by_kind(failed)}")
         raise StageError(f"{sum(missing.values())} of {len(record['units'])} units not done {words_by_kind(missing)}"
                          f" and {sum(failed.values())} failed {words_by_kind(failed)}")
     joined = array_record(out, record)
+    tasks, cards = joined["jobs"]["tasks"], ", ".join(f"{n} x{c}" for n, c in sorted(joined["gpus"].items()))
+    runlog_note(out, f"merge: every one of the {len(record['units'])} units read back as done, from {tasks}"
+                     f" task{'s' if tasks != 1 else ''}; the jobs ran on {cards}, prepare's among them")
     note_seconds(out, "analysis", joined["analysis_seconds"])
     plan, rows = read_json(out / "plan.json"), read_json(out / "rows.json")
     results, all_maps = new_results(plan, rows), {}
@@ -2515,6 +2929,7 @@ def merge(args):
         raise StageError("the pre-registration differs from the one prepare read")
     results, all_maps = finish_results(args, results, all_maps, record=joined, run=run)
     write_summary(args, results, all_maps)
+    runlog_note(out, "merge: results.json, the figures and summary.txt written")
     return 0
 
 
@@ -3189,9 +3604,11 @@ def run(args):
     os.umask(0o077)
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
+    runlog_start(out, "run")
     plan, rows = prepared_inputs(args, out)
     results, all_maps = staged(out, "analysis", lambda: stage_analysis(args, plan, rows))
     write_summary(args, results, all_maps)
+    runlog_note(out, "run: results.json, the figures and summary.txt written")
     return 0
 
 
@@ -3272,7 +3689,8 @@ def parse(argv):
     join.add_argument("--out", required=True)
     join.add_argument("--groups", default=str(ROOT / "data" / "domain_gap" / "groups.json"))
     join.add_argument("--wandb", choices=("auto", "off"), default="auto")
-    for name, words in (("summary", "print the summary of a finished run"), ("progress", "write and print PROGRESS.txt")):
+    for name, words in (("summary", "print the summary of a finished run"), ("progress", "write and print PROGRESS.txt"),
+                        ("runlog", "write RUNLOG.txt and print the run log as the bench report carries it")):
         show = sub.add_parser(name, help=words)
         show.add_argument("--out", required=True)
     return parser.parse_args(argv)
@@ -3285,16 +3703,67 @@ def progress(args):
 
 
 COMMANDS = {"run": run, "plan": plan_subjects, "prepare": prepare, "shard": shard, "merge": merge,
-            "summary": summary, "progress": progress}
+            "summary": summary, "progress": progress, "runlog": runlog}
+# The steps whose end the run log says: a failure by the job's report line or its error's kind
+# alone, since an error's message may name a file, and Slurm's TERM where it fell.
+LOGGED = ("run", "prepare", "merge", "shard")
+
+
+def step_note(args, how):
+    """The run log's line for how a step ended, in the step's own file: an array task's under its
+    own number, so the CLAIM report says how every task ended, its failures among them."""
+    if args.command == "shard":
+        runlog_note(args.out, f"task {args.task}: {how}", writer=task_writer(args.task))
+    else:
+        runlog_note(args.out, f"{args.command}: {how}", writer=args.command)
 
 
 def main(argv=None):
     args = parse(argv)
+    # Slurm's TERM raises where the step stands, so its run log says how it ended; a signal is the
+    # main thread's alone, and the handler before is put back once the step's last lines are
+    # written. The job's log ends with the step's reason, which the bench report quotes as its last
+    # line, so it is printed after the run log's line and PROGRESS.txt, whose own failures print.
+    _ENDING[0] = False
+    previous = signal.signal(signal.SIGTERM, on_term) if threading.current_thread() is threading.main_thread() else None
+    ending = None
     try:
         return COMMANDS[args.command](args)
     except StageError as error:
-        print(f"drr-gap FAILED: {error}", flush=True)
+        _ENDING[0] = True
+        ending = f"drr-gap FAILED: {error}"
+        if args.command in LOGGED:
+            step_note(args, "FAILED, as its step's line in the bench report says")
         return 2
+    except Terminated:
+        _ENDING[0] = True
+        ending = "drr-gap: ended by Slurm (TERM)"
+        if args.command in LOGGED:
+            step_note(args, "ended by Slurm (TERM: its time, or a cancel)")
+        return 143
+    except Exception as error:
+        _ENDING[0] = True
+        if args.command in LOGGED:
+            step_note(args, f"FAILED with {type(error).__name__}, as its job's log says")
+        raise
+    finally:
+        _ENDING[0] = True
+        if args.command in LOGGED:
+            last_progress(args.out)
+        if previous is not None:
+            signal.signal(signal.SIGTERM, previous)
+        if ending:
+            print(ending, flush=True)
+
+
+def last_progress(out):
+    """PROGRESS.txt written once more as a step ends, past the limit on how often it is rewritten,
+    so the status word shows the step's last line of the run log, its end among them; a view of the
+    run, so a write the volume refuses is passed over."""
+    try:
+        write_progress(out, force=True)
+    except Exception as error:  # the run log and the bench report still say how the step ended
+        log(f"PROGRESS.txt not written at the end: {type(error).__name__}")
 
 
 if __name__ == "__main__":

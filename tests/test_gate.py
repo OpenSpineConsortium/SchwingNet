@@ -15,6 +15,7 @@ import io
 import json
 import os
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
@@ -2458,14 +2459,16 @@ esac
     def bench_root(self):
         return self.tmp / "go2432" / "bench"
 
-    def test_bench_flexray_drr_gap_refuses_each_missing_input_then_queues_three_gpu_jobs_on_the_h200s(self):
+    def test_bench_flexray_drr_gap_refuses_each_missing_input_then_queues_three_gpu_jobs_on_any_card(self):
         # the DRR domain-gap study (tools/domain_gap.py) is a bench id of its own: refused, naming one
         # input a send, until FleXray's weights, a whole sample index, the TotalSegmentator CTs and the
         # ImageNet file are on the volume; FluXray and both segmenters' masks are optional, each said
         # and never waited for, since a DRR is a projection of the CT alone (the owner's word of
         # 2026-10-27) and the study skips a group whose segmenter's masks are not there; then, by the
-        # owner's word of 2026-10-27 17:51 UTC ("cancel and shard requesting h200"), three GPU jobs on
-        # gmsap: prepare, the shard array afterany it and the merge afterany the array
+        # owner's word of 2026-10-27 17:51 UTC ("cancel and shard requesting h200"), three GPU jobs:
+        # prepare, the shard array of 16 tasks afterany it and the merge afterany the array, on any card
+        # of the gpu class since the owner's words of 2026-10-28 00:23 UTC ("shard it to more gpus like 16",
+        # "drop the requirement for h200 unless its a memory problem")
         refused = self.gate("bench", "flexray_drr_gap")
         self.assertEqual(refused.returncode, 2, refused.stdout)
         self.assertIn("fetch hf_flexray_weights first", refused.stdout)
@@ -2505,16 +2508,17 @@ esac
         jobs = self.recorded()
         ids = [jobs[name] for name in self.DRR_GAP_NAMES]
         self.assertEqual(ids, ["101", "102", "103"])
-        # each the gpu class narrowed to gmsap, never requeued, run by grid/drr-gap.sbatch, the shards
-        # afterany prepare and the merge afterany the array
-        self.assertTrue(prepare.startswith("--class gpu --name bench_flexray_drr_gap --partition gmsap --cpus 16 --mem 64G"
+        # each the gpu class with no partition, so whichever of its partitions frees first, never
+        # requeued, run by grid/drr-gap.sbatch, the shards afterany prepare and the merge afterany the array
+        self.assertTrue(prepare.startswith("--class gpu --name bench_flexray_drr_gap --cpus 16 --mem 64G"
                                            " --time 12:00:00 --no-requeue drr-gap.sbatch | "), prepare)
         self.assertTrue(shards.startswith("--class gpu --name bench_flexray_drr_gap_shard --dependency=afterany:101"
-                                          " --kill-on-invalid-dep=yes --partition gmsap --array 0-3 --cpus 16 --mem 64G"
+                                          " --kill-on-invalid-dep=yes --array 0-15 --cpus 16 --mem 64G"
                                           " --time 12:00:00 --no-requeue drr-gap.sbatch | "), shards)
         self.assertTrue(merge.startswith("--class gpu --name bench_flexray_drr_gap_merge --dependency=afterany:102"
-                                         " --kill-on-invalid-dep=yes --partition gmsap --cpus 4 --mem 64G"
+                                         " --kill-on-invalid-dep=yes --cpus 4 --mem 64G"
                                          " --time 04:00:00 --no-requeue drr-gap.sbatch | "), merge)
+        self.assertNotIn("--partition", " ".join(lines))
         index = run / "samples.sqlite"
         for line, step in zip(lines, ("prepare", "shard", "merge")):
             for value in ("BENCH=flexray_drr_gap", f"DATA_ROOT={self.data}", f"INDEX={index}", f"MODELS={self.models}",
@@ -2523,9 +2527,9 @@ esac
             self.assertNotIn("bench.sbatch", line)
         self.assertIn(" PREPARE_JOB= ", prepare + " ")
         self.assertIn(" PREPARE_JOB=101 ", shards + " ")
-        self.assertIn(" PREPARE_JOB=101 SHARD_TASKS=4 ", merge + " ")
-        self.assertIn("  the study: prepare 101, then the shard array 102 (4 tasks, afterany 101), then the merge 103"
-                      " (afterany 102), each on gmsap's H200 nodes\n", done.stdout)
+        self.assertIn(" PREPARE_JOB=101 SHARD_TASKS=16 ", merge + " ")
+        self.assertIn("  the study: prepare 101, then the shard array 102 (16 tasks, afterany 101), then the merge 103"
+                      " (afterany 102), each on the first card of the gpu class that frees\n", done.stdout)
         # all three under the word's own record, so cancel takes them together
         state = (self.repo / "grid" / "logs" / "GATE_JOBS.txt").read_text(encoding="utf-8").splitlines()
         self.assertEqual([line.split()[:3] for line in state],
@@ -2601,12 +2605,13 @@ esac
 
     def test_bench_flexray_drr_gap_refuses_while_any_of_its_jobs_is_live_and_prints_its_progress(self):
         # the study is still running while any of its three jobs is queued or running, so a send then
-        # prints what it has done so far, its PROGRESS.txt masked and cut to 40 lines, and refuses
+        # prints what it has done so far, its PROGRESS.txt masked and cut to 60 lines (the tool's own
+        # bound, the run log's newest lines last among them), and refuses
         self.drr_gap_inputs()
         self.environments_ready()
         token = "hf_" + "Ef" * 17
         self.drr_gap_progress_file(["prepare: done, 120 units in 6 heads", f"shard 1: claimed 4 units, token {token}"]
-                                   + [f"unit {n:03d} done" for n in range(50)])
+                                   + [f"unit {n:03d} done" for n in range(70)])
         for job, name in zip((501, 502, 503), self.DRR_GAP_NAMES):
             self.state_line(job, "bench:flexray_drr_gap", name)
         for job in (501, 502, 503):
@@ -2617,8 +2622,8 @@ esac
                           " flexray_drr_gap again once its merge ends\n", done.stdout)
             self.assertIn("## bench flexray_drr_gap, progress (", done.stdout)
             self.assertIn("  prepare: done, 120 units in 6 heads\n  shard 1: claimed 4 units, token <withheld>\n", done.stdout)
-            self.assertIn("  unit 037 done\n", done.stdout)
-            self.assertNotIn("unit 038", done.stdout)
+            self.assertIn("  unit 057 done\n", done.stdout)
+            self.assertNotIn("unit 058", done.stdout)
             self.assertNotIn(token, done.stdout)
             self.assertLess(done.stdout.index("## bench flexray_drr_gap, progress"), done.stdout.index("refusing:"))
         self.live(501, 503)
@@ -2646,10 +2651,10 @@ esac
 
     def test_status_shows_each_benchmarks_progress_after_the_space_and_before_the_jobs(self):
         # the study's PROGRESS.txt is its live view from outside the grid: status shows it as a
-        # section of its own, its first 40 lines masked, handed room at the sweeps' rank
+        # section of its own, its first 60 lines masked, handed room at the sweeps' rank
         token = "hf_" + "Gh" * 17
         self.drr_gap_progress_file(["prepare: done, 120 units in 6 heads", f"shard 0: unit 7 failed, token {token}"]
-                                   + [f"unit {n:03d} done" for n in range(60)])
+                                   + [f"unit {n:03d} done" for n in range(70)])
         odd = self.bench_root() / "Not-A-Bench"
         odd.mkdir(parents=True)
         (odd / "PROGRESS.txt").write_text("odd folder\n", encoding="utf-8")
@@ -2659,8 +2664,8 @@ esac
         out = done.stdout
         self.assertIn("## bench flexray_drr_gap, progress (", out)
         self.assertIn("  prepare: done, 120 units in 6 heads\n  shard 0: unit 7 failed, token <withheld>\n", out)
-        self.assertIn("  unit 037 done\n", out)
-        self.assertNotIn("unit 038", out)
+        self.assertIn("  unit 057 done\n", out)
+        self.assertNotIn("unit 058", out)
         self.assertNotIn(token, out)
         self.assertNotIn("odd folder", out)
         self.assertNotIn("bench flexray_carmlspine", out)
@@ -2673,7 +2678,8 @@ esac
         the threads each worker may take and the scratch folder; prepare marks the analysis prepared
         (or fails where $FAKE/fail holds a token) and says a line that names files, a shard says what
         it claimed (or fails where $FAKE/shard_fail holds one), the merge writes the summary (or finds
-        units not done where $FAKE/merge_fail is there) and the summary prints what the merge wrote."""
+        units not done where $FAKE/merge_fail is there) and the summary prints what the merge wrote;
+        grid/venv.sh's python -m venv makes its folder, so venv_for marks the environment READY."""
         (self.fake / "summary").write_text("\n".join(self.DRR_GAP_SUMMARY) + "\n", encoding="utf-8")
         (self.fake / "gpu").write_text("NVIDIA H200, 143771 MiB, 550.54.15\n", encoding="utf-8")
         (self.fake / "nvidia-smi").write_text('#!/bin/bash\n[ ! -f "$FAKE/gpu" ] || cat "$FAKE/gpu"\n', encoding="utf-8")
@@ -2681,8 +2687,10 @@ esac
         (self.repo / "grid" / "box.sh").write_text(
             '#!/bin/bash\nhold=no; [ ! -e "$SCHWINGNET/grid/logs/HOLD" ] || hold=yes\n'
             'echo "$* | hold=$hold omp=${OMP_NUM_THREADS:-} tmp=${TMPDIR:-}" >> "$FAKE/box.log"\n'
+            'case "$*" in *" -m venv "*) mkdir -p "${@: -1}"; exit 0 ;; esac\n'
             'case "$*" in *"domain_gap.py prepare "*) word=prepare ;; *"domain_gap.py shard "*) word=shard ;;\n'
-            '  *"domain_gap.py merge "*) word=merge ;; *"domain_gap.py summary "*) word=summary ;; *) exit 0 ;; esac\n'
+            '  *"domain_gap.py merge "*) word=merge ;; *"domain_gap.py summary "*) word=summary ;;\n'
+            '  *"domain_gap.py runlog "*) word=runlog ;; *) exit 0 ;; esac\n'
             'echo "$word ${SN_GIT_HEAD:-} ${SN_GIT_DIRTY:-} ${SN_PINS:-}" >> "$FAKE/record.log"\n'
             '[ -d "${TMPDIR:-/nowhere}" ] || { echo "no scratch folder"; exit 9; }\n'
             'out=""; while [ $# -gt 0 ]; do [ "$1" = --out ] && out=$2; shift; done\n'
@@ -2692,12 +2700,17 @@ esac
             '    [ ! -f "$FAKE/fail" ] || { echo "drr-gap FAILED: no image decoded, token $(cat "$FAKE/fail")"; exit 2; }\n'
             '    mkdir -p "$out/analysis" && echo \'{"units": 3}\' > "$out/analysis/PREPARED.json" ;;\n'
             '  shard)\n'
+            '    if [ -f "$FAKE/shard_sleep" ]; then\n'
+            '      trap \'echo "the tool saw TERM" >> "$FAKE/term.log"; exit 143\' TERM\n'
+            '      echo started > "$FAKE/shard_started"; sleep 30 & wait $!\n'
+            '    fi\n'
             '    echo "shard: claimed 1 unit of $out/analysis/units.json"\n'
             '    [ ! -f "$FAKE/shard_fail" ] || { echo "drr-gap FAILED: three units in a row failed, token $(cat "$FAKE/shard_fail")"; exit 3; } ;;\n'
             '  merge)\n'
             '    [ ! -f "$FAKE/merge_fail" ] || { echo "drr-gap FAILED: 1 of 3 units not done"; exit 2; }\n'
             '    cp "$FAKE/summary" "$out/summary.txt" ;;\n'
             '  summary) cat "$out/summary.txt" ;;\n'
+            '  runlog) [ ! -f "$FAKE/runlog" ] || cat "$FAKE/runlog" ;;\n'
             'esac\n', encoding="utf-8")
 
     def drr_gap_repo(self, prereg=b"# PREREG\n\nfrozen 2026-10-27, no further edits\n"):
@@ -2829,7 +2842,8 @@ esac
 
     def test_the_drr_gap_prepare_step_refuses_a_missing_input_a_node_with_no_gpu_and_a_failed_tool(self):
         # the masks refuse nothing (the owner's word of 2026-10-27): with neither folder the step says
-        # each is absent and passes both as ever; a node not an H200 is said and run on; a node where
+        # each is absent and passes both as ever; any card is named and run on, an H200 or not (the
+        # owner's word of 2026-10-28 00:23 UTC); a node where
         # nvidia-smi names no GPU, a missing input and a tool that fails each stop the step by name,
         # the tool's last line masked
         self.drr_gap_repo()
@@ -2843,7 +2857,8 @@ esac
         self.assertIn(f"- masks: spineps absent, no {self.data}/spineps; moose absent, no {self.data}/moose (bench flexray_drr_seg"
                       " makes them); a render group whose segmenter's masks are not read, or too few CTs have, is"
                       " skipped with that reason\n", text)
-        self.assertIn("- GPU: Tesla V100-SXM2-32GB, 32510 MiB, 550.54.15\n- NOTE: not an H200", text)
+        self.assertIn("- GPU: Tesla V100-SXM2-32GB, 32510 MiB, 550.54.15\n- FluXray: ", text)
+        self.assertNotIn("NOTE", text)
         prepares = self.study_calls("prepare")
         self.assertTrue(prepares[-1].endswith(f" --spineps {self.data}/spineps --moose {self.data}/moose"), prepares[-1])
         self.assertNotIn("--skip-masks", prepares[-1])
@@ -2921,17 +2936,85 @@ esac
         self.assertEqual(len(self.study_calls("shard")), 2)
         self.assertFalse((self.repo / "grid" / "logs" / "HOLD").exists())
 
+    def test_a_drr_gap_step_passes_slurm_s_warning_on_to_the_tool(self):
+        # job submit asks Slurm for TERM to the batch shell alone two minutes before the time limit
+        # (--signal=B:TERM@120); the shell waits on the tool in the background, so its trap runs at
+        # once and passes the TERM on, and the tool's own handler writes its line before the shell's
+        self.drr_gap_repo()
+        self.drr_gap_inputs()
+        self.assertEqual(self.drr_gap_job("prepare").returncode, 0)
+        (self.fake / "shard_sleep").write_text("x", encoding="utf-8")
+        env = dict(os.environ, PATH=f"{self.fake}:{os.environ['PATH']}", SCHWINGNET=str(self.repo), DATA_ROOT=str(self.data),
+                   LAB_VOLUME=str(self.tmp), FAKE=str(self.fake), MODELS=str(self.models), STEP="shard", SLURM_JOB_ID="602",
+                   SLURM_ARRAY_JOB_ID="600", SLURM_ARRAY_TASK_ID="1", SLURM_ARRAY_TASK_COUNT="4", PREPARE_JOB="501")
+        for name in ("BENCH_ROOT", "INDEX", "SHARD_TASKS", "SLURM_CPUS_PER_TASK", "OMP_NUM_THREADS", "TMPDIR"):
+            env.pop(name, None)
+        started = time.monotonic()
+        job = subprocess.Popen(["bash", str(self.repo / "grid" / "drr-gap.sbatch")], cwd=self.repo / "grid", env=env,
+                               stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        try:
+            for _ in range(200):
+                if (self.fake / "shard_started").exists():
+                    break
+                time.sleep(0.05)
+            self.assertTrue((self.fake / "shard_started").exists(), "the stand-in tool never started")
+            os.kill(job.pid, signal.SIGTERM)
+            output, _ = job.communicate(timeout=20)
+        finally:
+            job.kill()
+        self.assertEqual(job.returncode, 143, output)
+        self.assertLess(time.monotonic() - started, 20)
+        self.assertEqual((self.fake / "term.log").read_text(encoding="utf-8"), "the tool saw TERM\n")
+        line = (self.steps() / "shard-1.md").read_text(encoding="utf-8")
+        self.assertRegex(line, r"^- shard 1: job 600_1 on \S+, GPU NVIDIA H200, exit 143 at \S+ \S+ UTC:"
+                               r" Slurm ended the task \(its time, or a cancel\)\n$")
+
+    def test_a_drr_gap_prepare_clears_the_earlier_chain_s_run_log_before_any_check_can_stop_it(self):
+        # the tool clears the run log only once it runs, so a prepare that stops at a check before it
+        # (here a node with no GPU) must not leave the merge an earlier chain's lines as its own
+        self.drr_gap_repo()
+        self.drr_gap_inputs()
+        self.assertEqual(self.drr_gap_job("prepare").returncode, 0)
+        out = self.bench_root() / "flexray_drr_gap"
+        (out / "analysis" / "runlog").mkdir(parents=True)
+        (out / "analysis" / "runlog" / "prepare.txt").write_text("1.0 prepare: started as job 501 on node1\n", encoding="utf-8")
+        (out / "RUNLOG.txt").write_text("2026-10-27 22:10:00 prepare: started as job 501 on node1\n", encoding="utf-8")
+        (self.fake / "gpu").unlink()
+        self.assertEqual(self.drr_gap_job("prepare", job="801").returncode, 4)
+        self.assertFalse((out / "analysis" / "runlog").exists())
+        self.assertFalse((out / "RUNLOG.txt").exists())
+
+    def test_the_drr_gap_merge_says_why_a_prepare_stopped_at_its_freeze_left_no_run_log(self):
+        # a prepare that found the copy's PREREG.md moved reads nothing, and the merge neither reads
+        # the run log nor builds for it, and says so
+        self.drr_gap_repo(prereg=b"# PREREG\n")
+        self.freeze(b"# PREREG\n", hashed=b"another text\n")
+        self.commit_all("a freeze that does not match")
+        self.drr_gap_inputs()
+        self.assertEqual(self.drr_gap_job("prepare").returncode, 90)
+        done = self.drr_gap_job("merge", job="700", PREPARE_JOB="501", SHARD_TASKS="4")
+        self.assertEqual(done.returncode, 90, done.stdout + done.stderr)
+        report = (self.repo / "grid" / "logs" / "BENCH-flexray_drr_gap.md").read_text(encoding="utf-8")
+        self.assertIn("- run log: not read, since the copy's PREREG.md is not the one frozen\n- exit 90 at ", report)
+        self.assertEqual(self.study_calls("runlog"), [])
+        self.assertEqual([line for line in self.boxed() if " -m venv " in line or " -m pip install " in line], [])
+
     def test_the_drr_gap_merge_writes_the_report_from_every_steps_lines_with_the_summary_last(self):
         # only the merge writes logs/BENCH-flexray_drr_gap.md: prepare's lines first, so the first line
         # names prepare's job and commit as bench_job_of and bench_failed_on_older_code read them, a line
         # per shard task (or one saying the task left none), the merge's own lines, the summary masked
         # and indented, and the exit last; no step holds the checkout, so one that moved is noted and
-        # the results stand; a merge that finds units not done reports its last line and no summary
+        # the results stand; the run log the tool prints follows the summary, masked, indented and cut
+        # to 50 lines, before the exit (the owner's ask of 2026-10-28 00:23 UTC for real-time logging
+        # in the report); a merge that finds units not done reports its last line and no summary
         commit = self.drr_gap_repo()
         self.drr_gap_inputs()
         out = self.bench_root() / "flexray_drr_gap"
         token = "hf_" + "Ij" * 17
         (self.fake / "summary").write_text("\n".join(self.DRR_GAP_SUMMARY) + f"\nW&B token {token}\n", encoding="utf-8")
+        logged = [f"2026-10-28 00:{minute:02d}:00 task {minute % 16}: unit physics/null/g{minute} done" for minute in range(60)]
+        logged[3] = f"2026-10-28 00:03:00 task 3: unit physics/maps/umap FAILED after 4 s (ValueError; token {token})"
+        (self.fake / "runlog").write_text("\n".join(logged) + "\n", encoding="utf-8")
         self.assertEqual(self.drr_gap_job("prepare").returncode, 0)
         for task in (0, 1, 3):
             self.assertEqual(self.drr_gap_shard(task, PREPARE_JOB="501").returncode, 0)
@@ -2964,6 +3047,12 @@ esac
         self.assertEqual(after[6], f"- results: {out}")
         self.assertEqual(after[7:7 + len(self.DRR_GAP_SUMMARY)], [f"  {line}" for line in self.DRR_GAP_SUMMARY])
         self.assertEqual(after[7 + len(self.DRR_GAP_SUMMARY)], "  W&B token <withheld>")
+        log_at = 8 + len(self.DRR_GAP_SUMMARY)
+        self.assertEqual(after[log_at], "- run log, UTC: each step's lines as it wrote them while it ran, with the units' quarter marks")
+        self.assertEqual(after[log_at + 1:-1], [f"  {line}" for line in logged[:50]][:3]
+                         + ["  2026-10-28 00:03:00 task 3: unit physics/maps/umap FAILED after 4 s (ValueError; token <withheld>)"]
+                         + [f"  {line}" for line in logged[4:50]])
+        self.assertTrue(self.study_calls("runlog")[0].endswith(f"{code}/tools/domain_gap.py runlog --out {out}"))
         self.assertNotIn(token, text + done.stdout)
         self.assertTrue(lines[-1].startswith("- exit 0 at "), lines)
         self.assertEqual(report.stat().st_mode & 0o777, 0o644)
@@ -2977,6 +3066,7 @@ esac
         text = report.read_text(encoding="utf-8")
         self.assertIn("- FAILED: domain_gap.py merge ended 2 (drr-gap FAILED: 1 of 3 units not done)\n", text)
         self.assertNotIn("- results:", text)
+        self.assertIn("- run log, UTC: ", text)
         self.assertTrue(text.splitlines()[-1].startswith("- exit 2 at "))
         self.assertEqual(len(self.study_calls("summary")), 1)
         # the gate reads the job and the commit from prepare's line: a failure on older code is queued
@@ -2988,6 +3078,36 @@ esac
         self.assertIn("  the report above ended in failure on older code: queueing the benchmark again at ", done.stdout)
         self.assertTrue((self.repo / "grid" / "logs" / "BENCH-flexray_drr_gap-501.md").is_file())
         self.assertEqual(len(self.submitted()), 3)
+
+    def test_a_kept_drr_gap_report_of_sixteen_tasks_is_printed_whole(self):
+        # the study's report at its largest, a line for each of its 16 shard tasks, a summary of 85
+        # lines and a run log of 50, is printed whole by the next send of the word, its exit line
+        # last, so the owner reads every task's end and the run log's last lines
+        self.drr_gap_repo()
+        self.drr_gap_inputs()
+        words = " ".join(["the render group and its table"] * 4)
+        (self.fake / "summary").write_text("".join(f"line {k} of the summary: {words}\n" for k in range(85)), encoding="utf-8")
+        (self.fake / "runlog").write_text("".join(f"2026-10-28 01:{k:02d}:00 task {k % 16}: unit physics/null/g{k} done, {words}\n"
+                                                  for k in range(60)), encoding="utf-8")
+        self.assertEqual(self.drr_gap_job("prepare").returncode, 0)
+        for task in range(16):
+            self.assertEqual(self.drr_gap_shard(task, PREPARE_JOB="501").returncode, 0)
+        done = self.drr_gap_job("merge", job="700", PREPARE_JOB="501", SHARD_TASKS="16")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        report = (self.repo / "grid" / "logs" / "BENCH-flexray_drr_gap.md").read_text(encoding="utf-8").splitlines()
+        self.assertGreater(len(report), 150)
+        self.assertEqual(len([line for line in report if line.startswith("- shard ")]), 16)
+        self.assertTrue(report[-1].startswith("- exit 0 at "), report[-1])
+        self.environments_ready()
+        done = self.gate("bench", "flexray_drr_gap")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        printed = done.stdout.splitlines()
+        start = printed.index(next(line for line in printed if line.startswith("## BENCH-flexray_drr_gap.md (")))
+        shown = printed[start + 1:start + 1 + len(report)]
+        # masked as every log the gate prints is, so each line is read by how it starts
+        self.assertEqual([line[:8] for line in shown], [line[:8] for line in report])
+        self.assertEqual(shown[-1], report[-1])
+        self.assertEqual(len(self.submitted()), 0)
 
     def test_the_drr_gap_merge_reports_a_failed_prepare_without_running_the_tool(self):
         # where prepare did not end in exit 0, the merge composes the report from what prepare said
@@ -3010,9 +3130,31 @@ esac
         after = text[len(prepare):].splitlines()
         self.assertRegex(after[0], r"^- merge: job 700 on \S+$")
         self.assertEqual(after[1], "- the shards and the merge ran nothing of the study, since prepare did not end in exit 0")
-        self.assertTrue(after[2].startswith("- exit 2 at "))
-        self.assertEqual(len(after), 3, after)
+        # the run log says how far prepare got, read with prepare's environment; here the tool wrote none
+        self.assertEqual(after[2], "- run log: none, since no step of the tool wrote a line of it")
+        self.assertTrue(after[3].startswith("- exit 2 at "))
+        self.assertEqual(len(after), 4, after)
         self.assertEqual(self.study_calls("merge") + self.study_calls("summary") + self.study_calls("shard"), [])
+        self.assertEqual(len(self.study_calls("runlog")), 1)
+        # and the merge built nothing to read it: the one environment is the one prepare made
+        built = [line for line in self.boxed() if " -m venv " in line or " -m pip install " in line]
+        self.assertEqual(len([line for line in built if " -m venv " in line]), 1, built)
+        # where prepare made no environment, the merge builds none and says why there is no run log
+        venvs = list((self.tmp / "go2432" / ".cache" / "bench").glob("venv-*/READY"))
+        self.assertEqual(len(venvs), 1, venvs)
+        venvs[0].unlink()
+        done = self.drr_gap_job("merge", job="700", PREPARE_JOB="501", SHARD_TASKS="4")
+        self.assertEqual(done.returncode, 2, done.stdout + done.stderr)
+        self.assertIn("- run log: not read, since prepare made no environment to read it with\n- exit 2 at ",
+                      report.read_text(encoding="utf-8"))
+        self.assertEqual([line for line in self.boxed() if " -m venv " in line or " -m pip install " in line], built)
+        self.assertEqual(len(self.study_calls("runlog")), 1)
+        self.assertEqual(self.drr_gap_job("prepare").returncode, 2)
+        (self.fake / "runlog").write_text("2026-10-28 00:01:00 prepare: stage features FAILED after 60 s\n", encoding="utf-8")
+        done = self.drr_gap_job("merge", job="700", PREPARE_JOB="501", SHARD_TASKS="4")
+        self.assertEqual(done.returncode, 2, done.stdout + done.stderr)
+        self.assertIn("- run log, UTC: each step's lines as it wrote them while it ran, with the units' quarter marks\n"
+                      "  2026-10-28 00:01:00 prepare: stage features FAILED after 60 s\n- exit 2 at ", report.read_text(encoding="utf-8"))
         # a prepare that Slurm ended before its exit line: exit 1, said
         (self.fake / "fail").unlink()
         self.assertEqual(self.drr_gap_job("prepare").returncode, 0)
@@ -3030,7 +3172,8 @@ esac
         (code / "docs" / "research" / "drr-domain-gap" / "PREREG.md").write_text("edited in the copy\n", encoding="utf-8")
         done = self.drr_gap_job("merge", job="702", PREPARE_JOB="501", SHARD_TASKS="4")
         self.assertEqual(done.returncode, 90, done.stdout + done.stderr)
-        self.assertIn("- STOP: PREREG.md changed since the freeze\n", report.read_text(encoding="utf-8"))
+        self.assertIn("- STOP: PREREG.md changed since the freeze\n- run log: not read, since the merge stopped before it read the run folder\n",
+                      report.read_text(encoding="utf-8"))
         self.assertEqual(self.study_calls("merge"), [])
         # this chain's prepare never started: the step file there is an earlier chain's, so no report
         report.unlink()
