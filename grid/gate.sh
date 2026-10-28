@@ -207,8 +207,11 @@ DRR_GAP_TASKS=16
 # as DRR_GAP_TASKS is, since a gate word carries no option. A send of bench <id> whose standing
 # report names a job listed beside the id, from a commit other than the checkout's, keeps that report
 # under its job's number, as a failure on older code is kept (#312), and queues the benchmark again;
-# the new report names its own job, which no entry lists, so an entry runs its benchmark once and
-# every later send prints the new report and queues nothing. flexray_drr_gap:40828920 is the owner's
+# the new report names its own job, which no entry lists, so an entry queues its benchmark once and
+# every later send prints the new report and queues nothing. A run that writes no report (its merge
+# cut short, or its prepare never started) leaves none standing, and the next send queues the
+# benchmark again, as it does wherever no report stands, so that send waits for the owner's word.
+# flexray_drr_gap:40828920 is the owner's
 # tap of 2026-10-28 16:28 UTC, "Rerun, family as PREREG says", one more run of the DRR domain-gap
 # study's 18 jobs (prepare, 16 shards, the merge) once FluXray's reader was fixed (#441) and the
 # family set (#442), and his word of 22:58 UTC that day, "The FluXray rerun: go, and which project
