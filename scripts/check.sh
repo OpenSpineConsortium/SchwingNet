@@ -118,10 +118,11 @@ python3 tools/experiments_panel.py check
 # (python3 tools/report.py write-recorded), fails here.
 python3 tools/report.py check-recorded
 
-# Every deep learning job on the grid runs on a flow flows/launch.py starts, under a frozen PREREG
-# (the owner's rule of 2026-10-29): flows/registry.txt lists the flows, and flows/stage_registry.py,
-# standard library, fails here on a line whose flow class, job script or PREREG does not hold, a
-# PREREG edited since its PREREG.md.sha256 froze it among them.
+# Every deep learning job on the grid is to run on a flow flows/launch.py starts, under a frozen
+# PREREG (the owner's rule of 2026-10-29); the gate's words not yet moved onto one are listed in
+# flows/README.md, and the gate will refuse a plain GPU job once they are. flows/registry.txt lists
+# the flows, and flows/stage_registry.py, standard library, fails here on a line whose flow class,
+# job script or PREREG does not hold, a PREREG edited since its PREREG.md.sha256 froze it among them.
 python3 flows/stage_registry.py check
 # The same freeze held by git, since a PREREG.md edited with its PREREG.md.sha256 written again passes the
 # line above: no PREREG.md or PREREG.md.sha256 that origin/main holds under docs/research/ may change, and a

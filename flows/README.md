@@ -54,6 +54,24 @@ The owner's rule of 2026-10-29, 02:39 UTC: every deep learning job on the grid r
 block-based pipeline, under a PREREG frozen before the run, with the CLAIM 2024 and REFORMS report
 enforced and a page that shows its progress in the browser; a plain Slurm job is not enough.
 
+As of this pull request only the sweep keeps it. These words of grid/gate.sh still submit a plain
+job that trains or runs a network, each to be moved onto a flow listed in registry.txt, one pull
+request each, under a PREREG of its own:
+
+- `start`, version 1's training and evaluation (grid/v1-driver.sbatch);
+- `experiment <issue>`, one combination of blocks from the experiments panel
+  (grid/experiment-driver.sbatch);
+- `bench <id>`, a public model's benchmark (grid/bench.sbatch), and among its ids
+  `flexray_drr_seg`, the step that makes MOOSE's masks;
+- `bench flexray_drr_gap`, the DRR domain-gap study (grid/drr-gap.sbatch);
+- `anomaly timing`, SPINEPS over the anomaly route's CTs (grid/anomaly.sbatch);
+- `latency`, the latency arms and the recorded sweep (grid/run-latency-sweep.sh);
+- `realism <edit|stats|lora|eval>`, the Flux realism stages (grid/realism.sbatch).
+
+The rule holds already, so until a word is moved it is not sent. Once they all are, the gate
+refuses any GPU job that does not start through flows/launch.py; that refusal is a later pull
+request.
+
 - `registry.txt` is the one list of the flows: per kind its class in flows/<kind>.py, the word the
   launcher's last line ends with, the job script under grid/ that starts the launcher when Slurm
   runs it, and its PREREG.md, a relative path inside the checkout, or `-`, which only the stages
