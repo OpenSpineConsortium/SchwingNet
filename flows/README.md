@@ -213,9 +213,11 @@ again resumes the run at once; launch.json says which signal ended it; and the l
 128 plus the signal, 143 for SIGTERM. The signal is passed on before the launcher says a word of
 it, and a line it cannot write, its reader gone as a pipe's tee goes with its job, is dropped and
 its stream pointed at /dev/null, so no message ever cuts a stop short; a launcher that breaks for
-any other reason while its flow runs kills the flow before its beat goes. A sweep's driver runs the launcher in the foreground of a
-pipeline, so its batch shell holds job submit's early TERM until the pipeline ends, and the
-launcher hears Slurm's TERM at the limit itself.
+any other reason while its flow runs kills the flow before its beat goes. grid/sweep-driver.sbatch
+runs the launcher in the background and waits on it, since a shell holds a trapped signal while a
+command runs in its foreground: its trap passes job submit's early TERM, or a person's INT, on to
+the launcher as TERM, tee ignores both, and the driver waits again, so the launcher stops its flow
+and closes the page inside the two minutes and the driver's report still says it exited 143.
 
 Its first line on stdout is the decision, `{"code", "decision", "flow", "key", "live", "origin",
 "root"}`, with `code` the code's digest and `live` the id of a newest run passed over as live,

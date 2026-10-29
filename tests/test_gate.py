@@ -4928,7 +4928,8 @@ esac
         there, names the state folder as block_sweep's state does with $FAKE/code, else c0dec0de,
         for the code's part, and answers for the launcher as flows/launch.py does, its exit code
         $FAKE/launch_rc, after a commit to the checkout that leaves the code $FAKE/move names where
-        that file is there."""
+        that file is there; while $FAKE/launch_holds is there it runs until a TERM comes, says it
+        came in $FAKE/stopped and ends as the launcher ends then, with 143."""
         (self.repo / "grid" / "box.sh").write_text(r"""#!/bin/bash
 echo "$* hold=$(cat "$SCHWINGNET/grid/logs/HOLD" 2>/dev/null)" >> "$FAKE/box.log"
 case "$*" in
@@ -4944,6 +4945,12 @@ case "$*" in
       cp "$FAKE/move" "$FAKE/code"
     fi
     echo '{"decision": "run", "flow": "sweep", "key": "0123456789abcdef", "origin": null, "root": "/m"}'
+    if [ -f "$FAKE/launch_holds" ]; then
+      sleep 60 & flow=$!
+      trap 'kill "$flow"; echo TERM >> "$FAKE/stopped"; echo "{\"flow\": \"sweep\", \"run\": \"SweepFlow/12\", \"successful\": false, \"verdict\": null}"; exit 143' TERM
+      touch "$FAKE/launch_held"
+      wait "$flow"
+    fi
     echo "a row ran"
     echo '{"flow": "sweep", "run": "SweepFlow/12", "successful": true, "verdict": 0}'
     exit "$(cat "$FAKE/launch_rc" 2>/dev/null || echo 0)" ;;
@@ -5019,6 +5026,38 @@ esac
         self.assertEqual(done.returncode, 1)
         self.assertIn("FAILED: the split check of version 1 failed; no sweep reads it", done.stdout)
         self.assertFalse([line for line in self.boxed() if "flows/launch.py" in line])
+
+    def test_job_submits_early_term_reaches_the_launcher_at_once_and_the_report_still_says_how_it_ended(self):
+        # job submit sends TERM to the batch shell alone two minutes before the limit; a shell
+        # running the launcher in its foreground held it until the launcher ended, so the launcher
+        # heard only Slurm's own TERM at the limit
+        self.git_repo()
+        self.sweep_box()
+        self.plan("synthetic", "synthetic")
+        catalog = self.synthetic_catalog()
+        (self.fake / "launch_holds").write_text("", encoding="utf-8")
+        env = dict(os.environ, SCHWINGNET=str(self.repo), DATA_ROOT=str(self.data), SMOKE=str(self.smoke), FAKE=str(self.fake),
+                   MODELS=str(self.models), PLAN="synthetic", SLURM_JOB_ID="777", FAKE_CATALOG=str(catalog))
+        for name in ("STORE", "WEIGHTS"):
+            env.pop(name, None)
+        driver = subprocess.Popen(["bash", str(self.repo / "grid" / "sweep-driver.sbatch")], cwd=self.repo / "grid", env=env,
+                                  stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        self.addCleanup(driver.kill)
+        for _ in range(300):
+            if (self.fake / "launch_held").exists():
+                break
+            time.sleep(0.1)
+        began = time.monotonic()
+        driver.send_signal(signal.SIGTERM)
+        out, _ = driver.communicate(timeout=60)
+        self.assertLess(time.monotonic() - began, 30, "the TERM reached the launcher before its flow ended on its own")
+        self.assertEqual(driver.returncode, 143, out)
+        self.assertEqual((self.fake / "stopped").read_text(encoding="utf-8"), "TERM\n")
+        self.assertIn("SN_SWEEP_RC=143", out)
+        report = (self.repo / "grid" / "logs" / "sweep-synthetic-STAGE-REPORT.md").read_text(encoding="utf-8")
+        self.assertIn('- Metaflow: {"flow": "sweep", "run": "SweepFlow/12", "successful": false', report)
+        self.assertIn("- launcher exited 143\n", report)
+        self.assertFalse((self.repo / "grid" / "logs" / "HOLD").exists())
 
     def test_a_sweep_whose_checkout_moved_is_used_only_where_the_code_its_rows_run_stayed_the_same(self):
         # The state folder is named by the code the rows run (#252, finding 27), so a merge that
