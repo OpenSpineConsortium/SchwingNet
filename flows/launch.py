@@ -46,7 +46,12 @@ a run that ended well in the meantime is never resumed as one that had not.
 The first line on stdout is the decision, as JSON, flushed before the flow starts, with "live"
 the id of a newest run passed over as live; after the flow's own lines a second JSON line says
 which run it was and how it ended. The exit code is the flow's own where it failed, else the end
-step's verdict (0 all well, 1 otherwise), so a job's afterok means what it meant before. A
+step's verdict (0 all well, 1 otherwise), so a job's afterok means what it meant before. The flow
+runs in a process group of its own, and a SIGTERM or SIGINT the launcher is sent while it runs,
+Slurm's at a time limit or a preemption among them, is passed on to every process of the flow;
+what has not ended STOP_GRACE_SECONDS later is killed, the beat is taken away as at any end, so
+the job Slurm queues again resumes the run at once, the page says which signal ended it, and the
+launcher exits 128 plus the signal's number, 143 for SIGTERM, as a shell reports a killed job. A
 refusal is the line LaunchError: <words> on stderr, before any flow starts, with the exit code 64
 for words the launcher does not take, 69 for what the node lacks and 70 for a rule of
 schwingnet.pipeline the runs broke; anything else that stops it prints its traceback and exits 1.
@@ -80,6 +85,7 @@ import json
 import math
 import os
 import re
+import signal
 import socket
 import subprocess
 import sys
@@ -110,6 +116,15 @@ EX_USAGE = 64
 EX_UNAVAILABLE = 69
 EX_SOFTWARE = 70
 BEAT_SECONDS = 60
+# Slurm stops a job with SIGTERM, at its time limit and on a preemption, and job submit sends one
+# to the batch shell two minutes before the limit (--signal=B:TERM@120), which the bank and catalog
+# scripts exec the launcher as; a person stops a launch with SIGINT. The flow runs in a process
+# group of its own, so the launcher passes either on to every process of it, the Metaflow runtime
+# and each task with what it runs, gives them STOP_GRACE_SECONDS to end, as grid/drr-gap.sbatch gives
+# its tool, and then kills what is left, so no process of the flow outlives the launcher.
+STOP_SIGNALS = (signal.SIGTERM, signal.SIGINT)
+STOP_GRACE_SECONDS = 60
+POLL_SECONDS = 0.5
 # The word of the line every exit of the launcher ends with, each kind's in flows/registry.txt: the
 # one the bank and catalog stages' scripts end with when they run straight, and for the sweep one
 # apart from the SN_SWEEP_RC its driver prints after the launcher's. The gate's status keeps such a
@@ -541,8 +556,11 @@ def ended(flow_class, run_id):
     return True, verdict if isinstance(verdict, int) and not isinstance(verdict, bool) else None
 
 
-def exit_code(flow_code, verdict):
-    """The flow's own code where it failed (a signal as a shell gives it), else the verdict."""
+def exit_code(flow_code, verdict, stopped_by=None):
+    """The signal that stopped the launcher as a shell gives it, else the flow's own code where it
+    failed (a signal as a shell gives it), else the verdict."""
+    if stopped_by:
+        return 128 + stopped_by
     if flow_code < 0:
         return 128 - flow_code
     if flow_code != 0:
@@ -554,10 +572,108 @@ def say(record):
     print(json.dumps(record, sort_keys=True), flush=True)
 
 
+def live_members(group):
+    """The processes of a process group that have not ended, from /proc, as Linux gives them; None
+    where /proc cannot be listed."""
+    try:
+        entries = [entry for entry in os.listdir("/proc") if entry.isdigit()]
+    except OSError:
+        return None
+    members = []
+    for entry in entries:
+        try:
+            fields = Path(f"/proc/{entry}/stat").read_text(encoding="ascii", errors="replace").rsplit(")", 1)[1].split()
+        except (OSError, IndexError):  # a process that ended while it was read
+            continue
+        if len(fields) > 2 and fields[2] == str(group) and fields[0] != "Z":
+            members.append(int(entry))
+    return members
+
+
+class FlowProcess:
+    """The flow's process, in a process group of its own, and the stop signal the launcher was sent
+    while it ran, passed on to the whole group (STOP_SIGNALS above)."""
+
+    def __init__(self):
+        self.process, self.stopped_by, self.deadline = None, None, None
+
+    def stop(self, signum, _frame=None):
+        """A stop signal's handler: passed on to the flow's group, which has until the deadline."""
+        if self.stopped_by is None:
+            self.stopped_by, self.deadline = signum, time.monotonic() + STOP_GRACE_SECONDS
+            print(f"launch: {signal.Signals(signum).name}: passed on to every process of the flow, which has "
+                  f"{STOP_GRACE_SECONDS} s to end", file=sys.stderr, flush=True)
+        self.signal_group(signum)
+
+    def signal_group(self, signum):
+        if self.process is None:
+            return
+        try:
+            os.killpg(self.process.pid, signum)
+        except (ProcessLookupError, PermissionError):  # the group has ended, or holds no process of ours
+            pass
+
+    def group_alive(self):
+        """Whether a process of the flow's group has not yet ended. A zombie has ended and waits
+        only for its parent to read it, which no one may do for a task whose runtime died, so it is
+        not counted where /proc tells it apart; elsewhere the group's answer to signal 0 decides."""
+        members = live_members(self.process.pid)
+        if members is not None:
+            return bool(members)
+        try:
+            os.killpg(self.process.pid, 0)
+        except ProcessLookupError:
+            return False
+        except PermissionError:
+            return True
+        return True
+
+    def run(self, command, cwd, env):
+        """The flow's exit code once it has ended: as before where nothing stopped the launcher,
+        and where a signal did, once every process of its group has ended or been killed at the
+        deadline."""
+        self.process = subprocess.Popen(command, cwd=cwd, env=env, start_new_session=True)
+        if self.stopped_by is not None:  # a signal that came before the flow began
+            self.signal_group(self.stopped_by)
+        code = None
+        while True:
+            if code is None:
+                try:
+                    code = self.process.wait(timeout=POLL_SECONDS)
+                except subprocess.TimeoutExpired:
+                    pass
+            else:
+                time.sleep(POLL_SECONDS)
+            if code is not None and (self.stopped_by is None or not self.group_alive()):
+                return code
+            if self.deadline is not None and time.monotonic() >= self.deadline:
+                print(f"launch: the flow's processes did not end within {STOP_GRACE_SECONDS} s, so they were killed",
+                      file=sys.stderr, flush=True)
+                self.signal_group(signal.SIGKILL)
+                return code if code is not None else self.process.wait()
+
+
 def run_flow(command, root, repo):
-    """The flow, its output passing through, in the datastore root (cards, above)."""
+    """The flow, its output passing through, in the datastore root (cards, above), with a stop
+    signal the launcher is sent while it runs passed on to it (FlowProcess): (the flow's exit code,
+    the signal that stopped the launcher or None)."""
     env = dict(os.environ, SCHWINGNET=str(repo), SCHWINGNET_WORKDIR=os.getcwd())
-    return subprocess.run(command, cwd=root, env=env).returncode
+    flow = FlowProcess()
+    previous = {signum: signal.signal(signum, flow.stop) for signum in STOP_SIGNALS}
+    try:
+        code = flow.run(command, root, env)
+    finally:
+        for signum, handler in previous.items():
+            signal.signal(signum, handler)
+    return code, flow.stopped_by
+
+
+def ended_words(code_out, successful, stopped_by):
+    """How the launch ended, in the words its page shows."""
+    if stopped_by:
+        return (f"the launcher was stopped by {signal.Signals(stopped_by).name}, stopped its flow and exited {code_out}, "
+                f"the flow {'succeeded' if successful else 'did not succeed'}")
+    return f"the launcher exited {code_out}, the flow {'succeeded' if successful else 'did not succeed'}"
 
 
 def launch(argv):
@@ -585,12 +701,13 @@ def launch(argv):
         command = flow_command(name, repo, decision, origin, options, words, run_tags(key, commit, code, prereg), commit,
                                str(run_id_file), date.today().isoformat())
         with Heartbeat(folder, key, run_id_file, page):
-            flow_code = run_flow(command, root, repo)
+            flow_code, stopped_by = run_flow(command, root, repo)
         run_id = run_id_file.read_text(encoding="utf-8").strip() if run_id_file.is_file() else ""
     successful, verdict = ended(flow_class, run_id)
-    code_out = exit_code(flow_code, verdict)
-    page.end({"words": f"the launcher exited {code_out}, the flow {'succeeded' if successful else 'did not succeed'}",
-              "exit": code_out, "successful": successful, "verdict": verdict, "at": stage_progress.utc_now()}, run_id)
+    code_out = exit_code(flow_code, verdict, stopped_by)
+    page.end({"words": ended_words(code_out, successful, stopped_by), "exit": code_out, "successful": successful,
+              "verdict": verdict, "signal": signal.Signals(stopped_by).name if stopped_by else None,
+              "at": stage_progress.utc_now()}, run_id)
     say({"flow": name, "run": f"{flow_class}/{run_id}" if run_id else None, "successful": successful,
          "verdict": verdict})
     return code_out

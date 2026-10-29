@@ -16,6 +16,7 @@ import json
 import os
 import re
 import shutil
+import signal
 import socket
 import struct
 import subprocess
@@ -126,6 +127,21 @@ def finish(process):
     """A launch started by start_launch, waited for: its exit code, its JSON lines and its output."""
     out, _ = process.communicate(timeout=TIMEOUT)
     return process.returncode, [json.loads(line) for line in out.splitlines() if line.startswith("{")], out
+
+
+def flow_processes(repo):
+    """The processes still running a file of the scratch repository, as a flow's runtime, its tasks
+    and what they run do; a zombie, which has ended, is not one."""
+    found = []
+    for entry in (entry for entry in os.listdir("/proc") if entry.isdigit()):
+        try:
+            command = Path(f"/proc/{entry}/cmdline").read_bytes().replace(b"\0", b" ").decode(errors="replace")
+            state = Path(f"/proc/{entry}/stat").read_text().rsplit(")", 1)[1].split()[0]
+        except (OSError, IndexError):
+            continue
+        if str(repo) in command and state != "Z":
+            found.append(command)
+    return found
 
 
 def wait_for(path):
@@ -765,6 +781,37 @@ class SweepFlowTest(unittest.TestCase):
         code, first_said, first_out = finish(first)
         self.assertEqual((code, first_said[-1]["successful"]), (0, True), first_out)
         self.assertEqual(said[0]["live"], first_said[-1]["run"].split("/")[1], out)
+
+    def test_a_sigterm_to_the_launcher_stops_every_process_of_its_flow_and_the_run_resumes_at_once(self):
+        # Slurm's TERM at a time limit or a preemption, or the one job submit sends two minutes before
+        # the limit: the flow's runtime, its task and what the task runs end with the launcher, whose
+        # beat is gone and whose page says how it ended
+        plan = {"plan": "smoke", "first": ["a", "b"], "second": []}
+        held, release = self.tmp / "held", self.tmp / "release"
+        words, env, _ = self.sweep_launch(plan, 1, FLOW_TEST_HOLD="b", FLOW_TEST_HELD=str(held), FLOW_TEST_RELEASE=str(release))
+        first = start_launch(words, self.work, env, self.root)
+        self.addCleanup(first.kill)
+        self.addCleanup(release.touch)
+        wait_for(held)
+        self.assertNotEqual(flow_processes(self.repo), [])
+        first.send_signal(signal.SIGTERM)
+        code, said, out = finish(first)
+        self.assertEqual(code, 143, out)
+        self.assertIn("launch: SIGTERM: passed on to every process of the flow, which has 60 s to end", out)
+        self.assertRegex(out.splitlines()[-1], r"^SWEEP_RC=143 ")
+        self.assertEqual(flow_processes(self.repo), [], out)
+        self.assertEqual(list((self.root / "launches" / "SweepFlow" / said[0]["key"]).glob("*.json")), [])
+        run = said[-1]["run"].split("/")[1]
+        folder = self.root / "progress" / "SweepFlow" / run
+        ended = json.loads((folder / "launch.json").read_text(encoding="utf-8"))
+        self.assertEqual((ended["signal"], ended["exit"], ended["successful"]), ("SIGTERM", 143, False))
+        lines = (folder / "PROGRESS.txt").read_text(encoding="utf-8").splitlines()
+        self.assertRegex(lines[0], rf"^flow SweepFlow/{run} sweep: failed, ")
+        self.assertEqual(lines[2], "ended: the launcher was stopped by SIGTERM, stopped its flow and exited 143, the flow did not succeed")
+        # the job queued again carries the cut run on at once: no beat of the stopped launcher holds it
+        code, said, out, calls = self.sweep(plan, 2)
+        self.assertEqual((code, said[0]["decision"], said[0]["origin"]), (0, "resume", run), out)
+        self.assertEqual(calls, ["row b", "results"])
 
     def test_a_beat_left_by_a_launcher_that_is_gone_keeps_no_run_from_being_resumed(self):
         plan = {"plan": "gone", "first": ["a", "b"], "second": []}

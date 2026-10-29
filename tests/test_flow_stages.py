@@ -16,6 +16,7 @@ import json
 import os
 import re
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
@@ -413,6 +414,93 @@ class LauncherBeatTest(unittest.TestCase):
         unnamed = self.launch.Page(self.tmp / "other", {"flow": "SweepFlow", "kind": "sweep"})
         unnamed.end({"words": "the launcher exited 137, the flow did not succeed"})
         self.assertFalse((self.tmp / "other").exists())
+
+
+# A flow that sleeps as a row trains, with a child that sleeps too; where STUB_IGNORES_TERM is set
+# both ignore SIGTERM, as a process stuck in a call might. It writes both process ids once both run.
+SLEEPING_FLOW = """import os, signal, subprocess, sys, time
+from pathlib import Path
+if os.environ.get("STUB_IGNORES_TERM"):
+    signal.signal(signal.SIGTERM, signal.SIG_IGN)
+child = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(600)"])
+Path(os.environ["STUB_PIDS"]).write_text(f"{os.getpid()} {child.pid}\\n", encoding="utf-8")
+time.sleep(600)
+"""
+# The launcher's run_flow in a process of its own, which the test sends the signal to, with a grace
+# of one second.
+RUN_FLOW = """import importlib.util, json, sys
+spec = importlib.util.spec_from_file_location("launch_signal_under_test", sys.argv[1])
+launch = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(launch)
+launch.STOP_GRACE_SECONDS = 1
+code, stopped_by = launch.run_flow([sys.executable, sys.argv[2]], sys.argv[3], sys.argv[3])
+print(json.dumps({"code": code, "stopped_by": stopped_by}))
+"""
+
+
+def alive(pid):
+    """Whether a process is there and not a zombie, which a container whose first process reaps
+    nothing keeps."""
+    try:
+        state = Path(f"/proc/{pid}/stat").read_text().rsplit(")", 1)[1].split()[0]
+    except (OSError, IndexError):
+        return False
+    return state != "Z"
+
+
+@unittest.skipIf(NO_CONTRACTS, "needs the train environment (icontract missing)")
+class LauncherSignalTest(unittest.TestCase):
+    """A SIGTERM or SIGINT the launcher is sent while its flow runs reaches every process of the flow,
+    and what does not end within the grace is killed, so nothing of the flow outlives its launcher."""
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
+        (self.tmp / "flow.py").write_text(SLEEPING_FLOW, encoding="utf-8")
+        (self.tmp / "run_flow.py").write_text(RUN_FLOW, encoding="utf-8")
+
+    def stopped(self, signum, **env):
+        pids_file = self.tmp / "pids"
+        process = subprocess.Popen([sys.executable, str(self.tmp / "run_flow.py"), str(LAUNCH), str(self.tmp / "flow.py"), str(self.tmp)],
+                                   env=dict(os.environ, STUB_PIDS=str(pids_file), **env), stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                   text=True)
+        self.addCleanup(process.kill)
+        for _ in range(300):
+            if pids_file.is_file() and pids_file.read_text(encoding="utf-8").endswith("\n"):
+                break
+            time.sleep(0.1)
+        pids = [int(word) for word in pids_file.read_text(encoding="utf-8").split()]
+        self.addCleanup(lambda: [os.kill(pid, signal.SIGKILL) for pid in pids if alive(pid)])
+        process.send_signal(signum)
+        out, err = process.communicate(timeout=60)
+        self.assertEqual(process.returncode, 0, err)
+        for _ in range(50):
+            if not any(alive(pid) for pid in pids):
+                break
+            time.sleep(0.1)
+        self.assertEqual([pid for pid in pids if alive(pid)], [], "no process of the flow outlives the launcher")
+        return json.loads(out.splitlines()[-1]), err
+
+    def test_a_sigterm_reaches_every_process_of_the_flow(self):
+        said, err = self.stopped(signal.SIGTERM)
+        self.assertEqual(said, {"code": -signal.SIGTERM, "stopped_by": signal.SIGTERM})
+        self.assertIn("launch: SIGTERM: passed on to every process of the flow, which has 1 s to end", err)
+        self.assertNotIn("so they were killed", err)
+        self.assertEqual(self.launch_exit(said), 143)
+
+    def test_a_sigint_is_passed_on_as_well(self):
+        said, err = self.stopped(signal.SIGINT)
+        self.assertEqual(said["stopped_by"], signal.SIGINT)
+        self.assertIn("launch: SIGINT: passed on", err)
+        self.assertEqual(self.launch_exit(said), 130)
+
+    def test_a_flow_that_does_not_end_within_the_grace_is_killed(self):
+        said, err = self.stopped(signal.SIGTERM, STUB_IGNORES_TERM="yes")
+        self.assertEqual(said, {"code": -signal.SIGKILL, "stopped_by": signal.SIGTERM})
+        self.assertIn("launch: the flow's processes did not end within 1 s, so they were killed", err)
+
+    def launch_exit(self, said):
+        return load(LAUNCH, "launch_exit_under_test").exit_code(said["code"], None, said["stopped_by"])
 
 
 @unittest.skipIf(NO_METAFLOW, "needs the train environment (metaflow missing)")

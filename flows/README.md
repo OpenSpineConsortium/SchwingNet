@@ -179,11 +179,23 @@ launcher killed with its job stops counting once it is 300 s old (LIVE_SECONDS),
 it names this very Slurm job, which Slurm queued again, and at once where it names a process on
 this host that is gone.
 
+The flow runs in a process group of its own, and a SIGTERM or SIGINT the launcher is sent while
+it runs is passed on to every process of the flow: Slurm's TERM at a time limit or a preemption,
+which reaches every process of the job, and the one job submit sends the batch shell two minutes
+before the limit (`--signal=B:TERM@120`), which reaches the launcher where the stage's script
+execs it, as bank and catalog do. Without that the TERM killed the launcher and left the flow's
+runtime and tasks running, its beat stale and its page open. What has not ended 60 s later
+(STOP_GRACE_SECONDS) is killed; the beat is taken away as at any end, so the job Slurm queues
+again resumes the run at once; launch.json says which signal ended it; and the launcher exits
+128 plus the signal, 143 for SIGTERM. A sweep's driver runs the launcher in the foreground of a
+pipeline, so its batch shell holds job submit's early TERM until the pipeline ends, and the
+launcher hears Slurm's TERM at the limit itself.
+
 Its first line on stdout is the decision, `{"code", "decision", "flow", "key", "live", "origin",
 "root"}`, with `code` the code's digest and `live` the id of a newest run passed over as live,
 else null, and the flow's own output passes through after it, followed by `{"flow", "run":
 "Class/ID", "successful", "verdict"}`. It exits with the flow's own code where that is not 0 (128
-plus the signal where the flow was killed), else with the verdict, so a job's afterok means what
+plus the signal where the flow was killed, or where the launcher was stopped, above), else with the verdict, so a job's afterok means what
 it meant before Metaflow. A refusal comes before any flow starts, as the line `LaunchError:
 <words>` on stderr: exit 69 where Metaflow cannot be imported, the datastore's parent folder is
 missing or the commit or the code cannot be named; exit 64 for a flow it does not know,
