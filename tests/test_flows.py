@@ -1390,6 +1390,44 @@ if part == "merge" and code == 0:
 print(f"- {part}: exit {code}", flush=True)
 sys.exit(code)
 """
+# tools/report.py's study mode as the stand-in gives it: a recorded run of the study is a folder with
+# BENCH.md and summary.txt and no RUN.json, read only under --study, its report rendered from those
+# two files, so the merge's run is tested on the study's own terms whatever the training stand-in
+# above asks of a run folder.
+STUB_STUDY_REPORT = '''"""A stand-in for tools/report.py's study mode in DrrGapFlowTest."""
+import hashlib
+import json
+import os
+import sys
+from pathlib import Path
+
+action, folder = sys.argv[1], Path(sys.argv[sys.argv.index("--run") + 1])
+study = sys.argv[sys.argv.index("--study") + 1] if "--study" in sys.argv else None
+with open(os.environ["FLOW_TEST_CALLS"] + ".reports", "a", encoding="utf-8") as calls:
+    calls.write(f"{action} {folder.name} {study}\\n")
+if study != "drr-domain-gap":
+    print(f"report: {folder}: no RUN.json, so this is not a run folder", file=sys.stderr)
+    sys.exit(1)
+for name in ("BENCH.md", "summary.txt"):
+    if not (folder / name).is_file():
+        print(f"report: {folder}: no {name}, so this is not a recorded {study} run", file=sys.stderr)
+        sys.exit(1)
+digest = hashlib.sha256((folder / "BENCH.md").read_bytes() + (folder / "summary.txt").read_bytes()).hexdigest()
+tally = {"met": 18, "declared": 4, "not applicable": 5, "missing": 2}
+rendered = {"REPORT.md": f"# The report of the study run whose record is {digest}\\n"}
+for name, checklist in (("claim.json", "CLAIM 2024"), ("reforms.json", "REFORMS")):
+    rendered[name] = json.dumps({"study": study, "checklist": checklist, "record_sha256": digest, "tally": tally}) + "\\n"
+if action == "write":
+    for name, text in rendered.items():
+        (folder / name).write_text(text, encoding="utf-8")
+    sys.exit(0)
+held = {name: (folder / name).read_text(encoding="utf-8") if (folder / name).is_file() else "" for name in rendered}
+stale = [name for name, text in rendered.items() if held[name] != text]
+if stale or folder.name in os.environ.get("FLOW_TEST_STALE", "").split():
+    print(f"{folder}: {', '.join(stale) or 'REPORT.md'} not what the record gives", file=sys.stderr)
+    sys.exit(1)
+print(f"{folder}: report current")
+'''
 # The job scripts as the flows' steps run them: the body alone, the stand-in above. Their drivers,
 # which start the launcher, are tests/test_gate.py's to test, and the registry's check reads the
 # launcher's line here.
@@ -1417,7 +1455,7 @@ class StudyRepository:
         for name in ("drr_gap.py", "drr_seg.py", "stage.py", "stage_progress.py", "stage_registry.py", "registry.txt"):
             self.write(f"flows/{name}", (ROOT / "flows" / name).read_text(encoding="utf-8"))
         self.write("tools/run_code.py", (ROOT / "tools" / "run_code.py").read_text(encoding="utf-8"))
-        self.write("tools/report.py", STUB_REPORT)
+        self.write("tools/report.py", STUB_STUDY_REPORT)
         self.write("tools/study_body_stub.py", STUB_STUDY_BODY)
         for kind, script in (("drr_gap", "drr-gap.sbatch"), ("drr_seg", "drr-seg.sbatch")):
             self.write(f"grid/{script}", STUB_STUDY_SCRIPT.format(kind=kind))
@@ -1520,9 +1558,9 @@ class DrrGapFlowTest(unittest.TestCase):
         self.assertEqual((said[-1]["successful"], said[-1]["verdict"]), (True, 0), out)
         self.assertEqual(calls, [f"merge task=- tasks=2 prepare=4242 job=4246 array=-_- step=1 checkout={self.study.repo}"])
         record = self.out / "runs" / "4242"
-        reports = (self.tmp / "calls.reports").read_text(encoding="utf-8").split()
-        self.assertEqual(reports.count("4242"), 2, reports)
-        self.assertEqual(sorted(word for word in reports if word != "4242"), ["check", "write"])
+        # the record is written and checked as a recorded run of the study, under --study
+        reports = (self.tmp / "calls.reports").read_text(encoding="utf-8").splitlines()
+        self.assertEqual(sorted(reports), ["check 4242 drr-domain-gap", "write 4242 drr-domain-gap"])
         self.assertTrue((record / "claim.json").is_file())
         note = json.loads((record / "METAFLOW.json").read_text(encoding="utf-8"))
         self.assertEqual((note["flow"], note["run"], note["root"]), ("DrrGapFlow", said[-1]["run"], str(self.root)))
