@@ -294,7 +294,7 @@ const CLASS_NAMES = {
   labelling_error: "Labelling error in the release",
   open: "Open: needs the CT",
   look: "Look: L5 fragment, labels out of order, or ribs one level off",
-  not_whole: "No C2 in the field (silver 3)",
+  not_whole: "No C2 drawn (silver 3 unless the field holds C2's foot)",
   repaired: "Repaired mask (gold 4)",
   t13: "T13",
   l6: "L6",
@@ -723,7 +723,7 @@ builders.overview = function (root) {
     el("div", { class: "card tile" }, el("div", { class: "k" }, "Persons, at most"), el("div", { class: "v" }, fmt(personsHigh + (ts.persons_low || 0))),
       el("div", { class: "s" }, fmt(personsHigh + (ts.persons_high || 0)) + " if TotalSegmentator's count is " + fmt(ts.persons_high) + "; at least " + fmt(ep.persons_low) + " autoPET persons")),
     el("div", { class: "card tile" }, el("div", { class: "k" }, "Variant spines in ENHANCE.PET, by the masks"), el("div", { class: "v" }, fmt(variants)),
-      el("div", { class: "s" }, "of " + fmt(ep.gold3) + " whole studies: " + fmt(byStatus(VARIANT_CLASSES, "confirmed_by_masks")) + " confirmed by masks, " + fmt(byStatus(VARIANT_CLASSES, "candidate")) + " candidates, " + (readerConfirmed ? fmt(readerConfirmed) : "none") + " reader confirmed; plus " + n("labelling_error") + " labelling errors, " + n("open") + " open and " + n("look") + " to look at")),
+      el("div", { class: "s" }, "of " + fmt(ep.gold3) + " gold 3 studies: " + fmt(byStatus(VARIANT_CLASSES, "confirmed_by_masks")) + " confirmed by masks, " + fmt(byStatus(VARIANT_CLASSES, "candidate")) + " candidates, " + (readerConfirmed ? fmt(readerConfirmed) : "none") + " reader confirmed; plus " + n("labelling_error") + " labelling errors, " + n("open") + " open and " + n("look") + " to look at")),
     el("div", { class: "card tile" }, el("div", { class: "k" }, "Reader verdicts"), readValue, readTile)
   );
 

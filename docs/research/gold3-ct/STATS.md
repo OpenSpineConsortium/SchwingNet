@@ -6,22 +6,22 @@ Written by `python3 tools/gold3_ct.py stats` from the committed files under data
 
 | Member | Rows | Gold 3 | Gold 4 | Silver 3 | Gold 3 by the records | Persons | Persons basis |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| enhance_pet | 1,597 | 1,557 | 3 | 37 | 1,557 | 865 to 1,478 | autoPET's range, and at most one person a whole study at the sites with no person id |
-| verse | 374 | 18 | 0 | 356 | 18 | 18 | one person a key |
-| totalsegmentator | 1,777 | 151 | 0 | 1,626 | 151 | 151 | one person a key |
+| enhance_pet | 1,597 | 1,558 | 3 | 36 | 1,558 | 865 to 1,479 | autoPET's range, and at most one person a whole study at the sites with no person id |
+| verse | 374 | 21 | 0 | 353 | 21 | 21 | one person a key |
+| totalsegmentator | 1,777 | 154 | 0 | 1,623 | 154 | 154 | one person a key |
 
 ## ENHANCE.PET by site
 
-| Site | Studies | Whole, gold 3 | Repaired, gold 4 | Not whole, silver 3 | Persons |
+| Site | Studies | Gold 3 | Repaired, gold 4 | Silver 3 | Persons |
 | --- | --- | --- | --- | --- | --- |
 | Careggi | 199 | 199 | 0 | 0 | at most 199 |
-| Leipzig | 384 | 379 | 3 | 2 | at most 379 |
+| Leipzig | 384 | 380 | 3 | 1 | at most 380 |
 | autoPET | 1,014 | 979 | 0 | 35 | 865 to 900 |
-| all | 1,597 | 1,557 | 3 | 37 | 865 to 1,478 |
+| all | 1,597 | 1,558 | 3 | 36 | 865 to 1,479 |
 
 ## ENHANCE.PET classes
 
-One class per study. The share is of the whole studies (gold 3) of the column; a repaired or not-whole study is counted, with no share, since it is not among them.
+One class per study. The share is of the whole studies of the column, gold 3 with C2 to the sacrum drawn by their masks; a repaired or not-whole study is counted, with no share, since it is not among them, as is 1379, gold 3 by the field test while a segmenter adds its C2.
 
 | Class | All | Careggi | Leipzig | autoPET |
 | --- | --- | --- | --- | --- |
@@ -100,21 +100,20 @@ L4 to the sacrum, shortest 3-D distance, over the 1,557 whole studies that carry
 
 ## VerSe and TotalSegmentator by the field test
 
-Rule version 2: a CT is admitted when its field holds C2 and the top of the sacrum, whatever its masks hold; docs/research/gold3-ct/ADMISSION.md gives every verdict's numbers and README.md the rule. A study that draws no vertebra above the sacrum is no spine study and has no row.
+Rule version 3: a CT is admitted when its field holds the foot of C2 and the top of the sacrum, whatever its masks hold; docs/research/gold3-ct/ADMISSION.md gives every verdict's numbers and README.md the rule. A study that draws no vertebra above the sacrum is no spine study and has no row.
 
 | Member | Tier | Studies | Persons |
 | --- | --- | --- | --- |
-| totalsegmentator | gold 3, whole by the release's masks | 145 | 145 |
-| totalsegmentator | gold 3, a segmenter adds levels | 6 | 6 |
-| totalsegmentator | silver 3, part of the column | 1,625 | 1,623 |
-| totalsegmentator | silver 3 until a person's look (a border case) | 1 | 1 |
-| verse | gold 3, a segmenter adds levels | 18 | 18 |
+| totalsegmentator | gold 3, whole by the release's masks | 147 | 147 |
+| totalsegmentator | gold 3, a segmenter adds levels | 7 | 7 |
+| totalsegmentator | silver 3, part of the column | 1,623 | 1,621 |
+| verse | gold 3, a segmenter adds levels | 21 | 21 |
 | verse | silver 3, part of the column | 347 | 329 |
-| verse | silver 3 until a person's look (a border case) | 9 | 9 |
+| verse | silver 3 until a person's look (a border case) | 6 | 6 |
 
 ## VerSe's classes
 
-The 17 series the committed records read keep the readers' reads, and a series whose person data/splits/anomaly-holdout.json reads, in its holdout or its folds, takes that read; every other series is named by its release's masks, a candidate where they draw a T13 or an L6. Shares are of the gold 3 series: t13 3 (16.7 %, 5.8 to 39.2); l6 3 (16.7 %, 5.8 to 39.2); four_lumbar 1 (5.6 %, 1.0 to 25.8); normal 3 (16.7 %, 5.8 to 39.2); unread 8 (44.4 %, 24.6 to 66.3). The series with a class or an anomaly route role:
+The 17 series the committed records read keep the readers' reads, and a series whose person data/splits/anomaly-holdout.json reads, in its holdout or its folds, takes that read; every other series is named by its release's masks, a candidate where they draw a T13 or an L6. Shares are of the gold 3 series: t13 4 (19.0 %, 7.7 to 40.0); l6 3 (14.3 %, 5.0 to 34.6); four_lumbar 1 (4.8 %, 0.8 to 22.7); normal 3 (14.3 %, 5.0 to 34.6); unread 10 (47.6 %, 28.3 to 67.6). The series with a class or an anomaly route role:
 
 | Series | Tier | Class | Status | Anomaly route role | Castellvi |
 | --- | --- | --- | --- | --- | --- |
@@ -186,7 +185,7 @@ The 17 series the committed records read keep the readers' reads, and a series w
 | verse585 | gold3 | l6 | candidate | fold3 |  |
 | verse586 | silver3 | l6 | candidate | fold1 |  |
 | verse587 | silver3 | l6 | candidate | fold1 |  |
-| verse588 | silver3 | t13 | candidate | none |  |
+| verse588 | gold3 | t13 | candidate | none |  |
 | verse590 | silver3 | l6 | candidate | fold2 |  |
 | verse592 | silver3 | l6 | candidate | fold2 |  |
 | verse593 | silver3 | l6 | candidate | fold1 |  |
@@ -250,13 +249,13 @@ Persons the SPINEPS to FleXray route holds out or deals into folds (data/splits/
 
 ## Inputs
 
-- data/gold3-ct/admission.json: 68e71e8bd40fc6e5e25969515a5df6a4628625f9d6a1ec6c3498768e2175e882
+- data/gold3-ct/admission.json: 7ce2b7fdf6fc885a6eed4ecb03b7867ca1c7ecffb0b70299177a893c26323daf
 - data/gold3-ct/enhance-pet/FACTS.json: 43ef43abe1dbaecdfa6c778815446668a7cc6f9da5ffcdcacb30e0fc90798ae5
 - data/gold3-ct/enhance-pet/bucket.json: 42678637bf4c9243310339b93d0a854ef85916f76953577c35a4656388f5799a
 - data/gold3-ct/enhance-pet/facts-b.jsonl: 12eb15d27f64b58cc2aee20cfe415fc6c88eebaad6936e4fb01d5760a976f7b4
 - data/gold3-ct/enhance-pet/facts.jsonl: 95cc36bf5e4c710bb0000e8a1eb9290dae7ca730c88a347ca9792110f96cd847
 - data/gold3-ct/enhance-pet/record.json: 143d447a7dc5c1aab4c33abb0e68999b08e268acf1fa7067539f097545c946d3
-- data/gold3-ct/members.json: d9afe53a83bb000a346bb3115c8a8b1d46df4b704ffd1a4908231158a4f9243c
+- data/gold3-ct/members.json: da15c41b62312cf67e8257cc9ccee1dfa280f7939750e161a1ef7238aab1601d
 - data/gold3-ct/totalsegmentator.json: cc2bb3e7404e04ee73862f1d9e03a92b5dd9b2f685a343d499ef934be6799b7b
 - data/gold3-ct/totalsegmentator/facts.jsonl: a0cb5b927c7b50845912198a003572315b8cccf085eeb6a1121a2eb7c8803356
 - data/gold3-ct/verse.json: 88b4d0f268697532d1cdc53ccf677f012f8e737e4b02a9652f66606a29a7fdea
