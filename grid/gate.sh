@@ -189,6 +189,9 @@ SMOKE=${SMOKE:-/rs/rs_grp_oschome/go2432/smoke}
 MODELS=${MODELS:-/rs/rs_grp_oschome/go2432/models}
 # Each benchmark's results, <name>/ (grid/bench.sbatch, grid/drr-gap.sbatch), where status reads a PROGRESS.txt.
 BENCH_ROOT=${BENCH_ROOT:-/rs/rs_grp_oschome/go2432/bench}
+# The Metaflow datastore flows/launch.py starts every flow in, the one the launcher defaults to, where
+# each run keeps its progress page under progress/<Flow>/<run>/ (flows/stage_progress.py).
+FLOW_ROOT=${SCHWINGNET_METAFLOW:-/rs/rs_grp_oschome/go2432/metaflow}
 WEIGHTS=$MODELS/resnet18-f37072fd.pth
 SWEEP_BANK=${SWEEP_BANK:-$DATA_ROOT/realxray/carmlspine_sweep}
 # The anomaly route's stages write under ANOMALY_ROOT (grid/anomaly.sbatch reads the same default from
@@ -679,11 +682,13 @@ word_status() {
 status_sections() {  # every section of status whole, in the order the page shows them
   local ids run lines job name state elapsed code node probe pending
   # The space first and the sweeps' progress, the one live view of a sweep, after it, then each
-  # benchmark's, the DRR domain-gap study's while its shards run; then the sample manifest, which
+  # benchmark's, the DRR domain-gap study's while its shards run, and each launched flow's page in
+  # short lines; then the sample manifest, which
   # once came after the jobs, where the page's end cut it.
   word_space
   sweep_progress | head -n "$SWEEP_LINES_SHOWN"
   bench_progress
+  flow_progress
   samples_report
   ids=$(gate_ids | tail -n 60 | tr '\n' ',' | sed 's/,$//')
   if [ -z "$ids" ]; then
@@ -791,6 +796,35 @@ bench_progress() {  # every benchmark under BENCH_ROOT that keeps a PROGRESS.txt
     # A benchmark's folder is named by its id; any other name is no benchmark's and is passed over.
     case "$name" in ""|*[!a-z0-9_]*) continue ;; esac
     bench_progress_of "$name"
+  done
+}
+
+# Every run flows/launch.py starts keeps its progress page, and the page in short lines, PROGRESS.txt,
+# under FLOW_ROOT/progress/<Flow>/<run>/ (flows/stage_progress.py, the owner's rule of 2026-10-29).
+# Status shows the newest FLOW_RUNS_SHOWN runs' lines, each under a heading that names the run's kind
+# and id, which tools/progress_page.py reads back into the same page off the grid. The page's own
+# lines are the flow's words; a task's last line and a report's can quote a path or a value, so those
+# are judged as a stage report's lines are (report_shapes), and every line is masked.
+FLOW_RUNS_SHOWN=4 FLOW_PROGRESS_LINES=40
+flow_shapes() {  # a flow's progress lines, its tasks' and its reports' judged as a stage report's
+  local line
+  while IFS= read -r line; do
+    case "$line" in
+      "task "*|"report: "*) printf '%s\n' "$line" | report_shapes ;;
+      *) printf '%s\n' "$line" ;;
+    esac
+  done
+}
+flow_progress() {  # the newest runs of every launched flow, each its PROGRESS.txt as status shows it
+  local progress run kind
+  ls -1t "$FLOW_ROOT"/progress/*/*/PROGRESS.txt 2>/dev/null | head -n "$FLOW_RUNS_SHOWN" | while read -r progress; do
+    [ -f "$progress" ] || continue
+    run=$(basename "$(dirname "$progress")")
+    kind=$(head -n 1 "$progress" | awk '$1 == "flow" { sub(/:$/, "", $3); print $3 }')
+    case "$run" in ""|*[!A-Za-z0-9_.-]*) continue ;; esac
+    case "$kind" in ""|*[!a-z0-9_]*) kind=unknown ;; esac
+    echo "## flow $kind $run, progress ($(date -u -r "$progress" '+%F %H:%M') UTC)"
+    head -n "$FLOW_PROGRESS_LINES" "$progress" | LC_ALL=C tr -cd '\11\12\40-\176' | flow_shapes | masked | sed 's/^/  /'
   done
 }
 

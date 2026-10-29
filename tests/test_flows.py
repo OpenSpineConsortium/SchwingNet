@@ -629,6 +629,33 @@ def results():
 '''
 
 
+# A stand-in for tools/report.py: write leaves the three files of a report in the run folder, and
+# check passes unless the row's slug is in FLOW_TEST_STALE, as a report not what the run gives fails;
+# each call is logged beside the stub of block_sweep's, in <its log>.reports.
+STUB_REPORT = '''"""A stand-in for tools/report.py in SweepFlowTest."""
+import json
+import os
+import sys
+from pathlib import Path
+
+action, folder = sys.argv[1], Path(sys.argv[sys.argv.index("--run") + 1])
+with open(os.environ["FLOW_TEST_CALLS"] + ".reports", "a", encoding="utf-8") as calls:
+    calls.write(f"{action} {folder.name}\\n")
+if action == "write":
+    tally = {"met": 20, "declared": 3, "not applicable": 2, "missing": 4}
+    for name, checklist in (("claim.json", "CLAIM 2024"), ("reforms.json", "REFORMS")):
+        (folder / name).write_text(json.dumps({"checklist": checklist, "tally": tally}), encoding="utf-8")
+    (folder / "REPORT.md").write_text("# Report\\n", encoding="utf-8")
+elif folder.name in os.environ.get("FLOW_TEST_STALE", "").split():
+    print(f"{folder.name}: REPORT.md not what the run gives", file=sys.stderr)
+    sys.exit(1)
+else:
+    print(f"{folder.name}: report current")
+'''
+# The smoke test's PREREG as the test repository freezes it: the plans the tests run, by name.
+TEST_PREREG = "# The test's design\n\nCovers: live, gone, race, smoke, merged, faulty, nothing, reported\n"
+
+
 @unittest.skipIf(MISSING, f"needs the train environment ({', '.join(MISSING)} missing)")
 class SweepFlowTest(unittest.TestCase):
     """SweepFlow over a stub of block_sweep in a temporary copy of the repository's flow, so the
@@ -640,8 +667,14 @@ class SweepFlowTest(unittest.TestCase):
         self.repo = self.tmp / "repo"
         (self.repo / "flows").mkdir(parents=True)
         (self.repo / "tools").mkdir()
-        shutil.copy(ROOT / "flows" / "sweep.py", self.repo / "flows" / "sweep.py")
+        for name in ("sweep.py", "stage.py", "stage_progress.py", "stage_registry.py", "registry.txt"):
+            shutil.copy(ROOT / "flows" / name, self.repo / "flows" / name)
         (self.repo / "tools" / "block_sweep.py").write_text(STUB_BLOCK_SWEEP, encoding="utf-8")
+        (self.repo / "tools" / "report.py").write_text(STUB_REPORT, encoding="utf-8")
+        prereg = self.repo / "docs" / "research" / "block-smoke"
+        prereg.mkdir(parents=True)
+        (prereg / "PREREG.md").write_text(TEST_PREREG, encoding="utf-8")
+        (prereg / "PREREG.md.sha256").write_text(f"{hashlib.sha256(TEST_PREREG.encode()).hexdigest()}  PREREG.md\n", encoding="ascii")
         # The launcher names the run by the code the sweep runs (tools/run_code.py), so every file
         # of that list is here, the two above and a line of stand-in for each of the rest.
         shutil.copy(ROOT / "tools" / "run_code.py", self.repo / "tools" / "run_code.py")
@@ -759,7 +792,8 @@ class SweepFlowTest(unittest.TestCase):
         self.assertEqual(calls, ["row c", "row d", "results"])
         state = self.out / "smoke" / "state"
         record = json.loads((state / "METAFLOW.json").read_text(encoding="utf-8"))
-        self.assertEqual(record, {"flow": "SweepFlow", "run": said[-1]["run"], "root": str(self.root)})
+        page = str(self.root / "progress" / "SweepFlow" / said[-1]["run"].split("/")[1] / "index.html")
+        self.assertEqual(record, {"flow": "SweepFlow", "run": said[-1]["run"], "root": str(self.root), "page": page})
         cards = sorted(p.name for p in (state / "cards").iterdir())
         self.assertEqual(cards, ["first-a.html", "first-b.html", "first-c.html", "second-d.html"], out)
         # the row's card shows the last epoch line it read, a cloned row's from the run that made it
@@ -776,7 +810,7 @@ class SweepFlowTest(unittest.TestCase):
         self.assertEqual(code, 137, out)
         first_run, first_key = said[-1]["run"].split("/")[1], said[0]["key"]
         self.assertEqual(said[0]["code"], load_run_code().digest("sweep", self.repo), out)
-        (self.repo / "docs").mkdir()
+        (self.repo / "docs").mkdir(exist_ok=True)
         (self.repo / "docs" / "note.md").write_text("a page no sweep runs\n", encoding="utf-8")
         self.commit("a merge that changes nothing the sweep runs")
         code, said, out, calls = self.sweep(plan, 2)
@@ -817,6 +851,62 @@ class SweepFlowTest(unittest.TestCase):
         self.assertEqual(code, 0, out)
         self.assertEqual((said[-1]["successful"], said[-1]["verdict"]), (True, 0), out)
         self.assertEqual(calls, ["prepare", "results"])
+
+    def progress_of(self, said):
+        folder = self.root / "progress" / "SweepFlow" / said[-1]["run"].split("/")[1]
+        return folder, (folder / "PROGRESS.txt").read_text(encoding="utf-8").splitlines()
+
+    def test_a_sweep_ends_with_every_rows_report_checked_its_verdict_and_its_page(self):
+        # the owner's rule of 2026-10-29: the run is held to the frozen PREREG, every row that ran has
+        # its CLAIM and REFORMS report checked in end, and the run's page shows each step and the verdict
+        code, said, out, calls = self.sweep({"plan": "reported", "first": ["a", "b"], "second": ["c"]}, 1)
+        self.assertEqual(code, 0, out)
+        self.assertEqual((said[-1]["successful"], said[-1]["verdict"]), (True, 0), out)
+        reports = (self.tmp / "calls-reported-1.reports").read_text(encoding="utf-8").split("\n")
+        self.assertEqual(sorted(filter(None, reports)), ["check a", "check b", "check c", "write a", "write b", "write c"])
+        folder, lines = self.progress_of(said)
+        self.assertRegex(lines[0], rf"^flow SweepFlow/{said[-1]['run'].split('/')[1]} sweep: succeeded, started ")
+        self.assertRegex(lines[1], r"PREREG docs/research/block-smoke/PREREG\.md sha256 [0-9a-f]{12}$")
+        self.assertIn("step first: done; 2 done of 2", lines)
+        self.assertIn("task first a: done; Outcome: ran, matched the check.", lines)
+        self.assertIn("step end: done", lines)
+        self.assertIn("report: a: current; CLAIM 2024: 20 met, 3 declared, 2 not applicable, 4 missing; "
+                      "REFORMS: 20 met, 3 declared, 2 not applicable, 4 missing", lines)
+        self.assertEqual(lines[-2:], ["verdict: 0", "ended: the launcher exited 0, the flow succeeded"])
+        self.assertIn("SweepFlow", (folder / "index.html").read_text(encoding="utf-8"))
+        self.assertIn(f'href="SweepFlow/{folder.name}/index.html"', (self.root / "progress" / "index.html").read_text(encoding="utf-8"))
+        read = subprocess.run([sys.executable, "-c", (
+            "import json, sys; from metaflow import Run, namespace; namespace(None); r = Run(sys.argv[1]); "
+            "print(json.dumps([r.data.prereg_path, r.data.reports]))"), said[-1]["run"]], cwd=self.root,
+            env=base_env(METAFLOW_DATASTORE_SYSROOT_LOCAL=str(self.root), METAFLOW_DEFAULT_DATASTORE="local",
+                         METAFLOW_DEFAULT_METADATA="local"), capture_output=True, text=True, timeout=120)
+        self.assertEqual(read.returncode, 0, read.stderr)
+        prereg_path, reports = json.loads(read.stdout.splitlines()[-1])
+        self.assertEqual(prereg_path, "docs/research/block-smoke/PREREG.md")
+        self.assertEqual(len(reports), 3)
+
+    def test_a_row_whose_report_is_not_current_makes_the_verdict_1_whatever_the_row_did(self):
+        code, said, out, calls = self.sweep({"plan": "reported", "first": ["a", "b"], "second": []}, 1, FLOW_TEST_STALE="b")
+        self.assertEqual(code, 1, out)
+        self.assertEqual((said[-1]["successful"], said[-1]["verdict"]), (True, 1), out)
+        _, lines = self.progress_of(said)
+        self.assertIn("report: b: NOT CURRENT, why: b: REPORT.md not what the run gives", lines)
+        self.assertIn("verdict: 1", lines)
+        self.assertRegex(lines[0], r" sweep: failed, started ")
+
+    def test_a_plan_the_frozen_prereg_does_not_cover_or_a_moved_prereg_starts_nothing(self):
+        code, said, out, calls = self.sweep({"plan": "trials", "first": ["a"], "second": []}, 1)
+        self.assertEqual(code, 90, out)
+        self.assertIn("covers live, gone, race, smoke, merged, faulty, nothing, reported, not trials", out)
+        self.assertEqual((said, calls), ([], []), out)
+        self.assertFalse((self.root / "progress").exists())
+        with (self.repo / "docs" / "research" / "block-smoke" / "PREREG.md").open("a", encoding="utf-8") as prereg:
+            prereg.write("An edit after the freeze.\n")
+        self.commit("an edit to the PREREG after its freeze")
+        code, said, out, calls = self.sweep({"plan": "smoke", "first": ["a"], "second": []}, 2)
+        self.assertEqual(code, 90, out)
+        self.assertIn("STOP: docs/research/block-smoke/PREREG.md changed since the freeze", out)
+        self.assertEqual((said, calls), ([], []), out)
 
 
 # A failed stage 2 job's log under the launcher, in the shape Metaflow 2.19.39 gave it (measured

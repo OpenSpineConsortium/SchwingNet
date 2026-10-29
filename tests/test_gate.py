@@ -188,6 +188,8 @@ class GateTest(unittest.TestCase):
         env["VOLUME"] = str(self.tmp)
         # the benchmarks' run folders, where the DRR domain-gap study's PROGRESS.txt is read from
         env["BENCH_ROOT"] = str(self.tmp / "go2432" / "bench")
+        # the Metaflow datastore, where every launched flow keeps its progress page (flows/stage_progress.py)
+        env["SCHWINGNET_METAFLOW"] = str(self.flow_root())
         # the size rule reads these fakes only where a test says so, and waits no minute here (#180)
         env.update(SIZE_RULE_STAND_INS="yes", SIZE_RULE_SETTLE="0")
         return env
@@ -2845,6 +2847,69 @@ esac
         self.assertLess(out.index("## space on the lab volume"), out.index("## bench flexray_drr_gap, progress"))
         self.assertLess(out.index("## bench flexray_drr_gap, progress"), out.index("no job submitted by the gate yet"))
         self.assertNotIn("not shown, for want of room", out)
+
+    def flow_root(self):
+        return self.tmp / "go2432" / "metaflow"
+
+    def flow_run(self, run, lines, kind="sweep"):
+        """A launched flow's progress folder with its PROGRESS.txt as flows/stage_progress.py writes it."""
+        folder = self.flow_root() / "progress" / "SweepFlow" / run
+        folder.mkdir(parents=True, exist_ok=True)
+        head = f"flow SweepFlow/{run} {kind}: running, started 2026-10-29 03:00:00 UTC, updated 2026-10-29 03:05:00 UTC"
+        (folder / "PROGRESS.txt").write_text("\n".join([head, *lines]) + "\n", encoding="utf-8")
+        return folder / "PROGRESS.txt"
+
+    def test_status_shows_the_newest_launched_flows_progress_its_quotes_judged_as_a_reports(self):
+        # the owner's rule of 2026-10-29: every launched flow keeps a progress page; status shows the
+        # newest runs' short lines under a heading tools/progress_page.py reads back into the page
+        for n in range(6):
+            progress = self.flow_run(f"17929025852864{n:02d}", ["run: key 68974c7ccabf5595, commit 35a4b6f"])
+            os.utime(progress, (1_800_000_000 + n, 1_800_000_000 + n))
+        newest = self.flow_run("1792902585286499", [
+            "run: key 68974c7ccabf5595, commit 35a4b6f, code 0123456789ab, PREREG docs/research/block-smoke/PREREG.md sha256 5779e79a2a7c",
+            "step start: done",
+            f"task start prepare: done; state {self.smoke}/real/1a2b3c4d-5e6f7a8b, 20 rows first, 2 warm starts after",
+            "step first: running; 1 done, 1 failed of 2",
+            "task first resnet18-64px-3d291b87: failed; fault, why: SweepFault: block_sweep row exited 2: no frame case134_19650312.png",
+            "task first resnet34-32px-b2928840: done; Outcome: ran, matched the check.",
+            "report: resnet34-32px-b2928840: NOT CURRENT, why: REPORT.md not what the run gives for Doe_John/IM0007.dcm",
+            "verdict: 1"] + [f"task first row{n}: done" for n in range(60)])
+        os.utime(newest, (1_800_000_100, 1_800_000_100))
+        odd = self.flow_root() / "progress" / "SweepFlow" / "not a run"
+        odd.mkdir(parents=True)
+        (odd / "PROGRESS.txt").write_text("flow SweepFlow/x sweep: running\n", encoding="utf-8")
+        done = self.gate("status")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        out = done.stdout
+        self.assertEqual(out.count("## flow sweep "), 4, out)
+        self.assertRegex(out, r"## flow sweep 1792902585286499, progress \(\d{4}-\d\d-\d\d \d\d:\d\d UTC\)\n  flow SweepFlow/1792902585286499 sweep: running, ")
+        self.assertLess(out.index("## flow sweep 1792902585286499"), out.index("## flow sweep 1792902585286405"))
+        self.assertNotIn("## flow sweep 1792902585286401", out)
+        self.assertIn("  run: key 68974c7ccabf5595, commit 35a4b6f, code 0123456789ab, PREREG docs/research/block-smoke/PREREG.md sha256 5779e79a2a7c\n", out)
+        self.assertIn("  task start prepare: done; state <path>, 20 rows first, 2 warm starts after\n", out)
+        self.assertIn("  task first resnet18-64px-3d291b87: failed; fault, why: <reason withheld: it can quote a value; the whole report stays on the grid>\n", out)
+        self.assertIn("  report: resnet34-32px-b2928840: NOT CURRENT, why: <reason withheld", out)
+        # the first FLOW_PROGRESS_LINES lines of the file, 40, its head among them
+        self.assertIn("  task first row30: done\n", out)
+        self.assertNotIn("row31", out)
+        for value in ("case134", "19650312", "Doe_John", "not a run"):
+            self.assertNotIn(value, out)
+        self.assertLess(out.index("## space on the lab volume"), out.index("## flow sweep"))
+        self.assertLess(out.index("## flow sweep"), out.index("no job submitted by the gate yet"))
+
+    def test_the_status_answer_draws_the_flows_page_off_the_grid(self):
+        self.flow_run("1792902585286499", ["run: key 68974c7ccabf5595, commit 35a4b6f", "step start: done", "step first: running; 1 done, 1 running of 2",
+                                           "task first resnet18-64px-3d291b87: running; Last epoch: epoch 1 of 2."])
+        done = self.gate("status")
+        answer, page = self.tmp / "status.txt", self.tmp / "page.html"
+        answer.write_text(done.stdout, encoding="utf-8")
+        drawn = subprocess.run([sys.executable, str(ROOT / "tools" / "progress_page.py"), str(answer), "--out", str(page)],
+                               capture_output=True, text=True, timeout=60)
+        self.assertEqual(drawn.returncode, 0, drawn.stderr)
+        html = page.read_text(encoding="utf-8")
+        self.assertIn("SweepFlow 1792902585286499", html)
+        self.assertIn("Last epoch: epoch 1 of 2.", html)
+        self.assertIn('<span class="badge running">running</span>', html)
 
     def drr_gap_box(self):
         """A stand-in box.sh for the study's steps: every call logged with whether the checkout was held,

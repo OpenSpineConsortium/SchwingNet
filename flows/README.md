@@ -34,8 +34,11 @@ Metaflow's own resume rather than by anything written around it.
   could not run or record it (any exit but 0; block_sweep says 2) raises, is retried once at once
   (`@retry(times=1)`), and is then caught (`@catch(var="fault")`), so the other rows still run
   and the verdict is 1. The verdict is 0 only when every row was recorded and did what the
-  compatibility check predicted. A kill mid-row resumes with every finished row cloned and the
-  cut row run again, which tools/flow.py carries on from its last epoch (tools/train.py --resume).
+  compatibility check predicted, and every row that ran has its CLAIM 2024 and REFORMS report
+  current (below). A kill mid-row resumes with every finished row cloned and the cut row run
+  again, which tools/flow.py carries on from its last epoch (tools/train.py --resume). Its runs
+  are held to docs/research/block-smoke/PREREG.md, which covers the plans synthetic, real and
+  two_source; `sweep trials` is refused until the six trials have a PREREG of their own.
 
 Every flow's end step sets an int artifact `verdict`, 0 when all went well and 1 otherwise.
 
@@ -44,9 +47,55 @@ a switch, Metaflow 2.19's conditional next (`self.next({...}, condition=...)`), 
 foreach, since Metaflow refuses a foreach over nothing. A switch's path may not lead straight to
 a join step, so a switch lands on a plain step: BankFlow's end, SweepFlow's middle and end.
 
+## Every deep learning job: a launched flow, a frozen PREREG, its report and its page
+
+The owner's rule of 2026-10-29, 02:39 UTC: every deep learning job on the grid runs on this
+block-based pipeline, under a PREREG frozen before the run, with the CLAIM 2024 and REFORMS report
+enforced and a page that shows its progress in the browser; a plain Slurm job is not enough.
+
+- `registry.txt` is the one list of the flows: per kind its class in flows/<kind>.py, the word the
+  launcher's last line ends with, the job script under grid/ that starts the launcher when Slurm
+  runs it, and its PREREG.md, or `-` for a stage that trains and runs no network (bank, catalog).
+  `python3 flows/stage_registry.py check`, which scripts/check.sh runs, fails on a line whose class
+  or script does not hold or whose PREREG is not the one frozen.
+- A PREREG is frozen as the Lab Recipe says, `sha256sum PREREG.md > PREREG.md.sha256` in its
+  folder, both committed, and never edited again: a departure goes in DEVIATIONS.md beside it. The
+  launcher refuses a kind whose PREREG is missing or moved before it imports Metaflow, with the
+  recipe's exit 90 and the line `LaunchError: ... STOP: <PREREG> changed since the freeze`, so the
+  job does nothing. A PREREG's line `Covers: <part>, ...` names the parts of its kind it covers,
+  and a flow whose runs differ in design names the part a run is (the sweep's `prereg_part`, its
+  plan's name), so a run of a part no frozen PREREG covers is refused the same way. The PREREG's
+  path and sha256 are in the key and on the run's tags (prereg:<12>), and start keeps them as the
+  run's artifacts prereg_path and prereg_sha256 (`stage.hold_to_prereg`).
+- `stage.py` is what every flow's steps run for the rule: `Beat` around a step's work, its line on
+  the page, `run_watched` for a command whose line moves while it runs, `Beat(self).passed()` in a
+  step that only routes the flow, `claim_report` in end, which runs tools/report.py's write and
+  check on a run folder and makes the verdict 1 where the report cannot be written or is not
+  current, and `finish`, the verdict and the report's lines on the page. An item a report counts
+  as missing is shown, never inferred; `tools/report.py check --complete` stays the gate for a
+  number that is to be published.
+- `stage_progress.py` draws the page. Each run keeps <datastore root>/progress/<Flow>/<run>/:
+  run.json, the head the launcher writes once Metaflow has named the run (its kind, key, commit,
+  code, PREREG and, for a resume, its origin, whose finished steps the page shows as cloned);
+  graph.json; one file a task under tasks/, which only that task writes; result.json from end; and
+  launch.json, how the launcher saw the flow end. Every write draws index.html, the page, which
+  reloads itself every 30 s while the run lasts; PROGRESS.txt, the same in short lines; and
+  <datastore root>/progress/index.html, the newest runs of every flow. A run whose files have not
+  moved for ten minutes is shown silent. Nothing here fails a step: a page that cannot be written
+  is said once in the step's log.
+
+To open a page in the browser on the grid: Open OnDemand (https://ondemand.grid.wayne.edu, on the
+university's VPN), Files, then /rs/rs_grp_oschome/go2432/metaflow/progress/, the flow's folder,
+the run's folder and index.html, opened with View; not yet tried on the grid, so where the Files
+app shows the page as text, Download it and open the file in the browser. Off the grid, the gate's status word prints the
+newest four runs' PROGRESS.txt under `## flow <kind> <run>, progress (<time> UTC)`, their task and
+report lines judged as a stage report's are (a path cut, a quoting reason withheld) and every line
+masked, and `python3 tools/progress_page.py <status answer> --out page.html` draws the same page
+from that answer.
+
 ## Starting and resuming: always the launcher
 
-    python flows/launch.py {bank|catalog|sweep} [--max-workers N] [--root DIR] -- <flow parameters>
+    python flows/launch.py <kind> [--max-workers N] [--root DIR] -- <flow parameters>
 
 The launcher names a launch by a key, the first 16 hex of the sha256 of the flow, the code it
 runs, the flow's parameters as given and what the flow reads that they do not name
