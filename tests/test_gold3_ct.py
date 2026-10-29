@@ -261,9 +261,12 @@ def write_admission(folder, facts):
     """The committed admission with its ENHANCE.PET studies judged afresh from the synthetic facts, by the
     field test's rule against the committed tables. The committed admission judges the real studies, whose
     ids the synthetic ones reuse, so the store's tiers and the field test's verdicts must read one set of
-    facts; the tables are kept, so the other members' verdicts, which members.json counts, stay as they are."""
+    facts; the tables are kept, so the other members' verdicts, which members.json counts, stay as they are.
+    A repaired study is judged once, on its repair, as the field test judges it."""
     admission = json.loads((ROOT / field.ADMISSION).read_text(encoding="utf-8"))
-    judged = [field.judge(field.enhance_study(row), admission["tables"]) for row in facts]
+    inputs = {"enhance_pet": facts, "verse": [], "totalsegmentator": [], "verse_series": {"series": []},
+              "totalseg_subjects": {"subjects": {}}}
+    judged = [field.judge(study, admission["tables"]) for study in field.studies_of(inputs)[0]]
     keys = ("member", "id", "person", "verdict", "head", "foot", "complete", "flags")
     admission["studies"] = [{key: row[key] for key in keys} for row in judged] + [
         study for study in admission["studies"] if study["member"] != "enhance_pet"]
@@ -940,6 +943,30 @@ class Store(Scratch):
 # ---------------------------------------------------------------- the manifest, the pages and the check
 
 
+class FieldRows(Scratch):
+    """The VerSe and TotalSegmentator rows the field test judges, as the store keeps them."""
+
+    def test_a_series_the_holdout_file_reads_takes_its_read(self):
+        db = self.built(mini_repo(self.tmp / "repo", synthetic_facts()))
+        rows = dict(db.execute("SELECT item, class || ' ' || evidence FROM anomaly"
+                               " WHERE item IN ('verse:verse024', 'verse:verse518', 'verse:verse010')").fetchall())
+        self.assertEqual(rows, {"verse:verse024": "l6 read", "verse:verse518": "l6 read", "verse:verse010": "normal read"})
+
+    def test_a_duplicate_subject_keeps_its_own_alias_and_every_location_is_a_path(self):
+        db = self.built(mini_repo(self.tmp / "repo", synthetic_facts()))
+        person = db.execute("SELECT person FROM person_alias WHERE alias = 'ts:s2109'").fetchone()[0]
+        self.assertEqual(person, "totalsegmentator:s2107")
+        locations = [r[0] for r in db.execute("SELECT ct_location FROM item WHERE member = 'totalsegmentator'")]
+        self.assertTrue(locations and not any("<root>" in place for place in locations))
+
+    def test_a_border_case_of_the_field_test_is_provisional_silver_3(self):
+        # 0034's field reaches 20 mm above C3's top: past C2's foot in every spine, short of C2's top in most.
+        facts = [r for r in synthetic_facts() if r["id"] != "0034"] + [facts_row("0034", NORMAL[2:], top=-80.0, top_slice_mm=-60.0)]
+        db = self.built(mini_repo(self.tmp / "repo", sorted(facts, key=lambda r: r["id"])))
+        row = db.execute("SELECT tier, provisional FROM item WHERE item = 'enhance_pet:0034'").fetchone()
+        self.assertEqual(tuple(row), ("silver3", 1))
+
+
 class Manifest(Scratch):
     def test_export_flags_holdout_and_fold_persons(self):
         repo = mini_repo(self.tmp / "repo", synthetic_facts())
@@ -1034,6 +1061,38 @@ class Pages(Scratch):
         self.assertTrue(data["facts_committed"])
         self.assertEqual(data["studies"]["columns"], list(gold3.PAGE_COLUMNS))
         self.assertEqual(len(data["studies"]["rows"]), rows_of("verse") + rows_of("totalsegmentator") + 37)
+
+    def edited_admission(self, repo, edit):
+        admission = json.loads((repo / field.ADMISSION).read_text(encoding="utf-8"))
+        edit(admission["studies"])
+        write_json(repo / field.ADMISSION, admission)
+
+    def test_check_fails_on_a_verdict_for_a_study_the_dataset_lacks(self):
+        repo = mini_repo(self.tmp / "repo", synthetic_facts())
+        self.edited_admission(repo, lambda studies: studies.append(
+            dict(next(s for s in studies if s["member"] == "enhance_pet"), id="9999")))
+        self.write_pages(repo)
+        code, _, err = run("--repo", repo, "check")
+        self.assertEqual(code, 1)
+        self.assertIn("enhance_pet verdicts for studies the dataset does not hold: 9999", err)
+
+    def test_check_fails_when_the_field_test_and_the_whole_rule_part(self):
+        repo = mini_repo(self.tmp / "repo", synthetic_facts())
+
+        def refuse_0001(studies):
+            next(s for s in studies if (s["member"], s["id"]) == ("enhance_pet", "0001"))["verdict"] = "not_admitted"
+        self.edited_admission(repo, refuse_0001)
+        self.write_pages(repo)
+        code, _, err = run("--repo", repo, "check")
+        self.assertEqual(code, 1)
+        self.assertIn("the field test and the whole rule part on 0001", err)
+
+    def test_check_fails_on_a_row_with_no_verdict(self):
+        repo = mini_repo(self.tmp / "repo", synthetic_facts())
+        self.edited_admission(repo, lambda studies: studies.remove(next(s for s in studies if s["member"] == "verse")))
+        code, _, err = run("--repo", repo, "check")
+        self.assertEqual(code, 1)
+        self.assertIn("the verse verdicts are not the readable rows", err)
 
     def test_check_fails_when_the_classes_miss_the_notes_table(self):
         repo = mini_repo(self.tmp / "repo", synthetic_facts())

@@ -1204,9 +1204,12 @@ def enhance_item(row, inputs, context, member):
     results = {r["id"]: run_qa(r, context) for r in filter(None, (row, repaired))}
     verdicts = {r["check"]: r["verdict"] for r in results[read["id"]]}
     tier, tier_reason = tier_of(klass, row)
+    provisional = int(tier == "silver3" and context["field"].get(sid, {}).get("verdict") == "look")
+    if provisional:
+        tier_reason += "; a border case of the field test (rule 2): gold 3 once a person's look finds C2 and the sacrum in the field"
     source = next((e["source"] for k in RECORD_CLASSES for e in inputs["record"].get(k, []) if e["id"] == sid), None)
     return {
-        "item": enhance_item_row(row, item, member, tier, tier_reason, context),
+        "item": enhance_item_row(row, item, member, (tier, tier_reason, provisional), context),
         "masks": enhance_masks(row, repaired, item, member, context),
         "labels": [r for f in filter(None, (row, repaired)) for r in label_rows(item, f)],
         "ribs": [r for f in filter(None, (row, repaired)) for r in rib_rows(item, f)],
@@ -1215,8 +1218,9 @@ def enhance_item(row, inputs, context, member):
     }
 
 
-def enhance_item_row(row, item, member, tier, tier_reason, context):
+def enhance_item_row(row, item, member, tiered, context):
     mask, scanner, sid = row["mask"], row["scanner"], row["id"]
+    tier, tier_reason, provisional = tiered
     listed = context["bucket"].get(sid)
     c2_top = check_c2_top(row)["verdict"] == "look"
     return {"item": item, "sha256": mask["sha256"], "shard": context["shard"], "source": member["source"],
@@ -1227,7 +1231,7 @@ def enhance_item_row(row, item, member, tier, tier_reason, context):
             "affine_sha256": hashlib.sha256(compact(mask["affine"]).encode()).hexdigest(),
             "slice_mm": mask["zooms"][mask["head_foot_axis"]], "axcodes": mask["axcodes"],
             **{key: none_or_text(scanner.get(key)) for key in sorted(SCANNER_KEYS)},
-            "tier": tier, "tier_reason": tier_reason, "provisional": 0, "has_c2": int(C2 in present(row)),
+            "tier": tier, "tier_reason": tier_reason, "provisional": provisional, "has_c2": int(C2 in present(row)),
             "c2_in_top_slice": int(c2_top), "has_sacrum": int(SACRUM in present(row)), "sacrum_basis": "mask",
             "n_presacral": call_by_names(row)["presacral"], "count_class": count_class(row), "duplicate_of": None}
 
@@ -1306,7 +1310,8 @@ def field_verdicts(inputs, member):
 
 def spine_studies(inputs, facts_key, member):
     """Each facts row the field test judged and that draws some of the column, with its verdict; a study
-    with no level drawn (a head or a limb, in TotalSegmentator) is no spine study and has no row."""
+    that draws no vertebra above the sacrum (a head, a limb or an abdomen, in TotalSegmentator, some with a
+    sacrum alone) is no spine study and has no row."""
     verdicts = field_verdicts(inputs, member)
     for row in inputs[facts_key] or []:
         study = verdicts.get(row["id"])
@@ -1316,17 +1321,42 @@ def spine_studies(inputs, facts_key, member):
 
 def verse_items(inputs, member):
     """VerSe's series as items and anomalies, one a series the field test judged; the 17 the records
-    read (data/gold3-ct/verse.json) keep their reads, the rest are named by the release's masks."""
+    read (data/gold3-ct/verse.json) keep their reads, a series whose person the anomaly route's holdout
+    file reads takes that read (holdout_reads), and the rest are named by the release's masks."""
     roles, scans = anomaly_roles(inputs["holdout"])
     claims = {s["id"]: s for s in inputs["verse"]["series"]}
+    reads = holdout_reads(inputs["holdout"])
     patients = {s["series"]: s["patient"] for s in (inputs["verse_series"] or {}).get("series", [])}
     items, anomalies = [], []
     for row, study in spine_studies(inputs, "verse_facts", "verse"):
         sid, item = row["id"], f"verse:{row['id']}"
         person = scans.get(sid, f"verse:{patients[sid]}")
         items.append(field_item_row(row, study, item, person, member))
-        anomalies.append(verse_anomaly_row(claims[sid], item) if sid in claims else names_anomaly(row, item, "verse"))
+        if sid in claims:
+            anomalies.append(verse_anomaly_row(claims[sid], item))
+        elif person in reads:
+            anomalies.append(verse_anomaly_row({"id": sid, **reads[person]}, item))
+        else:
+            anomalies.append(names_anomaly(row, item, "verse"))
     return items, anomalies, {item["person"]: roles.get(item["person"], "none") for item in items}
+
+
+def holdout_reads(holdout):
+    """The read data/splits/anomaly-holdout.json records for each VerSe person it names: a holdout
+    person's variant, and L6 for a fold person, since its folds are the clean read VerSe L6 persons the
+    holdout leaves. The claims cite the file as verse.json's 17 do."""
+    reads = {}
+    for entry in holdout.get("persons", []):
+        if entry["person"].startswith("verse:"):
+            reads[entry["person"]] = {"variant": entry["variant"], "claims": [{
+                "says": f"{entry['variant']}, read",
+                "source": f"{HOLDOUT} persons: variant {entry['variant']}, stratum {entry['stratum']}, release {entry['release']}"}]}
+    for entry in holdout.get("folds", []):
+        if entry["person"].startswith("verse:"):
+            reads.setdefault(entry["person"], {"variant": "L6", "claims": [{
+                "says": "L6, read",
+                "source": f"{HOLDOUT} folds: fold {entry['fold']}, the folds being the clean read VerSe L6 persons the holdout leaves"}]})
+    return reads
 
 
 def totalseg_items(inputs, member):
@@ -1385,7 +1415,8 @@ def field_item_row(row, study, item, person, member):
     return {"item": item, "sha256": files_sha256(row), "shard": member["member"], "source": member["source"],
             "member": member["member"], "person": person, "native_id": row["id"], "site": None,
             "licence": member["licence"]["as_one"], "ct_sha256": None, "ct_url": None,
-            "ct_location": member["grid"]["pattern"].replace("{id}", row["id"]), "ct_bytes": None,
+            "ct_location": member["grid"]["pattern"].replace("<root>", member["grid"]["root"]).replace("{id}", row["id"]),
+            "ct_bytes": None,
             "shape": compact(grid["shape"]), "spacing_mm": compact(grid["zooms"]),
             "affine_sha256": hashlib.sha256(compact(grid["affine"]).encode()).hexdigest(),
             "slice_mm": grid["zooms"][grid["head_foot_axis"]], "axcodes": grid["axcodes"],
@@ -1482,7 +1513,7 @@ def assemble(inputs):
     for item in tables["item"]:
         item["part"] = part_of(item["person"], inputs["rule"], inputs["test_persons"])
     tables["person"] = person_rows(tables["item"], roles, inputs)
-    tables["person_alias"] = alias_rows(tables["person"])
+    tables["person_alias"] = alias_rows(tables["person"], tables["item"])
     tables["source"] = [source_row(m, inputs) for m in (enhance, verse, ts)]
     tables["shard"] = shard_rows(inputs, tables["item"])
     tables["member_count"] = member_count_rows(inputs, tables["item"])
@@ -1498,6 +1529,7 @@ def add_enhance(tables, inputs, member):
     context["repaired_rows"] = {row["repaired_from"]: row for row in facts if "repaired_from" in row}
     context["record_repaired"] = inputs["record"]["repaired"]
     context["shard"] = "enhance_pet"
+    context["field"] = field_verdicts(inputs, "enhance_pet")
     for row in facts:
         if "repaired_from" in row:
             continue
@@ -1510,10 +1542,18 @@ def add_enhance(tables, inputs, member):
         tables["qa_check"] += found["qa"]
 
 
-def alias_rows(persons):
-    spellings = {"enhance_pet": ("scidb_enhance_pet_1_6k",), "verse": ("verse19_20", "versefusion"), "totalsegmentator": ("ts",)}
-    return [{"alias": f"{spelling}:{p['native_id']}", "person": p["person"], "kind": "record id spelling"}
-            for p in persons for spelling in spellings.get(p["member"], ())]
+ALIAS_SPELLINGS = {"enhance_pet": ("scidb_enhance_pet_1_6k",), "verse": ("verse19_20", "versefusion"),
+                   "totalsegmentator": ("ts",)}
+
+
+def alias_rows(persons, items=()):
+    """Each person's id in the records' other spellings; a study that is a duplicate of another, and so
+    takes the first's person, keeps its own id's spelling too."""
+    rows = [{"alias": f"{spelling}:{p['native_id']}", "person": p["person"], "kind": "record id spelling"}
+            for p in persons for spelling in ALIAS_SPELLINGS.get(p["member"], ())]
+    rows += [{"alias": f"{spelling}:{item['native_id']}", "person": item["person"], "kind": "duplicate's id spelling"}
+             for item in items if item.get("duplicate_of") for spelling in ALIAS_SPELLINGS.get(item["member"], ())]
+    return rows
 
 
 def source_row(member, inputs):
@@ -2128,7 +2168,7 @@ def field_section(db):
     return (["## VerSe and TotalSegmentator by the field test", "",
              "Rule version 2: a CT is admitted when its field holds C2 and the top of the sacrum, whatever its masks"
              " hold; docs/research/gold3-ct/ADMISSION.md gives every verdict's numbers and README.md the rule."
-             " A study with no level drawn is no spine study and has no row.", ""]
+             " A study that draws no vertebra above the sacrum is no spine study and has no row.", ""]
             + table(("Member", "Tier", "Studies", "Persons"), body) + [""])
 
 
@@ -2140,8 +2180,9 @@ def verse_section(db):
     body = [(r[0], r[1], r[2], r[3], r[4], r[5] or "") for r in rows]
     whole, found = class_shares(db, "verse", gold_only=True)
     shares = "; ".join(f"{name} {interval_text(n, whole)}" for name, n in found)
-    return (["## VerSe's classes", "", "The 17 series the committed records read keep the readers' reads; every other"
-             " series is named by its release's masks, a candidate where they draw a T13 or an L6. Shares are of the"
+    return (["## VerSe's classes", "", "The 17 series the committed records read keep the readers' reads, and a series"
+             f" whose person {HOLDOUT} reads, in its holdout or its folds, takes that read; every other series is named"
+             " by its release's masks, a candidate where they draw a T13 or an L6. Shares are of the"
              f" gold 3 series: {shares}. The series with a class or an anomaly route role:", ""]
             + table(("Series", "Tier", "Class", "Status", "Anomaly route role", "Castellvi"), body) + [""])
 
@@ -2406,12 +2447,17 @@ def enhance_field_differences(db, inputs):
     verdicts = field_verdicts(inputs, "enhance_pet")
     if not verdicts:
         return []
-    found = []
+    found, held = [], set()
     for native_id, tier in db.execute("SELECT native_id, tier FROM item WHERE member = 'enhance_pet'"):
+        held.add(native_id)
         admitted = verdicts.get(native_id, {}).get("verdict") == "admitted"
         if admitted != (tier in ("gold3", "gold4")):
             found.append(native_id)
-    return [f"enhance_pet: the field test and the whole rule part on {', '.join(sorted(found))}"] if found else []
+    problems = [f"enhance_pet: the field test and the whole rule part on {', '.join(sorted(found))}"] if found else []
+    extra = sorted(set(verdicts) - held)
+    if held and extra:
+        problems.append(f"{ADMISSION}: enhance_pet verdicts for studies the dataset does not hold: {', '.join(extra)}")
+    return problems
 
 
 def tier_differences(db, inputs):

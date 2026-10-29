@@ -13,15 +13,24 @@ The rule, version 2, replaces version 1's whole-by-the-masks rule (data/gold3-ct
 admitted when its field holds C2 and the top of the sacrum, whatever its masks hold. A level is drawn when
 its mask holds at least LEVEL_MIN_VOXELS voxels. The head end is in view when C2 is drawn, wherever the
 field cuts it, since a person drew what the CT shows (a C2 in the field's top slice is flagged for a
-look), or when C2 is not drawn and the field reaches far enough above the head-most drawn level that C2
-fits under it in 95 of 100 spines that draw both (the head table); it is out when that level is cut by
-the field's top, or when the field ends below where C2's foot lies in 95 of 100 spines. The foot end is in
-view when the sacrum is drawn (one cut by the field's foot with less than S1_VIEW_MM of it drawn is
-flagged), or when it is not drawn and the field reaches at least S1_VIEW_MM below where the sacrum's top
-lies in 95 of 100 spines that draw both, from the foot-most drawn level (the foot table); it is out when
-that level is cut by the field's foot, or when the field ends above where the sacrum's top lies in 95 of
-100 spines. A study between in view and out of view at either end is a border case, admitted only after a
-person's look. The tables are measured here on the members' own masks, never assumed.
+look), unless the level below C2 is cut by the field's top too, when the field holds a sliver of C2 and
+the end is out; or when C2 is not drawn and the field reaches far enough above the head-most drawn level
+that C2 fits under it in 95 of 100 spines that draw both (the head table); it is out when that level is
+cut by the field's top, or when the field ends below where C2's foot lies in 95 of 100 spines. The foot end
+is in view when the sacrum is drawn and the field holds S1_VIEW_MM of it below its top, or when it is not
+drawn and the field reaches at least S1_VIEW_MM below where the sacrum's top lies in 95 of 100 spines that
+draw both, from the foot-most drawn level (the foot table); it is out when that level is cut by the
+field's foot, a drawn sacrum beside it or not, or when the field ends above where the sacrum's top lies in
+95 of 100 spines; a sacrum the field's foot cuts with less than S1_VIEW_MM of it in the field, drawn or a
+label under the floor, makes the end a border case. A study between in view and out of view at either end
+is a border case, admitted only after a person's look. The tables are measured here on the members' own
+masks, never assumed.
+
+The field is measured at the column, not at the volume's corners: on a tilted grid the faces are tilted
+planes, so the field's top over a level is where the world's head-foot line through the level's centre
+leaves the volume. TotalSegmentator's CTs are sometimes padded inside their grid with slices that hold no
+image; there the spinal cord, which runs on above every cervical level and below the conus, stops with
+the column at one plane, and that plane, not the grid's face, is the field's edge (image_planes).
 
 A mask that lies on its CT's grid gives the CT's field: TotalSegmentator's and ENHANCE.PET's masks share
 their CT's header by release, and VerSe's were checked against every CT's header (data/gold3-ct/verse/
@@ -94,9 +103,21 @@ S1_VIEW_SENSITIVITY = (10.0, 30.0)
 # faces, so its cut levels are read from the head-foot positions, as tools/gold3_ct.py's Q06 reads C2.
 # The 0.05 mm is the facts' rounding to 0.1 mm.
 EDGE_ROUNDING_MM = 0.05
+# How far apart in the plane of a slice the structures that end at one padded plane lie (the cord, the
+# vertebral body, the skull or the hips): on a tilted grid the plane's height changes across that span,
+# so structures it cuts end up to that change apart. 100 mm is a body's width at the neck and at the pelvis.
+TILT_SPAN_MM = 100.0
 # Under 18 at the scan is a child's spine: flagged, never left out, since the rule asks for the whole
 # spine in view and says nothing of age.
 CHILD_UNDER_YEARS = 18
+# A column from C2's top to L1's foot shorter than this is a child's whatever age is recorded: of the
+# members' 130 spines recorded 18 to 89 that draw both whole, all but three are longer than 330 mm, and
+# those three (TotalSegmentator s1411, s1532 and s2065, under 233 mm) are recorded 21 to 25 with the
+# column of a child under five; the 22 recorded under 18 have a median of 285 mm. Flagged, never left out.
+SMALL_COLUMN_MM = 300.0
+# A drawn level taller than this many times the median of the study's drawn levels holds voxels far from
+# its body, scattered or mislabelled, so the top and foot the rule reads may not be the body's. Flagged.
+TALL_LABEL_TIMES = 4
 
 IN_VIEW, DRAWN, BORDER, OUT, NO_COLUMN = "in_view", "drawn", "border", "out", "no_column"
 ADMITTED, LOOK, NOT_ADMITTED = "admitted", "look", "not_admitted"
@@ -136,6 +157,38 @@ def load_inputs(repo=ROOT):
 # ---------------------------------------------------------------- one study, in level names
 
 
+def inverse3(m):
+    a, b, c = m[0]
+    d, e, f = m[1]
+    g, h, i = m[2]
+    det = a * (e * i - f * h) - b * (d * i - f * g) + c * (d * h - e * g)
+    if abs(det) < 1e-12:
+        raise FieldError(f"a grid whose affine cannot be inverted: {m}")
+    return [[(e * i - f * h) / det, (c * h - b * i) / det, (b * f - c * e) / det],
+            [(f * g - d * i) / det, (a * i - c * g) / det, (c * d - a * f) / det],
+            [(d * h - e * g) / det, (b * g - a * h) / det, (a * e - b * d) / det]]
+
+
+def vertical_edges(affine, shape, point):
+    """Where the world's head-foot line through a point leaves the volume, upward and downward. On an
+    untilted grid these are the faces' heights; on a tilted one the corners stand above or below them."""
+    inverse = inverse3([row[:3] for row in affine[:3]])
+    offset = [p - row[3] for p, row in zip(point, affine[:3])]
+    start = [sum(inverse[r][c] * offset[c] for c in range(3)) for r in range(3)]
+    along = [inverse[r][2] for r in range(3)]
+    up = down = float("inf")
+    for axis in range(3):
+        if abs(along[axis]) < 1e-12:
+            continue
+        for bound in (-0.5, shape[axis] - 0.5):
+            t = (bound - start[axis]) / along[axis]
+            if t > 0:
+                up = min(up, t)
+            elif t < 0:
+                down = min(down, -t)
+    return point[2] + up, point[2] - down
+
+
 def corner_heights(shape, affine):
     """The head-foot positions of the volume's outer voxel faces at its eight corners."""
     row = affine[2]
@@ -145,15 +198,22 @@ def corner_heights(shape, affine):
 
 def enhance_level(entry, top, bottom, step):
     """ENHANCE.PET's facts give no faces: a level whose head-most or foot-most voxel centre lies in the
-    field's first or last slice reaches that face."""
+    field's first or last slice reaches that face. Its grids are untilted (enhance_study), so the field
+    over every level is the volume's."""
     half = step / 2 + EDGE_ROUNDING_MM
     return {"voxels": entry["voxels"], "top": entry["top_mm"], "bottom": entry["bottom_mm"],
             "head_cut": top - entry["top_mm"] <= half, "foot_cut": entry["bottom_mm"] - bottom <= half,
-            "side_cut": None}
+            "side_cut": None, "field_top": top, "field_bottom": bottom}
+
+
+def tilted(affine, axis):
+    return any(abs(affine[2][i]) > 1e-9 for i in range(3) if i != axis)
 
 
 def enhance_study(row):
     mask = row["mask"]
+    if tilted(mask["affine"], mask["head_foot_axis"]):
+        raise FieldError(f"enhance_pet {row['id']}: a tilted grid, which enhance_level does not measure")
     heights = corner_heights(mask["shape"], mask["affine"])
     top, bottom = max(heights), min(heights)
     step = abs(mask["affine"][2][mask["head_foot_axis"]])
@@ -163,16 +223,75 @@ def enhance_study(row):
             "person": None, "age": None, "site": row.get("site")}
 
 
-def named_level(entry):
+def column_field(row, entry):
+    """The field's top and bottom over a level: the grid's faces as the facts give them, moved by how far
+    the world's head-foot line through the level's centre leaves the volume below the highest corner, or
+    above the lowest, which is nothing on an untilted grid."""
+    grid, field = row["grid"], row["field_mm"]
+    if not tilted(grid["affine"], grid["head_foot_axis"]):
+        return field["top"], field["bottom"]
+    heights = corner_heights(grid["shape"], grid["affine"])
+    up, down = vertical_edges(grid["affine"], grid["shape"], entry["centroid_mm"])
+    return round(field["top"] - (max(heights) - up), 1), round(field["bottom"] + (down - min(heights)), 1)
+
+
+def plane_slack(grid):
+    """How far apart structures that one plane of the grid cuts may end: a slice, the facts' rounding,
+    and how much the plane's height changes across TILT_SPAN_MM in the slice's plane."""
+    axis, affine, zooms = grid["head_foot_axis"], grid["affine"], grid["zooms"]
+    tilt = sum(abs(affine[2][i]) * TILT_SPAN_MM / zooms[i] for i in range(3) if i != axis)
+    return zooms[axis] + EDGE_ROUNDING_MM + tilt
+
+
+def image_planes(row):
+    """The head-most and foot-most planes the image reaches, where they lie inside the grid; else None.
+    The spinal cord runs on above every level below C1 and down past the conus to the canal's foot in
+    TotalSegmentator's masks, and the release draws every structure its image shows: so where the cord
+    and the column stop together at the highest (or lowest) height anything is drawn, with grid left
+    beyond it, the image ends there, and the slices beyond hold padding, not anatomy."""
+    cord = row["context"].get("spinal_cord")
+    if not cord:
+        return None, None
+    slack = plane_slack(row["grid"])
+    drawn_here = [e for e in (*row["levels"].values(), *row["context"].values()) if e["voxels"] > 0]
+    column = [e for e in row["levels"].values() if e["voxels"] >= LEVEL_MIN_VOXELS]
+    if not column:
+        return None, None
+    highest = max(e["top_mm"] for e in drawn_here)
+    lowest = min(e["bottom_mm"] for e in drawn_here)
+    top = (highest if "S" not in cord["faces"] and highest - cord["top_mm"] <= slack
+           and highest - max(e["top_mm"] for e in column) <= slack else None)
+    foot = (lowest if "I" not in cord["faces"] and cord["bottom_mm"] - lowest <= slack
+            and min(e["bottom_mm"] for e in column) - lowest <= slack else None)
+    return top, foot
+
+
+def named_level(row, entry, planes, slack):
     faces = set(entry["faces"])
+    field_top, field_bottom = column_field(row, entry)
+    top_plane, foot_plane = planes
+    step = row["grid"]["zooms"][row["grid"]["head_foot_axis"]]
+    head_cut, foot_cut = "S" in faces, "I" in faces
+    if top_plane is not None:
+        field_top = min(field_top, round(top_plane + step / 2, 1))
+        head_cut = head_cut or top_plane - entry["top_mm"] <= slack
+    if foot_plane is not None:
+        field_bottom = max(field_bottom, round(foot_plane - step / 2, 1))
+        foot_cut = foot_cut or entry["bottom_mm"] - foot_plane <= slack
     return {"voxels": entry["voxels"], "top": entry["top_mm"], "bottom": entry["bottom_mm"],
-            "head_cut": "S" in faces, "foot_cut": "I" in faces, "side_cut": bool(faces & set("LRAP"))}
+            "head_cut": head_cut, "foot_cut": foot_cut, "side_cut": bool(faces & set("LRAP")),
+            "field_top": field_top, "field_bottom": field_bottom}
 
 
 def named_study(row, person, age, site):
-    return {"member": row["member"], "id": row["id"], "top": row["field_mm"]["top"],
-            "bottom": row["field_mm"]["bottom"], "levels": {name: named_level(e) for name, e in row["levels"].items()},
-            "person": person, "age": age, "site": site}
+    planes = image_planes(row)
+    slack = plane_slack(row["grid"])
+    step = row["grid"]["zooms"][row["grid"]["head_foot_axis"]]
+    top = row["field_mm"]["top"] if planes[0] is None else round(planes[0] + step / 2, 1)
+    bottom = row["field_mm"]["bottom"] if planes[1] is None else round(planes[1] - step / 2, 1)
+    return {"member": row["member"], "id": row["id"], "top": top, "bottom": bottom,
+            "levels": {name: named_level(row, e, planes, slack) for name, e in row["levels"].items()},
+            "person": person, "age": age, "site": site, "image_planes": [p is not None for p in planes]}
 
 
 def verse_study(row, series):
@@ -187,12 +306,18 @@ def totalseg_study(row, subjects):
 
 def studies_of(inputs):
     """Every readable study of the three members, in level names; rows that say they could not be read
-    are kept apart, by id."""
+    are kept apart, by id. An ENHANCE.PET study with a repaired mask is judged once, on its repair and
+    under its own id, as tools/gold3_ct.py reads it."""
     series = {s["series"]: s for s in inputs["verse_series"]["series"]}
     subjects = inputs["totalseg_subjects"]["subjects"]
     out, unread = [], []
+    repaired = {row["repaired_from"]: row for row in inputs["enhance_pet"] if "repaired_from" in row}
     for row in inputs["enhance_pet"]:
-        out.append(enhance_study(row))
+        if "repaired_from" in row:
+            continue
+        study = enhance_study(repaired.get(row["id"], row))
+        study["id"] = row["id"]
+        out.append(study)
     for member, make in (("verse", lambda r: verse_study(r, series)),
                          ("totalsegmentator", lambda r: totalseg_study(r, subjects))):
         for row in inputs[member]:
@@ -213,6 +338,13 @@ def drawn(study, name):
 
 def drawn_names(study):
     return [name for name in ORDER if drawn(study, name)]
+
+
+def drawn_below(study, name):
+    """The first drawn level below a name, C1 and the sacrum aside."""
+    names = [n for n in drawn_names(study) if n not in ("C1", "sacrum")]
+    later = [n for n in names if ORDER.index(n) > ORDER.index(name)]
+    return later[0] if later else None
 
 
 def head_most(study):
@@ -309,8 +441,13 @@ def order_key(item):
 def head_end(study, table):
     """drawn, in_view, border, out or no_column, with the numbers it rests on. A C2 the release draws is
     in view however the field cuts it, as version 1 had it: a person drew what the CT shows, and a C2 in
-    the top slice is flagged for a look (flags), not left out."""
-    if drawn(study, "C2"):
+    the top slice is flagged for a look (flags), not left out; but where the field's top cuts the level
+    below C2 too, the field holds no more of C2 than a sliver beside that level, and the end is out."""
+    c2 = drawn(study, "C2")
+    if c2:
+        below = drawn_below(study, "C2")
+        if c2["head_cut"] and below and drawn(study, below)["head_cut"]:
+            return OUT, {"why": f"C2 and {below} are both cut by the field's top: the field holds a sliver of C2"}
         return DRAWN, {}
     top = head_most(study)
     if top is None:
@@ -323,7 +460,7 @@ def head_end(study, table):
     if level["head_cut"]:
         return OUT, {"why": f"{top}, the head-most drawn level, is cut by the field's top"}
     fits, foot = table.get(top, {}), table.get(f"{top} to C2's foot", {})
-    margin = round(study["top"] - level["top"], 1)
+    margin = round(level["field_top"] - level["top"], 1)
     numbers = {"from": top, "field_above_mm": margin, "c2_top_above_mm": [fits.get("low"), fits.get("high")],
                "c2_foot_above_mm": [foot.get("low"), foot.get("high")]}
     if "high" not in fits or "low" not in foot:
@@ -333,26 +470,48 @@ def head_end(study, table):
     return (OUT if margin < foot["low"] else BORDER), numbers
 
 
+def sacrum_held(study):
+    """How many mm of the sacrum the field holds below its top, where the field's foot cuts a sacrum
+    label of any size, since a cut label shows where the sacrum begins however few voxels it has; else
+    None."""
+    sacrum = study["levels"].get("sacrum")
+    if not sacrum or sacrum["voxels"] == 0 or not sacrum["foot_cut"]:
+        return None
+    return round(sacrum["top"] - sacrum["field_bottom"], 1)
+
+
 def foot_end(study, table, s1_view=S1_VIEW_MM):
-    """The same for the sacrum: one the release draws is in view, one it does not is placed from the
-    foot-most drawn level by the foot table, and in view needs S1_VIEW_MM of S1 below its top."""
-    if drawn(study, "sacrum"):
-        return DRAWN, {}
+    """The same for the sacrum: one the release draws is in view when the field holds S1_VIEW_MM of it
+    below its top. Where the field's foot cuts a sacrum label, drawn or under the floor, with less than
+    that in the field, the end is out when the foot-most level above it is cut too, since the field then
+    ends inside that level with its junction at the edge, and a border case otherwise, since the label's
+    top may be the ala or a facet and a person reads where S1's body begins. A sacrum the release does not
+    draw is placed from the foot-most drawn level by the foot table, and in view needs S1_VIEW_MM of S1
+    below the place; it is out when that level is cut by the field's foot."""
     last = foot_most(study)
     if last is None:
-        return NO_COLUMN, {}
+        return (DRAWN if drawn(study, "sacrum") else NO_COLUMN), {}
     level = drawn(study, last)
+    held = sacrum_held(study)
+    if held is not None and held < s1_view:
+        numbers = {"sacrum_in_field_mm": held}
+        if level["foot_cut"]:
+            return OUT, {**numbers, "why": f"{last} is cut by the field's foot, and the field holds {held} mm of the "
+                                            f"sacrum below its top, under {s1_view:g} mm of S1"}
+        return BORDER, {**numbers, "why": f"the field's foot cuts the sacrum {held} mm below its top, under {s1_view:g} mm of S1"}
+    if drawn(study, "sacrum"):
+        return DRAWN, {}
     if level["foot_cut"]:
         return OUT, {"why": f"{last}, the foot-most drawn level, is cut by the field's foot"}
     row = table.get("last lumbar" if last in LAST_LUMBARS else last, {})
-    numbers = {"from": last, "field_below_mm": round(level["bottom"] - study["bottom"], 1),
+    numbers = {"from": last, "field_below_mm": round(level["bottom"] - level["field_bottom"], 1),
                "sacrum_top_from_level_mm": [row.get("low"), row.get("high")]}
     if "high" not in row:
         return BORDER, {**numbers, "why": f"fewer than {MIN_TABLE_SPINES} spines measure the sacrum below {last}"}
     lowest_top, highest_top = level["bottom"] + row["low"], level["bottom"] + row["high"]
-    if study["bottom"] <= lowest_top - s1_view:
+    if level["field_bottom"] <= lowest_top - s1_view:
         return IN_VIEW, numbers
-    return (OUT if study["bottom"] > highest_top else BORDER), numbers
+    return (OUT if level["field_bottom"] > highest_top else BORDER), numbers
 
 
 def verdict_of(head, foot):
@@ -364,27 +523,46 @@ def verdict_of(head, foot):
 # ---------------------------------------------------------------- what a segmenter must draw
 
 
-def gaps(study):
-    """Expected levels undrawn between the head-most and foot-most drawn ones."""
+def name_runs(study):
+    """(gaps, skipped): the expected levels undrawn between two drawn ones, split by whether those two
+    leave room for a body between them. Drawn neighbours overlap head to foot by their facets (by 19.5 mm
+    at the median over the members' spines, and by 4.5 mm or more in 99 of 100), so where the upper one's
+    foot lies at or below the lower one's top, the names skip a level the column does not have: a count
+    variant, as eleven thoracic and then L1, or a skipped label, for the count to read, never a mask to
+    add. Where it lies above, there is a space a body fills, and the names are gaps; above a drawn sacrum,
+    a column that stops above L4 leaves room for L5 too, as completion asks it below a sacrum in view."""
     names = drawn_names(study)
-    inside = [n for n in EXPECTED if n in ORDER[ORDER.index(names[0]):ORDER.index(names[-1]) + 1]] if names else []
-    return [n for n in inside if not drawn(study, n)]
+    gaps, skipped = [], []
+    for upper, lower in zip(names, names[1:]):
+        missing = [n for n in EXPECTED if ORDER.index(upper) < ORDER.index(n) < ORDER.index(lower)]
+        if lower == "sacrum" and ORDER.index(upper) < ORDER.index("L4"):
+            missing.append("L5")
+        if missing:
+            room = drawn(study, upper)["bottom"] > drawn(study, lower)["top"]
+            (gaps if room else skipped).extend(missing)
+    return gaps, skipped
+
+
+def gaps(study):
+    return name_runs(study)[0]
 
 
 def completion(study, head, foot):
     """The levels from C2 to the sacrum a segmenter must add to an admitted study: C2 and the levels
     above the head-most drawn one, the gaps, the sacrum, and the lumbar levels below a foot-most drawn
-    level that cannot be the last."""
+    level that cannot be the last, L5 among them, since the field reaches the pelvis and nearly every
+    spine has one (the foot table's L5 row against its last lumbar's); a four-lumbar spine's segmenter
+    finds none, and the count reads it."""
     add = set(gaps(study))
     top, last = head_most(study), foot_most(study)
     if head == IN_VIEW and top not in (None, "C1"):
-        add |= {n for n in EXPECTED[:EXPECTED.index(top)] if not drawn(study, n)}
+        add |= {n for n in EXPECTED if ORDER.index(n) < ORDER.index(top) and not drawn(study, n)}
     if head == IN_VIEW and top == "C1":
         add.add("C2")
     if foot == IN_VIEW:
         add.add("sacrum")
-        if last not in LAST_LUMBARS and last in EXPECTED:
-            add |= {n for n in EXPECTED[EXPECTED.index(last) + 1:] if not drawn(study, n)}
+        if last not in LAST_LUMBARS and ORDER.index(last) < ORDER.index("L4"):
+            add |= {n for n in (*EXPECTED, "L5") if ORDER.index(n) > ORDER.index(last) and not drawn(study, n)}
     return [n for n in ORDER if n in add]
 
 
@@ -393,8 +571,10 @@ def flags(study, head, foot):
     c2, sacrum = drawn(study, "C2"), drawn(study, "sacrum")
     if c2 and c2["head_cut"]:
         out.append("c2_at_field_top")
-    if sacrum and sacrum["foot_cut"] and sacrum["top"] - sacrum["bottom"] < S1_VIEW_MM:
+    if sacrum and sacrum["foot_cut"]:
         out.append("sacrum_at_field_foot")
+    if name_runs(study)[1]:
+        out.append("name_skipped")
     span = drawn_names(study)
     if any(drawn(study, n)["side_cut"] for n in span if n not in ("C1",)):
         out.append("cut_in_plane")
@@ -405,7 +585,26 @@ def flags(study, head, foot):
         out.append("stray_labels")
     if study["age"] is not None and study["age"] < CHILD_UNDER_YEARS:
         out.append("child")
+    if column_length(study) is not None and column_length(study) < SMALL_COLUMN_MM:
+        out.append("small_column")
+    if tall_labels(study):
+        out.append("label_spans_levels")
     return out
+
+
+def column_length(study):
+    """C2's top to L1's foot, where both are drawn whole; else None."""
+    c2, l1 = drawn(study, "C2"), drawn(study, "L1")
+    return round(c2["top"] - l1["bottom"], 1) if whole(c2) and whole(l1) else None
+
+
+def tall_labels(study):
+    names = [n for n in drawn_names(study) if n != "sacrum"]
+    if len(names) < 3:
+        return []
+    heights = {n: study["levels"][n]["top"] - study["levels"][n]["bottom"] for n in names}
+    median = statistics.median(heights.values())
+    return [n for n in names if heights[n] > TALL_LABEL_TIMES * median]
 
 
 def judge(study, table, s1_view=S1_VIEW_MM):
@@ -519,13 +718,19 @@ def admission(inputs):
 def rule_record():
     return {"version": RULE_VERSION,
             "rule": "A CT is admitted when its field holds C2 and the top of the sacrum, whatever its masks hold; "
-                    "a level its masks do not draw is completed by a segmenter, kept as a machine mask of its own.",
+                    "a level its masks do not draw is completed by a segmenter, kept as a machine mask of its own. "
+                    "The head end is out when the field's top cuts C2 and the level below it alike, a sliver of C2; "
+                    "the foot end is out when the field's foot cuts the sacrum, with less than s1_view_mm of it in "
+                    "the field, and the foot-most level above it too, and a border case when it cuts the sacrum "
+                    "alone. The field is read over each level along the world's vertical line, and a padded grid's "
+                    "field ends where the spinal cord and the column stop together.",
             "asked": "the owner, 2026-10-28 22:58 UTC (#443's question): \"if the full spune is in view in the volume, "
                      "and just missing a mask or two, that should just be completed using a segmentation software of "
                      "choice ... i dont think i should leave out any spines that have ct volumes with the full spine in view\"",
             "thresholds": {"level_min_voxels": LEVEL_MIN_VOXELS, "percentiles": [LOW_PERCENTILE, HIGH_PERCENTILE],
                            "min_table_spines": MIN_TABLE_SPINES, "s1_view_mm": S1_VIEW_MM,
-                           "child_under_years": CHILD_UNDER_YEARS}}
+                           "tilt_span_mm": TILT_SPAN_MM, "child_under_years": CHILD_UNDER_YEARS,
+                           "small_column_mm": SMALL_COLUMN_MM, "tall_label_times": TALL_LABEL_TIMES}}
 
 
 # ---------------------------------------------------------------- the page
@@ -600,6 +805,15 @@ def page_text(data):
         table_text(["member", "flags (studies)"],
                    [[m, ", ".join(f"{n} {c}" for n, c in data["members"][m]["flags_admitted"].items()) or "none"]
                     for m in MEMBER_ORDER]),
+        "",
+        "What each flag means: c2_at_field_top, the field's top cuts C2; sacrum_at_field_foot, the field's foot "
+        "cuts a sacrum label of any size; name_skipped, a name the column's order expects is missing where its "
+        "neighbours leave no room for a body (a count variant, as eleven thoracic and then L1, or a skipped "
+        "label), so nothing is added for it and the count reads it; cut_in_plane, a level touches a side face of the grid; no_l5, L4 is the last lumbar with "
+        "the foot in view; stray_labels, a label of fewer voxels than the floor; child, under "
+        f"{CHILD_UNDER_YEARS} at the scan; small_column, C2's top to L1's foot under {SMALL_COLUMN_MM:g} mm; "
+        f"label_spans_levels, a label more than {TALL_LABEL_TIMES:g} times the study's median level height, as "
+        "one label drawn over several bodies. A flag asks for a look and leaves a study's verdict as it is.",
         "",
         "## The head table",
         "",

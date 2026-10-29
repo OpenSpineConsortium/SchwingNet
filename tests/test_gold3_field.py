@@ -48,6 +48,8 @@ def column(names=NORMAL, top=0.0, stretch=1.0):
 
 
 def study(levels, top, bottom, member="totalsegmentator", sid="s0001", age=50.0):
+    """A study on an untilted grid, so the field over every level is the volume's."""
+    levels = {name: {"field_top": top, "field_bottom": bottom, **entry} for name, entry in levels.items()}
     return {"member": member, "id": sid, "top": top, "bottom": bottom, "levels": levels,
             "person": f"{member}:{sid}", "age": age, "site": None}
 
@@ -182,6 +184,67 @@ class Ends(unittest.TestCase):
         found = self.judged(levels, levels["C1"]["top"] + 5, levels["sacrum"]["bottom"] - 5, age=12.0)
         self.assertEqual(sorted(found["flags"]), ["child", "cut_in_plane"])
 
+    def test_a_c2_sliver_beside_a_level_the_top_cuts_is_out(self):
+        levels = without(column(), "C1")
+        levels["C2"] = {**levels["C2"], "head_cut": True, "voxels": 229}
+        levels["C3"] = {**levels["C3"], "head_cut": True}
+        found = self.judged(levels, levels["C2"]["top"] + 0.5, levels["sacrum"]["bottom"] - 5)
+        self.assertEqual((found["verdict"], found["head"]), ("not_admitted", "out"))
+
+    def test_a_sacrum_the_foot_cuts_needs_s1_view_of_it_in_the_field(self):
+        levels = column()
+        top = levels["C1"]["top"] + 5
+        levels["sacrum"] = {**levels["sacrum"], "foot_cut": True}
+        for held, expected in ((25.0, ("admitted", "drawn")), (10.0, ("look", "border"))):
+            found = self.judged(levels, top, levels["sacrum"]["top"] - held)
+            self.assertEqual((found["verdict"], found["foot"]), expected, held)
+            self.assertIn("sacrum_at_field_foot", found["flags"])
+        levels["L5"] = {**levels["L5"], "foot_cut": True}
+        found = self.judged(levels, top, levels["sacrum"]["top"] - 10.0)
+        self.assertEqual((found["verdict"], found["foot"]), ("not_admitted", "out"))
+
+    def test_a_cut_sacrum_label_under_the_floor_keeps_the_sacrum_from_view(self):
+        levels = column()
+        levels["sacrum"] = {**levels["sacrum"], "voxels": 11, "foot_cut": True}
+        # The table alone would put the sacrum in view 80 mm below L5's foot; the label says the field
+        # holds 2 mm of it.
+        found = self.judged(levels, levels["C1"]["top"] + 5, levels["sacrum"]["top"] - 2.0)
+        self.assertEqual((found["verdict"], found["foot"]), ("look", "border"))
+
+    def test_eleven_thoracic_is_a_skipped_name_not_a_gap(self):
+        levels = without(column(), "T12")
+        # L1's top stands 15 mm above T11's foot, as neighbours overlap by their facets.
+        shift = levels["T11"]["bottom"] - levels["L1"]["top"] + 15.0
+        for name in ("L1", "L2", "L3", "L4", "L5", "sacrum"):
+            levels[name] = {**levels[name], "top": levels[name]["top"] + shift, "bottom": levels[name]["bottom"] + shift}
+        found = self.judged(levels, levels["C1"]["top"] + 5, levels["sacrum"]["bottom"] - 5)
+        self.assertEqual((found["verdict"], found["complete"]), ("admitted", []))
+        self.assertIn("name_skipped", found["flags"])
+
+    def test_l5_is_asked_below_a_column_that_stops_above_l4(self):
+        levels = without(column(), "L4", "L5", "sacrum")
+        found = self.judged(levels, levels["C1"]["top"] + 5, levels["L3"]["bottom"] - 200)
+        self.assertEqual((found["foot"], found["complete"]), ("in_view", ["L4", "L5", "sacrum"]))
+        drawn = without(column(), "L4", "L5")
+        found = self.judged(drawn, drawn["C1"]["top"] + 5, drawn["sacrum"]["bottom"] - 5)
+        self.assertEqual(found["complete"], ["L4", "L5"])
+
+    def test_a_column_of_lumbar_levels_alone_is_judged(self):
+        levels = {"L5": column()["L5"]}
+        found = self.judged(levels, levels["L5"]["top"] + 700, levels["L5"]["bottom"] - 200)
+        self.assertEqual(found["verdict"], "admitted")
+        self.assertEqual(found["complete"][0], "C2")
+
+    def test_a_short_column_and_a_label_far_taller_than_its_body_are_flagged(self):
+        small = column(stretch=0.5)
+        found = self.judged(small, small["C1"]["top"] + 5, small["sacrum"]["bottom"] - 5, age=30.0)
+        self.assertIn("small_column", found["flags"])
+        levels = column()
+        levels["T6"] = {**levels["T6"], "bottom": levels["T6"]["top"] - 300.0}
+        found = self.judged(levels, levels["C1"]["top"] + 5, levels["sacrum"]["bottom"] - 5)
+        self.assertIn("label_spans_levels", found["flags"])
+        self.assertNotIn("small_column", found["flags"])
+
 
 class Enhance(unittest.TestCase):
     def test_a_level_in_the_first_or_last_slice_reaches_that_face(self):
@@ -196,6 +259,54 @@ class Enhance(unittest.TestCase):
         affine = [[1.0, 0, 0, 0], [0, 1.0, 0, 0], [0, 0, 2.0, -100.0], [0, 0, 0, 1]]
         heights = field.corner_heights([4, 4, 10], affine)
         self.assertEqual((max(heights), min(heights)), (-100.0 + 9.5 * 2, -100.0 - 0.5 * 2))
+
+
+class Geometry(unittest.TestCase):
+    def test_the_vertical_line_leaves_an_untilted_grid_at_its_faces(self):
+        affine = [[1.5, 0, 0, -10.0], [0, 1.5, 0, -10.0], [0, 0, 2.0, -100.0], [0, 0, 0, 1]]
+        up, down = field.vertical_edges(affine, [20, 20, 50], [0.0, 0.0, -50.0])
+        self.assertAlmostEqual(up, -100.0 + 49.5 * 2)
+        self.assertAlmostEqual(down, -100.0 - 0.5 * 2)
+
+    def test_a_tilted_grid_holds_less_above_the_column_than_its_highest_corner(self):
+        # Each step along the first axis climbs 0.5 mm, so the top face is 25 mm higher at one side.
+        affine = [[1.0, 0, 0, 0.0], [0, 1.0, 0, 0.0], [0.5, 0, 1.0, 0.0], [0, 0, 0, 1]]
+        up, _ = field.vertical_edges(affine, [50, 10, 100], [5.0, 5.0, 50.0])
+        self.assertAlmostEqual(up, 99.5 + 0.5 * 5.0)
+        self.assertGreater(max(field.corner_heights([50, 10, 100], affine)), up + 20)
+
+    def padded(self, cord_top):
+        affine = [[1.5, 0, 0, -100.0], [0, 1.5, 0, -100.0], [0, 0, 1.5, -500.0], [0, 0, 0, 1]]
+        level = {"voxels": 5000, "faces": [], "centroid_mm": [0.0, 0.0, -40.0], "top_mm": -22.7, "bottom_mm": -60.0}
+        return {"member": "totalsegmentator", "id": "s0102", "field_mm": {"top": 71.0, "bottom": -482.5},
+                "grid": {"affine": affine, "shape": [100, 100, 369], "zooms": [1.5, 1.5, 1.5], "head_foot_axis": 2},
+                "levels": {"C6": level, "T1": {**level, "top_mm": -61.0, "bottom_mm": -90.0}},
+                "context": {"spinal_cord": {"voxels": 20000, "faces": [], "top_mm": cord_top, "bottom_mm": -300.0}}}
+
+    def test_a_padded_grid_ends_its_field_where_the_cord_and_column_stop(self):
+        found = field.named_study(self.padded(-22.7), "p", 50.0, None)
+        self.assertEqual(found["levels"]["C6"]["field_top"], -21.9)
+        self.assertTrue(found["levels"]["C6"]["head_cut"])
+        self.assertFalse(found["levels"]["T1"]["head_cut"])
+
+    def test_a_cord_that_runs_on_above_the_column_leaves_the_grid_as_the_field(self):
+        found = field.named_study(self.padded(10.0), "p", 50.0, None)
+        self.assertEqual(found["levels"]["C6"]["field_top"], 71.0)
+        self.assertFalse(found["levels"]["C6"]["head_cut"])
+
+
+class Studies(unittest.TestCase):
+    def test_a_repaired_mask_is_judged_once_under_its_study_id(self):
+        mask = {"affine": [[1.0, 0, 0, 0], [0, 1.0, 0, 0], [0, 0, 2.0, -100.0], [0, 0, 0, 1]],
+                "shape": [4, 4, 100], "head_foot_axis": 2}
+        entry = {"voxels": 900, "top_mm": 50.0, "bottom_mm": 20.0, "centroid_mm": [1.0, 1.0, 35.0]}
+        published = {"id": "1134", "mask": mask, "labels": {"2": entry}, "site": "autopet"}
+        repaired = {**published, "id": "1134r", "repaired_from": "1134", "labels": {"3": entry}}
+        inputs = {"enhance_pet": [published, repaired], "verse": [], "totalsegmentator": [],
+                  "verse_series": {"series": []}, "totalseg_subjects": {"subjects": {}}}
+        studies, unread = field.studies_of(inputs)
+        self.assertEqual([(s["id"], sorted(s["levels"])) for s in studies], [("1134", ["C3"])])
+        self.assertEqual(unread, [])
 
 
 class Take(unittest.TestCase):
@@ -232,6 +343,13 @@ class Written(unittest.TestCase):
         self.assertEqual(len(keys), len(set(keys)))
         counted = sum(m["studies"] for m in data["members"].values())
         self.assertEqual(counted, len(keys))
+        members = json.loads((ROOT / "data/gold3-ct/members.json").read_text(encoding="ascii"))["members"]
+        unread = {}
+        for row in data["unread"]:
+            unread[row["member"]] = unread.get(row["member"], 0) + 1
+        for member in members:
+            name = member["member"]
+            self.assertEqual(data["members"][name]["studies"] + unread.get(name, 0), member["studies_listed"], name)
 
 
 if __name__ == "__main__":

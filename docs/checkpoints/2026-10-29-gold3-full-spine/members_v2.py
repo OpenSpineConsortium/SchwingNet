@@ -32,11 +32,17 @@ v1 = m["whole_rule"]
 m["whole_rule"] = {
     "version": 2,
     "rule": ("A CT is admitted when its field holds C2 and the top of the sacrum, whatever its masks hold. A level is "
-             "drawn at 200 voxels or more. C2 or the sacrum drawn is in view; one not drawn is placed from the nearest "
-             "drawn level by tables measured on the members' own whole spines (the 5th and 95th percentiles), with "
-             "20 mm of S1 asked below the sacrum's top. A study at neither end clearly in or out is a border case, "
-             "silver 3 until a person's look. A level the release does not draw is completed by a segmenter, kept "
-             "as a machine mask of its own and never raising a tier. ENHANCE.PET's verdicts match version 1's tiers "
+             "drawn at 200 voxels or more. C2 drawn is in view unless the field's top cuts the level below it too; "
+             "the sacrum drawn is in view when the field holds 20 mm of it below its top; a sacrum the field's foot cuts "
+             "short of that makes the end out when the foot-most level above it is cut too, and a border case "
+             "otherwise. One not drawn is placed "
+             "from the nearest drawn level by tables measured on the members' own whole spines (the 5th and 95th "
+             "percentiles), with 20 mm of S1 asked below the sacrum's top. The field is measured over the column, "
+             "and at the image's own edge where a TotalSegmentator grid is padded. A study at neither end clearly "
+             "in or out is a border case, silver 3 until a person's look. A level the release does not draw is "
+             "completed by a segmenter, kept as a machine mask of its own and never raising a tier; names the "
+             "column skips with no room for a body are a count variant, never a level to add. ENHANCE.PET's "
+             "verdicts, each study judged once on its repaired mask where it has one, match version 1's tiers "
              "study for study."),
     "asked": adm["rule"]["asked"],
     "source": "tools/gold3_field.py (the rule, its thresholds and checks); docs/research/gold3-ct/ADMISSION.md (every count); docs/research/gold3-ct/README.md section 2 (why)",
@@ -145,7 +151,9 @@ ts["scheme"].update({
 ts["caveats"] = [
     "v3 names an L6 and no T13, so an L6 its masks draw is a candidate and a thirteenth thoracic body cannot be named; a count needs a reader from C2, SPINEPS and VERIDAH, or Hofmann's 70 reads.",
     "286 of the 1,924 subjects meta.csv gives an age for are under 18 at the scan (15 have none), whose unfused S1 can read as a free body: flagged (child), never left out.",
-    "A subject whose masks are byte for byte another's is one scan under two ids: its row names duplicate_of and shares the first's person.",
+    "A subject whose masks are byte for byte another's is one scan under two ids: its row names duplicate_of and shares the first's person. Only s2107, s2109 and s2110 are; the release's notes count 1,935 distinct scans of 1,939 folders, and s1445 with s1446 and s2093 with s2094 share a grid but not their masks, so they stay apart until their CTs' sums show them one scan.",
+    "Some v3 CTs are padded inside their grid with slices that hold no image; the field test takes the plane where the spinal cord and the column stop together as the field's edge there (tools/gold3_field.py, image_planes), from the masks, until a read of the CTs records each image's own extent.",
+    "meta.csv's ages are not checked against the spine: s1411, s1532 and s2065 are recorded 21 to 25 with a child's column (flagged small_column), and s1776, s1774 and s1839 are recorded 115, 117 and 118.",
 ]
 
 text = json.dumps(m, indent=1, ensure_ascii=True) + "\n"
