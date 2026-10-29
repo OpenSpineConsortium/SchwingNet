@@ -1,0 +1,30 @@
+# autoanatomist/ on top of requirements-schwingcheck.txt: JAX, Flax (NNX) and optax, pinned to the
+# versions the smoke run of 2026-10-29 ran on (records/autoanatomist-2026-10-29/smoke.json), CPU wheels;
+# the closure of the three over pip's metadata, orbax-checkpoint's asynchronous checkpointing included;
+# nest_asyncio is orbax's need on Windows alone, pinned to its newest release and not run here.
+# python -m venv .venv && .venv/bin/pip install -r requirements-schwingcheck.txt -r requirements-autoanatomist.txt
+absl-py==2.5.1
+aiofiles==25.1.0
+etils==1.14.0
+flax==0.12.12
+fsspec==2026.9.0
+humanize==4.16.0
+jax==0.12.0.1
+jaxlib==0.12.0.1
+ml_dtypes==0.6.0
+msgpack==1.2.4
+nest_asyncio==1.6.0; platform_system == "Windows"
+opt_einsum==3.4.0
+optax==0.2.8
+orbax-checkpoint==0.12.8
+prometheus_client==0.26.0
+protobuf==7.36.2
+psutil==7.2.2
+PyYAML==6.0.3
+rich==15.0.0
+simplejson==4.2.0
+tensorstore==0.1.86
+treescope==0.1.10
+typing_extensions==4.16.0
+uvloop==0.23.0; platform_system != "Windows"
+zipp==4.1.2

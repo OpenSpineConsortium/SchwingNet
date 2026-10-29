@@ -48,3 +48,33 @@ Source: the thread "Build the auto-anatomist on raw CT", 29 October 2026, checkp
 ## 6. Prior art to carry into docs/research/autoanatomist-search/prior-art.md
 
 Learning using privileged information (Vapnik and Vashist, Neural Networks 2009; Lopez-Paz, Bottou, Schoelkopf and Vapnik, ICLR 2016, generalized distillation); modality dropout for a channel that vanishes at test time (Havaei et al., HeMIS, MICCAI 2016); differentiable morphology (Franchi, Fehri and Yao, Pattern Recognition 2020); vertebra labelling with a chain prior (Glocker et al., MICCAI 2012 and 2013; Sekuboyina et al., Btrfly Net, MICCAI 2018, on 2-D sagittal and coronal projections; Payer et al., Medical Image Analysis 2019, SpatialConfiguration-Net); heatmap landmark regression read by soft-argmax (Nibali et al., 2018); landmark uncertainty and its calibration (Thaler et al., MELBA 2021; Schobs, Swift and Lu, IEEE TMI 2023, quantile binning); temperature scaling (Guo et al., ICML 2017); heteroscedastic likelihoods (Kendall and Gal, NeurIPS 2017); conformal prediction (Angelopoulos and Bates, 2021); successive halving and Hyperband (Jamieson and Talwalkar, 2016; Li et al., JMLR 2018); a REINFORCE controller over architecture choices (Zoph and Le, ICLR 2017). The four sweeps that ran (CT pre-processing, mask degradation and privileged information, landmark and heatmap post-processing, vertebra labelling) are in prior-art.md beside this list, sixty entries over fifty-one papers, each one agent's reading of one source, every record resolved and the open texts' figures checked since; the sweeps for hyper-parameter search and reinforcement learning did not run.
+
+## 6. State at 2026-10-29 23:10 UTC, written at the owner's word
+
+The owner asked at 23:05 UTC for what there is to be written now. This is where section 4 stands on
+the branch claude/project-thread-f0dity (PR #483), with bordercall's PR #40 at 7d5fecb:
+
+- Done: tools/bordercall_vendor.py keeps two pinned copies (grid/bordercall/, the engine, untouched;
+  grid/autoanatomist/, the search, at bordercall 7d5fecb), with tests/test_bordercall_vendor.py.
+  src/schwingnet/autoanatomist_search.py is the search's pure logic (the plan, the split, the
+  halving, the objective, the REINFORCE controller, the ledger), under beartype and the contracts,
+  with tests/schwingnet/test_autoanatomist_search.py (67 tests); ruff, mypy strict and the
+  readability standard pass; the CrossHair gate's third run was still going when this was written,
+  with plan_of and new_ledger listed under [tool.beethoven-qa.unproven] for preconditions it could
+  not build (the first two runs found the rest buildable, most not confirmed within the bound).
+- In bordercall (7d5fecb): the architecture is a block (model.ARCHITECTURES: residual-unet,
+  plain-unet, probe; blocks.py's architecture word; the session passes it), and the probe is the
+  framework's test piece the owner asked for at 22:50 UTC: a mask branch with no parameter, a CT
+  branch with a threshold and a width, a decoder with none and no gradient back, so it learns from
+  the privileged branch alone and its optimum at the ladder's end is the ladder's own gate, which
+  150 steps at lr 0.01 reach to four figures (measured in the container); at full size its mask
+  branch reads the body's chord ends within 5 to 9 mm and the canal's not at all, by design.
+- To come, in this order: bordercall's tests of the three architectures and the probe's known
+  answers, and its README's words; flows/autoanatomist.py as section 4 says, with grid/searches/
+  probe_smoke.json (architecture=probe fixed, lr=0.01, the first grid word, as the owner asked for
+  the probe to run first) and phantom_smoke.json (architecture among the blocks searched);
+  grid/autoanatomist-driver.sbatch; the gate word `autoanatomist <plan> [continue]`; the run_code
+  kind; the report study autoanatomist-search; the registry line; the PREREG frozen last with a
+  Covers line per plan; docs/research/autoanatomist-search/README.md; the memory file; the
+  adversarial review in the PR bodies. No grid job has been sent; each waits for the owner's word
+  and count.

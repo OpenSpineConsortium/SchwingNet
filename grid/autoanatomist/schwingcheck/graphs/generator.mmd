@@ -1,0 +1,61 @@
+graph TD
+    age_effect[("age_effect ~ Data")]
+    beta_height(["beta_height ~ Normal"])
+    body_present[("body_present ~ Data")]
+    column_mean[("column_mean ~ Data")]
+    column_sd[("column_sd ~ Data")]
+    covariate_known[("covariate_known ~ Data")]
+    covariates[("covariates ~ Data")]
+    level_draw(["level_draw ~ Normal"])
+    log_s(["log_s ~ Normal"])
+    measure_error[("measure_error ~ Data")]
+    offset(["offset ~ Normal"])
+    raw(["raw ~ Normal"])
+    sex_effect[("sex_effect ~ Data")]
+    size_power[("size_power ~ Data")]
+    value["value ~ Deterministic"]
+    weight_effect[("weight_effect ~ Data")]
+    beta_height --> log_s
+    covariate_known --> log_s
+    covariates --> log_s
+    sex_effect --> log_s
+    age_effect --> raw
+    column_mean --> raw
+    column_sd --> raw
+    covariate_known --> raw
+    covariates --> raw
+    level_draw --> raw
+    log_s --> raw
+    measure_error --> raw
+    offset --> raw
+    size_power --> raw
+    weight_effect --> raw
+    body_present --> value
+    raw --> value
+    size_power --> value
+    subgraph plate1 ["column"]
+        log_s
+    end
+    subgraph plate2 ["column x body"]
+        body_present
+    end
+    subgraph plate3 ["column x covariate"]
+        covariate_known
+        covariates
+    end
+    subgraph plate4 ["column x measure"]
+        offset
+    end
+    subgraph plate5 ["column x measure x body"]
+        column_mean
+        column_sd
+        level_draw
+        raw
+        value
+    end
+    subgraph plate6 ["measure"]
+        age_effect
+        measure_error
+        size_power
+        weight_effect
+    end

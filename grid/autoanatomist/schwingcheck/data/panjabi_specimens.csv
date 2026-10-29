@@ -1,0 +1,17 @@
+# The twelve fresh autopsy spines, C2 to L5, of Panjabi's four papers: the thoracic
+# paper's Table 1 (printed page 889), written by `python -m schwingcheck table write`
+# from archive/bordercall/reference/provenance/provenance.csv (two readings by eye of
+# every cell). The papers print no measurement of one specimen. Do not edit by hand.
+specimen,age_years,sex,weight_kg,height_cm,cause_of_death,specimen_cell,age_years_cell,sex_cell,weight_kg_cell,height_cm_cell,cause_of_death_cell,paper,table
+S3,48,M,70,178,Coronary artery disease,thoracic-t1/r00_c00/label,thoracic-t1/r00_c01/value,thoracic-t1/r00_c02/text,thoracic-t1/r00_c03/value,thoracic-t1/r00_c04/value,thoracic-t1/r00_c05/text,thoracic,thoracic-t1
+S4,42,F,60,167,Breast carcinoma,thoracic-t1/r01_c00/label,thoracic-t1/r01_c01/value,thoracic-t1/r01_c02/text,thoracic-t1/r01_c03/value,thoracic-t1/r01_c04/value,thoracic-t1/r01_c05/text,thoracic,thoracic-t1
+S7,53,M,54,167,Esophageal carcinoma,thoracic-t1/r02_c00/label,thoracic-t1/r02_c01/value,thoracic-t1/r02_c02/text,thoracic-t1/r02_c03/value,thoracic-t1/r02_c04/value,thoracic-t1/r02_c05/text,thoracic,thoracic-t1
+S9,19,F,68,166,Acute lymphocytic leukemia,thoracic-t1/r03_c00/label,thoracic-t1/r03_c01/value,thoracic-t1/r03_c02/text,thoracic-t1/r03_c03/value,thoracic-t1/r03_c04/value,thoracic-t1/r03_c05/text,thoracic,thoracic-t1
+S10,44,F,66,161,Right lung carcinoma,thoracic-t1/r04_c00/label,thoracic-t1/r04_c01/value,thoracic-t1/r04_c02/text,thoracic-t1/r04_c03/value,thoracic-t1/r04_c04/value,thoracic-t1/r04_c05/text,thoracic,thoracic-t1
+S13,56,M,70,157,Renal failure,thoracic-t1/r05_c00/label,thoracic-t1/r05_c01/value,thoracic-t1/r05_c02/text,thoracic-t1/r05_c03/value,thoracic-t1/r05_c04/value,thoracic-t1/r05_c05/text,thoracic,thoracic-t1
+S14,56,M,74,177,Pancreatic carcinoma,thoracic-t1/r06_c00/label,thoracic-t1/r06_c01/value,thoracic-t1/r06_c02/text,thoracic-t1/r06_c03/value,thoracic-t1/r06_c04/value,thoracic-t1/r06_c05/text,thoracic,thoracic-t1
+S15,59,M,84,171,Myocardial infarction,thoracic-t1/r07_c00/label,thoracic-t1/r07_c01/value,thoracic-t1/r07_c02/text,thoracic-t1/r07_c03/value,thoracic-t1/r07_c04/value,thoracic-t1/r07_c05/text,thoracic,thoracic-t1
+S20,49,F,57,157,Third degree burns,thoracic-t1/r08_c00/label,thoracic-t1/r08_c01/value,thoracic-t1/r08_c02/text,thoracic-t1/r08_c03/value,thoracic-t1/r08_c04/value,thoracic-t1/r08_c05/text,thoracic,thoracic-t1
+S22,53,M,68,172,Carcinomatosis,thoracic-t1/r09_c00/label,thoracic-t1/r09_c01/value,thoracic-t1/r09_c02/text,thoracic-t1/r09_c03/value,thoracic-t1/r09_c04/value,thoracic-t1/r09_c05/text,thoracic,thoracic-t1
+S23,57,M,75,170,Myocardial infarction,thoracic-t1/r10_c00/label,thoracic-t1/r10_c01/value,thoracic-t1/r10_c02/text,thoracic-t1/r10_c03/value,thoracic-t1/r10_c04/value,thoracic-t1/r10_c05/text,thoracic,thoracic-t1
+S24,20,M,68,170,Subdural hemorrhage,thoracic-t1/r11_c00/label,thoracic-t1/r11_c01/value,thoracic-t1/r11_c02/text,thoracic-t1/r11_c03/value,thoracic-t1/r11_c04/value,thoracic-t1/r11_c05/text,thoracic,thoracic-t1
