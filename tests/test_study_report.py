@@ -60,9 +60,13 @@ class StudyFolder(unittest.TestCase):
         prereg.write_text("fixture pre-registration, frozen\n", encoding="ascii")
         self.prereg = report.dashed(hashlib.sha256(prereg.read_bytes()).hexdigest()[:16])
         self.replace_line("record: study ", self.lines()[0].replace("PREREG 2222-2222-2222-2222", f"PREREG {self.prereg}"))
+        # a README of the fixture's own whose section 6 records the run and what it does not support
+        self.readme = root / "README.md"
+        self.readme.write_text("# Fixture study\n\n## 6. Results\n\nThe fixture run is recorded under runs/1000001/.\n\n"
+                               "What the run does not support, in the fixture: its film persons are files.\n\n## 7. How to run it\n", encoding="ascii")
         config = report.STUDIES[STUDY]
         self.addCleanup(config.update, dict(config))
-        config.update(answers=self.answers, runs=root / "runs", prereg=prereg, design=self.prereg)
+        config.update(answers=self.answers, runs=root / "runs", prereg=prereg, design=self.prereg, readme=self.readme)
         self.addCleanup(setattr, report, "LICENCES", report.LICENCES)
         report.LICENCES = register
 
@@ -279,7 +283,7 @@ class DesignTest(StudyFolder):
     answers that read the table or the summary quote them."""
 
     DESIGN = {"claim": ("4", "5", "6", "8", "21", "30", "31", "34", "39", "40", "42"),
-              "reforms": ("1a", "1b", "1c", "3b", "3c", "3g", "5b", "5e", "5f", "6c", "7c")}
+              "reforms": ("1a", "1b", "1c", "3b", "3c", "3g", "5e", "5f", "6c", "7c")}
 
     def design_rows(self):
         return [row for key, items in self.DESIGN.items() for row in map(self.rows(key).get, items)]
@@ -305,20 +309,19 @@ class DesignTest(StudyFolder):
     def test_what_the_table_answers_is_missing_without_it(self):
         (self.run / "groups.json").unlink()
         claim, reforms = self.rows("claim"), self.rows("reforms")
-        for row in (claim["8"], claim["13"], claim["21"], claim["36"], reforms["1a"], reforms["3b"], reforms["3g"]):
+        for row in (claim["8"], claim["13"], claim["21"], reforms["1a"], reforms["3b"], reforms["3g"]):
             self.assertEqual(row["state"], "missing", row["id"])
             self.assertIn("needs the groups table the record names", row["evidence"], row["id"])
 
     def test_the_table_and_the_summary_are_quoted(self):
         claim, reforms = self.rows("claim"), self.rows("reforms")
-        self.assertIn("flexray_drr_ct (synthetic) 10 persons (the count of flexray_drr), a person its CT subject", claim["36"]["evidence"])
-        self.assertIn("fluxray (synthetic) skipped (not on the data root in this fixture), a person its record subject", claim["36"]["evidence"])
-        self.assertIn("fixture_film (film) 41 persons, a person one file", claim["36"]["evidence"])
         self.assertIn("flexray_drr (no block changed)", claim["13"]["evidence"])
-        self.assertIn("fixture_fluoro, fixture fluoroscopy", claim["13"]["evidence"])
-        self.assertIn("the spaces flexray dim 8; flexray_as_stored dim 8; physics dim 4; imagenet not run (no ImageNet weights in this fixture)", claim["30"]["evidence"])
-        self.assertIn("groups skipped, fluxray (not on the data root in this fixture); persons by file in fixture_film", claim["40"]["evidence"])
-        self.assertIn("split-half nulls flagged: flexray none; physics none", claim["40"]["evidence"])
+        self.assertIn("fixture_fluoro: fixture fluoroscopy", claim["13"]["evidence"])
+        self.assertIn("summary.txt carries flexray dim 8; flexray_as_stored dim 8; physics dim 4; imagenet not run (no ImageNet weights in this fixture);", claim["30"]["evidence"])
+        self.assertIn("have none of their own: flexray_drr 10, flexray_drr_ct 10, fixture_fluoro 8", claim["30"]["evidence"])
+        self.assertIn("1 group skipped, fluxray (not on the data root in this fixture); persons by file in fixture_film", claim["40"]["evidence"])
+        self.assertIn("the calibration lines reading flexray mmd flagged none, auc interval above half 0; physics mmd flagged none, auc interval above half 0", claim["40"]["evidence"])
+        self.assertIn('"What the run does not support, in the fixture: its film persons are files."', claim["40"]["evidence"])
         self.assertIn("render fixture_cts: 10 CTs chosen of 10", claim["21"]["evidence"])
         self.assertIn("the records of its ThunderDB as FleXray's reader lists them: fluxray", reforms["3b"]["evidence"])
         self.assertIn("salt fixture-salt", reforms["3b"]["evidence"])
@@ -332,7 +335,67 @@ class DesignTest(StudyFolder):
         self.write_lines(lines[:at] + [calibration.replace("mmd flagged 0", "mmd flagged 1"), " calibration flagged flexray_drr"] + lines[at + 1:])
         claim = self.rows("claim")
         for item in ("39", "40"):
-            self.assertIn("flexray flexray_drr; physics none", claim[item]["evidence"], item)
+            self.assertIn("flexray mmd flagged flexray_drr, auc interval above half 0; physics mmd flagged none", claim[item]["evidence"], item)
+
+
+    def test_a_flagged_count_its_lines_do_not_name_is_said_as_it_stands(self):
+        self.replace_line(" calibration split-half auc median 0.33", " calibration split-half auc median 0.33 range 0.32 to 0.34 over 1, mmd flagged 1, auc interval above half 0")
+        claim = self.rows("claim")
+        for item in ("39", "40"):
+            self.assertIn("flexray mmd flagged 1, its lines naming 0", claim[item]["evidence"], item)
+            self.assertNotIn("flexray mmd flagged none", claim[item]["evidence"], item)
+
+    def test_a_summary_with_no_group_line_leaves_what_reads_them_missing(self):
+        self.write_lines([line for line in self.lines() if not line.startswith("group")])
+        claim = self.rows("claim")
+        for item in ("8", "40"):
+            self.assertEqual(claim[item]["state"], "missing", item)
+            self.assertIn("needs summary.txt's group lines", claim[item]["evidence"], item)
+
+    def test_a_partial_run_points_at_no_answer_it_leaves_missing(self):
+        self.replace_line("record: units", "record: units 3 of 4 done, 1 failed; mmd backend numpy")
+        claim, reforms = self.rows("claim"), self.rows("reforms")
+        self.assertEqual((claim["32"]["state"], claim["37"]["state"]), ("missing", "missing"))
+        self.assertNotIn("CLAIM 32", reforms["5f"]["evidence"])
+        self.assertIn("the primary endpoints are not read here", claim["39"]["evidence"])
+
+    def test_the_paired_null_of_a_pair_on_the_same_persons_is_named(self):
+        self.assertIn("the p holds under the null that a person's two sides are exchangeable (tools/domain_gap_stats.py, twin_swaps", self.rows("reforms")["7c"]["evidence"])
+
+    def verdict(self, family):
+        """The fixture with a not-replicated verdict that the MMD alone carries, its q taken with the
+        split-half nulls in its family or without them."""
+        calibration = " calibration split-half auc median 0.33 range 0.32 to 0.34 over 1, mmd flagged 0, auc interval above half 0"
+        lines = self.lines()
+        at = lines.index(calibration)
+        pair = " replication flexray_replica vs flexray_reference persons 10/10 n 40/40 auc 0.50 [0.50, 0.50] p 0.455 knn 0.50 mmd p 0.043 q 0.046 fd64 0.0 kid64 -1.000 prdc 1.00 1.00 1.00 1.00 not replicated"
+        self.write_lines(lines[:at] + [calibration + (", nulls in the mmd q family" if family else ""), pair] + lines[at + 1:])
+        self.replace_line("replication flexray_replica vs flexray_reference", "replication flexray_replica vs flexray_reference in flexray (invariant): not replicated (persons 10/10 n 40/40; mmd q 0.046)")
+        return self.rows("claim")
+
+    def test_a_verdict_the_mmd_alone_carries_is_read_in_the_design_s_words(self):
+        claim = self.verdict(True)
+        for item in ("30", "39", "40"):
+            evidence = claim[item]["evidence"]
+            self.assertIn("in PREREG.md section 5's words this project's blocks did not reproduce FleXray's own renders of its recipe: the MMD did (q 0.046)", evidence, item)
+            self.assertIn("so the word rests on the MMD alone", evidence, item)
+
+    def test_a_verdict_whose_q_left_the_nulls_out_is_not_the_frozen_rule_s(self):
+        evidence = self.verdict(False)["30"]["evidence"]
+        self.assertIn("so the frozen rule's word on the MMD is not read in this run", evidence)
+        self.assertNotIn("in PREREG.md section 5's words", evidence)
+
+    def test_the_limits_wait_for_the_readme_to_record_the_run(self):
+        self.readme.write_text("# Fixture study\n\n## 6. Results\n\nNo run is recorded yet.\n\n## 7. How to run it\n", encoding="ascii")
+        limits = self.rows("claim")["40"]
+        self.assertEqual(limits["state"], "missing")
+        self.assertIn("needs README section 6's record of this run (runs/1000001/)", limits["evidence"])
+
+    def test_a_space_the_summary_does_not_name_is_said_to_be_given_up(self):
+        lines = self.lines()
+        at = lines.index("space physics dim 4 rows 160 spread 0.555 pca64 0.66")
+        self.write_lines(lines[:at])
+        self.assertIn("of the design's spaces and readings it does not name physics, which its 80-line budget gave up", self.rows("claim")["30"]["evidence"])
 
 
 class TableAndLicenceTest(StudyFolder):
@@ -417,7 +480,7 @@ class StudyRulesTest(unittest.TestCase):
                     self.assertIn(fact, report.STUDY_FACTS, item["id"])
 
     def test_the_owner_answers_only_what_no_file_of_the_study_says(self):
-        self.assertEqual(report.study_declared_facts(STUDY), {"title", "abstract", "background", "deidentification", "implications", "availability", "funding", "external_validity", "non_generalization"})
+        self.assertEqual(report.study_declared_facts(STUDY), {"title", "abstract", "background", "deidentification", "characteristics", "implications", "availability", "funding", "model_rationale", "external_validity", "non_generalization"})
 
     def test_the_design_the_answers_restate_is_the_frozen_pre_registration(self):
         prereg = ROOT / "docs" / "research" / "drr-domain-gap" / "PREREG.md"
