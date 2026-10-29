@@ -7,6 +7,7 @@ Source: the thread "Rerun FluXray" in the claude.ai project symphony_4, written 
 1. Read docs/checkpoints/2026-10-28-final/README.md first, then this file, then the handoff of whichever piece of work the owner names (section 3).
 2. The hold of 2026-10-28 still stands for the Bayesian work: hold grid/WSU-data use until the owner's own attorney advises. The FluXray rerun (section 3) is the one grid run he named; it is running and its count is spent.
 3. Start nothing the owner has not named. Every thread of this checkpoint pushed and stopped.
+4. The memory/ folder beside this file is the newest copy of the project memory, figure-format.md among it, and supersedes docs/checkpoints/2026-10-28-final/memory/; literature-MAP.md beside it is the map of the synthetic_spine papers, whose PDFs are in bordercall PR 24 (research_notes/clinical-reread/papers/). The handoff for bordercall #25 is docs/checkpoints/2026-10-29-gold3-full-spine/HANDOFF.md (SchwingNet #451, same branch name).
 
 ## 1. The owner's words that set this checkpoint
 
