@@ -37,6 +37,11 @@ LAB=${LAB_VOLUME:-/rs/rs_grp_oschome}
 MODELS=${MODELS:-$LAB/go2432/models}
 REALISM_ROOT=${REALISM_ROOT:-$LAB/go2432/realism}
 REALISM_PIN="diffusers==0.42.0 transformers==5.20.2 accelerate==1.15.0 peft==0.21.2 safetensors==0.8.0 huggingface_hub==2.3.0 flexray==1.0.2 lmdb==3.0.0 nibabel==5.3.2"
+# Installed beside the frozen pins since 2026-10-29 (docs/research/flux-realism/DEVIATIONS.md, after
+# the freeze, item 4): flexray==1.0.2 leaves to its train extra the packages its ThunderDB reader,
+# renderer and camera labels import, so the first edit job stopped at its input check. The tool holds
+# the environment to both lists (src/schwingnet/realism.py, PINS and EXTRA_PINS).
+REALISM_EXTRA="thunderpack==0.0.2 nanodrr==0.1.5 kornia==0.9.0"
 STAGE=${STAGE:-}
 case "$STAGE" in
   edit|stats) ;;
@@ -145,8 +150,8 @@ if [ "$STAGE" = edit ]; then
   report "inputs: FluXray $samples; klein-9B $(dirname "$klein"); FleXray bundle $weights; ImageNet $imagenet"
 fi
 
-venv=$(venv_for "$REALISM_PIN") || { report "FAILED: the environment for the realism pins could not be made"; finish 1; }
-report "environment: $REALISM_PIN"
+venv=$(venv_for "$REALISM_PIN $REALISM_EXTRA") || { report "FAILED: the environment for the realism pins could not be made"; finish 1; }
+report "environment: $REALISM_PIN; beside them $REALISM_EXTRA"
 report "GPU: $(nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv,noheader 2>/dev/null | head -n 1 || echo 'nvidia-smi gave nothing')"
 out=$(mktemp "$REPO/grid/logs/realism-flow-${SLURM_JOB_ID:-$$}.XXXXXX")
 # The Metaflow datastore is the launcher's default on the grid, where the run's progress page is.

@@ -13,10 +13,16 @@ endplate angle read from a tilted rectangle at 1024 and at 256. It needs numpy a
 checkers (beartype, icontract), so it runs in the train environment and skips under a plain
 python3."""
 
+import ast
+import contextlib
 import importlib.util
+import io
 import json
 import math
+import subprocess
+import sys
 import tempfile
+import types
 import unittest
 from pathlib import Path
 
@@ -625,6 +631,130 @@ class RealismToolTest(unittest.TestCase):
         imagenet.unlink()
         self.assertEqual(self.tool.main(words), 2)
 
+    def test_an_import_that_fails_is_said_by_what_is_missing_with_no_dot_or_quote(self):
+        folder = self.tmp / "modules"
+        folder.mkdir()
+        (folder / "needs_absent.py").write_text("import absent_package_of_the_test\n", encoding="utf-8")
+        (folder / "breaks.py").write_text("raise RuntimeError('a value')\n", encoding="utf-8")
+        (folder / "holder").mkdir()
+        (folder / "holder" / "__init__.py").write_text("thing = 1\n", encoding="utf-8")
+        (folder / "holder" / "configs").mkdir()
+        sys.path.insert(0, str(folder))
+        self.addCleanup(sys.path.remove, str(folder))
+        problem = self.tool.import_problem
+        self.assertIsNone(problem("json"))
+        self.assertIsNone(problem("json:loads"))
+        self.assertIsNone(problem("holder:thing"))
+        # a name that is a folder with no __init__.py, as FleXray's configs/datasets is
+        self.assertIsNone(problem("holder:configs"))
+        self.assertEqual(problem("needs_absent"), "needs_absent cannot be imported, missing absent_package_of_the_test")
+        self.assertEqual(problem("absent_package_of_the_test.sub:thing"),
+                         "absent_package_of_the_test sub thing cannot be imported, missing absent_package_of_the_test")
+        self.assertEqual(problem("holder:Segmenter"), "holder Segmenter cannot be imported, the installed release has no Segmenter there")
+        self.assertEqual(problem("breaks"), "breaks cannot be imported, RuntimeError")
+
+    def fake_torch(self, available=True, gib=16.0, capability=(7, 0), name="Tesla V100-SXM2-16GB"):
+        """A torch whose card is described by the arguments, put where import torch finds it."""
+        properties = types.SimpleNamespace(total_memory=int(gib * 2**30))
+        cuda = types.SimpleNamespace(is_available=lambda: available, get_device_properties=lambda index: properties,
+                                     get_device_capability=lambda index: capability, get_device_name=lambda index: name)
+        original = sys.modules.get("torch")
+        sys.modules["torch"] = types.SimpleNamespace(cuda=cuda, __version__="0.0")
+        self.addCleanup(lambda: sys.modules.__setitem__("torch", original) if original else sys.modules.pop("torch", None))
+
+    def test_the_card_check_refuses_a_card_that_cannot_hold_klein_9b_in_bfloat16(self):
+        self.fake_torch(gib=15.77)
+        self.assertEqual(self.tool.card_problem(), "the card Tesla V100-SXM2-16GB holds 16 GiB and computes no bfloat16, "
+                                                   "where klein-9B in bfloat16 needs 42 GiB or more and bfloat16")
+        self.fake_torch(gib=44.4, capability=(8, 9), name="NVIDIA L40S")
+        self.assertIsNone(self.tool.card_problem())
+        self.fake_torch(gib=22.0, capability=(8, 6), name="NVIDIA A10")
+        self.assertEqual(self.tool.card_problem(), "the card NVIDIA A10 holds 22 GiB, where klein-9B in bfloat16 needs 42 GiB or more and bfloat16")
+        self.fake_torch(available=False)
+        self.assertEqual(self.tool.card_problem(), "no CUDA card is visible")
+
+    def test_the_edit_refuses_a_missing_extra_or_a_small_card_and_the_stats_checks_no_card(self):
+        original_record, original_card = self.tool.environment_record, self.tool.card_problem
+        self.addCleanup(setattr, self.tool, "environment_record", original_record)
+        self.addCleanup(setattr, self.tool, "card_problem", original_card)
+        self.tool.environment_record = lambda: ({"thunderpack": "absent"}, ["thunderpack absent, pinned 0.0.2"])
+        self.tool.card_problem = lambda: "no CUDA card is visible"
+        with self.assertRaises(self.tool.Refused) as refused:
+            self.tool.pinned_environment(False, card=True)
+        self.assertEqual(str(refused.exception), "the environment differs from the pins: thunderpack absent, pinned 0.0.2; "
+                                                 "no CUDA card is visible")
+        environment, wrong = self.tool.pinned_environment(True, card=True)
+        self.assertEqual((environment["card_ok"], len(wrong)), (False, 2))
+        self.tool.environment_record = lambda: ({"thunderpack": "0.0.2"}, [])
+        environment, wrong = self.tool.pinned_environment(False)
+        self.assertNotIn("card_ok", environment)
+        self.assertEqual(wrong, [])
+        self.tool.card_problem = lambda: None
+        self.assertTrue(self.tool.pinned_environment(False, card=True)[0]["card_ok"])
+
+    def test_the_environment_record_holds_the_extra_pins_and_every_flexray_import(self):
+        found, wrong = self.tool.environment_record()
+        for pin in (*self.realism.PINS, *self.realism.EXTRA_PINS):
+            self.assertIn(pin.partition("==")[0], found)
+        self.assertTrue(set(self.realism.EXTRA_PINS).isdisjoint(self.realism.PINS))
+        self.assertTrue(any(line.startswith("numpy==") for line in found["installed"]), found["installed"][:5])
+        # outside the realism environment FleXray is absent, and each import it lacks is named
+        if importlib.util.find_spec("fxr") is None:
+            self.assertIn("fxr inference FleXraySegmenter cannot be imported, missing fxr", wrong)
+
+    def test_a_name_is_said_by_its_shape_and_a_set_of_names_by_its_commonest_shapes(self):
+        self.assertEqual(self.tool.id_shape("enhance_0001"), "a7_d4")
+        self.assertEqual(self.tool.id_shape("0001"), "d4")
+        self.assertEqual(self.tool.id_shape("PSMA-2.a"), "a4-d1?a1")
+        self.assertEqual(self.tool.id_shape(""), "empty")
+        self.assertEqual(self.tool.shapes_of(["0001", "0002", "s_1"]), "d4 (2), a1_d1 (1)")
+        self.assertEqual(self.tool.shapes_of([]), "none")
+
+    def test_a_refusal_for_too_few_subjects_counts_where_they_were_lost(self):
+        rows = [self.sample(f"0001_{p}", "0001", p, *self.realism.pose_of(p)) for p in range(4)]
+        rows += [self.sample(f"0002_{p}", "0002", p, *self.realism.pose_of(p)) for p in range(4)]
+        rows += [self.sample("0003_0", "0003", 0, *self.realism.pose_of(0))]
+        in_db = rows[:8]
+        volumes = {"PSMA_0001": Path("a"), "0002": Path("b")}
+        truth = {("Vertebrae", "0002"), ("Ribs", "0001")}
+        said = self.tool.eligibility_counts(rows, in_db, volumes, truth, 4)
+        self.assertEqual(said, "of 3 subjects in the samples table 2 have samples in the ThunderDB, 2 have 4 at poses on the grid, "
+                               "1 of those a CT and 1 a CT and a vertebra truth; the subjects are shaped d4 (3), the CT names "
+                               "a4_d4 (1), d4 (1) and the vertebra truth names d4 (1)")
+
+    def test_every_refusal_of_the_input_check_passes_the_status_shape_check(self):
+        rows = [self.sample(f"0001_{p}", "0001", p, *self.realism.pose_of(p)) for p in range(4)]
+        reasons = [
+            "the environment differs from the pins: thunderpack absent, pinned 0.0.2; fxr datasets _thunderdb open_thunderdb "
+            "cannot be imported, missing thunderpack; the card Tesla V100-SXM2-16GB holds 16 GiB and computes no bfloat16, "
+            "where klein-9B in bfloat16 needs 42 GiB or more and bfloat16",
+            self.tool.eligibility_counts(rows, rows, {"0001": Path("a")}, set(), 4),
+            "no model index in the klein folder: klein-9b of the recipe has not landed, and no other klein stands in",
+            f"no sample of the samples table is in the ThunderDB (the table names samples shaped {self.tool.shapes_of(['0001_0'])}, "
+            f"the ThunderDB {self.tool.shapes_of(['enhance-0001-a'])}), so the FluXray image of a drawn sample could not be read",
+        ]
+        grid = ROOT / "grid"
+        lines = "".join(f"- FAILED: RealismFault: the realism tool step inputs exited 2: refused: {reason}\n" for reason in reasons)
+        shaped = subprocess.run(["awk", "-v", "data=/data", "-v", "runs=/runs", "-v", "models=/models", "-v", "repo=/repo",
+                                 "-f", str(grid / "shape-words.awk"), "-f", str(grid / "report-shapes.awk")],
+                                input=lines, capture_output=True, text=True, timeout=60, check=True).stdout
+        self.assertNotIn("withheld", shaped)
+        self.assertEqual(shaped, lines)
+
+    def test_a_refusal_prints_its_detail_before_its_words(self):
+        bundle = self.tmp / "bundle"
+        bundle.mkdir()
+        original = self.tool.environment_record
+        self.addCleanup(setattr, self.tool, "environment_record", original)
+        self.tool.environment_record = lambda: ({}, [])
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err):
+            code = self.tool.main(["environment", "--bundle", str(bundle), "--imagenet", str(self.tmp / "absent.pth"),
+                                   "--out", str(self.tmp / "environment.json")])
+        self.assertEqual(code, 2)
+        self.assertEqual(err.getvalue().splitlines(), [f"detail: no {bundle / 'ensemble.json'}",
+                                                      "refused: no ensemble record in the FleXray bundle"])
+
     # --- the paired permutation ---------------------------------------------------------------------
 
     def paired_sets(self, seed, shift, subjects=16, poses=4, dims=6, pose_spread=3.0):
@@ -883,3 +1013,23 @@ class RealismToolTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class FlexrayImportsTest(unittest.TestCase):
+    """Read as files, so it runs under any python: every name tools/realism.py imports from FleXray,
+    diffusers or the extra pins is one realism.FLEXRAY_IMPORTS tries at the start of a run, so a
+    release that lacks one refuses the run before any GPU work, as the first edit's did not."""
+
+    def test_every_import_the_stages_take_from_flexray_is_checked_at_the_start(self):
+        tree = ast.parse((ROOT / "src" / "schwingnet" / "realism.py").read_text(encoding="utf-8"))
+        checked = next(ast.literal_eval(node.value) for node in ast.walk(tree) if isinstance(node, ast.Assign)
+                       and any(getattr(target, "id", "") == "FLEXRAY_IMPORTS" for target in node.targets))
+        roots = {"fxr", "diffusers", "thunderpack", "nanodrr", "kornia"}
+        taken = set()
+        for node in ast.walk(ast.parse((ROOT / "tools" / "realism.py").read_text(encoding="utf-8"))):
+            if isinstance(node, ast.ImportFrom) and (node.module or "").split(".")[0] in roots:
+                taken |= {f"{node.module}:{alias.name}" for alias in node.names}
+            elif isinstance(node, ast.Import):
+                taken |= {alias.name for alias in node.names if alias.name.split(".")[0] in roots}
+        self.assertTrue(taken)
+        self.assertEqual(sorted(taken - set(checked)), [])

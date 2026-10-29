@@ -213,6 +213,25 @@ PINS = (
     "nibabel==5.3.2",
 )
 
+# Installed beside the frozen pins since 2026-10-29 (DEVIATIONS.md, after the freeze, item 4):
+# flexray==1.0.2 leaves to its train extra the packages its own ThunderDB reader (thunderpack),
+# renderer (nanodrr) and camera labels (kornia) import, so the first edit job stopped at its input
+# check. Pinned to PyPI's releases of 2026-10-29, held by the tool as the pins are, and kept out of
+# the frozen block, which PREREG.md froze without them.
+EXTRA_PINS = ("thunderpack==0.0.2", "nanodrr==0.1.5", "kornia==0.9.0")
+
+# What the edit and the stats import from FleXray and diffusers, as module or module:name, each
+# tried at the start of a run so a missing package or a name the release does not have refuses it
+# before any GPU work rather than in a later step; a test holds it to the tool's own imports.
+FLEXRAY_IMPORTS = ("thunderpack", "nanodrr", "kornia", "fxr.inference:FleXraySegmenter",
+                   "fxr.datasets._thunderdb:open_thunderdb", "fxr.datasets.storage:SplitThunderDBStorageBackend",
+                   "fxr.drr:DRRRenderRequest", "fxr.drr:render_drr", "fxr.models.camera.runtime:scale_rendered_images",
+                   "diffusers:Flux2KleinPipeline")
+
+# The card the edit loads klein-9B onto whole, in bfloat16: its transformer and its text encoder
+# take about 35 GB, so a card with less memory, or one with no bfloat16, is refused at the start.
+EDIT_CARD_GIB = 42
+
 # The feature spaces every comparison is read in, all three required: what a radiographer reads,
 # what FleXray's own segmenter reads, and what an ImageNet network reads.
 SPACES = ("physics", "flexray", "imagenet")

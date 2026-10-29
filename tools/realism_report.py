@@ -570,8 +570,13 @@ def fact_instruments(run):
 def environment_said(stage):
     """One job's packages as its own environment file measured them, the GPU left to the compute item."""
     env = stage["environment"]
-    found = ", ".join(f"{name} {version}" for name, version in sorted(env["environment"].items()) if name != "gpu")
-    return (f"the {stage['name']} job, as {stage['environment_file']} measured them at its start: {found}; pins that differ: "
+    # The GPU is the compute item's; the card's check and the list of every distribution installed
+    # (since 2026-10-29) are named by count, the list itself kept in the file.
+    found = ", ".join(f"{name} {version}" for name, version in sorted(env["environment"].items())
+                      if name not in ("gpu", "card_ok", "installed"))
+    installed = env["environment"].get("installed")
+    every = f"; {len(installed)} distributions installed in all, each named in the file" if installed else ""
+    return (f"the {stage['name']} job, as {stage['environment_file']} measured them at its start: {found}{every}; pins that differ: "
             f"{'; '.join(env.get('pins_differ') or []) or 'none'}")
 
 

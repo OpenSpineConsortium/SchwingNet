@@ -1993,6 +1993,8 @@ esac
         lines = self.submitted()
         self.assertEqual(len(lines), 1, lines)
         self.assertIn("--class gpu --name realism_edit", lines[0])
+        # klein-9B whole in bfloat16 needs a card of galhp's size, so the edit alone narrows the class
+        self.assertIn("--partition galhp", lines[0])
         self.assertIn("STAGE=edit", lines[0])
         self.assertIn("--no-requeue", lines[0])
         self.assertIn("realism.sbatch", lines[0])
@@ -2017,6 +2019,7 @@ esac
         lines = self.submitted()
         self.assertEqual(len(lines), 2, lines)
         self.assertIn("--class gpu --name realism_stats", lines[1])
+        self.assertNotIn("--partition", lines[1])
         self.assertIn("STAGE=stats", lines[1])
         # the count is two GPU jobs: the adapter's stages queue nothing, whatever has landed
         self.realism_inputs("klein_base_4b")
@@ -2140,7 +2143,8 @@ exit "${FAKE_RC:-0}"
 
     def realism_job_env(self, stage, **extra):
         """The environment grid/realism.sbatch runs in, over the stand-in python in a ready environment."""
-        pins = re.search(r'^REALISM_PIN="([^"]*)"$', (self.repo / "grid" / "realism.sbatch").read_text(encoding="utf-8"), re.M).group(1)
+        job = (self.repo / "grid" / "realism.sbatch").read_text(encoding="utf-8")
+        pins = " ".join(re.search(rf'^{name}="([^"]*)"$', job, re.M).group(1) for name in ("REALISM_PIN", "REALISM_EXTRA"))
         venv = self.tmp / "go2432" / ".cache" / "realism" / f"venv-{hashlib.sha256(pins.encode()).hexdigest()[:12]}"
         (venv / "bin").mkdir(parents=True, exist_ok=True)
         (venv / "READY").write_text(pins + "\n", encoding="utf-8")
@@ -2309,6 +2313,12 @@ exit "${FAKE_RC:-0}"
         frozen = re.findall(r'^    "([^"]+==[^"]+)",$', (ROOT / "src" / "schwingnet" / "realism.py").read_text(encoding="utf-8"), re.M)
         self.assertTrue(frozen)
         self.assertEqual(pins.split(), frozen)
+
+    def test_the_realism_job_installs_beside_the_pins_exactly_the_extras_the_tool_holds_it_to(self):
+        extra = re.search(r'^REALISM_EXTRA="([^"]*)"$', (GRID / "realism.sbatch").read_text(encoding="utf-8"), re.M).group(1)
+        held = re.search(r'^EXTRA_PINS = \(([^)]*)\)$', (ROOT / "src" / "schwingnet" / "realism.py").read_text(encoding="utf-8"), re.M)
+        self.assertEqual(extra.split(), re.findall(r'"([^"]+==[^"]+)"', held.group(1)))
+        self.assertTrue(set(extra.split()).isdisjoint(re.findall(r'^REALISM_PIN="([^"]*)"$', (GRID / "realism.sbatch").read_text(encoding="utf-8"), re.M)[0].split()))
 
     def test_select_is_refused_without_the_frozen_holdout(self):
         (self.repo / "data" / "splits" / "anomaly-holdout.json").unlink()
