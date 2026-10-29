@@ -29966,7 +29966,7 @@
    "date": "2026-10-28",
    "date_evidence": "README: \"the owner's ask of 2026-10-27 22:49 UTC, thread \\\"Finish scan import and tier counts\\\"), published on 2026-10-28\"",
    "question": "Which CTs does the project count as gold tier 3, what do their masks say about anomalous spines (with Wilson intervals), how do they fare on sixteen quality checks, and what have readers confirmed?",
-   "summary": "A private, confidential page that presents every gold tier 3 CT as one dataset, with one row per study (member, site, tier, mask facts, two column calls kept apart, anomaly class and status). It holds 1,557 whole ENHANCE.PET studies plus 17 VerSe series (provisional until the sacrum is seen) and 142 TotalSegmentator v3 subjects declared without rows. Anomaly classes come from the release's names and the ribs, with 95 percent Wilson intervals. Sixteen quality checks run over 1,597 published masks and three repaired ones. A reader bench of 191 studies saves verdicts in the page's own store, and a SQLite store opens in the browser. The README states that nothing yet moves verdicts into the store's qa_review table, so no study is reader confirmed.",
+   "summary": "A private, confidential page that presents every gold tier 3 CT as one dataset, one row per study (member, site, tier, mask facts, two column calls kept apart, anomaly class and status). It holds 1,557 whole ENHANCE.PET studies plus 17 VerSe series (provisional until the sacrum is seen) and 142 TotalSegmentator v3 subjects declared without rows. Anomaly classes come from the release's names and the ribs, with 95 percent Wilson intervals. Sixteen quality checks run over 1,597 published masks and three repaired ones. A reader bench of 191 studies saves verdicts in the page's own store, and a SQLite store opens in the browser. The README states nothing yet moves verdicts into the store's qa_review table, so no study is reader confirmed.",
    "key_claims": [
     {
      "claim": "1,557 ENHANCE.PET studies are gold 3 and are whole studies; 37 lack C2 (silver 3) and 3 repaired masks stay gold 4.",
@@ -29974,12 +29974,12 @@
      "grade_hint": "measured"
     },
     {
-     "claim": "Of 1,557 whole ENHANCE.PET studies, 1,406 are typical by the names (T12L5), a share of about 90 percent (Wilson 88.7 to 91.7 percent).",
+     "claim": "Of 1,557 whole ENHANCE.PET studies, 1,406 are typical by the names (T12L5), about 90 percent (Wilson 88.7 to 91.7 percent).",
      "evidence_in_artifact": "{\"class\":\"normal\",\"high\":0.9167,\"low\":0.8873,\"member\":\"enhance_pet\",\"n\":1406,\"site\":\"all\"",
      "grade_hint": "measured"
     },
     {
-     "claim": "Variant classes by the masks: L6 below L5 with 12 rib pairs 50, four lumbar 28, eleven ribs 33, L6 with 13th rib 14, thirteen ribs 2, asymmetric 4 (131 in all).",
+     "claim": "Variant classes by the masks: L6 below L5 with 12 rib pairs 50, four lumbar 28, eleven ribs 33, L6 with 13th rib 14.",
      "evidence_in_artifact": "{\"class\":\"l6_twelve_ribs\",\"high\":0.0421,\"low\":0.0244,\"member\":\"enhance_pet\",\"n\":50,\"site\":\"all\"",
      "grade_hint": "measured"
     },
@@ -29989,17 +29989,17 @@
      "grade_hint": "measured"
     },
     {
-     "claim": "The quality checks cannot show that an anomaly is in the patient; a lumbosacral question always needs the CT, and no check reads CT intensity or mask-to-CT match.",
+     "claim": "The quality checks cannot show that an anomaly is in the patient; a lumbosacral question always needs the CT.",
      "evidence_in_artifact": "They cannot show that an anomaly is in the patient: agreement of two masks is not a reader's read of the CT, and a lumbosacral question always needs the CT.",
      "grade_hint": "inferred"
     },
     {
-     "claim": "The build reproduces the source note's table of rib findings on unusual lumbar counts cell for cell (100 controls, 39 L4-above-sacrum, 67 L6 studies).",
+     "claim": "The build reproduces the source note's table of rib findings on unusual lumbar counts cell for cell (100, 39, 67).",
      "evidence_in_artifact": "\"expected_studies\":[100,39,67],\"matches\":true",
      "grade_hint": "measured"
     },
     {
-     "claim": "Person counts are bounds: Leipzig and Careggi carry no person id, so persons are an upper bound.",
+     "claim": "Person counts are bounds: Leipzig and Careggi carry no person id.",
      "evidence_in_artifact": "Leipzig and Careggi carry no person id, so their persons are an upper bound.",
      "grade_hint": "inferred"
     }
@@ -30075,7 +30075,7 @@
      "n": null,
      "interval": null,
      "context": "outside the denominator",
-     "quote": "\"gold3\":1557,\"gold3_by_records\":1557,\"gold4\":3,\"member\":\"enhance_pet\",\"persons_basis\":\"autoPET's range, and at most one person a whole study at the sites with no person id\",\"persons_high\":1478,\"persons_low\":865,\"silver3\":37"
+     "quote": "\"persons_high\":1478,\"persons_low\":865,\"silver3\":37"
     },
     {
      "value": "865 to 1,478",
@@ -30098,7 +30098,7 @@
      "unit": "VerSe provisional series",
      "n": null,
      "interval": null,
-     "context": "gold 3 with rows, one person a key; 8 not read yet",
+     "context": "gold 3 with rows; 8 not read yet",
      "quote": "{\"class\":\"unread\",\"high\":0.6904,\"low\":0.2617,\"member\":\"verse\",\"n\":8,\"site\":\"all\",\"whole\":17}"
     },
     {
@@ -30122,7 +30122,7 @@
      "unit": "quality checks",
      "n": null,
      "interval": null,
-     "context": "Q01 to Q16, run where they apply",
+     "context": "Q01 to Q16",
      "quote": "Sixteen checks, each run where it applies; not run counts the readings a check had nothing to read in."
     },
     {
@@ -30185,10 +30185,11 @@
     "Prevalence shares are given from the masks alone, with no external prevalence source."
    ],
    "stale_markers": [
-    "Reader verdicts: none recorded in the export; the README says no study is reader confirmed until the qa_review step is built.",
+    "Reader verdicts: none recorded in the export; no study is reader confirmed until the qa_review step is built.",
     "VerSe gold 3 is \"provisional until the sacrum is seen\".",
     "VerSe's series \"have no mask views yet\".",
-    "\"A provisional patent in preparation\"."
+    "\"A provisional patent in preparation\".",
+    "The no-C2 label now reads \"No C2 drawn (silver 3 unless the field holds C2's foot)\"; the silver 3 count of 37 was taken under the older wording."
    ],
    "external_sources": [],
    "cross_references": [
@@ -30221,9 +30222,10 @@
     "owner (asked for the page)",
     "readers (record verdicts on the bench)"
    ],
-   "coverage_notes": "Read the README (2,244 bytes), the page text, and the page-data line of index.html (361,836 bytes) by targeted searches since the line is too long to open whole; read the template's text and build_page.py only via the listing, not line by line. The SQLite store is not in the folder and was not read; most per-study rows (including per-check pass/fail counts) are inside it. The 191 views/*.png images were not opened; they are projections of masks. The share link and grid paths are withheld.",
-   "notes": "Mostly the page's code and labels; the figures sit in the data line. The text file's second half repeats template.html. The site totals (199, 379, 979) and the ENHANCE.PET totals (1,557 whole, 1,597 published) are stated on the page. No other artifact in the synthesis names this dataset, so no cross-artifact figure could be compared.",
-   "read_on": "2026-10-29"
+   "coverage_notes": "Re-read the changed lines (6, 609, 714 of the text) and checked the rest of the earlier record against it; the figures sit in the data line of index.html, which the earlier reading searched in parts. The SQLite store is not in the folder and was not read. The 191 views images were not opened. The share link and grid paths are withheld.",
+   "notes": "Mostly the page's code and labels; the figures sit in the data line. The text file repeats the template: line 362 (page copy) still reads \"of ... whole studies\" while line 714 (template copy) now reads \"of ... gold 3 studies\", so the two copies of the template differ. No other artifact names this dataset, so no cross-artifact figure was compared.",
+   "read_on": "2026-10-29",
+   "changed": "The change is cosmetic wording in the template: the no-C2 label now reads \\\"No C2 drawn (silver 3 unless the field holds C2's foot)\\\" instead of \\\"No C2 in the field (silver 3)\\\", and the tile subtitle reads \\\"gold 3 studies\\\" instead of \\\"whole studies\\\". Template size went from 77,882 to 77,909 bytes. No figure moved (1,557, 1,597, 37, 1,406, 50, 28, 33, 14, 191), though the silver 3 definition is now wider and the 37 may rest on the older wording."
   },
   {
    "repo": "SchwingNet",

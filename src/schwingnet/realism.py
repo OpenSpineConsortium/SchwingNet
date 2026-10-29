@@ -27,7 +27,10 @@ and the grid job read one copy:
   fixed here before any number exists;
 - the LoRA training configuration, every hyperparameter named once, which tools/realism.py writes
   for the trainer so a run is reproducible from this file and a seed;
-- the stages of the grid word `realism <stage>` (grid/gate.sh, grid/realism.sbatch), each one job.
+- the stages of the grid word `realism <stage>` (grid/gate.sh, grid/realism.sbatch), each one job;
+- the replication's plan (ReplicationPlan): the model, how the CTs and their poses are drawn by
+  seed, the arms, the statistics' sizes, and the lines of PREREG.md's frozen block that the flow
+  (flows/realism.py) holds the code to before it runs.
 
 Resolution comes first: FluXray is stored at 256 pixels, which is FleXray's inference canvas and
 not the data's limit, so the edit here runs at the model's native 1024 and keeps the renderer's
@@ -120,8 +123,8 @@ STAGE_CLASS = {"edit": "gpu", "stats": "gpu", "lora": "gpu", "eval": "gpu"}
 STAGE_WHAT = {
     "edit": "the paper's recipe run as it stands: raw DRRs at FluXray's recorded poses, edited"
     " zero-shot at 1024 pixels, filtered as the paper filters",
-    "stats": "the metric suite over the edited set, FluXray and the real corpora, with FluXray's"
-    " split-half null",
+    "stats": "the metric suite of the kept edits and of the raw DRRs against FluXray at the same"
+    " samples, with FluXray's split-half null and the seed arms read apart",
     "lora": "the LoRA edit adapter trained on the (raw DRR, target) pairs from the configuration"
     " this module writes",
     "eval": "the adapter's edits scored as the zero-shot edits were, seed by seed, against the"
@@ -136,6 +139,9 @@ VERDICTS = ("matched", "indistinguishable", "undecided", "separable")
 CHANCE_AUC = 0.5
 INDISTINGUISHABLE_AUC = 0.6
 MMD_ALPHA = 0.05
+# The geometry check's bar: the median phase-correlation shift, in pixels of FleXray's 256 canvas,
+# between a raw render and FluXray's image of the same sample (PREREG.md, section 4).
+GEOMETRY_SHIFT_PX = 1.0
 
 
 class Model(TypedDict):
@@ -191,6 +197,61 @@ class LoraPlan:
 
 
 LORA_TARGETS = ("fluxray", "teacher", "real")
+
+# The public packages the edit and stats stages run with, installed into a throwaway environment
+# beside train-gpu's (grid/realism.sbatch reads this line from the frozen PREREG.md, and the tool
+# refuses a run whose installed versions differ). PyPI's releases of 2026-10-26.
+PINS = (
+    "diffusers==0.42.0",
+    "transformers==5.20.2",
+    "accelerate==1.15.0",
+    "peft==0.21.2",
+    "safetensors==0.8.0",
+    "huggingface_hub==2.3.0",
+    "flexray==1.0.2",
+    "lmdb==3.0.0",
+    "nibabel==5.3.2",
+)
+
+# The feature spaces every comparison is read in, all three required: what a radiographer reads,
+# what FleXray's own segmenter reads, and what an ImageNet network reads.
+SPACES = ("physics", "flexray", "imagenet")
+# The stages that run as the Metaflow flow (flows/realism.py); lora and eval wait for their port.
+FLOW_STAGES = ("edit", "stats")
+
+
+@dataclass(frozen=True)
+class ReplicationPlan:
+    """How the replication draws its sample and tests it, every number named once and frozen in
+    docs/research/flux-realism/PREREG.md before any image: the CTs and their poses drawn by seed
+    and not taken in name order, the seed arms, the renderer's sampling and clamps, the
+    statistics' sizes and seed. The edit model is the recipe's, FLUXRAY.model, never chosen by
+    which weights have landed."""
+
+    subjects: int = 100
+    poses_per_subject: int = 4
+    arms: int = 2
+    draw_seed: int = 20261025
+    shard_subjects: int = 10
+    ray_samples: int = 500
+    hu_low: float = -1000.0
+    hu_high: float = 2000.0
+    air_clamp_hu: float = -900.0
+    stats_seed: int = 20261029
+    canvas: int = 256
+    percentile_low: float = 0.5
+    percentile_high: float = 99.5
+    physics_bins: int = 32
+    radial_bands: int = 16
+    pca_components: int = 64
+    knn: int = 5
+    bootstraps: int = 200
+    permutations: int = 200
+    kid_subset: int = 100
+    kid_repeats: int = 10
+
+
+REPLICATION = ReplicationPlan()
 
 
 @beartype
@@ -548,3 +609,151 @@ def lora_config(plan: LoraPlan, pairs_dir: str, out_dir: str) -> dict[str, objec
 def as_record(recipe: EditRecipe) -> dict[str, object]:
     """The recipe as the JSON a run folder keeps beside its images."""
     return dict(asdict(recipe))
+
+
+@beartype
+@require(lambda keys: all(1 <= len(key) <= 200 and key.isascii() for key in keys), "ASCII keys")
+@require(lambda purpose: 1 <= len(purpose) <= 200 and purpose.isascii(), "an ASCII purpose")
+@ensure(lambda result, keys: sorted(result) == sorted(set(keys)), "every key once, nothing else")
+def rank_by_seed(keys: Sequence[str], seed: int, purpose: str) -> list[str]:
+    """The keys in the order a seed deals them: each ranked by a digest of the purpose, the seed
+    and itself, ties broken by the key. A key's rank never depends on which other keys are there,
+    so a subject that is missing changes no other subject's place in the draw."""
+
+    def rank(key: str) -> tuple[bytes, str]:
+        text = f"schwingnet-realism-draw|{purpose}|{seed}|{key}"
+        return hashlib.sha256(text.encode("ascii")).digest(), key
+
+    return sorted(set(keys), key=rank)
+
+
+@beartype
+@require(lambda count: count >= 1, "at least one")
+@require(lambda keys: all(1 <= len(key) <= 200 and key.isascii() for key in keys), "ASCII keys")
+@require(lambda purpose: 1 <= len(purpose) <= 200 and purpose.isascii(), "an ASCII purpose")
+@ensure(lambda result, keys, count: len(result) == min(count, len(set(keys))), "count, or all")
+@ensure(lambda result, keys: set(result) <= set(keys), "only keys given")
+def draw(keys: Sequence[str], count: int, seed: int, purpose: str) -> list[str]:
+    """count of the keys, the first a seed deals (rank_by_seed), in that order."""
+    return rank_by_seed(keys, seed, purpose)[:count]
+
+
+@beartype
+@require(lambda per_arm: all(word in VERDICTS for word in per_arm), "verdict words")
+@require(lambda pooled: pooled in VERDICTS, "a verdict word")
+@ensure(lambda result: result in VERDICTS, "one of the four words")
+@ensure(
+    lambda result, pooled, per_arm: result == pooled or len(set(per_arm)) > 1,
+    "the pooled word wherever the arms agree",
+)
+def arm_verdict(pooled: str, per_arm: Sequence[str]) -> str:
+    """One space's word once the seed arms are read: the pooled word where every arm alone says
+    the same, else undecided, since a verdict that changes with the edit's noise is not one."""
+    return pooled if len(set(per_arm)) <= 1 else "undecided"
+
+
+@beartype
+@require(lambda word: word in VERDICTS, "a verdict word")
+@require(lambda null_lows: all(0.0 <= low <= 1.0 for low in null_lows), "AUC lower bounds")
+@ensure(lambda result: result in VERDICTS, "one of the four words")
+@ensure(
+    lambda result, word, null_lows: result == word or max(null_lows) > INDISTINGUISHABLE_AUC,
+    "the word stands wherever every null holds",
+)
+def through_nulls(word: str, null_lows: Sequence[float]) -> str:
+    """A space's word once its nulls are read: undecided where a null, FluXray's split halves
+    against each other or one seed arm against the other, is itself separable by the bar, since a
+    test that tells a set from itself says nothing about two sets."""
+    return "undecided" if any(low > INDISTINGUISHABLE_AUC for low in null_lows) else word
+
+
+REPLICATION_WORDS = ("reproduced", "not reproduced", "undecided", "untestable")
+
+
+@beartype
+@require(lambda kept_word, raw_word: {kept_word, raw_word} <= set(VERDICTS), "verdict words")
+@ensure(lambda result: result in REPLICATION_WORDS, "one of the replication's four words")
+@ensure(
+    lambda result, kept_word: (
+        result != "reproduced" or kept_word in ("matched", "indistinguishable")
+    ),
+    "reproduced only where the kept edits are matched or indistinguishable",
+)
+def replication_word(kept_word: str, raw_word: str) -> str:
+    """The replication's one word from the two comparisons' worst words over the spaces: the kept
+    edits against FluXray, and the raw DRRs against FluXray, the positive control.
+
+    Not reproduced where the kept edits are separable in a space. Untestable where they are not
+    and the raw DRRs are separable in no space either, since a test that cannot tell an unedited
+    render from FluXray cannot say an edit reproduced it. Reproduced where the edits are matched or
+    indistinguishable in every space and the control is separable; undecided otherwise.
+    """
+    if kept_word == "separable":
+        return "not reproduced"
+    if raw_word != "separable":
+        return "untestable"
+    return "reproduced" if kept_word in ("matched", "indistinguishable") else "undecided"
+
+
+def _number(value: object) -> str:
+    """A value as the frozen block writes it: a tuple joined by commas, a float by repr."""
+    if isinstance(value, tuple):
+        return ",".join(_number(item) for item in value)
+    return repr(value) if isinstance(value, float) else str(value)
+
+
+@beartype
+@ensure(lambda result: all(" = " in line and line.isascii() for line in result), "key = value")
+@ensure(lambda result: len({line.split(" = ")[0] for line in result}) == len(result), "keys once")
+def frozen_lines() -> list[str]:
+    """Every number and word the replication runs by, as the lines of PREREG.md's frozen block:
+    the recipe (the prompt and the pose grid by their sha256), the plan, the verdict's
+    thresholds, the feature spaces and the pins. The flow refuses a run whose PREREG.md block
+    and these lines differ, so the frozen file and the code that runs can never part."""
+    recipe, plan = FLUXRAY, REPLICATION
+    fields = {k: v for k, v in asdict(recipe).items() if k not in ("prompt", "lora")}
+    poses = ";".join(f"{y},{z},{alpha}" for y, z, alpha in pose_grid())
+    lines = [f"recipe.{key} = {_number(value)}" for key, value in fields.items()]
+    lines.append(f"recipe.prompt_sha256 = {hashlib.sha256(recipe.prompt.encode()).hexdigest()}")
+    lines.append(f"recipe.pose_grid_sha256 = {hashlib.sha256(poses.encode()).hexdigest()}")
+    lines += [f"plan.{key} = {_number(value)}" for key, value in asdict(plan).items()]
+    lines += [
+        f"verdict.chance_auc = {_number(CHANCE_AUC)}",
+        f"verdict.indistinguishable_auc = {_number(INDISTINGUISHABLE_AUC)}",
+        f"verdict.mmd_alpha = {_number(MMD_ALPHA)}",
+        f"verdict.geometry_shift_px = {_number(GEOMETRY_SHIFT_PX)}",
+        f"spaces = {_number(SPACES)}",
+        f"pins = {' '.join(PINS)}",
+    ]
+    return lines
+
+
+def _frozen_block(text: str) -> list[str] | None:
+    """The non-blank lines between ```frozen and the next ```, stripped; None with no ```frozen."""
+    block: list[str] | None = None
+    for line in (raw.strip() for raw in text.splitlines()):
+        if line == "```frozen":
+            block = []
+        elif block is not None and line == "```":
+            break
+        elif block is not None and line:
+            block.append(line)
+    return block
+
+
+@beartype
+@ensure(lambda result: all(isinstance(line, str) and line for line in result), "each in words")
+def frozen_block_problems(text: str) -> list[str]:
+    """How the frozen block of a PREREG.md (the lines between ```frozen and the next ```) differs
+    from frozen_lines(), in words; empty when they are the same lines in the same order."""
+    block = _frozen_block(text)
+    if block is None:
+        return ["PREREG.md has no ```frozen block"]
+    expected = frozen_lines()
+    if block == expected:
+        return []
+    missing = [line for line in expected if line not in block]
+    extra = [line for line in block if line not in expected]
+    said = [f"the code runs {line}, which the block lacks" for line in missing]
+    said += [f"the block holds {line}, which the code does not run" for line in extra]
+    return said or ["the block holds the code's lines in another order"]

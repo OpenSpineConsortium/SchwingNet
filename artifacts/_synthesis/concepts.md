@@ -6,13 +6,13 @@ A concept is a figure and the words that say what it is a figure of. Two kinds a
 
 Every artifact's text, every research note under docs/research/ and each dataset record's own words are then rid of e-mail addresses and phone numbers, as extract.py rids an artifact's, scrubbed of what the folder's rule keeps out of the records (redact.py) and read passage by passage, so that no passage, no words a check keeps and no check's key holds any of it, whole or cut; a check's key therefore changes with those patterns, and `synth.py rekey` carries the stamp's word over such a change. In a passage that names a dataset, each figure goes to the nearest name within 160 characters, or to every name equally near: equal to one of those sets' counts it agrees, and where a count's noun follows it, it is rounded when it is that count written with fewer digits and differs when it is within a tenth of it (a thirtieth for a size). A dataset record's own words are checked against its own counts the same way. A passage that carries at least two of a settled figure's anchors, half of their weight by rarity, and one of its values written the same way or rounded agrees, is superseded or is open as that value is; a passage in the figure's own two artifacts is its evidence and is not checked. Nothing here judges: a check is a script's match, for a person or a skeptic to read.
 
-Rendered on 2026-10-29 from 332 texts by work/tools/synth.py concepts, or by the join of a run of .github/workflows/synthesis.yml that read something. That workflow checks every text against the ledger daily, on Run workflow and on a push a person or an App makes that changes an artifact, a research note or a dataset record, and the issue labelled synthesis lists what each run found that the stamp of 2026-10-29 had not seen. Edit the records and render again rather than editing this file.
+Rendered on 2026-10-29 from 335 texts by work/tools/synth.py concepts, or by the join of a run of .github/workflows/synthesis.yml that read something. That workflow checks every text against the ledger daily, on Run workflow and on a push a person or an App makes that changes an artifact, a research note or a dataset record, and the issue labelled synthesis lists what each run found that the stamp of 2026-10-29 had not seen. Edit the records and render again rather than editing this file.
 
 ## Summary
 
 - Dataset counts: 182, from 91 records under data/sources/.
 - Settled figures: 63, 27 used and 36 not used (listed at the end).
-- Checks: 1004 agrees, 3 rounded, 6 superseded, 54 open, 36 differs.
+- Checks: 1008 agrees, 3 rounded, 6 superseded, 56 open, 36 differs.
 
 ## Dataset counts
 
@@ -58,7 +58,7 @@ Called 'bournemouth lumbar'; counts subjects 127; 2 lines agree.
 
 ### BUU-LSPINE (buu_lspine)
 
-Called 'buu lspine'; counts lateral_films 3603, ap_films 3600, people 3600; 61 lines agree.
+Called 'buu lspine'; counts lateral_films 3603, ap_films 3600, people 3600; 65 lines agree.
 
 ### Veterinary: canine lateral thoracic radiographs for vertebral heart size (Mendeley ktx4cj55pn) (canine_thoracic_vhs)
 
@@ -368,7 +368,7 @@ Called 'enhance pet 1 6k', 'fdg pet ct'; counts studies 1683, size_gb 286.3; 9 l
 
 | Count | Outcome | Gives | Where | Line | Passage |
 |---|---|---|---|---|---|
-| studies | differs | 1,557 | [docs/research/gold3-ct/README.md](../../docs/research/gold3-ct/README.md) | 19 | \| ENHANCE.PET 1.6k: autoPET, Leipzig, Careggi \| scidb_enhance_pet_1_6k \| 1,597, with 3 repaired masks beside them \| 1,557 studies \| 865 to 1,478 \| the published vertebra and rib masks, read where FACT |
+| studies | differs | 1,558 | [docs/research/gold3-ct/README.md](../../docs/research/gold3-ct/README.md) | 19 | \| ENHANCE.PET 1.6k: autoPET, Leipzig, Careggi \| scidb_enhance_pet_1_6k \| 1,597, with 3 repaired masks beside them \| 1,558 studies, 1379 provisional while a segmenter adds its C2 \| 865 to 1,479 \| the p |
 | studies | differs | 1,557 | [docs/research/morphometry-beyond-the-42-papers.md](../../docs/research/morphometry-beyond-the-42-papers.md) | 175 | - ENHANCE.PET 1.6k (autoPET, Leipzig and Careggi): 1,557 studies run whole from C2 to the sacrum, an absent L5 label allowed. They come from 865 to 1,478 people by the records: autoPET's 979 whole stu |
 
 ### Seattle Science Foundation spine videos (seattle_science_foundation)
@@ -476,7 +476,7 @@ confirmed-contradiction; 148 (open, side a); 141 (open, side b); 617 (open, side
 
 ### Row 10: sacrum recall on real DeepFluoro frames, detector trained on renders of DeepFluoro's own CTs
 
-confirmed-contradiction; 96% (open, side a); 98% (open, side a); 90% (open, side b); 97% (open, side b); anchors deepfluoro, finds, detector, trained, cts, sacrum, renders; read from [aidas-seed-grant-proposal](../aidas-seed-grant-proposal/) and [counting-levels-under-fluoroscopy](../counting-levels-under-fluoroscopy/).
+confirmed-contradiction; 96% (open, side a); 98% (open, side a); 90% (open, side b); 97% (open, side b); anchors deepfluoro, finds, detector, cts, trained, sacrum, renders; read from [aidas-seed-grant-proposal](../aidas-seed-grant-proposal/) and [counting-levels-under-fluoroscopy](../counting-levels-under-fluoroscopy/).
 
 | Outcome | Gives | Where | Line | Passage |
 |---|---|---|---|---|
@@ -540,6 +540,8 @@ cannot-tell; 3600 (open, side a); 3600 (open, side b); 1200 (open, side b); anch
 | open | 3600 | [docs/research/datasets-reproduce.md](../../docs/research/datasets-reproduce.md) | 636 | - licence: as BUU-LSPINE (3600); access: request_form |
 | open | 3600 | [docs/research/datasets-reproduce.md](../../docs/research/datasets-reproduce.md) | 1632 | - `buu_lspine_3600`: Fill the Google Form at https://services.informatics.buu.ac.th/spine/ and accept the EULA Download BUU-LSPINE(3600) and unpack to raw/buu_full/BUU-LSPINEv1/ |
 | open | 3600 | [docs/research/drr-domain-gap/README.md](../../docs/research/drr-domain-gap/README.md) | 43 | \| film \| buu_lspine \| BUU lumbar radiographs (the 3600 release) \| patient number \| |
+| open | 3600 | [docs/research/drr-domain-gap/runs/40828920/REPORT.md](../../docs/research/drr-domain-gap/runs/40828920/REPORT.md) | 60 | al spots of one mobile C-arm; the five frozen test persons are left out."; buu_lspine, "The 3600 release; buu_lspine_2000 is a subset of it and is left out."; aasce, "Whole-spine AP; the second copy ( |
+| open | 3600 | [docs/research/drr-domain-gap/runs/40859208/REPORT.md](../../docs/research/drr-domain-gap/runs/40859208/REPORT.md) | 60 | al spots of one mobile C-arm; the five frozen test persons are left out."; buu_lspine, "The 3600 release; buu_lspine_2000 is a subset of it and is left out."; aasce, "Whole-spine AP; the second copy ( |
 | open | 3,600 | [docs/research/flexray-audit-companion.md](../../docs/research/flexray-audit-companion.md) | 62 | - Real whole-spine films: AASCE's 609 labelled AP films (608 usable), corners on T1 to L5 by position with C2 out of frame and no sacrum box, so they test chain completion and the ordinal from the fir |
 | open | 3,600 | [docs/research/held-fluoroscopy-by-region.md](../../docs/research/held-fluoroscopy-by-region.md) | 72 | \| buu_lspine (3,600 release) \| 7,203 films \| 7,204 JPEG \| one more \| |
 | open | 3,600 | [docs/research/xr-annotation-format.md](../../docs/research/xr-annotation-format.md) | 14 | \| BUU-LSPINE \| yes, 3,600 AP and lateral pairs (licence unread) \| the upper and lower edge lines of each lumbar body, as CSV points (each line's two ends are two corners), with the LSTV call per patie |
@@ -627,7 +629,7 @@ same-number-restated; 1518 (current, side a); 2021 (current, side a); 1488 (curr
 
 ### Row 129: number of COBRA2026 cases/exports
 
-cannot-tell; 150 (open, side a); 145 (open, side b); anchors exports, elekta, cases; read from [fluoroscopy-data-atlas](../fluoroscopy-data-atlas/) and [or-readiness-ledger](../or-readiness-ledger/).
+cannot-tell; 150 (open, side a); 145 (open, side b); anchors elekta, exports, cases; read from [fluoroscopy-data-atlas](../fluoroscopy-data-atlas/) and [or-readiness-ledger](../or-readiness-ledger/).
 
 | Outcome | Gives | Where | Line | Passage |
 |---|---|---|---|---|
@@ -713,7 +715,7 @@ cannot-tell; 20% (open, side a); 100% (open, side a); 40% (open, side b); anchor
 
 ### Row 226: number of coordbench task pairs
 
-updated-later; 42 (superseded, side a); 50 (current, side b); 20 (current, side b); anchors coop, sdlc, coordbench, pre, arms, registered, pairs; read from [symphony-handoff](https://github.com/OpenSpineConsortium/symphony-template/tree/main/artifacts/symphony-handoff/) and [symphony-in-brief-9cdciz](https://github.com/OpenSpineConsortium/symphony-template/tree/main/artifacts/symphony-in-brief-9cdciz/).
+updated-later; 42 (superseded, side a); 50 (current, side b); 20 (current, side b); anchors coop, sdlc, coordbench, pre, arms, pairs, registered; read from [symphony-handoff](https://github.com/OpenSpineConsortium/symphony-template/tree/main/artifacts/symphony-handoff/) and [symphony-in-brief-9cdciz](https://github.com/OpenSpineConsortium/symphony-template/tree/main/artifacts/symphony-in-brief-9cdciz/).
 
 | Outcome | Gives | Where | Line | Passage |
 |---|---|---|---|---|

@@ -9,23 +9,24 @@ in view, i should do whatever is necessary to get them ready for usage". docs/re
 programme's folder and ADMISSION.md, written by this file, its page for the rule. Confidential, like the
 rest of SchwingNet: nothing here, and nothing it writes, goes to a public place.
 
-The rule, version 2, replaces version 1's whole-by-the-masks rule (data/gold3-ct/members.json): a CT is
-admitted when its field holds C2 and the top of the sacrum, whatever its masks hold. A level is drawn when
-its mask holds at least LEVEL_MIN_VOXELS voxels. The head end is in view when C2 is drawn, wherever the
-field cuts it, since a person drew what the CT shows (a C2 in the field's top slice is flagged for a
+The rule, version 3, is version 2 with the owner's two ends of 2026-10-29 12:58 UTC: "If the top of the
+sacrum is visible that is acceptable, which I believe is all of them but check" and "Same for the bottom
+c2". Version 2 replaced version 1's whole-by-the-masks rule (data/gold3-ct/members.json): a CT is admitted
+when its field holds the foot of C2 and the top of the sacrum, whatever its masks hold. A level is drawn
+when its mask holds at least LEVEL_MIN_VOXELS voxels. The head end is in view when C2 is drawn, wherever
+the field cuts it, since a person drew what the CT shows (a C2 in the field's top slice is flagged for a
 look), unless the level below C2 is cut by the field's top too, when the field holds a sliver of C2 and
 the end is out; or when C2 is not drawn and the field reaches far enough above the head-most drawn level
-that C2 fits under it in 95 of 100 spines that draw both (the head table); it is out when that level is
-cut by the field's top, or when the field ends below where C2's foot lies in 95 of 100 spines. The foot end
-is in view when the sacrum is drawn and the field holds S1_VIEW_MM of it below its top, unless the
-foot-most level above it runs on to the field's foot, a label over the junction and a border case; or
-when the sacrum is not drawn and the field reaches at least S1_VIEW_MM below where the sacrum's top lies in
-95 of 100 spines that draw both, from the foot-most drawn level (the foot table), out when that level is
-cut by the field's foot or the field ends above where the sacrum's top lies in 95 of 100 spines. A sacrum
-the field's foot cuts with less than S1_VIEW_MM of it in the field, drawn or a label under the floor,
-makes the end out when the foot-most level above it is cut too and a border case otherwise. A study
-between in view and out of view at either end is a border case, admitted only after a person's look. The tables are measured here on the members' own
-masks, never assumed.
+that C2's foot lies under the field's top in 95 of 100 spines that draw both (the head table); it is out
+when that level is cut by the field's top, or when the field ends below where C2's foot lies in 95 of 100
+spines. The foot end is in view when the sacrum is drawn, however little of it the field holds, since a
+drawn sacrum's top is in the field; or when the sacrum is not drawn and the field's foot lies below where
+the sacrum's top lies in 95 of 100 spines that draw both, from the foot-most drawn level (the foot table),
+out when that level is cut by the field's foot or the field ends above where the sacrum's top lies in 95
+of 100 spines. A study between in view and out of view at either end is a border case, admitted only after
+a person's look. The tables are measured here on the members' own masks, never assumed. Version 2 asked
+for 20 mm of S1 below the sacrum's top and for C2 whole under the field's top; ADMISSION.md gives the
+counts with S1 asked for beside the rule's.
 
 The field is measured at the column, not at the volume's corners: on a tilted grid the faces are tilted
 planes, so the field's top over a level is where the world's head-foot line through the level's centre
@@ -83,7 +84,7 @@ MACHINE_RECORD = f"{MACHINE}/RECORD.json"
 MACHINE_ADMISSION = f"{MACHINE}/admission.json"
 MATCHER = "bordercall holdings/fullspine_complete.py"
 MEMBER_ORDER = ("enhance_pet", "verse", "totalsegmentator")
-RULE_VERSION = 2
+RULE_VERSION = 3
 
 # ---------------------------------------------------------------- the column
 
@@ -106,16 +107,16 @@ ENHANCE_NAMES = {**{str(i): f"C{i}" for i in range(1, 8)}, **{str(7 + i): f"T{i}
 # A level is drawn when its mask holds at least this many voxels: version 1's floor (tools/gold3_ct.py
 # LEVEL_MIN_VOXELS, from bordercall's holdings/count_enhance_pet.py), under which a label is a stray.
 LEVEL_MIN_VOXELS = 200
-# The head and foot tables are read at these percentiles: in view needs the 95th, so C2 fits under the
-# field's top, or the sacrum's top lies above the field's bottom, in 95 of 100 spines that draw both.
+# The head and foot tables are read at these percentiles: in view needs the 95th, so C2's foot lies under
+# the field's top, or the sacrum's top above the field's bottom, in 95 of 100 spines that draw both.
 LOW_PERCENTILE, HIGH_PERCENTILE = 5, 95
 # A table row needs this many spines to be read; a level with fewer gives a border case, not a verdict.
 MIN_TABLE_SPINES = 20
-# How much of S1 must be in the field below the top of the sacrum for the lumbosacral junction to be
-# read: the L5-S1 disc and the top of S1's body. A choice, with ADMISSION.md giving the counts at 10 and
-# 30 mm beside it, since no published number fixes it.
-S1_VIEW_MM = 20.0
-S1_VIEW_SENSITIVITY = (10.0, 30.0)
+# How much of S1 must be in the field below the top of the sacrum: none since version 3, the owner's "If the
+# top of the sacrum is visible that is acceptable" (2026-10-29 12:58 UTC). Version 2 asked 20 mm, the L5-S1
+# disc and the top of S1's body; ADMISSION.md gives the counts at 10, 20 and 30 mm beside the rule's.
+S1_VIEW_MM = 0.0
+S1_VIEW_SENSITIVITY = (10.0, 20.0, 30.0)
 # A slice centre within half a slice of the field's edge is on the edge: ENHANCE.PET's facts carry no
 # faces, so its cut levels are read from the head-foot positions, as tools/gold3_ct.py's Q06 reads C2.
 # The 0.05 mm is the facts' rounding to 0.1 mm.
@@ -485,15 +486,15 @@ def head_end(study, table):
     in view however the field cuts it, as version 1 had it: a person drew what the CT shows, and a C2 in
     the top slice is flagged for a look (flags), not left out; but where the field's top cuts the level
     below C2 too, the field holds no more of C2 than a sliver beside that level, and the end is out. A C2
-    the segmenter drew (the machine arm's) that the field's top cuts is a border case, since no person
-    read what the field holds of it."""
+    the release does not draw is in view when the field's top lies above where C2's foot lies in 95 of
+    100 spines, counted from the head-most drawn level, since C2's foot in the field is what the owner's
+    "the bottom c2" asks (version 3); version 2 asked for C2's top. A C2 the segmenter drew (the machine
+    arm's) is read as the release's is: its foot is in the field, which is what version 3 asks."""
     c2 = drawn(study, "C2")
     if c2:
         below = drawn_below(study, "C2")
         if c2["head_cut"] and below and drawn(study, below)["head_cut"]:
             return OUT, {"why": f"C2 and {below} are both cut by the field's top: the field holds a sliver of C2"}
-        if c2["head_cut"] and c2.get("machine"):
-            return BORDER, {"why": "the segmenter's C2 is cut by the field's top, and no person read what the field holds of it"}
         return DRAWN, {}
     top = head_most(study)
     if top is None:
@@ -505,13 +506,12 @@ def head_end(study, table):
     level = drawn(study, top)
     if level["head_cut"]:
         return OUT, {"why": f"{top}, the head-most drawn level, is cut by the field's top"}
-    fits, foot = table.get(top, {}), table.get(f"{top} to C2's foot", {})
+    foot = table.get(f"{top} to C2's foot", {})
     margin = round(level["field_top"] - level["top"], 1)
-    numbers = {"from": top, "field_above_mm": margin, "c2_top_above_mm": [fits.get("low"), fits.get("high")],
-               "c2_foot_above_mm": [foot.get("low"), foot.get("high")]}
-    if "high" not in fits or "low" not in foot:
+    numbers = {"from": top, "field_above_mm": margin, "c2_foot_above_mm": [foot.get("low"), foot.get("high")]}
+    if "high" not in foot or "low" not in foot:
         return BORDER, {**numbers, "why": f"fewer than {MIN_TABLE_SPINES} spines measure C2 above {top}"}
-    if margin >= fits["high"]:
+    if margin >= foot["high"]:
         return IN_VIEW, numbers
     return (OUT if margin < foot["low"] else BORDER), numbers
 
@@ -527,16 +527,15 @@ def sacrum_held(study):
 
 
 def foot_end(study, table, s1_view=S1_VIEW_MM):
-    """The same for the sacrum: one the release draws is in view when the field holds S1_VIEW_MM of it
-    below its top. Where the field's foot cuts a sacrum label, drawn or under the floor, with less than
-    that in the field, the end is out when the foot-most level above it is cut too, since the field then
-    ends inside that level with its junction at the edge, and a border case otherwise, since the label's
-    top may be the ala or a facet and a person reads where S1's body begins. With S1_VIEW_MM or more of a
-    drawn sacrum in the field, a foot-most level above it that the field's foot cuts all the same runs on
-    past the sacrum's top to the field's edge, a label over the junction, and the end is a border case for
-    a person's look. A sacrum the release does not draw is placed from the foot-most drawn level by the
-    foot table, and in view needs S1_VIEW_MM of S1 below the place; it is out when that level is cut by
-    the field's foot."""
+    """The same for the sacrum: one the release draws is drawn, however little of it the field holds,
+    since its top is in the field and the owner's "If the top of the sacrum is visible that is acceptable"
+    asks no more (version 3); a foot-most level above it that runs on to the field's foot is flagged
+    (flags), not a border case as in version 2. A sacrum the release does not draw is placed from the
+    foot-most drawn level by the foot table and is in view when the field's foot lies below the place; it
+    is out when that level is cut by the field's foot. s1_view, none in the rule, asks for that much of S1
+    below the sacrum's top, as version 2 asked 20 mm, for the counts ADMISSION.md sets beside the rule's:
+    where the field's foot cuts a sacrum label, drawn or under the floor, with less than s1_view of it in
+    the field, the end is out when the foot-most level above it is cut too and a border case otherwise."""
     last = foot_most(study)
     if last is None:
         return (DRAWN if drawn(study, "sacrum") else NO_COLUMN), {}
@@ -549,8 +548,6 @@ def foot_end(study, table, s1_view=S1_VIEW_MM):
                                             f"sacrum below its top, under {s1_view:g} mm of S1"}
         return BORDER, {**numbers, "why": f"the field's foot cuts the sacrum {held} mm below its top, under {s1_view:g} mm of S1"}
     if drawn(study, "sacrum"):
-        if level["foot_cut"]:
-            return BORDER, {"why": f"{last} runs on past the sacrum's top to the field's foot"}
         return DRAWN, {}
     if level["foot_cut"]:
         return OUT, {"why": f"{last}, the foot-most drawn level, is cut by the field's foot"}
@@ -644,6 +641,9 @@ def flags(study, head, foot):
         out.append("c2_at_field_top")
     if sacrum and sacrum["voxels"] > 0 and sacrum["foot_cut"]:
         out.append("sacrum_at_field_foot")
+    last = foot_most(study)
+    if drawn(study, "sacrum") and last and drawn(study, last)["foot_cut"]:
+        out.append("level_past_sacrum_top")
     if name_runs(study)[1]:
         out.append("name_skipped")
     span = drawn_names(study)
@@ -782,7 +782,7 @@ def admission(inputs):
                                     [j for j in judged if j["member"] == "enhance_pet"], "verdict")
                    for mm in S1_VIEW_SENSITIVITY}
     return {
-        "about": "The gold tier 3 CT dataset's admission by the field test, rule version 2 (tools/gold3_field.py): "
+        "about": f"The gold tier 3 CT dataset's admission by the field test, rule version {RULE_VERSION} (tools/gold3_field.py): "
                  "every study of the three members with its verdict, its two ends and the levels a segmenter must "
                  "add. Written by `python3 tools/gold3_field.py write`; never edited by hand.",
         "rule": rule_record(),
@@ -800,12 +800,14 @@ def admission(inputs):
 
 def machine_rule_record():
     return {"rule": "The machine arm's second judgement, beside admission.json and never replacing it: every study "
-                    "the segmenter completed is judged again by rule version 2 and its tables, made from the "
-                    "release's masks alone, with the segmenter's levels drawn beside the release's. A C2 of the "
-                    "segmenter's that the field's top cuts is a border case, a look, since no person read what the "
-                    "field holds of it; a sacrum of the segmenter's is in view only with s1_view_mm of it in the "
-                    "field below its top, as a drawn one is. A study admitted with nothing left to add is whole "
-                    "from C2 to the sacrum with the machine arm, flagged machine_levels.",
+                    "the segmenter completed is judged again by the rule's version and its tables, made from the "
+                    "release's masks alone, with the segmenter's levels drawn beside the release's. A level the "
+                    "segmenter drew is read as the release's is: a C2 whose foot is in the field and a sacrum whose "
+                    "top is in it are in view, as the owner's words of 2026-10-29 12:58 UTC ask of every C2 and "
+                    "sacrum (version 3), and a C2 cut by the field's top together with the level below it is a "
+                    "sliver and out. A study admitted with nothing left to add is whole from C2 to the sacrum with "
+                    "the machine arm, flagged machine_levels.",
+            "version": RULE_VERSION,
             "asked": "the owner, 2026-10-29 03:32 UTC: \"segment the c2 and sacrums which are on ct volumes they just "
                      "lack the masks and convert them all to gold tier 3 data\", and his choice at 04:23 UTC of "
                      "'Run SPINEPS here now'",
@@ -866,19 +868,22 @@ def machine_admission(inputs, table, judged):
 
 def rule_record():
     return {"version": RULE_VERSION,
-            "rule": "A CT is admitted when its field holds C2 and the top of the sacrum, whatever its masks hold; "
-                    "a level its masks do not draw is completed by a segmenter, kept as a machine mask of its own. "
-                    "The head end is out when the field's top cuts C2 and the level below it alike, a sliver of C2; "
-                    "the foot end is out when the field's foot cuts the sacrum, with less than s1_view_mm of it in "
-                    "the field, and the foot-most level above it too, and a border case when it cuts the sacrum "
-                    "alone or when the level above a sacrum in view runs on to the field's foot. The field is read "
+            "rule": "A CT is admitted when its field holds the foot of C2 and the top of the sacrum, whatever its masks "
+                    "hold; a level its masks do not draw is completed by a segmenter, kept as a machine mask of its own. "
+                    "A drawn C2 is in view however the field's top cuts it, unless it cuts the level below C2 too, a "
+                    "sliver of C2, and the end is out; an undrawn C2 is in view when the field's top lies above where "
+                    "C2's foot lies in 95 of 100 spines. A drawn sacrum is in view however little of it the field holds; "
+                    "an undrawn one is in view when the field's foot lies below where the sacrum's top lies in 95 of "
+                    "100 spines. The field is read "
                     "over each level along the world's vertical line, and a padded grid's field ends where the "
                     "spinal cord and the column stop together. A name missing between two drawn levels is a level "
                     "to add when their centres stand more than room_times the study's spacing of neighbours apart, "
                     "else a count variant, flagged.",
             "asked": "the owner, 2026-10-28 22:58 UTC (#443's question): \"if the full spune is in view in the volume, "
                      "and just missing a mask or two, that should just be completed using a segmentation software of "
-                     "choice ... i dont think i should leave out any spines that have ct volumes with the full spine in view\"",
+                     "choice ... i dont think i should leave out any spines that have ct volumes with the full spine in view\"; "
+                     "and for version 3, 2026-10-29 12:58 UTC: \"If the top of the sacrum is visible that is acceptable, "
+                     "which I believe is all of them but check\" and \"Same for the bottom c2\"",
             "thresholds": {"level_min_voxels": LEVEL_MIN_VOXELS, "percentiles": [LOW_PERCENTILE, HIGH_PERCENTILE],
                            "min_table_spines": MIN_TABLE_SPINES, "s1_view_mm": S1_VIEW_MM,
                            "tilt_span_mm": TILT_SPAN_MM, "level_span_mm": LEVEL_SPAN_MM, "room_times": ROOM_TIMES,
@@ -920,7 +925,7 @@ def page_text(data):
         "Written by `python3 tools/gold3_field.py write` from data/gold3-ct/admission.json; never edited by hand. "
         "The rule, its reasons and the definition of held are docs/research/gold3-ct/README.md. Confidential.",
         "",
-        "## The rule, version 2",
+        f"## The rule, version {data['rule']['version']}",
         "",
         data["rule"]["rule"],
         "",
@@ -961,7 +966,8 @@ def page_text(data):
                     for m in MEMBER_ORDER]),
         "",
         "What each flag means: c2_at_field_top, the field's top cuts C2; sacrum_at_field_foot, the field's foot "
-        "cuts a sacrum label of any size; name_skipped, one name the column's order expects is missing where its "
+        "cuts a sacrum label of any size; level_past_sacrum_top, the foot-most level above a drawn sacrum runs on "
+        "past the sacrum's top to the field's foot, a label over the junction; name_skipped, one name the column's order expects is missing where its "
         "neighbours' centres stand no farther apart than its own spacing of neighbours allows (a count "
         f"variant, as eleven thoracic and then L1, or a skipped label, within {ROOM_TIMES:g} times that spacing), "
         "so nothing is added for it and the count reads it; cut_in_plane, a level touches a side face of the grid; no_l5, L4 is the last lumbar, no L5 or "
@@ -972,7 +978,8 @@ def page_text(data):
         "",
         "## The head table",
         "",
-        "How far C2's top lies above each level's top, in mm, in spines of all three members that draw both whole.",
+        "How far C2's top (a level's own row) and C2's foot (its row to C2's foot) lie above each level's top, in "
+        "mm, in spines of all three members that draw both whole; the rule reads the rows to C2's foot.",
         "",
         table_text(["level", "spines", f"p{LOW_PERCENTILE}", "median", f"p{HIGH_PERCENTILE}"], table_rows(data["tables"]["head"])),
         "",

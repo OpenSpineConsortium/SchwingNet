@@ -1,0 +1,15 @@
+# The flows flows/launch.py starts, one a line: the kind the launcher is given, the flow's class in
+# flows/<kind>.py, the word the launcher's last line ends with, the job script under grid/ that
+# starts the launcher when Slurm runs it, and the PREREG.md the flow's runs are held to, frozen by the
+# PREREG.md.sha256 beside it as `sha256sum PREREG.md` writes it, or - for a stage that trains and
+# runs no network. Every deep learning job on the grid is to run on one of these flows, under a
+# frozen PREREG (the owner's rule of 2026-10-29); the gate's words that still submit a plain job
+# are listed in flows/README.md, each to be moved onto a flow here, and once they are the gate
+# refuses any GPU job that does not start through the launcher. flows/stage_registry.py reads this
+# file and `python3 flows/stage_registry.py check`, which scripts/check.sh runs, holds every line to it.
+#
+# kind     class         word           script                  PREREG
+bank       BankFlow      XR_BANK_RC     02-bank-ingest.sbatch   -
+catalog    CatalogFlow   XR_CATALOG_RC  03-catalog.sbatch       -
+sweep      SweepFlow     SWEEP_RC       sweep-driver.sbatch     docs/research/block-smoke/PREREG.md
+realism    RealismFlow   REALISM_RC     realism.sbatch          docs/research/flux-realism/PREREG.md

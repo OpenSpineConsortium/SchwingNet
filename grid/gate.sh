@@ -129,11 +129,14 @@
 #                   cases, then full, every countable mask, which the gate takes only once the pilot's report ended
 #                   well; each queued once as one batch job, the next send printing logs/BORDERCALL-<stage>.md, and
 #                   every later one printing it again and queueing nothing
-#   realism <stage> one stage of the Flux realism programme (docs/research/flux-realism/README.md; no count
-#                   given yet, each stage waits for the owner's word): edit, stats, lora or eval, each one GPU
-#                   job (grid/realism.sbatch, tools/realism.py) once its inputs have landed and the stage before
-#                   it has finished; the next send prints logs/REALISM-<stage>.md, and every later one prints it
-#                   again and queues nothing
+#   realism <stage> one stage of the FluXray reproduction (docs/research/flux-realism/PREREG.md; the owner's
+#                   count of 2026-10-29 02:35 UTC, two GPU jobs): edit, then stats, each one GPU job that runs
+#                   the Metaflow flow flows/realism.py through flows/launch.py (grid/realism.sbatch) once its
+#                   inputs have landed and the stage before it has finished; the next send prints
+#                   logs/REALISM-<stage>.md, or the .part a job ended before its exit left, and every later
+#                   one prints it again and queues nothing, a failed or unfinished one queued once more only
+#                   once a fix has moved the checkout; lora and eval are refused until they have a count and
+#                   a PREREG of their own
 #   literature <list>  one reading list's papers fetched onto the grid (the owner's word of 2026-10-27
 #                   23:00 UTC; grid/literature.sbatch, grid/literature_fetch.py, the list grid/literature/<list>.csv):
 #                   PMC's open-access copies, Elsevier's through its API with the key and institutional token
@@ -189,6 +192,9 @@ SMOKE=${SMOKE:-/rs/rs_grp_oschome/go2432/smoke}
 MODELS=${MODELS:-/rs/rs_grp_oschome/go2432/models}
 # Each benchmark's results, <name>/ (grid/bench.sbatch, grid/drr-gap.sbatch), where status reads a PROGRESS.txt.
 BENCH_ROOT=${BENCH_ROOT:-/rs/rs_grp_oschome/go2432/bench}
+# The Metaflow datastore flows/launch.py starts every flow in, the one the launcher defaults to, where
+# each run keeps its progress page under progress/<Flow>/<run>/ (flows/stage_progress.py).
+FLOW_ROOT=${SCHWINGNET_METAFLOW:-/rs/rs_grp_oschome/go2432/metaflow}
 WEIGHTS=$MODELS/resnet18-f37072fd.pth
 SWEEP_BANK=${SWEEP_BANK:-$DATA_ROOT/realxray/carmlspine_sweep}
 # The anomaly route's stages write under ANOMALY_ROOT (grid/anomaly.sbatch reads the same default from
@@ -362,7 +368,7 @@ chain() {  # chain DEPEND [run-xray-chain.sh arguments...]: the X-ray chain afte
   record "$XR_FETCH" xr_fetch; record "$(value_of bank "$after")" xr_bank; record "$XR_CATALOG" xr_catalog
 }
 checkout_holders() {  # afterany:<job> for every live job of the gate's that holds the checkout while it runs, comma-joined
-  # A version 1 run, a sweep, an experiment run, a benchmark, an anomaly stage and a bordercall stage each write grid/logs/HOLD, one file
+  # A version 1 run, a sweep, an experiment run, a benchmark, an anomaly, bordercall or realism stage each write grid/logs/HOLD, one file
   # naming one job, and the first of two side by side to end would clear it while the other still
   # runs, whose end check then finds the checkout moved and throws the run away; so each waits for
   # the others, a sweep sent while a benchmark lasts up to its 12 hours among them. The DRR domain-gap
@@ -371,7 +377,7 @@ checkout_holders() {  # afterany:<job> for every live job of the gate's that hol
   # the study's one job before: bench flexray_drr_seg among them, which writes the masks it reads.
   local job waits=""
   [ -f "$STATE" ] || return 0
-  for job in $(awk '$3 == "v1_driver" || $3 == "sweep" || $3 ~ /^experiment_[0-9]+$/ || $3 ~ /^bench_[a-z_]+$/ || $3 ~ /^anomaly_[a-z_]+$/ || $3 ~ /^bordercall_[a-z]+$/ { print $1 }' "$STATE" | sort -u); do
+  for job in $(awk '$3 == "v1_driver" || $3 == "sweep" || $3 ~ /^experiment_[0-9]+$/ || $3 ~ /^bench_[a-z_]+$/ || $3 ~ /^anomaly_[a-z_]+$/ || $3 ~ /^bordercall_[a-z]+$/ || $3 ~ /^realism_[a-z]+$/ { print $1 }' "$STATE" | sort -u); do
     case "$QUEUED" in *" $job "*) waits=$(joined "$waits" "afterany:$job") ;; esac
   done
   echo "$waits"
@@ -679,11 +685,13 @@ word_status() {
 status_sections() {  # every section of status whole, in the order the page shows them
   local ids run lines job name state elapsed code node probe pending
   # The space first and the sweeps' progress, the one live view of a sweep, after it, then each
-  # benchmark's, the DRR domain-gap study's while its shards run; then the sample manifest, which
+  # benchmark's, the DRR domain-gap study's while its shards run, and each launched flow's page in
+  # short lines; then the sample manifest, which
   # once came after the jobs, where the page's end cut it.
   word_space
   sweep_progress | head -n "$SWEEP_LINES_SHOWN"
   bench_progress
+  flow_progress
   samples_report
   ids=$(gate_ids | tail -n 60 | tr '\n' ',' | sed 's/,$//')
   if [ -z "$ids" ]; then
@@ -791,6 +799,56 @@ bench_progress() {  # every benchmark under BENCH_ROOT that keeps a PROGRESS.txt
     # A benchmark's folder is named by its id; any other name is no benchmark's and is passed over.
     case "$name" in ""|*[!a-z0-9_]*) continue ;; esac
     bench_progress_of "$name"
+  done
+}
+
+# Every run flows/launch.py starts keeps its progress page, and the page in short lines, PROGRESS.txt,
+# under FLOW_ROOT/progress/<Flow>/<run>/ (flows/stage_progress.py, the owner's rule of 2026-10-29).
+# Status shows the newest FLOW_RUNS_SHOWN runs' lines, each under a heading that names the run's kind
+# and id, which tools/progress_page.py reads back into the same page off the grid. The page's own
+# lines are the flow's words; a task's last line and a report's can quote a path or a value, so those
+# are judged as a stage report's lines are (report_shapes), and every line is masked. The writer puts
+# how the run ended, its verdict and its reports, right after the two head lines and shows a few tasks
+# of each step, so a whole smoke plan's run fits in FLOW_PROGRESS_LINES; the cut is only a bound.
+# The file's own word is written while the run still moves, and nothing draws a dead job's page
+# again, so status judges silence as it prints: a run the file calls running that has not moved for
+# FLOW_SILENT_SECONDS (stage_progress.SILENT_SECONDS) is shown silent, with a line saying so.
+FLOW_RUNS_SHOWN=4 FLOW_PROGRESS_LINES=40 FLOW_SILENT_SECONDS=600
+flow_shapes() {  # a flow's progress lines, its tasks' and its reports' judged as a stage report's
+  local line
+  while IFS= read -r line; do
+    case "$line" in
+      "task "*|"report: "*) printf '%s\n' "$line" | report_shapes ;;
+      *) printf '%s\n' "$line" ;;
+    esac
+  done
+}
+flow_lines() {  # flow_lines FILE: its first FLOW_PROGRESS_LINES lines, a running run judged silent by the file's age
+  local progress=$1 moved now first=""
+  moved=$(date -u -r "$progress" +%s 2>/dev/null) now=$(date -u +%s)
+  # The head is read without a pipe: grep -q ending early would fail head under pipefail.
+  IFS= read -r first < "$progress" || true
+  case "$first" in
+    "flow "*": running, started "*)
+      if [ -n "$moved" ] && [ $((now - moved)) -gt "$FLOW_SILENT_SECONDS" ]; then
+        printf '%s\n' "${first/: running, started /: silent, started }"
+        echo "silent: no file of this run has moved for $(( (now - moved) / 60 )) minutes by this status; a job Slurm ended writes nothing more, and a resume is a new run"
+        sed -n "2,$((FLOW_PROGRESS_LINES - 1))p" "$progress"
+        return
+      fi ;;
+  esac
+  head -n "$FLOW_PROGRESS_LINES" "$progress"
+}
+flow_progress() {  # the newest runs of every launched flow, each its PROGRESS.txt as status shows it
+  local progress run kind
+  ls -1t "$FLOW_ROOT"/progress/*/*/PROGRESS.txt 2>/dev/null | head -n "$FLOW_RUNS_SHOWN" | while read -r progress; do
+    [ -f "$progress" ] || continue
+    run=$(basename "$(dirname "$progress")")
+    kind=$(head -n 1 "$progress" | awk '$1 == "flow" { sub(/:$/, "", $3); print $3 }')
+    case "$run" in ""|*[!A-Za-z0-9_.-]*) continue ;; esac
+    case "$kind" in ""|*[!a-z0-9_]*) kind=unknown ;; esac
+    echo "## flow $kind $run, progress ($(date -u -r "$progress" '+%F %H:%M') UTC)"
+    flow_lines "$progress" | LC_ALL=C tr -cd '\11\12\40-\176' | flow_shapes | masked | sed 's/^/  /'
   done
 }
 
@@ -1325,9 +1383,13 @@ bench_job_of() {  # the job number a benchmark report's first line names
   sed -n '1s/.*: job \([0-9][0-9]*\) .*/\1/p' "$1"
 }
 bench_failed_on_older_code() {  # a report whose last line is a nonzero exit, from a commit not the checkout's
-  local last began
+  local last
   last=$(tail -n 1 "$1")
   [[ "$last" =~ ^-\ exit\ [1-9][0-9]*\  ]] || return 1
+  began_on_older_code "$1"
+}
+began_on_older_code() {  # a report whose first line names its job and a commit not the checkout's
+  local began
   began=$(sed -n '1s/.*, commit \([0-9a-f]*\|unknown\),.*/\1/p' "$1")
   [ -n "$began" ] && [ -n "$(bench_job_of "$1")" ] && [ "$began" != "${commit:0:7}" ]
 }
@@ -1602,9 +1664,9 @@ word_literature() {  # one reading list fetched onto the grid: queued once, its 
   echo "submitted one job. It lands a byte only once the size rule admits it; send literature $id again once it ends to read its report, logs/LITERATURE-$id.md."
 }
 
-realism_class() {  # the job class a stage of the realism programme runs as, else nothing
+realism_class() {  # the job class a stage of the reproduction runs as, else nothing
   case "$1" in
-    edit|stats|lora|eval) echo gpu ;;
+    edit|stats) echo gpu ;;
   esac
 }
 realism_report_ok() {  # a stage's report that ends in exit 0, so the stage after it may run
@@ -1617,8 +1679,9 @@ klein_landed() {  # klein_landed <4b|9b|base-4b|base-9b>: that FLUX.2 klein's di
 realism_inputs_missing() {  # what realism $id still lacks on the data root or in the reports, one line, or nothing
   case "$id" in
     edit)
-      klein_landed 9b || klein_landed 4b \
-        || { echo "FLUX.2 klein weights (fetch hf_flux2_klein_4b, or hf_flux2_klein_9b once the owner has accepted its licence on the hub)"; return; }
+      # The recipe's klein-9B and no other (PREREG.md, section 2): a klein-4B on the data root stands in for nothing.
+      klein_landed 9b || { echo "FLUX.2 klein-9B's weights (fetch hf_flux2_klein_9b first)"; return; }
+      weights_ready || { echo "ResNet-18's ImageNet weights at $WEIGHTS, which the imagenet space reads (the weights job makes them)"; return; }
       find "$DATA_ROOT/hf_flexray_weights/raw" -maxdepth 3 -name ensemble.json -print -quit 2>/dev/null | grep -q . \
         || { echo "FleXray's weights (fetch hf_flexray_weights first)"; return; }
       find "$DATA_ROOT/hf_flexray_data/raw" -path '*FluXray*' -name samples.csv -print -quit 2>/dev/null | grep -q . \
@@ -1629,17 +1692,15 @@ realism_inputs_missing() {  # what realism $id still lacks on the data root or i
         || echo "ENHANCE.PET's truth (fetch aws_enhance_pet_labels first)" ;;
     stats)
       realism_report_ok edit || echo "the edit stage's report ending in exit 0 (send realism edit first)" ;;
-    lora)
-      realism_report_ok edit || { echo "the edit stage's report ending in exit 0 (send realism edit first)"; return; }
-      klein_landed base-4b || echo "FLUX.2 klein-base-4b weights (fetch hf_flux2_klein_base_4b first)" ;;
-    eval)
-      realism_report_ok lora || echo "the lora stage's report ending in exit 0 (send realism lora first)" ;;
   esac
 }
 word_realism() {  # one stage of the Flux realism programme: queued once, its report printed on every later send
   local report=$LOGS/REALISM-$id.md class busy missing holds opts setup
   class=$(realism_class "$id")
-  [ -n "$class" ] || { echo "refusing: realism takes edit, stats, lora or eval, one stage at a time, in that order"; return 64; }
+  case "$id" in
+    lora|eval) echo "refusing: realism $id waits for a count and a PREREG of its own; the count of 2026-10-29 is edit, then stats"; return 64 ;;
+  esac
+  [ -n "$class" ] || { echo "refusing: realism takes edit or stats, one stage at a time, in that order"; return 64; }
   busy=$(live_of "realism_$id")
   [ -z "$busy" ] || { echo "refusing: the realism stage $id is still queued or running (job $busy); send realism $id again once it ends"; return 75; }
   if [ -f "$report" ]; then
@@ -1651,6 +1712,18 @@ word_realism() {  # one stage of the Flux realism programme: queued once, its re
     # more, its report kept under its job's number, as a benchmark's is; the same commit queues nothing.
     mv "$report" "$LOGS/REALISM-$id-$(bench_job_of "$report").md" || return 1
     echo "  the report above ended in failure on older code: queueing the stage again at $commit"
+  fi
+  if [ -f "$report.part" ]; then
+    # A job ended past its own trap (its time, a cancel, memory or a node's failure) leaves its
+    # report unfinished and decided nothing, so it stands as a failed report does: printed on every
+    # send, and queued again only once a fix has moved the checkout, its record kept under its job's
+    # number, since a new job at the same commit would be one the count never gave and would write
+    # over that record.
+    echo "## $(basename "$report") unfinished: the job ended before it wrote its exit ($(date -r "$report.part" '+%F %T'))"
+    head -n 200 "$report.part" | LC_ALL=C tr -cd '\11\12\40-\176' | masked | head -c 30000
+    began_on_older_code "$report.part" || return 0
+    mv "$report.part" "$LOGS/REALISM-$id-$(bench_job_of "$report.part")-unfinished.md" || return 1
+    echo "  the unfinished report above began on older code: queueing the stage again at $commit"
   fi
   missing=$(realism_inputs_missing)
   [ -z "$missing" ] || { echo "refusing: realism $id needs $missing"; return 2; }
@@ -1692,6 +1765,44 @@ plan_catalog() {  # plan_catalog FILE: the plan's catalog: synthetic, v1 or with
 }
 plan_names_weights() {  # plan_names_weights FILE: whether a row of the plan starts from an ImageNet file
   grep -q '^  *"weights": "[^"]' "$1"
+}
+# A sweep's runs are held to the frozen PREREG flows/registry.txt names for the kind sweep, which
+# covers a plan by its name and, where its Covers entry is <plan>=<sha256>, by its bytes too
+# (flows/stage_registry.py). The launcher refuses any other plan with the Lab Recipe's exit 90, but
+# only once the job holds a GPU and its catalog is built, so the word reads the same lines first and
+# refuses with 90 before anything is queued. A plan's name is its file's, as the launcher takes it.
+sweep_prereg() {  # the PREREG flows/registry.txt names for the sweep, a path under the checkout, else nothing
+  awk '$1 == "sweep" && NF == 5 { print $5; exit }' "$REPO/flows/registry.txt" 2>/dev/null
+}
+covers_entry() {  # covers_entry PREREG NAME: the entry of the PREREG's first Covers line that names the plan, else nothing
+  sed -n 's/^Covers: //p' "$1" | head -n 1 | tr ', \t' '\n\n\n' | awk -v name="$2" '$0 == name || index($0, name "=") == 1 { print; exit }'
+}
+sweep_covered() {  # sweep_covered PLAN NAME: status 0 where the sweep's frozen PREREG covers the plan, by its name and bytes; the refusal otherwise
+  local prereg entry frozen bytes want
+  prereg=$(sweep_prereg)
+  case "$prereg" in
+    ""|/*|../*|*/../*) echo "refusing: flows/registry.txt names no PREREG inside the checkout for the sweep, so no plan is covered; nothing was queued"; return 90 ;;
+  esac
+  frozen=$(awk 'NR == 1 && NF == 2 && ($2 == "PREREG.md" || $2 == "*PREREG.md") { print $1 }' "$REPO/$prereg.sha256" 2>/dev/null)
+  bytes=$(sha256sum < "$REPO/$prereg" 2>/dev/null | cut -c1-64)
+  if [ -z "$frozen" ] || [ "$frozen" != "$bytes" ]; then
+    echo "refusing: STOP: $prereg is not frozen as its PREREG.md.sha256 says (the Lab Recipe's freeze), so no sweep runs under it; nothing was queued"
+    return 90
+  fi
+  entry=$(covers_entry "$REPO/$prereg" "$2")
+  if [ -z "$entry" ]; then
+    echo "refusing: $prereg does not cover the plan $2, which waits for a PREREG of its own, frozen before it runs; nothing was queued"
+    return 90
+  fi
+  case "$entry" in
+    *=*)
+      want=${entry#*=}
+      bytes=$(sha256sum < "$1" | cut -c1-64)
+      if [ "$want" != "$bytes" ]; then
+        echo "refusing: $prereg covers $2 as the bytes of sha256 ${want:0:16}, and grid/sweeps/$2.json's are ${bytes:0:16}: a plan changed since the freeze is another design, which waits for a PREREG of its own; nothing was queued"
+        return 90
+      fi ;;
+  esac
 }
 CATALOG_DEP=""
 shard_folders() {  # the folders of the data root that hold a shard, one a line, where grid/03-catalog.sbatch lists them
@@ -1764,6 +1875,7 @@ sweep_catalog() {  # sweep_catalog CATALOG: the wait a plan's real catalog needs
 word_sweep() {
   local plan=$REPO/grid/sweeps/$id.json catalog source running setup job weights_dep="" holds opts
   [ -f "$plan" ] || { echo "refusing: $id is not a plan under grid/sweeps/ (the plans: $(sweep_plans))"; return 64; }
+  sweep_covered "$plan" "$id" || return
   running=$(live_of sweep "sweep:$id")
   [ -z "$running" ] || { echo "refusing: a sweep of $id is already queued or running (job $running); 'status' follows it"; return 75; }
   # Every refusal before any job is queued, so a refused word leaves nothing behind.

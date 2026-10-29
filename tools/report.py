@@ -5,6 +5,7 @@ Usage:
     python3 tools/report.py check --run <run folder> [--complete]
     python3 tools/report.py write --study drr-domain-gap --run <study run folder>
     python3 tools/report.py check --study drr-domain-gap --run <study run folder> [--complete]
+    python3 tools/report.py write --study flux-realism --run <realism run folder>
     python3 tools/report.py write-recorded                   # every run under docs/research/v1-demo/runs/,
                                                              # every study run under docs/research/drr-domain-gap/runs/
     python3 tools/report.py check-recorded
@@ -554,6 +555,22 @@ DRR_GAP_ITEMS = {
     },
 }
 
+def tool_module(name):
+    """A module of tools/ loaded from its file, so the report finds it whether it runs as a script
+    or a test loads it by its path."""
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(f"schwingnet_tool_{name}", ROOT / "tools" / f"{name}.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+# The FluXray reproduction (docs/research/flux-realism/PREREG.md) keeps its items, its facts, how its
+# run folder is read and its page in a module of its own, since its folder is flows/realism.py's
+# RECORD.json and the files it names, not a bench report and a summary.
+REALISM = tool_module("realism_report")
+
 STUDIES = {
     "drr-domain-gap": {
         "answers": ROOT / "data" / "reporting" / "studies" / "drr-domain-gap.json",
@@ -576,6 +593,16 @@ STUDIES = {
         "readings": ("flexray", "flexray_as_stored", "imagenet", "physics"),
         # Where each recorded run's review writes what the run does not support (section 6).
         "readme": ROOT / "docs" / "research" / "drr-domain-gap" / "README.md",
+    },
+    "flux-realism": {
+        "answers": ROOT / "data" / "reporting" / "studies" / "flux-realism.json",
+        "runs": ROOT / "docs" / "research" / "flux-realism" / "runs",
+        "prereg": REALISM.PREREG,
+        "items": REALISM.ITEMS,
+        "load": REALISM.load,
+        "facts": REALISM.FACTS,
+        "markdown": REALISM.markdown,
+        "error": REALISM.RealismReportError,
     },
 }
 
@@ -1956,12 +1983,14 @@ def study_declared_facts(study):
 
 
 def study_answered(key, checklist, run, answers, where=None):
-    where = where or shown(run["config"]["answers"])
+    config = STUDIES[run["name"]]
+    facts = config.get("facts", STUDY_FACTS)
+    where = where or shown(config["answers"])
     rows = []
     for item in checklist["items"]:
         basis, fact = study_basis(key, item, run["name"])
         if basis == "code":
-            state, evidence = STUDY_FACTS[fact](run) if fact in STUDY_FACTS else missing(f"needs a study fact \"{fact}\" in tools/report.py: none answers it yet")
+            state, evidence = facts[fact](run) if fact in facts else missing(f"needs a study fact \"{fact}\" in the study's facts: none answers it yet")
         else:
             state, evidence = declared(fact, answers, where)
         rows.append({"id": item["id"], "section": item["section"], "asks": item["asks"], "basis": basis, "fact": fact, "state": state, "evidence": evidence})
@@ -2057,6 +2086,16 @@ def fenced(lines):
     return [f"{fence}text", *lines, fence]
 
 
+def study_run(name, run_dir):
+    """A recorded run of the study as its facts read it, by the study's own reader where it has
+    one; a folder its reader refuses is refused here in the report's words."""
+    config = STUDIES[name]
+    try:
+        return config.get("load", load_study)(name, run_dir)
+    except config.get("error", ReportError) as error:
+        raise ReportError(str(error)) from error
+
+
 def answers_for(path, run):
     """The owner's answers that hold for this run, and where the report says they are: every field
     where the file names no run, and none where its _run names another, since an abstract written
@@ -2073,8 +2112,10 @@ def answers_for(path, run):
 
 def render_study(name, run_dir):
     """The three files of a recorded study run's report, from its folder and the study's answers."""
-    run = load_study(name, run_dir)
-    answers_path = Path(run["config"]["answers"])
+    config = STUDIES[name]
+    run = study_run(name, run_dir)
+    run.setdefault("config", config)
+    answers_path = Path(config["answers"])
     lists, (answers, where) = checklists(), answers_for(answers_path, run)
     claim_rows = study_answered("claim", lists["claim"], run, answers, where)
     reforms_rows = study_answered("reforms", lists["reforms"], run, answers, where)
@@ -2084,10 +2125,16 @@ def render_study(name, run_dir):
         return json.dumps({"study": name, "run_id": run["dir"].name, "checklist": checklist["name"], "source": checklist["source"], "study_sha256": answers_sha, "tally": tally(rows), "items": rows}, indent=1) + "\n"
 
     return {
-        "REPORT.md": study_markdown(run, claim_rows, reforms_rows),
+        "REPORT.md": study_page(name, run, claim_rows, reforms_rows, answers_path),
         "claim.json": document(lists["claim"], claim_rows),
         "reforms.json": document(lists["reforms"], reforms_rows),
     }
+
+
+def study_page(name, run, claim_rows, reforms_rows, answers_path):
+    """REPORT.md of a study run: the study's own page where it writes one, else the DRR study's."""
+    page = STUDIES[name].get("markdown")
+    return page(run, claim_rows, reforms_rows, checklist_section, shown(answers_path)) if page else study_markdown(run, claim_rows, reforms_rows)
 
 
 def recorded_studies():
@@ -2105,7 +2152,7 @@ def main(argv=None):
     for name in ("write", "check"):
         command = sub.add_parser(name)
         command.add_argument("--run", required=True)
-        command.add_argument("--study", choices=sorted(STUDIES), help="read the folder as a recorded run of this study (BENCH.md and summary.txt), not a training run")
+        command.add_argument("--study", choices=sorted(STUDIES), help="read the folder as a recorded run of this study (drr-domain-gap: BENCH.md and summary.txt; flux-realism: flows/realism.py's RECORD.json), not a training run")
         if name == "check":
             command.add_argument("--complete", action="store_true", help="fail while any item is missing")
     sub.add_parser("write-recorded")

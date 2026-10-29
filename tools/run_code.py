@@ -57,9 +57,13 @@ STAGE = (*ENVIRONMENT, *CONTRACTS, *SPLIT_RULES, *PYDRV, "src/schwingnet/__init_
 KINDS = {
     "row": ROW,
     "state": STATE,
-    "sweep": (*STATE, "flows/sweep.py"),
+    "sweep": (*STATE, "flows/sweep.py", "flows/stage.py", "flows/stage_registry.py"),
     "bank": (*STAGE, "flows/bank.py", "grid/02-bank-ingest.sbatch", "tools/bank.py", "tools/ingest.py"),
     "catalog": (*STAGE, "flows/catalog.py", "grid/03-catalog.sbatch"),
+    # The FluXray reproduction's stages (docs/research/flux-realism/PREREG.md): the flow, the tool
+    # each step runs, the rules it imports and the label names the render reads.
+    "realism": (*ENVIRONMENT, *CONTRACTS, "src/schwingnet/__init__.py", "src/schwingnet/realism.py", "flows/realism.py",
+                "flows/stage.py", "flows/stage_registry.py", "tools/realism.py", "grid/enhance-pet-labels.json"),
 }
 
 NAMES_THE_RUN = "names the run: the files it lists are the digest, so a change to the lists changes the digest by itself"
@@ -85,12 +89,22 @@ STAGE_LEFT_OUT = {
     "flows/launch.py": LAUNCHES,
     "grid/00-setup.sbatch": "is named only in grid/box.sh's refusal on a node with no container, which it builds once, before any job",
 }
+# What a launched flow keeps beside its work for the owner's rule of 2026-10-29 (flows/stage.py):
+# the page it draws, and the launcher the registry's check names. The registry itself, which
+# flows/stage_registry.py reads, is no part of a digest: the PREREG it names for the kind is in the
+# launcher's key by its path and sha256, and a line added for another kind changes nothing a flow runs.
+STAGE_PAGE_LEFT_OUT = {
+    "flows/launch.py": LAUNCHES,
+    "flows/stage_progress.py": "draws the run's progress page from the files the steps write; no step reads it back and no number comes from it",
+}
 LEFT_OUT = {
     "row": ROW_LEFT_OUT,
     "state": STATE_LEFT_OUT,
-    "sweep": STATE_LEFT_OUT,
+    "sweep": {**STATE_LEFT_OUT, **STAGE_PAGE_LEFT_OUT},
     "bank": {**STAGE_LEFT_OUT, "grid/size-rule.sh": "admits the job under the size rule before the launcher starts, and no step of the flow runs it"},
     "catalog": STAGE_LEFT_OUT,
+    "realism": {**STAGE_PAGE_LEFT_OUT,
+                "tools/report.py": "writes the run's CLAIM 2024 and REFORMS report from its files in the end step, after every number"},
 }
 
 

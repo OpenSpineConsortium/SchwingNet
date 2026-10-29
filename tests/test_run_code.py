@@ -29,7 +29,7 @@ ROOT = Path(__file__).resolve().parent.parent
 # second review's finding 4).
 PYDRV = tuple(re.findall(r"^export PYDRV=\$REPO/(\S+)$", (ROOT / "grid" / "gate.sh").read_text(encoding="utf-8"), re.M))
 ENTRIES = {"row": ("tools/flow.py",), "state": ("tools/block_sweep.py",), "sweep": ("flows/sweep.py",),
-           "bank": ("flows/bank.py", *PYDRV), "catalog": ("flows/catalog.py", *PYDRV)}
+           "bank": ("flows/bank.py", *PYDRV), "catalog": ("flows/catalog.py", *PYDRV), "realism": ("flows/realism.py",)}
 SCRIPT_WORD = re.compile(r"(?<![\w.-])((?:tools|grid|flows)/[\w.-]+\.(?:py|sh|sbatch|awk))(?![\w/-])")
 # A script that finds its neighbours from where it lies, as grid/bin/train-cpu-python does:
 # here=$(cd "$(dirname "$0")/.." && pwd), then "$here/box.sh".
@@ -111,10 +111,12 @@ def imported_names(node, path):
 
 def import_references(node, tools_on_path, path):
     """What an import statement runs; tools/ingest.py puts tools/ on its path and imports its
-    neighbours by their bare names."""
+    neighbours by their bare names, and a flow of flows/, run as a script, imports its neighbours
+    in flows/ the same way, its own folder first on Python's path."""
     names = imported_names(node, path)
     found = [file for name in names for file in module_files(name)]
     found += [f"tools/{name}.py" for name in names if tools_on_path and (ROOT / "tools" / f"{name}.py").is_file()]
+    found += [f"flows/{name}.py" for name in names if path.startswith("flows/") and (ROOT / "flows" / f"{name}.py").is_file()]
     return found
 
 

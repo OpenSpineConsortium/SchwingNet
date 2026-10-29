@@ -122,10 +122,14 @@ class Ends(unittest.TestCase):
         found = self.judged(levels, levels["C1"]["top"] + 5, levels["L5"]["bottom"] + 30)
         self.assertEqual(found["foot"], "out")
 
-    def test_a_field_just_below_the_last_lumbar_is_a_border_case(self):
+    def test_a_field_ending_where_the_sacrums_top_may_lie_is_a_border_case(self):
+        # The sacrum's top stands 16 to 24 mm above L5's foot over the population: a field ending 20 mm
+        # above it holds the top in some spines and not in others, and one ending 5 mm above it in all.
         levels = without(column(), "sacrum")
-        found = self.judged(levels, levels["C1"]["top"] + 5, levels["L5"]["bottom"] + 5)
+        found = self.judged(levels, levels["C1"]["top"] + 5, levels["L5"]["bottom"] + 20)
         self.assertEqual((found["verdict"], found["foot"]), ("look", "border"))
+        found = self.judged(levels, levels["C1"]["top"] + 5, levels["L5"]["bottom"] + 5)
+        self.assertEqual((found["verdict"], found["foot"]), ("admitted", "in_view"))
 
     def test_a_foot_most_level_cut_by_the_field_is_out(self):
         levels = without(column(), "sacrum")
@@ -139,11 +143,17 @@ class Ends(unittest.TestCase):
         self.assertEqual(found["head"], "in_view")
         self.assertEqual(found["complete"], ["C2", "C3", "C4", "C5", "C6", "C7"])
 
-    def test_a_field_part_way_up_c2_is_a_border_case_and_a_cut_head_is_out(self):
+    def test_a_field_past_c2s_foot_is_in_view_short_of_it_a_border_case_and_a_cut_head_is_out(self):
         levels = without(column(), "C1", "C2")
-        # Twenty millimetres clear C2's foot in every spine and fall short of C2's top in most.
+        # Twenty millimetres clear C2's foot in every spine and fall short of C2's top in most: the bottom of
+        # C2 is in the field, which is what version 3 asks. C2's foot stands 3 to 5 mm above C3's top over the
+        # population, so 4 mm hold it in some spines and not in others, and 2 mm in none.
         found = self.judged(levels, levels["C3"]["top"] + 20, levels["sacrum"]["bottom"] - 5)
+        self.assertEqual((found["verdict"], found["head"], found["complete"]), ("admitted", "in_view", ["C2"]))
+        found = self.judged(levels, levels["C3"]["top"] + 4, levels["sacrum"]["bottom"] - 5)
         self.assertEqual(found["head"], "border")
+        found = self.judged(levels, levels["C3"]["top"] + 2, levels["sacrum"]["bottom"] - 5)
+        self.assertEqual(found["head"], "out")
         levels["C3"] = {**levels["C3"], "head_cut": True}
         found = self.judged(levels, levels["C3"]["top"] + 0.5, levels["sacrum"]["bottom"] - 5)
         self.assertEqual((found["verdict"], found["head"]), ("not_admitted", "out"))
@@ -199,40 +209,52 @@ class Ends(unittest.TestCase):
         found = self.judged(levels, levels["C2"]["top"] + 0.5, levels["sacrum"]["bottom"] - 5)
         self.assertEqual((found["verdict"], found["head"]), ("not_admitted", "out"))
 
-    def test_a_sacrum_the_foot_cuts_needs_s1_view_of_it_in_the_field(self):
+    def test_a_drawn_sacrum_the_foot_cuts_is_in_view_however_little_the_field_holds(self):
+        levels = column()
+        top = levels["C1"]["top"] + 5
+        levels["sacrum"] = {**levels["sacrum"], "foot_cut": True}
+        for held in (25.0, 10.0, 2.0):
+            found = self.judged(levels, top, levels["sacrum"]["top"] - held)
+            self.assertEqual((found["verdict"], found["foot"]), ("admitted", "drawn"), held)
+            self.assertIn("sacrum_at_field_foot", found["flags"])
+
+    def test_version_2s_twenty_mm_of_s1_is_the_sensitivity_reading(self):
         levels = column()
         top = levels["C1"]["top"] + 5
         levels["sacrum"] = {**levels["sacrum"], "foot_cut": True}
         for held, expected in ((25.0, ("admitted", "drawn")), (10.0, ("look", "border"))):
-            found = self.judged(levels, top, levels["sacrum"]["top"] - held)
+            found = field.judge(study(levels, top, levels["sacrum"]["top"] - held), self.table, 20.0)
             self.assertEqual((found["verdict"], found["foot"]), expected, held)
-            self.assertIn("sacrum_at_field_foot", found["flags"])
         levels["L5"] = {**levels["L5"], "foot_cut": True}
-        found = self.judged(levels, top, levels["sacrum"]["top"] - 10.0)
+        found = field.judge(study(levels, top, levels["sacrum"]["top"] - 10.0), self.table, 20.0)
         self.assertEqual((found["verdict"], found["foot"]), ("not_admitted", "out"))
+        self.assertIn(20.0, field.S1_VIEW_SENSITIVITY)
 
-    def test_a_cut_sacrum_label_under_the_floor_keeps_the_sacrum_from_view(self):
+    def test_a_cut_sacrum_label_under_the_floor_falls_to_the_table(self):
         levels = column()
         bottom = levels["L5"]["bottom"] - 10.0
-        # With no sacrum label the table puts it in view: the field runs 10 mm below L5's foot, past where
-        # the sacrum's top lies in most spines with S1_VIEW_MM to spare. An 11-voxel label the field's
-        # foot cuts 2 mm below its top says the sacrum begins lower, and the field holds 2 mm of it.
-        alone = self.judged(without(levels, "sacrum"), levels["C1"]["top"] + 5, bottom)
-        self.assertEqual(alone["foot"], "in_view")
+        # The field runs 10 mm below L5's foot, past where the sacrum's top lies in every spine. An 11-voxel
+        # label the field's foot cuts 2 mm below its top is no drawn sacrum: the table places it, in view,
+        # and the label is flagged. Version 2's 20 mm of S1 made it a border case, the field holding 2 mm.
         levels["sacrum"] = {**levels["sacrum"], "voxels": 11, "foot_cut": True, "top": bottom + 2.0, "bottom": bottom}
         found = self.judged(levels, levels["C1"]["top"] + 5, bottom)
-        self.assertEqual((found["verdict"], found["foot"]), ("look", "border"))
+        self.assertEqual((found["verdict"], found["foot"], found["complete"]), ("admitted", "in_view", ["sacrum"]))
         self.assertIn("sacrum_at_field_foot", found["flags"])
+        self.assertIn("stray_labels", found["flags"])
+        found = field.judge(study(levels, levels["C1"]["top"] + 5, bottom), self.table, 20.0)
+        self.assertEqual((found["verdict"], found["foot"]), ("look", "border"))
 
-    def test_a_last_lumbar_cut_beside_a_sacrum_in_view_is_a_border_case(self):
-        # The field holds 25 mm of the sacrum, yet L5's label runs on past the sacrum's top to the
-        # field's foot: a label over the junction, for a person's look.
+    def test_a_last_lumbar_cut_beside_a_drawn_sacrum_is_flagged_not_held(self):
+        # The field holds 25 mm of the sacrum, yet L5's label runs on past the sacrum's top to the field's
+        # foot: a label over the junction. The sacrum's top is in the field, so version 3 admits it and the
+        # flag asks for the look that version 2's border case did.
         levels = column()
         bottom = levels["sacrum"]["top"] - 25.0
         levels["sacrum"] = {**levels["sacrum"], "foot_cut": True, "bottom": bottom}
         levels["L5"] = {**levels["L5"], "foot_cut": True, "bottom": bottom}
         found = self.judged(levels, levels["C1"]["top"] + 5, bottom)
-        self.assertEqual((found["verdict"], found["foot"]), ("look", "border"))
+        self.assertEqual((found["verdict"], found["foot"]), ("admitted", "drawn"))
+        self.assertIn("level_past_sacrum_top", found["flags"])
 
     def test_the_foot_is_judged_on_the_field_over_the_column(self):
         # On a tilted grid the field below L5 is where the vertical line through L5 leaves the volume,
@@ -240,13 +262,13 @@ class Ends(unittest.TestCase):
         levels = without(column(), "sacrum")
         study_ = study(levels, levels["C1"]["top"] + 5, levels["L5"]["bottom"] - 60.0)
         self.assertEqual(field.judge(study_, self.table)["foot"], "in_view")
-        study_["levels"]["L5"]["field_bottom"] = levels["L5"]["bottom"] - 1.0
+        study_["levels"]["L5"]["field_bottom"] = levels["L5"]["bottom"] + 20.0
         self.assertEqual(field.judge(study_, self.table)["foot"], "border")
 
     def test_a_border_case_lists_what_a_look_would_ask(self):
         levels = without(column(), "C1", "C2", "C3")
-        fits, foot = self.table["head"]["C4"], self.table["head"]["C4 to C2's foot"]
-        top = levels["C4"]["top"] + (fits["high"] + foot["low"]) / 2
+        foot = self.table["head"]["C4 to C2's foot"]
+        top = levels["C4"]["top"] + (foot["low"] + foot["high"]) / 2
         found = self.judged(levels, top, levels["sacrum"]["bottom"] - 5)
         self.assertEqual((found["verdict"], found["head"], found["complete"]), ("look", "border", ["C2", "C3"]))
 
@@ -442,17 +464,22 @@ class MachineArm(unittest.TestCase):
     def setUp(self):
         self.table = field.tables(population())
 
-    def test_a_cut_c2_the_segmenter_drew_is_a_look_where_a_persons_is_drawn(self):
+    def test_a_cut_c2_the_segmenter_drew_is_drawn_as_a_persons_is(self):
         levels = column()
         levels["C2"] = {**levels["C2"], "head_cut": True}
         persons = study(without(levels, "C1"), levels["C2"]["top"] + 0.5, levels["sacrum"]["bottom"] - 5)
         self.assertEqual(field.head_end(persons, self.table["head"])[0], "drawn")
         levels["C2"]["machine"] = True
         machines = study(without(levels, "C1"), levels["C2"]["top"] + 0.5, levels["sacrum"]["bottom"] - 5)
-        head, numbers = field.head_end(machines, self.table["head"])
-        self.assertEqual(head, "border")
-        self.assertIn("segmenter's C2", numbers["why"])
-        self.assertEqual(field.judge(machines, self.table)["verdict"], "look")
+        self.assertEqual(field.head_end(machines, self.table["head"])[0], "drawn")
+        self.assertEqual(field.judge(machines, self.table)["verdict"], "admitted")
+
+    def test_a_cut_c2_the_segmenter_drew_over_a_cut_c3_is_a_sliver(self):
+        levels = column()
+        levels["C2"] = {**levels["C2"], "head_cut": True, "machine": True}
+        levels["C3"] = {**levels["C3"], "head_cut": True}
+        machines = study(without(levels, "C1"), levels["C2"]["top"] + 0.5, levels["sacrum"]["bottom"] - 5)
+        self.assertEqual(field.head_end(machines, self.table["head"])[0], "out")
 
     def test_a_whole_c2_the_segmenter_drew_is_drawn(self):
         levels = column()
@@ -461,13 +488,12 @@ class MachineArm(unittest.TestCase):
                             self.table)
         self.assertEqual((found["verdict"], found["head"], found["complete"]), ("admitted", "drawn", []))
 
-    def test_a_sacrum_the_segmenter_drew_needs_s1_view_of_it_like_a_drawn_one(self):
+    def test_a_sacrum_the_segmenter_drew_is_drawn_however_little_the_field_holds(self):
         levels = column()
         levels["sacrum"] = {**levels["sacrum"], "machine": True, "foot_cut": True}
         short = study(levels, levels["C1"]["top"] + 5, levels["sacrum"]["top"] - 10)
-        self.assertEqual(field.foot_end(short, self.table["foot"])[0], "border")
-        enough = study(levels, levels["C1"]["top"] + 5, levels["sacrum"]["top"] - 25)
-        self.assertEqual(field.foot_end(enough, self.table["foot"])[0], "drawn")
+        self.assertEqual(field.foot_end(short, self.table["foot"])[0], "drawn")
+        self.assertEqual(field.foot_end(short, self.table["foot"], 20.0)[0], "border")
 
     def test_the_second_judgement_reads_the_completed_rows_and_keeps_the_first(self):
         record = {"member": "verse", "id": "verse001", "asked": ["sacrum"], "added": ["sacrum"],

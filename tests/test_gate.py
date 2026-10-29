@@ -11,9 +11,11 @@ scancel and df on PATH answer for Slurm; nothing reaches a scheduler. Standard l
 required check runs it."""
 
 import hashlib
+import importlib.util
 import io
 import json
 import os
+import re
 import shutil
 import signal
 import subprocess
@@ -26,6 +28,17 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 GRID = ROOT / "grid"
+
+
+def load_module(path, name):
+    """A module of the repository by its file, as the flows' own progress writer is loaded to lay out
+    what status reads."""
+    spec = importlib.util.spec_from_file_location(name, path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 FAKE_HPCWORKER = ROOT / "tests" / "fakes" / "hpcworker"
 NEW_SCRIPTS = ("gate.sh", "hpcw.sh", "box.sh", "bin/pixi", "bin/train-cpu-python", "00-setup.sbatch", "00-weights.sbatch",
                "00-carmlspine.sbatch", "v1-driver.sbatch", "experiment-driver.sbatch", "run-xray-chain.sh",
@@ -188,6 +201,8 @@ class GateTest(unittest.TestCase):
         env["VOLUME"] = str(self.tmp)
         # the benchmarks' run folders, where the DRR domain-gap study's PROGRESS.txt is read from
         env["BENCH_ROOT"] = str(self.tmp / "go2432" / "bench")
+        # the Metaflow datastore, where every launched flow keeps its progress page (flows/stage_progress.py)
+        env["SCHWINGNET_METAFLOW"] = str(self.flow_root())
         # the size rule reads these fakes only where a test says so, and waits no minute here (#180)
         env.update(SIZE_RULE_STAND_INS="yes", SIZE_RULE_SETTLE="0")
         return env
@@ -1923,7 +1938,8 @@ esac
         self.assertEqual(len(self.submitted()), 1)
 
     def realism_inputs(self, *which):
-        """The data root as the realism fetches leave it, each named set landed by its marker file."""
+        """The data root as the realism fetches leave it, each named set landed by its marker file, and
+        weights, the ImageNet file the weights job makes."""
         markers = {"klein_4b": ("hf_flux2_klein_4b", "raw", "model_index.json"),
                    "klein_9b": ("hf_flux2_klein_9b", "raw", "model_index.json"),
                    "klein_base_4b": ("hf_flux2_klein_base_4b", "raw", "model_index.json"),
@@ -1932,35 +1948,45 @@ esac
                    "ct": ("aws_enhance_pet_ct", "raw", "0001.nii.gz"),
                    "truth": ("aws_enhance_pet_labels", "raw", "Vertebrae", "0001.nii.gz")}
         for name in which:
+            if name == "weights":
+                self.weights_ready()
+                continue
             path = self.data.joinpath(*markers[name])
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text("{}\n", encoding="utf-8")
 
     def test_realism_refuses_a_stage_it_does_not_know_and_names_each_missing_input_in_turn(self):
-        # no stage, two stages and a stage that is not one of the four are refused before anything is read
+        # no stage, two stages and a stage that is not one of the count's two are refused before anything is read
         self.assertEqual(self.gate("realism").returncode, 64)
         self.assertEqual(self.gate("realism", "edit", "stats").returncode, 64)
         refused = self.gate("realism", "train")
         self.assertEqual(refused.returncode, 64, refused.stdout)
-        self.assertIn("edit, stats, lora or eval", refused.stdout)
+        self.assertIn("edit or stats", refused.stdout)
+        # the adapter's stages wait for a count and a PREREG of their own, whatever has landed
+        for stage in ("lora", "eval"):
+            refused = self.gate("realism", stage)
+            self.assertEqual(refused.returncode, 64, refused.stdout)
+            self.assertIn("a count and a PREREG of its own", refused.stdout)
         self.environments_ready()
-        steps = (((), "hf_flux2_klein_4b"), (("klein_4b",), "fetch hf_flexray_weights first"), (("flexray",), "fetch hf_flexray_data first"),
-                 (("fluxray",), "fetch aws_enhance_pet_ct first"), (("ct",), "fetch aws_enhance_pet_labels first"))
+        # a klein-4B on the data root stands in for nothing: the recipe's klein-9B is asked for
+        steps = (((), "fetch hf_flux2_klein_9b first"), (("klein_4b",), "fetch hf_flux2_klein_9b first"),
+                 (("klein_9b",), "ResNet-18's ImageNet weights"), (("weights",), "fetch hf_flexray_weights first"),
+                 (("flexray",), "fetch hf_flexray_data first"), (("fluxray",), "fetch aws_enhance_pet_ct first"),
+                 (("ct",), "fetch aws_enhance_pet_labels first"))
         for landed, said in steps:
             self.realism_inputs(*landed)
             refused = self.gate("realism", "edit")
             self.assertEqual(refused.returncode, 2, refused.stdout)
             self.assertIn(said, refused.stdout)
         self.assertEqual(self.submitted(), [])
-        # the later stages wait for the one before them, whatever the data root holds
-        for stage, before in (("stats", "edit"), ("lora", "edit"), ("eval", "lora")):
-            refused = self.gate("realism", stage)
-            self.assertEqual(refused.returncode, 2, refused.stdout)
-            self.assertIn(f"send realism {before} first", refused.stdout)
+        # the stats wait for the edit, whatever the data root holds
+        refused = self.gate("realism", "stats")
+        self.assertEqual(refused.returncode, 2, refused.stdout)
+        self.assertIn("send realism edit first", refused.stdout)
 
     def test_realism_queues_each_stage_once_as_one_gpu_job_and_then_prints_its_report(self):
         self.environments_ready()
-        self.realism_inputs("klein_9b", "flexray", "fluxray", "ct", "truth")
+        self.realism_inputs("klein_9b", "weights", "flexray", "fluxray", "ct", "truth")
         done = self.gate("realism", "edit")
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
         lines = self.submitted()
@@ -1991,24 +2017,297 @@ esac
         self.assertEqual(len(lines), 2, lines)
         self.assertIn("--class gpu --name realism_stats", lines[1])
         self.assertIn("STAGE=stats", lines[1])
-        # lora needs the base weights on top of the edit report; eval waits for lora's report
-        refused = self.gate("realism", "lora")
-        self.assertEqual(refused.returncode, 2, refused.stdout)
-        self.assertIn("fetch hf_flux2_klein_base_4b first", refused.stdout)
+        # the count is two GPU jobs: the adapter's stages queue nothing, whatever has landed
         self.realism_inputs("klein_base_4b")
-        self.assertEqual(self.gate("realism", "lora").returncode, 0)
-        self.assertEqual(self.gate("realism", "eval").returncode, 2)
-        self.assertEqual(len(self.submitted()), 3)
+        for stage in ("lora", "eval"):
+            self.assertEqual(self.gate("realism", stage).returncode, 64)
+        self.assertEqual(len(self.submitted()), 2)
+
+    def test_a_realism_stage_and_the_runs_that_hold_the_checkout_each_wait_for_the_others(self):
+        self.environments_ready()
+        self.weights_ready()
+        self.carmlspine_shards()
+        self.catalog_ready(version=2)
+        self.realism_inputs("klein_9b", "weights", "flexray", "fluxray", "ct", "truth")
+        (self.data / "realxray" / "carmlspine" / "meta").mkdir(parents=True, exist_ok=True)
+        self.state_line(900, "sweep:synthetic", "sweep")
+        self.live(900)
+        done = self.gate("realism", "edit")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("--dependency=afterany:900 ", self.line_of("realism.sbatch")[0])
+        job = self.recorded()["realism_edit"]
+        self.live(job)
+        done = self.gate("bench", "flexray_carmlspine")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn(f"afterany:{job}", self.line_of("bench.sbatch")[0])
+
+    def test_an_unfinished_realism_report_is_printed_and_queues_nothing_until_a_fix_moves_the_checkout(self):
+        # a job ended past its own trap leaves only the .part: the next send must not queue a GPU job
+        # the count never gave at the same commit, nor let that job write over the record
+        commit = self.git_repo()
+        self.environments_ready()
+        self.realism_inputs("klein_9b", "weights", "flexray", "fluxray", "ct", "truth")
+        logs = self.repo / "grid" / "logs"
+        logs.mkdir(parents=True, exist_ok=True)
+        part = logs / "REALISM-edit.md.part"
+        record = (f"# realism edit: job 4242 on node1, commit {commit}, 2026-10-29 05:00:00 UTC\n"
+                  "- inputs: FluXray samples.csv; klein-9B the stand-in\n")
+        part.write_text(record, encoding="utf-8")
+        # while its job is live the .part is that job's, and the word waits for it
+        self.state_line(4242, "realism:edit", "realism_edit")
+        self.live(4242)
+        self.assertEqual(self.gate("realism", "edit").returncode, 75)
+        self.assertEqual(part.read_text(encoding="utf-8"), record)
+        (self.fake / "queue").write_text("", encoding="utf-8")
+        for _ in range(2):
+            done = self.gate("realism", "edit")
+            self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+            self.assertIn("## REALISM-edit.md unfinished: the job ended before it wrote its exit", done.stdout)
+            self.assertIn("- inputs: FluXray samples.csv", done.stdout)
+            self.assertNotIn("queueing the stage again", done.stdout)
+            self.assertEqual(part.read_text(encoding="utf-8"), record)
+        self.assertEqual(self.submitted(), [])
+        # an unfinished edit lets no stats run
+        refused = self.gate("realism", "stats")
+        self.assertEqual(refused.returncode, 2, refused.stdout)
+        self.assertIn("send realism edit first", refused.stdout)
+        # once a fix has moved the checkout it is queued once more, the record kept under its job
+        part.write_text(record.replace(f"commit {commit},", "commit 0000000,"), encoding="utf-8")
+        done = self.gate("realism", "edit")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("  the unfinished report above began on older code: queueing the stage again at ", done.stdout)
+        self.assertFalse(part.exists())
+        self.assertIn("- inputs: FluXray samples.csv", (logs / "REALISM-edit-4242-unfinished.md").read_text(encoding="utf-8"))
+        lines = self.submitted()
+        self.assertEqual(len(lines), 1, lines)
+        self.assertIn("--class gpu --name realism_edit", lines[0])
 
     def test_the_realism_job_refuses_a_stage_it_does_not_know_before_touching_anything(self):
-        for stage in ("", "train"):
+        for stage in ("", "train", "lora", "eval"):
             env = dict(os.environ, SCHWINGNET=str(self.repo), DATA_ROOT=str(self.data), LAB_VOLUME=str(self.tmp), STAGE=stage)
             done = subprocess.run(["bash", str(self.repo / "grid" / "realism.sbatch")], cwd=self.repo / "grid", env=env,
                                   capture_output=True, text=True, timeout=60)
             self.assertEqual(done.returncode, 64, done.stdout + done.stderr)
             self.assertIn("SN_REALISM_RC=64", done.stdout)
-            self.assertIn("edit, stats, lora or eval", done.stdout)
+            self.assertIn("edit or stats", done.stdout)
         self.assertFalse((self.repo / "grid" / "logs" / "REALISM-.md").exists())
+
+    # A stand-in for the realism environment's python: it is the launcher as the job runs it, its words
+    # logged, its own lines printed as flows/launch.py prints them and the flow's end step's as
+    # Metaflow's runtime relays them, its time and task ahead of each, and the pointer and SUMMARY.md
+    # the flow writes left where the job reads them. FAKE_MODE refuse is a launcher that refuses
+    # before any run, nostart a run whose start failed before it wrote the pointer, and hang a run
+    # still going when Slurm ends the job; FAKE_KEY is the run key the decision line names, FAKE_RUN
+    # the run id, FAKE_ORIGIN the run a resume carries on, and FAKE_LINES how many lines the end step
+    # prints before its own.
+    FAKE_REALISM_PYTHON = """#!/bin/bash
+echo "$*" >> "$FAKE/realism-python.log"
+[ "$1" = flows/launch.py ] || exit 0
+if [ "${FAKE_MODE:-}" = refuse ]; then
+  echo "LaunchError: the PREREG moved since its hash was frozen" >&2
+  echo "REALISM_RC=90 2026-10-29 04:00:00"
+  exit 90
+fi
+key=${FAKE_KEY:-0123456789abcdef}
+run=${FAKE_RUN:-1761710000000001}
+if [ -n "${FAKE_ORIGIN:-}" ]; then
+  folder=$REALISM_ROOT/$STAGE-$key-$FAKE_ORIGIN
+  echo '{"code": "c0de", "decision": "resume", "flow": "realism", "key": "'"$key"'", "live": null, "origin": "'"$FAKE_ORIGIN"'", "root": "/rs/x/metaflow"}'
+else
+  folder=$REALISM_ROOT/$STAGE-$key-$run
+  echo '{"code": "c0de", "decision": "run", "flow": "realism", "key": "'"$key"'", "live": null, "origin": null, "root": "/rs/x/metaflow"}'
+fi
+if [ "${FAKE_MODE:-}" = hang ]; then
+  touch "$FAKE/realism-started"
+  sleep 30
+fi
+if [ "${FAKE_MODE:-}" != nostart ]; then
+  mkdir -p "$folder"
+  printf '# summary of the stand-in\\n- keep: 7 of 8 edits kept\\n' > "$folder/SUMMARY.md"
+  printf '{\\n "folder": "%s",\\n "key": "%s",\\n "run": "RealismFlow/%s",\\n "verdict": 0\\n}\\n' "$folder" "$key" "$run" > "$REALISM_ROOT/$STAGE.last.json"
+  for n in $(seq 1 "${FAKE_LINES:-0}"); do
+    echo "2026-10-29 04:00:00.123 [$run/end/7 (pid 4242)] RealismFlow: extra $n"
+  done
+  for line in 'keep: 7 of 8 edits kept' 'report: CLAIM 2024 and REFORMS report current (the stand-in)' 'verdict 0'; do
+    echo "2026-10-29 04:00:00.123 [$run/end/7 (pid 4242)] RealismFlow: $line"
+  done
+fi
+echo '{"flow": "realism", "run": "RealismFlow/'"$run"'", "successful": true, "verdict": 0}'
+echo "REALISM_RC=${FAKE_RC:-0} 2026-10-29 04:00:00"
+exit "${FAKE_RC:-0}"
+"""
+
+    def realism_job_env(self, stage, **extra):
+        """The environment grid/realism.sbatch runs in, over the stand-in python in a ready environment."""
+        pins = re.search(r'^REALISM_PIN="([^"]*)"$', (self.repo / "grid" / "realism.sbatch").read_text(encoding="utf-8"), re.M).group(1)
+        venv = self.tmp / "go2432" / ".cache" / "realism" / f"venv-{hashlib.sha256(pins.encode()).hexdigest()[:12]}"
+        (venv / "bin").mkdir(parents=True, exist_ok=True)
+        (venv / "READY").write_text(pins + "\n", encoding="utf-8")
+        (venv / "bin" / "python").write_text(self.FAKE_REALISM_PYTHON, encoding="utf-8")
+        (venv / "bin" / "python").chmod(0o755)
+        return dict(os.environ, SCHWINGNET=str(self.repo), DATA_ROOT=str(self.data), LAB_VOLUME=str(self.tmp), MODELS=str(self.models),
+                    REALISM_ROOT=str(self.tmp / "realism"), FAKE=str(self.fake), SCHWINGNET_NATIVE="1", STAGE=stage,
+                    SLURM_JOB_ID="4242", **extra)
+
+    def realism_job(self, stage, **extra):
+        """grid/realism.sbatch run as Slurm runs it, over the stand-in python in a ready environment."""
+        return subprocess.run(["bash", str(self.repo / "grid" / "realism.sbatch")], cwd=self.repo / "grid",
+                              env=self.realism_job_env(stage, **extra), capture_output=True, text=True, timeout=60)
+
+    def realism_edit_ready(self):
+        """A checkout with a commit and every input the edit job looks for before it starts the launcher."""
+        commit = self.git_repo()
+        self.weights_ready()
+        self.realism_inputs("klein_9b", "flexray", "fluxray", "ct", "truth")
+        (self.data / "hf_flexray_data" / "raw" / "FluXray" / "1.0").mkdir(parents=True)
+        return commit
+
+    def test_the_realism_job_starts_the_flow_through_the_launcher_and_reports_its_run(self):
+        self.git_repo()
+        self.weights_ready()
+        self.realism_inputs("klein_4b", "flexray", "fluxray", "ct", "truth")
+        (self.data / "hf_flexray_data" / "raw" / "FluXray" / "1.0").mkdir(parents=True)
+        # a klein-4B stands in for nothing: the edit asks for the recipe's klein-9B
+        done = self.realism_job("edit")
+        self.assertEqual(done.returncode, 2, done.stdout + done.stderr)
+        self.assertIn("no FLUX.2 klein-9B weights", done.stdout)
+        self.assertFalse((self.fake / "realism-python.log").exists())
+        self.realism_inputs("klein_9b")
+        done = self.realism_job("edit")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("SN_REALISM_RC=0", done.stdout)
+        called = (self.fake / "realism-python.log").read_text(encoding="utf-8").splitlines()
+        self.assertEqual(len(called), 1, called)
+        words = called[0].split()
+        self.assertEqual(words[:5], ["flows/launch.py", "realism", "--max-workers", "1", "--"])
+        given = dict(zip(words[5::2], words[6::2]))
+        self.assertEqual(given["--stage"], "edit")
+        self.assertEqual(given["--out"], str(self.tmp / "realism"))
+        self.assertEqual(given["--klein"], str(self.data / "hf_flux2_klein_9b" / "raw"))
+        self.assertEqual(given["--imagenet"], str(self.models / "resnet18-f37072fd.pth"))
+        self.assertTrue(given["--samples"].endswith("FluXray/samples.csv"))
+        report = (self.repo / "grid" / "logs" / "REALISM-edit.md").read_text(encoding="utf-8")
+        self.assertIn('- launcher: {"code": "c0de", "decision": "run"', report)
+        self.assertIn("- keep: 7 of 8 edits kept", report)
+        # the end step's lines come through Metaflow's head, the report check's among them, which
+        # SUMMARY.md never holds
+        self.assertIn("\n- report: CLAIM 2024 and REFORMS report current (the stand-in)\n", report)
+        self.assertIn("\n- verdict 0\n", report)
+        self.assertNotIn("RealismFlow:", report)
+        self.assertIn(f"- run folder: {self.tmp / 'realism' / 'edit-0123456789abcdef-1761710000000001'}\n", report)
+        self.assertIn("- progress page: /rs/x/metaflow/progress/RealismFlow/1761710000000001/index.html", report)
+        self.assertIn("### SUMMARY.md", report)
+        self.assertIn("# summary of the stand-in", report)
+        self.assertEqual(report.splitlines()[-1][:9], "- exit 0 ")
+        self.assertFalse((self.repo / "grid" / "logs" / "HOLD").exists())
+        # the stats take the bundle and the weights and nothing of the edit's inputs, which the flow reads from its record
+        done = self.realism_job("stats", FAKE_RC="1")
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        words = (self.fake / "realism-python.log").read_text(encoding="utf-8").splitlines()[-1].split()
+        self.assertEqual(sorted(dict(zip(words[5::2], words[6::2]))), ["--bundle", "--imagenet", "--out", "--stage"])
+        report = (self.repo / "grid" / "logs" / "REALISM-stats.md").read_text(encoding="utf-8")
+        self.assertIn("- launcher exited 1", report)
+        self.assertEqual(report.splitlines()[-1][:9], "- exit 1 ")
+
+    def test_the_realism_job_reports_only_the_run_folder_and_summary_of_its_own_run(self):
+        # the pointer the flow writes outlives its job: a later job whose run never reached the
+        # pointer, or reached it under another key, must not paste the earlier run's numbers
+        self.realism_edit_ready()
+        report = self.repo / "grid" / "logs" / "REALISM-edit.md"
+        folder = self.tmp / "realism" / "edit-0123456789abcdef-1761710000000001"
+        self.assertEqual(self.realism_job("edit").returncode, 0)
+        self.assertIn(f"- run folder: {folder}\n", report.read_text(encoding="utf-8"))
+        hour_ago = time.time() - 3600
+        os.utime(folder / "SUMMARY.md", (hour_ago, hour_ago))
+        # a launcher that refuses before any run names no key
+        done = self.realism_job("edit", FAKE_MODE="refuse")
+        self.assertEqual(done.returncode, 90, done.stdout + done.stderr)
+        text = report.read_text(encoding="utf-8")
+        self.assertIn("- run folder: none for this job (the launcher named no run key)\n", text)
+        self.assertNotIn("### SUMMARY.md", text)
+        self.assertNotIn("summary of the stand-in", text)
+        self.assertTrue(text.splitlines()[-1].startswith("- exit 90 at "), text)
+        # a run of another key whose start failed before the pointer: the pointer names the earlier key
+        done = self.realism_job("edit", FAKE_MODE="nostart", FAKE_KEY="fedcba9876543210", FAKE_RC="1")
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        text = report.read_text(encoding="utf-8")
+        self.assertIn(f"- run folder: none for this job ({self.tmp / 'realism' / 'edit.last.json'} names no run of the key "
+                      "fedcba9876543210)\n", text)
+        self.assertNotIn("### SUMMARY.md", text)
+        # a new run of the same key whose start failed before the pointer: the pointer names the earlier run
+        done = self.realism_job("edit", FAKE_MODE="nostart", FAKE_RUN="1761710000000002", FAKE_RC="1")
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        text = report.read_text(encoding="utf-8")
+        self.assertIn(f"- run folder: none for this job ({self.tmp / 'realism' / 'edit.last.json'} names run 1761710000000001 "
+                      "of the key 0123456789abcdef, not this job's run 1761710000000002)\n", text)
+        self.assertNotIn(str(folder), text)
+        self.assertNotIn("summary of the stand-in", text)
+        # a resume of that run, which clones its start and pointer and failed again before its end:
+        # the folder it carries on, but not the SUMMARY.md an earlier job wrote
+        done = self.realism_job("edit", FAKE_MODE="nostart", FAKE_RUN="1761710000000003", FAKE_ORIGIN="1761710000000001", FAKE_RC="1")
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        text = report.read_text(encoding="utf-8")
+        self.assertIn(f"- run folder: {folder}\n", text)
+        self.assertIn("- SUMMARY.md: not written by this job (the run did not reach its end step)\n", text)
+        self.assertNotIn("summary of the stand-in", text)
+
+    def test_the_realism_job_keeps_the_last_lines_of_the_end_step_and_its_launcher_s_exit(self):
+        # the end step's last 40 lines, the report and the verdict last among them, and never its first
+        self.realism_edit_ready()
+        self.assertEqual(self.realism_job("edit", FAKE_LINES="45").returncode, 0)
+        text = (self.repo / "grid" / "logs" / "REALISM-edit.md").read_text(encoding="utf-8")
+        head = text[:text.index("### SUMMARY.md")]
+        relayed = [line for line in head.splitlines() if line.startswith(("- extra ", "- keep: ", "- report: ", "- verdict "))]
+        self.assertEqual(relayed[0], "- extra 9")
+        self.assertEqual(relayed[-1], "- verdict 0")
+        self.assertEqual(len(relayed), 40)
+        self.assertNotIn("- - ", text)
+        # a TERM once the launcher has exited keeps the launcher's exit, and none after finish begins
+        # writes a second report (a TERM there comes too late to time in a test, so the script is read)
+        script = (GRID / "realism.sbatch").read_text(encoding="utf-8")
+        after = script[script.index("rc=${PIPESTATUS[0]}"):]
+        self.assertRegex(after.splitlines()[3], r"^trap '.*finish \"\$rc\"' TERM$")
+        finish = script[script.index("finish() {"):]
+        self.assertEqual(finish.splitlines()[2].split("#")[0].strip(), "trap '' TERM")
+
+    def test_a_realism_job_slurm_ends_writes_its_exit_and_the_gate_queues_nothing_at_its_commit(self):
+        # Slurm's TERM at the time limit or a cancel reaches every process of the job; the job's trap
+        # still finishes its report, and the next send prints it and queues no job at that commit
+        self.realism_edit_ready()
+        job = subprocess.Popen(["bash", str(self.repo / "grid" / "realism.sbatch")], cwd=self.repo / "grid",
+                               env=self.realism_job_env("edit", FAKE_MODE="hang"), stdout=subprocess.PIPE,
+                               stderr=subprocess.STDOUT, text=True, start_new_session=True)
+        try:
+            for _ in range(400):
+                if (self.fake / "realism-started").exists():
+                    break
+                time.sleep(0.05)
+            self.assertTrue((self.fake / "realism-started").exists(), "the stand-in launcher never started")
+            os.killpg(job.pid, signal.SIGTERM)
+            output, _ = job.communicate(timeout=20)
+        finally:
+            if job.poll() is None:
+                os.killpg(job.pid, signal.SIGKILL)
+                job.wait()
+        self.assertEqual(job.returncode, 143, output)
+        logs = self.repo / "grid" / "logs"
+        text = (logs / "REALISM-edit.md").read_text(encoding="utf-8")
+        self.assertIn("- TERMINATED: Slurm ended the stage (its time limit, or a cancel) before it finished\n", text)
+        self.assertTrue(text.splitlines()[-1].startswith("- exit 143 at "), text)
+        self.assertEqual(text.count("- exit "), 1, text)
+        self.assertFalse((logs / "REALISM-edit.md.part").exists())
+        self.assertFalse((logs / "HOLD").exists())
+        self.environments_ready()
+        done = self.gate("realism", "edit")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("- TERMINATED: Slurm ended the stage", done.stdout)
+        self.assertEqual(self.submitted(), [])
+
+    def test_the_realism_job_installs_exactly_the_pins_the_prereg_froze(self):
+        pins = re.search(r'^REALISM_PIN="([^"]*)"$', (GRID / "realism.sbatch").read_text(encoding="utf-8"), re.M).group(1)
+        frozen = re.findall(r'^    "([^"]+==[^"]+)",$', (ROOT / "src" / "schwingnet" / "realism.py").read_text(encoding="utf-8"), re.M)
+        self.assertTrue(frozen)
+        self.assertEqual(pins.split(), frozen)
 
     def test_select_is_refused_without_the_frozen_holdout(self):
         (self.repo / "data" / "splits" / "anomaly-holdout.json").unlink()
@@ -2845,6 +3144,136 @@ esac
         self.assertLess(out.index("## space on the lab volume"), out.index("## bench flexray_drr_gap, progress"))
         self.assertLess(out.index("## bench flexray_drr_gap, progress"), out.index("no job submitted by the gate yet"))
         self.assertNotIn("not shown, for want of room", out)
+
+    def flow_root(self):
+        return self.tmp / "go2432" / "metaflow"
+
+    def flow_run(self, run, lines, kind="sweep", state="running"):
+        """A launched flow's progress folder with its PROGRESS.txt as flows/stage_progress.py writes it,
+        updated now, as a live run's is."""
+        folder = self.flow_root() / "progress" / "SweepFlow" / run
+        folder.mkdir(parents=True, exist_ok=True)
+        updated = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
+        head = f"flow SweepFlow/{run} {kind}: {state}, started 2026-10-29 03:00:00 UTC, updated {updated} UTC"
+        (folder / "PROGRESS.txt").write_text("\n".join([head, *lines]) + "\n", encoding="utf-8")
+        return folder / "PROGRESS.txt"
+
+    def test_status_shows_the_newest_launched_flows_progress_its_quotes_judged_as_a_reports(self):
+        # the owner's rule of 2026-10-29: every launched flow keeps a progress page; status shows the
+        # newest runs' short lines under a heading tools/progress_page.py reads back into the page
+        # each file moved within the last few minutes, so none is judged silent
+        moved = int(time.time()) - 200
+        for n in range(6):
+            progress = self.flow_run(f"17929025852864{n:02d}", ["run: key 68974c7ccabf5595, commit 35a4b6f"])
+            os.utime(progress, (moved + n, moved + n))
+        # the lines in the order flows/stage_progress.py writes them, how the run ended first; a file
+        # longer than FLOW_PROGRESS_LINES, which the writer never makes, is cut there all the same
+        newest = self.flow_run("1792902585286499", [
+            "run: key 68974c7ccabf5595, commit 35a4b6f, code 0123456789ab, PREREG docs/research/block-smoke/PREREG.md sha256 5779e79a2a7c",
+            "verdict: 1",
+            "ended: the launcher exited 1, the flow succeeded",
+            "reports: 0 of 1 current, 1 not current or not written",
+            "report: resnet34-32px-b2928840: NOT CURRENT, why: REPORT.md not what the run gives for Doe_John/IM0007.dcm",
+            "step start: done",
+            f"task start prepare: done; state {self.smoke}/real/1a2b3c4d-5e6f7a8b, 20 rows first, 2 warm starts after",
+            "step first: running; 1 done, 1 failed of 2",
+            "task first resnet18-64px-3d291b87: failed; fault, why: SweepFault: block_sweep row exited 2: no frame case134_19650312.png",
+            "task first resnet34-32px-b2928840: done; Outcome: ran, matched the check."] + [f"task first row{n}: done" for n in range(60)])
+        os.utime(newest, (moved + 100, moved + 100))
+        odd = self.flow_root() / "progress" / "SweepFlow" / "not a run"
+        odd.mkdir(parents=True)
+        (odd / "PROGRESS.txt").write_text("flow SweepFlow/x sweep: running\n", encoding="utf-8")
+        os.utime(odd / "PROGRESS.txt", (moved - 100, moved - 100))
+        done = self.gate("status")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        out = done.stdout
+        self.assertEqual(out.count("## flow sweep "), 4, out)
+        self.assertRegex(out, r"## flow sweep 1792902585286499, progress \(\d{4}-\d\d-\d\d \d\d:\d\d UTC\)\n  flow SweepFlow/1792902585286499 sweep: running, ")
+        self.assertLess(out.index("## flow sweep 1792902585286499"), out.index("## flow sweep 1792902585286405"))
+        self.assertNotIn("## flow sweep 1792902585286401", out)
+        self.assertIn("  run: key 68974c7ccabf5595, commit 35a4b6f, code 0123456789ab, PREREG docs/research/block-smoke/PREREG.md sha256 5779e79a2a7c\n", out)
+        self.assertIn("  task start prepare: done; state <path>, 20 rows first, 2 warm starts after\n", out)
+        self.assertIn("  task first resnet18-64px-3d291b87: failed; fault, why: <reason withheld: it can quote a value; the whole report stays on the grid>\n", out)
+        self.assertIn("  report: resnet34-32px-b2928840: NOT CURRENT, why: <reason withheld", out)
+        self.assertIn("  verdict: 1\n  ended: the launcher exited 1, the flow succeeded\n  reports: 0 of 1 current, 1 not current or not written\n", out)
+        # at most the first FLOW_PROGRESS_LINES lines of the file, 40, its head among them
+        self.assertIn("  task first row28: done\n", out)
+        self.assertNotIn("row29", out)
+        for value in ("case134", "19650312", "Doe_John", "not a run"):
+            self.assertNotIn(value, out)
+        self.assertLess(out.index("## space on the lab volume"), out.index("## flow sweep"))
+        self.assertLess(out.index("## flow sweep"), out.index("no job submitted by the gate yet"))
+
+    def test_status_shows_how_a_whole_plans_run_ended_as_the_flows_own_writer_lays_it_out(self):
+        # a smoke plan of 27 rows drawn by flows/stage_progress.py itself: the verdict, how the
+        # launcher saw the flow end and the report not current all come inside the lines status keeps
+        progress = load_module(ROOT / "flows" / "stage_progress.py", "stage_progress_for_the_gate")
+        flow, run = "SweepFlow", "1792902585286456"
+        progress.write_head(self.flow_root(), {"flow": flow, "run": run, "kind": "sweep", "key": "0" * 16, "started": progress.utc_now()})
+        progress.write_graph(self.flow_root(), flow, run, ["start", "fan_first", "first", "join_first", "middle", "fan_second", "second",
+                                                         "join_second", "end"])
+        rows = [("first", f"row{n:02d}") for n in range(25)] + [("second", "warm0"), ("second", "warm1")]
+        for number, (step, label) in enumerate(rows, 10):
+            progress.write_task(self.flow_root(), flow, run, {"step": step, "task": str(number), "label": label, "state": "done",
+                                                            "lines": ["Outcome: ran, matched the check."]})
+        progress.write_result(self.flow_root(), flow, run, {
+            "verdict": 1, "reports": 27, "not_current": 1,
+            "lines": ["row03: NOT CURRENT as the run wrote it, so written anew; why: claim.json not what the run gives for Doe_John"]
+                     + [f"{label}: current as the run wrote it" for _, label in rows if label != "row03"]})
+        progress.write_launch(self.flow_root(), flow, run, {"words": "the launcher exited 1, the flow succeeded"})
+        progress.draw(self.flow_root(), flow, run)
+        done = self.gate("status")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        section = done.stdout.split(f"## flow sweep {run}, progress (", 1)[1].split("\n## ", 1)[0]
+        self.assertIn("\n  verdict: 1\n  ended: the launcher exited 1, the flow succeeded\n"
+                      "  reports: 26 of 27 current, 1 not current or not written\n"
+                      "  report: row03: NOT CURRENT as the run wrote it, so written anew; why: <reason withheld", section)
+        self.assertIn("  step first: done; 25 done of 25\n", section)
+        self.assertIn("  step end: waiting\n", section)
+        self.assertNotIn("Doe_John", done.stdout)
+
+    def test_status_shows_a_running_run_whose_file_has_not_moved_for_ten_minutes_as_silent(self):
+        # a job Slurm killed draws nothing more, so its file still says running: status judges it by
+        # the file's age as it prints it, and says so in a line tools/progress_page.py reads back
+        long_ago = int(time.time()) - 25 * 60
+        dead = self.flow_run("1792902585286401", ["run: key 68974c7ccabf5595"] + [f"task first row{n}: done" for n in range(60)])
+        os.utime(dead, (long_ago, long_ago))
+        ended = self.flow_run("1792902585286402", ["run: key 68974c7ccabf5595", "verdict: 0"], state="succeeded")
+        os.utime(ended, (long_ago - 1, long_ago - 1))
+        live = self.flow_run("1792902585286403", ["run: key 68974c7ccabf5595"])
+        done = self.gate("status")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        out = done.stdout
+        dead_section = out.split("## flow sweep 1792902585286401, progress (", 1)[1].split("\n## ", 1)[0].splitlines()[1:]
+        self.assertRegex(dead_section[0], r"^  flow SweepFlow/1792902585286401 sweep: silent, started ")
+        self.assertRegex(dead_section[1], r"^  silent: no file of this run has moved for 2[56] minutes by this status; ")
+        self.assertEqual(dead_section[2], "  run: key 68974c7ccabf5595")
+        self.assertEqual(len(dead_section), 40, "the line status adds keeps the run inside the lines it shows")
+        self.assertIn("  flow SweepFlow/1792902585286402 sweep: succeeded, started ", out)
+        self.assertIn("  flow SweepFlow/1792902585286403 sweep: running, started ", out)
+        self.assertEqual(out.count("  silent: "), 1, out)
+        answer, page = self.tmp / "status.txt", self.tmp / "page.html"
+        answer.write_text(out, encoding="utf-8")
+        drawn = subprocess.run([sys.executable, str(ROOT / "tools" / "progress_page.py"), str(answer), "--run", "1792902585286401",
+                                "--out", str(page)], capture_output=True, text=True, timeout=60)
+        self.assertEqual(drawn.returncode, 0, drawn.stderr)
+        html = page.read_text(encoding="utf-8")
+        self.assertIn('<span class="badge silent">silent</span>', html)
+        self.assertIn('<p class="silent">no file of this run has moved for ', html)
+
+    def test_the_status_answer_draws_the_flows_page_off_the_grid(self):
+        self.flow_run("1792902585286499", ["run: key 68974c7ccabf5595, commit 35a4b6f", "step start: done", "step first: running; 1 done, 1 running of 2",
+                                           "task first resnet18-64px-3d291b87: running; Last epoch: epoch 1 of 2."])
+        done = self.gate("status")
+        answer, page = self.tmp / "status.txt", self.tmp / "page.html"
+        answer.write_text(done.stdout, encoding="utf-8")
+        drawn = subprocess.run([sys.executable, str(ROOT / "tools" / "progress_page.py"), str(answer), "--out", str(page)],
+                               capture_output=True, text=True, timeout=60)
+        self.assertEqual(drawn.returncode, 0, drawn.stderr)
+        html = page.read_text(encoding="utf-8")
+        self.assertIn("SweepFlow 1792902585286499", html)
+        self.assertIn("Last epoch: epoch 1 of 2.", html)
+        self.assertIn('<span class="badge running">running</span>', html)
 
     def drr_gap_box(self):
         """A stand-in box.sh for the study's steps: every call logged with whether the checkout was held,
@@ -3822,7 +4251,72 @@ esac
         folder = self.repo / "grid" / "sweeps"
         folder.mkdir(parents=True, exist_ok=True)
         (folder / f"{name}.json").write_text(json.dumps(record, indent=1, sort_keys=True) + "\n", encoding="utf-8")
+        self.cover_plans()
         return folder / f"{name}.json"
+
+    def cover_plans(self, *uncovered, by_name=()):
+        """The registry's sweep line and the sweep's PREREG frozen as the Lab Recipe says, covering
+        every plan under the test's grid/sweeps/ by its bytes, but those uncovered and those it
+        covers by name alone, as the word reads them before it queues anything."""
+        (self.repo / "flows").mkdir(exist_ok=True)
+        shutil.copy(ROOT / "flows" / "registry.txt", self.repo / "flows" / "registry.txt")
+        entries = []
+        for plan in sorted((self.repo / "grid" / "sweeps").glob("*.json")):
+            if plan.stem in by_name:
+                entries.append(plan.stem)
+            elif plan.stem not in uncovered:
+                entries.append(f"{plan.stem}={hashlib.sha256(plan.read_bytes()).hexdigest()}")
+        prereg = self.repo / "docs" / "research" / "block-smoke"
+        prereg.mkdir(parents=True, exist_ok=True)
+        text = f"# The test's design\n\nCovers: {', '.join(entries)}\n"
+        (prereg / "PREREG.md").write_text(text, encoding="utf-8")
+        (prereg / "PREREG.md.sha256").write_text(f"{hashlib.sha256(text.encode()).hexdigest()}  PREREG.md\n", encoding="ascii")
+        return prereg / "PREREG.md"
+
+    def test_sweep_refuses_a_plan_its_frozen_prereg_does_not_cover_before_anything_is_queued(self):
+        # the launcher refuses such a plan with exit 90 too, but only once the job holds a GPU and the
+        # catalog is built; the word reads the same Covers line first and queues nothing
+        self.environments_ready()
+        self.plan("synthetic", "synthetic")
+        self.plan("trials", "synthetic")
+        self.cover_plans("trials")
+        done = self.gate("sweep", "trials")
+        self.assertEqual(done.returncode, 90, done.stdout)
+        self.assertIn("refusing: docs/research/block-smoke/PREREG.md does not cover the plan trials, which waits for a PREREG "
+                      "of its own, frozen before it runs; nothing was queued", done.stdout)
+        # a plan edited since the freeze, under the same name, is another design
+        plan = self.repo / "grid" / "sweeps" / "synthetic.json"
+        frozen = hashlib.sha256(plan.read_bytes()).hexdigest()
+        plan.write_text(plan.read_text(encoding="utf-8").replace('"epochs": 3', '"epochs": 4'), encoding="utf-8")
+        done = self.gate("sweep", "synthetic")
+        self.assertEqual(done.returncode, 90, done.stdout)
+        self.assertIn(f"covers synthetic as the bytes of sha256 {frozen[:16]}, and grid/sweeps/synthetic.json's are "
+                      f"{hashlib.sha256(plan.read_bytes()).hexdigest()[:16]}: a plan changed since the freeze is another design", done.stdout)
+        # a PREREG edited since its freeze covers nothing
+        prereg = self.cover_plans()
+        with prereg.open("a", encoding="utf-8") as text:
+            text.write("A hypothesis added after the data were seen.\n")
+        done = self.gate("sweep", "synthetic")
+        self.assertEqual(done.returncode, 90, done.stdout)
+        self.assertIn("refusing: STOP: docs/research/block-smoke/PREREG.md is not frozen as its PREREG.md.sha256 says", done.stdout)
+        self.assertEqual(self.submitted(), [])
+        # an entry that names the plan alone covers it whatever its bytes, as the launcher reads it
+        self.cover_plans(by_name=("synthetic",))
+        done = self.gate("sweep", "synthetic")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertEqual(len(self.line_of("sweep-driver.sbatch")), 1)
+
+    def test_the_repositorys_own_prereg_covers_its_smoke_plans_and_not_the_trials(self):
+        self.environments_ready()
+        (self.repo / "flows").mkdir()
+        shutil.copy(ROOT / "flows" / "registry.txt", self.repo / "flows" / "registry.txt")
+        shutil.copytree(ROOT / "docs" / "research" / "block-smoke", self.repo / "docs" / "research" / "block-smoke")
+        done = self.gate("sweep", "trials")
+        self.assertEqual(done.returncode, 90, done.stdout)
+        self.assertIn("does not cover the plan trials", done.stdout)
+        done = self.gate("sweep", "synthetic")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertEqual(len(self.line_of("sweep-driver.sbatch")), 1)
 
     def test_sweep_and_bank_each_take_exactly_one_plain_id(self):
         for words in (("sweep",), ("sweep", "a", "b"), ("sweep", "Real"), ("sweep", "../real"), ("bank",),
@@ -4753,7 +5247,8 @@ esac
         there, names the state folder as block_sweep's state does with $FAKE/code, else c0dec0de,
         for the code's part, and answers for the launcher as flows/launch.py does, its exit code
         $FAKE/launch_rc, after a commit to the checkout that leaves the code $FAKE/move names where
-        that file is there."""
+        that file is there; while $FAKE/launch_holds is there it runs until a TERM comes, says it
+        came in $FAKE/stopped and ends as the launcher ends then, with 143."""
         (self.repo / "grid" / "box.sh").write_text(r"""#!/bin/bash
 echo "$* hold=$(cat "$SCHWINGNET/grid/logs/HOLD" 2>/dev/null)" >> "$FAKE/box.log"
 case "$*" in
@@ -4769,6 +5264,12 @@ case "$*" in
       cp "$FAKE/move" "$FAKE/code"
     fi
     echo '{"decision": "run", "flow": "sweep", "key": "0123456789abcdef", "origin": null, "root": "/m"}'
+    if [ -f "$FAKE/launch_holds" ]; then
+      sleep 60 & flow=$!
+      trap 'kill "$flow"; echo TERM >> "$FAKE/stopped"; echo "{\"flow\": \"sweep\", \"run\": \"SweepFlow/12\", \"successful\": false, \"verdict\": null}"; exit 143' TERM
+      touch "$FAKE/launch_held"
+      wait "$flow"
+    fi
     echo "a row ran"
     echo '{"flow": "sweep", "run": "SweepFlow/12", "successful": true, "verdict": 0}'
     exit "$(cat "$FAKE/launch_rc" 2>/dev/null || echo 0)" ;;
@@ -4844,6 +5345,38 @@ esac
         self.assertEqual(done.returncode, 1)
         self.assertIn("FAILED: the split check of version 1 failed; no sweep reads it", done.stdout)
         self.assertFalse([line for line in self.boxed() if "flows/launch.py" in line])
+
+    def test_job_submits_early_term_reaches_the_launcher_at_once_and_the_report_still_says_how_it_ended(self):
+        # job submit sends TERM to the batch shell alone two minutes before the limit; a shell
+        # running the launcher in its foreground held it until the launcher ended, so the launcher
+        # heard only Slurm's own TERM at the limit
+        self.git_repo()
+        self.sweep_box()
+        self.plan("synthetic", "synthetic")
+        catalog = self.synthetic_catalog()
+        (self.fake / "launch_holds").write_text("", encoding="utf-8")
+        env = dict(os.environ, SCHWINGNET=str(self.repo), DATA_ROOT=str(self.data), SMOKE=str(self.smoke), FAKE=str(self.fake),
+                   MODELS=str(self.models), PLAN="synthetic", SLURM_JOB_ID="777", FAKE_CATALOG=str(catalog))
+        for name in ("STORE", "WEIGHTS"):
+            env.pop(name, None)
+        driver = subprocess.Popen(["bash", str(self.repo / "grid" / "sweep-driver.sbatch")], cwd=self.repo / "grid", env=env,
+                                  stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        self.addCleanup(driver.kill)
+        for _ in range(300):
+            if (self.fake / "launch_held").exists():
+                break
+            time.sleep(0.1)
+        began = time.monotonic()
+        driver.send_signal(signal.SIGTERM)
+        out, _ = driver.communicate(timeout=60)
+        self.assertLess(time.monotonic() - began, 30, "the TERM reached the launcher before its flow ended on its own")
+        self.assertEqual(driver.returncode, 143, out)
+        self.assertEqual((self.fake / "stopped").read_text(encoding="utf-8"), "TERM\n")
+        self.assertIn("SN_SWEEP_RC=143", out)
+        report = (self.repo / "grid" / "logs" / "sweep-synthetic-STAGE-REPORT.md").read_text(encoding="utf-8")
+        self.assertIn('- Metaflow: {"flow": "sweep", "run": "SweepFlow/12", "successful": false', report)
+        self.assertIn("- launcher exited 143\n", report)
+        self.assertFalse((self.repo / "grid" / "logs" / "HOLD").exists())
 
     def test_a_sweep_whose_checkout_moved_is_used_only_where_the_code_its_rows_run_stayed_the_same(self):
         # The state folder is named by the code the rows run (#252, finding 27), so a merge that
