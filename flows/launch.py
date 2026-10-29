@@ -135,6 +135,9 @@ POLL_SECONDS = 0.5
 # (the second review of #252, finding 6). A kind the registry does not list, or a registry that
 # cannot be read, ends with LAUNCH_RC.
 NO_WORD = "LAUNCH_RC"
+# A copy of the code holds this record of its commit and files in place of .git (tools/run_code.py,
+# COPY_RECORD), as the DRR domain-gap study's prepare makes one for every later step to run from.
+COPY_RECORD = "COPY.txt"
 
 
 def tell(text, stream=None):
@@ -252,8 +255,25 @@ def repository():
     return Path(os.environ.get("SCHWINGNET") or ROOT).absolute()
 
 
+def copied_commit(repo):
+    """The commit a copy of the code was made at, as its record names it, where the launcher runs
+    from a copy git archive made and not from a checkout (tools/run_code.py, COPY_RECORD); None for
+    a checkout."""
+    record = repo / COPY_RECORD
+    if (repo / ".git").exists() or not record.is_file():
+        return None
+    first = record.read_text(encoding="utf-8", errors="replace").split("\n", 1)[0]
+    if not re.fullmatch(r"[0-9a-f]{40}", first):
+        raise LaunchError(f"{record} names no commit on its first line, so the copy's code cannot be named", EX_UNAVAILABLE)
+    return first
+
+
 def commit_of(repo):
-    """The checkout's full commit, which a new run's --commit and every run's tag carry."""
+    """The checkout's full commit, which a new run's --commit and every run's tag carry; a copy's,
+    as its record names it."""
+    copied = copied_commit(repo)
+    if copied:
+        return copied
     try:
         done = subprocess.run(["git", "-C", str(repo), "rev-parse", "HEAD"], capture_output=True, text=True)
     except OSError as error:  # no git where the launcher runs, a box without it among them
