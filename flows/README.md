@@ -42,6 +42,18 @@ Metaflow's own resume rather than by anything written around it.
   own, and so is a plan made again with other rows. grid/gate.sh's word `sweep <plan>` reads the
   same Covers line in bash and refuses such a plan with 90 before it queues anything, since the
   launcher's own refusal comes only once the job holds a GPU and its catalog is built.
+- `v1.py`, V1Flow: the version 1 run on real frames (issue #53), which grid/v1-driver.sbatch
+  starts through the launcher once it has chosen the catalog version and checked its split again.
+  start holds the run to docs/research/v1-demo/PREREG.md, a step `train_evaluate` runs
+  `tools/flow.py run` whole in local mode, its card and its line on the page moving with the
+  trainer's train/metrics.jsonl, and end holds the run to that PREREG again (stage.still_held),
+  writes and checks the run's CLAIM 2024 and REFORMS report in its folder, strict for work done
+  since the Metaflow run began, and writes METAFLOW.json there. A step that fails is retried once
+  at once (`@retry(times=1)`); a kill mid-training resumes the step, which tools/flow.py carries on
+  from its last epoch. The key reads the catalog's and the ImageNet file's bytes, as tools/flow.py
+  names the run. The verdict is 0 only where tools/flow.py finished the run (FINISHED.json) and
+  its report is current. The driver runs the launcher in the background, as the sweep's does, so
+  job submit's TERM two minutes before the limit reaches it at once and it closes the run's page.
 - `realism.py`, RealismFlow: the FluXray reproduction (docs/research/flux-realism/PREREG.md), one
   run per stage on the owner's count of 2026-10-29 (two GPU jobs, edit and then stats; grid word
   `realism <stage>`, grid/realism.sbatch). start holds the run to the PREREG and to its frozen block,
@@ -79,12 +91,11 @@ enforced and a page that shows its progress in the browser; a plain Slurm job is
 
 The sweep keeps it, and so do the FluXray reproduction's `realism edit` and `realism stats`
 (RealismFlow, above; lora and eval are refused until they have a count and a PREREG of their own),
-the DRR domain-gap study, `bench flexray_drr_gap`, and the step that makes its MOOSE masks,
-`bench flexray_drr_seg` (below). These words of grid/gate.sh still
-submit a plain job that trains or runs a network, each to be moved onto a flow listed in
-registry.txt, one pull request each, under a PREREG of its own:
+the DRR domain-gap study, `bench flexray_drr_gap`, and the step that makes its MOOSE masks, `bench
+flexray_drr_seg` (both below), and version 1's run, `start` and `v1` (V1Flow, above). These words of
+grid/gate.sh still submit a plain job that trains or runs a network, each to be moved onto a flow
+listed in registry.txt, one pull request each, under a PREREG of its own:
 
-- `start` and `v1`, version 1's training and evaluation (grid/v1-driver.sbatch);
 - `experiment <issue>`, one combination of blocks from the experiments panel
   (grid/experiment-driver.sbatch);
 - `bench <id>` for the three public models' benchmarks (grid/bench.sbatch): flexray_carmlspine,
