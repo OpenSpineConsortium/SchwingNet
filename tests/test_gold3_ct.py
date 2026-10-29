@@ -31,6 +31,7 @@ def load_tool(name):
 
 
 gold3 = load_tool("gold3_ct")
+field = load_tool("gold3_field")
 
 C1, C2, C7, T1, T6, T12, L1, L4, L5, L6, SACRUM = 1, 2, 7, 8, 13, 19, 20, 23, 24, 25, 28
 NORMAL = (*range(C1, L5 + 1), SACRUM)
@@ -154,7 +155,8 @@ def c2_at_top(sid="0033"):
 
 
 def no_c2(sid="0034"):
-    return facts_row(sid, NORMAL[2:], top=-60.0)
+    """The field begins at C3's top, as ENHANCE.PET's studies with no C2 do: the field test calls C2 out."""
+    return facts_row(sid, NORMAL[2:], top=-60.0, top_slice_mm=-60.0)
 
 
 def l5_fragment(sid="0035"):
@@ -214,7 +216,22 @@ def bucket_for(rows):
 # The synthetic facts' 37 studies: 0034 has no C2, 0036 is repaired, the rest are whole.
 TIERS_OF_SYNTHETIC = {"gold3": 35, "gold4": 1, "silver3": 1}
 COPIED = (gold3.MEMBERS, gold3.VERSE, gold3.TOTALSEG, gold3.RECORD, gold3.RULE, gold3.TEST_PERSONS, gold3.HOLDOUT,
-          gold3.LICENCES, gold3.TOOL)
+          gold3.LICENCES, gold3.TOOL, gold3.ADMISSION, gold3.VERSE_FACTS, gold3.VERSE_SERIES, gold3.TOTALSEG_FACTS)
+
+
+def recorded(member):
+    """A member as the committed members.json records it, so the counts below follow the records."""
+    members = json.loads((ROOT / gold3.MEMBERS).read_text(encoding="utf-8"))["members"]
+    return next(m for m in members if m["member"] == member)
+
+
+def rows_of(member):
+    entry = recorded(member)
+    return entry["gold3"] + entry["gold4"] + entry["silver3"]
+
+
+def gold3_persons(member):
+    return recorded(member)["persons_by_records"][0]
 
 
 def write_json(path, value):
@@ -236,7 +253,24 @@ def mini_repo(folder, facts=None):
         write_json(folder / gold3.BUCKET, bucket_for(facts))
         (folder / gold3.FACTS).write_text("".join(json.dumps(r, sort_keys=True) + "\n" for r in facts), encoding="utf-8")
         write_json(folder / gold3.FACTS_RECORD, {"tool": "synthetic", "rows": len(facts)})
+        write_admission(folder, facts)
     return folder
+
+
+def write_admission(folder, facts):
+    """The committed admission with its ENHANCE.PET studies judged afresh from the synthetic facts, by the
+    field test's rule against the committed tables. The committed admission judges the real studies, whose
+    ids the synthetic ones reuse, so the store's tiers and the field test's verdicts must read one set of
+    facts; the tables are kept, so the other members' verdicts, which members.json counts, stay as they are.
+    A repaired study is judged once, on its repair, as the field test judges it."""
+    admission = json.loads((ROOT / field.ADMISSION).read_text(encoding="utf-8"))
+    inputs = {"enhance_pet": facts, "verse": [], "totalsegmentator": [], "verse_series": {"series": []},
+              "totalseg_subjects": {"subjects": {}}}
+    judged = [field.judge(study, admission["tables"]) for study in field.studies_of(inputs)[0]]
+    keys = ("member", "id", "person", "verdict", "head", "foot", "complete", "flags")
+    admission["studies"] = [{key: row[key] for key in keys} for row in judged] + [
+        study for study in admission["studies"] if study["member"] != "enhance_pet"]
+    write_json(folder / field.ADMISSION, admission)
 
 
 def run(*argv):
@@ -742,10 +776,12 @@ class Dataset(Scratch):
     def test_the_committed_files_build_with_no_facts(self):
         repo = mini_repo(self.tmp / "repo")
         db = self.built(repo)
-        self.assertEqual(db.execute("SELECT COUNT(*) FROM item").fetchone()[0], 17)
+        self.assertEqual(db.execute("SELECT COUNT(*) FROM item").fetchone()[0], rows_of("verse") + rows_of("totalsegmentator"))
         counts = {r["member"]: (r["gold3"], r["persons_low"], r["persons_high"])
                   for r in db.execute("SELECT * FROM member_count WHERE site = 'all'")}
-        self.assertEqual(counts, {"enhance_pet": (0, 865, 1478), "verse": (17, 17, 17), "totalsegmentator": (0, 142, 156)})
+        self.assertEqual(counts, {"enhance_pet": (0, 865, 1478),
+                                  **{m: (recorded(m)["gold3"], gold3_persons(m), gold3_persons(m))
+                                     for m in ("verse", "totalsegmentator")}})
 
     def test_the_synthetic_facts_give_their_classes_tiers_and_statuses(self):
         repo = mini_repo(self.tmp / "repo", synthetic_facts())
@@ -811,7 +847,7 @@ class Dataset(Scratch):
         repo = mini_repo(self.tmp / "repo", synthetic_facts())
         db = self.built(repo)
         persons = {r["member"]: r["person_keys"] for r in db.execute("SELECT * FROM gold3_persons_by_member")}
-        self.assertEqual(persons["verse"], 17)
+        self.assertEqual(persons["verse"], gold3_persons("verse"))
         self.assertTrue(db.execute("SELECT COUNT(*) FROM qa_failures WHERE check_id = 'Q06'").fetchone()[0])
         self.assertTrue(db.execute("SELECT COUNT(*) FROM anomalies_by_class_and_status").fetchone()[0])
 
@@ -878,7 +914,7 @@ class Store(Scratch):
         code, out, _ = run("--repo", self.repo, "query", "SELECT member, COUNT(*) AS n FROM item GROUP BY member",
                            "--root", self.store, "--json")
         self.assertEqual(code, 0)
-        self.assertIn({"member": "verse", "n": 17}, [json.loads(line) for line in out.splitlines()])
+        self.assertIn({"member": "verse", "n": rows_of("verse")}, [json.loads(line) for line in out.splitlines()])
         code, _, err = run("--repo", self.repo, "query", "DELETE FROM item", "--root", self.store)
         self.assertEqual(code, 1)
         self.assertIn("gold3_ct:", err)
@@ -905,6 +941,39 @@ class Store(Scratch):
                         self.assertEqual(db.execute(f'SELECT COUNT(*) FROM "{table}"').fetchone()[0], 0)
 
 # ---------------------------------------------------------------- the manifest, the pages and the check
+
+
+class FieldRows(Scratch):
+    """The VerSe and TotalSegmentator rows the field test judges, as the store keeps them."""
+
+    def test_a_series_the_holdout_file_reads_takes_its_read(self):
+        db = self.built(mini_repo(self.tmp / "repo", synthetic_facts()))
+        rows = dict(db.execute("SELECT item, class || ' ' || evidence FROM anomaly"
+                               " WHERE item IN ('verse:verse024', 'verse:verse518', 'verse:verse010')").fetchall())
+        self.assertEqual(rows, {"verse:verse024": "l6 read", "verse:verse518": "l6 read", "verse:verse010": "normal read"})
+
+    def test_every_series_of_a_holdout_person_takes_the_read(self):
+        # verse208 and verse255 are one person of the folds, verse214 and verse261 one of the holdout:
+        # the file names the person, so every series of that person takes its read.
+        db = self.built(mini_repo(self.tmp / "repo", synthetic_facts()))
+        series = ("verse:verse208", "verse:verse255", "verse:verse214", "verse:verse261")
+        rows = dict(db.execute("SELECT item, class || ' ' || evidence FROM anomaly WHERE item IN (?, ?, ?, ?)",
+                               series).fetchall())
+        self.assertEqual(rows, {item: "l6 read" for item in series})
+
+    def test_a_duplicate_subject_keeps_its_own_alias_and_every_location_is_a_path(self):
+        db = self.built(mini_repo(self.tmp / "repo", synthetic_facts()))
+        person = db.execute("SELECT person FROM person_alias WHERE alias = 'ts:s2109'").fetchone()[0]
+        self.assertEqual(person, "totalsegmentator:s2107")
+        locations = [r[0] for r in db.execute("SELECT ct_location FROM item WHERE member = 'totalsegmentator'")]
+        self.assertTrue(locations and not any("<root>" in place for place in locations))
+
+    def test_a_border_case_of_the_field_test_is_provisional_silver_3(self):
+        # 0034's field reaches 20 mm above C3's top: past C2's foot in every spine, short of C2's top in most.
+        facts = [r for r in synthetic_facts() if r["id"] != "0034"] + [facts_row("0034", NORMAL[2:], top=-80.0, top_slice_mm=-60.0)]
+        db = self.built(mini_repo(self.tmp / "repo", sorted(facts, key=lambda r: r["id"])))
+        row = db.execute("SELECT tier, provisional FROM item WHERE item = 'enhance_pet:0034'").fetchone()
+        self.assertEqual(tuple(row), ("silver3", 1))
 
 
 class Manifest(Scratch):
@@ -977,6 +1046,16 @@ class Pages(Scratch):
         (repo / gold3.QA_PAGE).unlink()
         self.assertEqual(run("--repo", repo, "check")[0], 1)
 
+    def test_check_fails_on_a_reading_cut_short(self):
+        repo = mini_repo(self.tmp / "repo")
+        self.write_pages(repo)
+        path = repo / gold3.VERSE_FACTS
+        lines = path.read_text(encoding="utf-8").splitlines(keepends=True)
+        path.write_text("".join(lines[:-1]), encoding="utf-8")
+        code, _, err = run("--repo", repo, "check")
+        self.assertEqual(code, 1)
+        self.assertIn(f"{gold3.VERSE_FACTS}: {len(lines) - 1:,} rows, not the", err)
+
     def test_with_the_facts_the_pages_carry_the_classes_and_the_check_passes(self):
         repo = mini_repo(self.tmp / "repo", synthetic_facts())
         self.write_pages(repo)
@@ -990,7 +1069,51 @@ class Pages(Scratch):
         data = json.loads((repo / gold3.PAGE_DATA).read_text(encoding="utf-8"))
         self.assertTrue(data["facts_committed"])
         self.assertEqual(data["studies"]["columns"], list(gold3.PAGE_COLUMNS))
-        self.assertEqual(len(data["studies"]["rows"]), 17 + 37)
+        self.assertEqual(len(data["studies"]["rows"]), rows_of("verse") + rows_of("totalsegmentator") + 37)
+
+    def edited_admission(self, repo, edit):
+        admission = json.loads((repo / field.ADMISSION).read_text(encoding="utf-8"))
+        edit(admission["studies"])
+        write_json(repo / field.ADMISSION, admission)
+
+    def test_check_fails_on_a_verdict_for_a_study_the_dataset_lacks(self):
+        repo = mini_repo(self.tmp / "repo", synthetic_facts())
+        self.edited_admission(repo, lambda studies: studies.append(
+            dict(next(s for s in studies if s["member"] == "enhance_pet"), id="9999")))
+        self.write_pages(repo)
+        code, _, err = run("--repo", repo, "check")
+        self.assertEqual(code, 1)
+        self.assertIn("enhance_pet verdicts for studies the dataset does not hold: 9999", err)
+
+    def test_check_fails_on_a_held_study_with_no_verdict(self):
+        repo = mini_repo(self.tmp / "repo", synthetic_facts())
+        held = {s["id"] for s in json.loads((repo / field.ADMISSION).read_text(encoding="utf-8"))["studies"]
+                if s["member"] == "enhance_pet" and s["verdict"] == "not_admitted"}
+        dropped = sorted(held)[0]
+        self.edited_admission(repo, lambda studies: studies.remove(
+            next(s for s in studies if (s["member"], s["id"]) == ("enhance_pet", dropped))))
+        self.write_pages(repo)
+        code, _, err = run("--repo", repo, "check")
+        self.assertEqual(code, 1)
+        self.assertIn(f"no enhance_pet verdict for studies the dataset holds: {dropped}", err)
+
+    def test_check_fails_when_the_field_test_and_the_whole_rule_part(self):
+        repo = mini_repo(self.tmp / "repo", synthetic_facts())
+
+        def refuse_0001(studies):
+            next(s for s in studies if (s["member"], s["id"]) == ("enhance_pet", "0001"))["verdict"] = "not_admitted"
+        self.edited_admission(repo, refuse_0001)
+        self.write_pages(repo)
+        code, _, err = run("--repo", repo, "check")
+        self.assertEqual(code, 1)
+        self.assertIn("the field test and the whole rule part on 0001", err)
+
+    def test_check_fails_on_a_row_with_no_verdict(self):
+        repo = mini_repo(self.tmp / "repo", synthetic_facts())
+        self.edited_admission(repo, lambda studies: studies.remove(next(s for s in studies if s["member"] == "verse")))
+        code, _, err = run("--repo", repo, "check")
+        self.assertEqual(code, 1)
+        self.assertIn("the verse verdicts are not the readable rows", err)
 
     def test_check_fails_when_the_classes_miss_the_notes_table(self):
         repo = mini_repo(self.tmp / "repo", synthetic_facts())
