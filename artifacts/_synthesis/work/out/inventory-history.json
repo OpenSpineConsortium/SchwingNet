@@ -678,5 +678,281 @@
    "coverage_notes": "The page is a single index.html read whole; no images, scripts with data or binary files in the folder. The page carries a confidentiality banner ('Confidential: patent material, before the provisional'), not an instruction to this inventory; no instruction-like text was found. Grade chips in the page (Inferred, Published idea, Registry, To count, Published, Inferred from the record) were used to set grade hints.",
    "notes": "The plan belongs to the 'From 3D to X-ray' programme and says the full written report is docs/research/xr-from-3d/ in SchwingNet. Its own record outweighs the papers it cites: the C-ArmLSpine numbers are the project's measurements, the rest are reported from XraySyn, LatXGen, SyntheX and LevelCheck."
   }
+ },
+ {
+  "id": "SchwingNet/gold-tier-3-ct-xdgjjg",
+  "replaced_on": "2026-10-29",
+  "record": {
+   "repo": "SchwingNet",
+   "folder": "gold-tier-3-ct-xdgjjg",
+   "title": "Gold Tier 3 CT",
+   "account": "gschwing",
+   "link": "https://claude.ai/artifact/XDGjjGKVcdi2xDht7a689w",
+   "link_id": "XDGjjGKVcdi2xDht7a689w",
+   "readme_summary": "Every gold tier 3 CT as one dataset: the members, the anomaly statistics with Wilson intervals, the studies, the sixteen quality checks, a reader bench whose verdicts are saved in the page, and the SQLite store in the browser (the store itself is rebuilt, its folder README says how)",
+   "kind": "page",
+   "genre": "dataset-page",
+   "date": "2026-10-28",
+   "date_evidence": "README: \"the owner's ask of 2026-10-27 22:49 UTC, thread \\\"Finish scan import and tier counts\\\"), published on 2026-10-28\"",
+   "question": "Which CTs does the project count as gold tier 3, what do their masks say about anomalous spines (with Wilson intervals), how do they fare on sixteen quality checks, and what have readers confirmed?",
+   "summary": "A private, confidential page that presents every gold tier 3 CT as one dataset, with one row per study (member, site, tier, mask facts, two column calls kept apart, anomaly class and status). It holds 1,557 whole ENHANCE.PET studies plus 17 VerSe series (provisional until the sacrum is seen) and 142 TotalSegmentator v3 subjects declared without rows. Anomaly classes come from the release's names and the ribs, with 95 percent Wilson intervals. Sixteen quality checks run over 1,597 published masks and three repaired ones. A reader bench of 191 studies saves verdicts in the page's own store, and a SQLite store opens in the browser. The README states that nothing yet moves verdicts into the store's qa_review table, so no study is reader confirmed.",
+   "key_claims": [
+    {
+     "claim": "1,557 ENHANCE.PET studies are gold 3 and are whole studies; 37 lack C2 (silver 3) and 3 repaired masks stay gold 4.",
+     "evidence_in_artifact": "\"gold3\":1557,\"gold3_by_records\":1557,\"gold4\":3,\"member\":\"enhance_pet\"",
+     "grade_hint": "measured"
+    },
+    {
+     "claim": "Of 1,557 whole ENHANCE.PET studies, 1,406 are typical by the names (T12L5), a share of about 90 percent (Wilson 88.7 to 91.7 percent).",
+     "evidence_in_artifact": "{\"class\":\"normal\",\"high\":0.9167,\"low\":0.8873,\"member\":\"enhance_pet\",\"n\":1406,\"site\":\"all\"",
+     "grade_hint": "measured"
+    },
+    {
+     "claim": "Variant classes by the masks: L6 below L5 with 12 rib pairs 50, four lumbar 28, eleven ribs 33, L6 with 13th rib 14, thirteen ribs 2, asymmetric 4 (131 in all).",
+     "evidence_in_artifact": "{\"class\":\"l6_twelve_ribs\",\"high\":0.0421,\"low\":0.0244,\"member\":\"enhance_pet\",\"n\":50,\"site\":\"all\"",
+     "grade_hint": "measured"
+    },
+    {
+     "claim": "No anomaly is reader confirmed yet: two masks agreeing is not a read of the CT, and verdicts are not yet moved into the store.",
+     "evidence_in_artifact": "Nothing yet moves them into the store's qa_review table, so no study is reader confirmed until that step is built.",
+     "grade_hint": "measured"
+    },
+    {
+     "claim": "The quality checks cannot show that an anomaly is in the patient; a lumbosacral question always needs the CT, and no check reads CT intensity or mask-to-CT match.",
+     "evidence_in_artifact": "They cannot show that an anomaly is in the patient: agreement of two masks is not a reader's read of the CT, and a lumbosacral question always needs the CT.",
+     "grade_hint": "inferred"
+    },
+    {
+     "claim": "The build reproduces the source note's table of rib findings on unusual lumbar counts cell for cell (100 controls, 39 L4-above-sacrum, 67 L6 studies).",
+     "evidence_in_artifact": "\"expected_studies\":[100,39,67],\"matches\":true",
+     "grade_hint": "measured"
+    },
+    {
+     "claim": "Person counts are bounds: Leipzig and Careggi carry no person id, so persons are an upper bound.",
+     "evidence_in_artifact": "Leipzig and Careggi carry no person id, so their persons are an upper bound.",
+     "grade_hint": "inferred"
+    }
+   ],
+   "numbers": [
+    {
+     "value": "1,557",
+     "unit": "whole ENHANCE.PET gold 3 studies",
+     "n": "1,597 published studies",
+     "interval": null,
+     "context": "denominator of the class shares",
+     "quote": "\"gold3\":1557,\"gold3_by_records\":1557,\"gold4\":3,\"member\":\"enhance_pet\""
+    },
+    {
+     "value": "1,597",
+     "unit": "published ENHANCE.PET studies",
+     "n": null,
+     "interval": null,
+     "context": "mask readings the quality-check counts cover, with three repaired masks",
+     "quote": "the 1,597 published ENHANCE.PET studies and the three repaired masks"
+    },
+    {
+     "value": "1,406",
+     "unit": "studies typical by the names",
+     "n": "1,557",
+     "interval": "0.8873 to 0.9167",
+     "context": "ENHANCE.PET all sites, class normal",
+     "quote": "{\"class\":\"normal\",\"high\":0.9167,\"low\":0.8873,\"member\":\"enhance_pet\",\"n\":1406,\"site\":\"all\""
+    },
+    {
+     "value": "50",
+     "unit": "studies, L6 below L5 with 12 rib pairs",
+     "n": "1,557",
+     "interval": "0.0244 to 0.0421",
+     "context": "ENHANCE.PET all sites",
+     "quote": "{\"class\":\"l6_twelve_ribs\",\"high\":0.0421,\"low\":0.0244,\"member\":\"enhance_pet\",\"n\":50,\"site\":\"all\""
+    },
+    {
+     "value": "28",
+     "unit": "studies, L4 at the sacrum with 12 rib pairs",
+     "n": "1,557",
+     "interval": "0.0125 to 0.0259",
+     "context": "ENHANCE.PET all sites",
+     "quote": "{\"class\":\"four_lumbar_twelve_ribs\",\"high\":0.0259,\"low\":0.0125,\"member\":\"enhance_pet\",\"n\":28,\"site\":\"all\""
+    },
+    {
+     "value": "33",
+     "unit": "studies, 11 rib pairs with ribless T12",
+     "n": "1,557",
+     "interval": "0.0151 to 0.0296",
+     "context": "ENHANCE.PET all sites",
+     "quote": "{\"class\":\"eleven_ribs\",\"high\":0.0296,\"low\":0.0151,\"member\":\"enhance_pet\",\"n\":33,\"site\":\"all\""
+    },
+    {
+     "value": "14",
+     "unit": "studies, L6 with 13th rib on L1",
+     "n": "1,557",
+     "interval": "0.0054 to 0.015",
+     "context": "ENHANCE.PET all sites",
+     "quote": "{\"class\":\"l6_thirteen_ribs\",\"high\":0.015,\"low\":0.0054,\"member\":\"enhance_pet\",\"n\":14,\"site\":\"all\""
+    },
+    {
+     "value": "15 / 3 / 2",
+     "unit": "studies, look / labelling error / open",
+     "n": "1,557",
+     "interval": null,
+     "context": "mask problems, ENHANCE.PET all sites",
+     "quote": "{\"class\":\"look\",\"high\":0.0158,\"low\":0.0058,\"member\":\"enhance_pet\",\"n\":15,\"site\":\"all\""
+    },
+    {
+     "value": "37",
+     "unit": "studies with no C2 (silver 3)",
+     "n": null,
+     "interval": null,
+     "context": "outside the denominator",
+     "quote": "\"gold3\":1557,\"gold3_by_records\":1557,\"gold4\":3,\"member\":\"enhance_pet\",\"persons_basis\":\"autoPET's range, and at most one person a whole study at the sites with no person id\",\"persons_high\":1478,\"persons_low\":865,\"silver3\":37"
+    },
+    {
+     "value": "865 to 1,478",
+     "unit": "persons, ENHANCE.PET",
+     "n": null,
+     "interval": null,
+     "context": "autoPET's range plus at most one person per study at sites without person ids",
+     "quote": "\"persons_high\":1478,\"persons_low\":865"
+    },
+    {
+     "value": "199 / 379 / 979",
+     "unit": "whole studies at Careggi / Leipzig / autoPET",
+     "n": null,
+     "interval": null,
+     "context": "site denominators",
+     "quote": "\"class\":\"normal\",\"high\":0.9538,\"low\":0.8794,\"member\":\"enhance_pet\",\"n\":184,\"site\":\"Careggi\",\"whole\":199"
+    },
+    {
+     "value": "17",
+     "unit": "VerSe provisional series",
+     "n": null,
+     "interval": null,
+     "context": "gold 3 with rows, one person a key; 8 not read yet",
+     "quote": "{\"class\":\"unread\",\"high\":0.6904,\"low\":0.2617,\"member\":\"verse\",\"n\":8,\"site\":\"all\",\"whole\":17}"
+    },
+    {
+     "value": "142",
+     "unit": "TotalSegmentator v3 gold 3 by records, no rows yet",
+     "n": null,
+     "interval": "142 to 156 persons",
+     "context": "declared without rows",
+     "quote": "\"gold3\":0,\"gold3_by_records\":142,\"gold4\":0,\"member\":\"totalsegmentator\",\"persons_basis\":\"by the records; no rows yet\",\"persons_high\":156,\"persons_low\":142"
+    },
+    {
+     "value": "191",
+     "unit": "reader-bench studies",
+     "n": null,
+     "interval": null,
+     "context": "expected bench size in the build command",
+     "quote": "--expect-bench 191"
+    },
+    {
+     "value": "16",
+     "unit": "quality checks",
+     "n": null,
+     "interval": null,
+     "context": "Q01 to Q16, run where they apply",
+     "quote": "Sixteen checks, each run where it applies; not run counts the readings a check had nothing to read in."
+    },
+    {
+     "value": "3",
+     "unit": "repaired ENHANCE.PET masks",
+     "n": null,
+     "interval": null,
+     "context": "stay gold 4",
+     "quote": "The three repaired ENHANCE.PET masks take their names from a rule (two) or a machine (one), and neither raises a tier, so they stay gold 4."
+    }
+   ],
+   "datasets": [
+    "ENHANCE.PET (autoPET, Leipzig, Careggi sites)",
+    "VerSe",
+    "TotalSegmentator v3"
+   ],
+   "tools": [
+    "tools/gold3_ct.py",
+    "build_page.py",
+    "sql.js",
+    "SQLite",
+    "Wilson 95 percent interval",
+    "enhance_views.py"
+   ],
+   "models": [],
+   "decisions": [
+    {
+     "date": "2026-10-28",
+     "decision": "Publish the gold tier 3 CT dataset as a private page, never shared by link.",
+     "owner": "owner",
+     "reason": "Confidential unpublished data work with a provisional patent in preparation."
+    },
+    {
+     "date": null,
+     "decision": "Keep the call by names and the call by ribs apart and never merge them.",
+     "owner": null,
+     "reason": "Agreement of two masks is not a reader's read of the CT."
+    },
+    {
+     "date": null,
+     "decision": "Repaired masks stay gold 4.",
+     "owner": null,
+     "reason": "Their names come from a rule or a machine, which does not raise a tier."
+    },
+    {
+     "date": null,
+     "decision": "Only a recorded reader verdict makes an anomaly reader confirmed; two readers counting from C2 with the rib pairs is the plan.",
+     "owner": null,
+     "reason": "Quality assurance that an anomaly is true."
+    }
+   ],
+   "open_questions": [
+    "Moving the reader verdicts into the store's qa_review table is not built.",
+    "Whether 12 studies are open: a lumbosacral question needs the CT.",
+    "TotalSegmentator v3's subject list gives no rows, so its persons are 142 to 156.",
+    "VerSe series are provisional until the sacrum is seen and have no mask views yet.",
+    "Check 1336 is left open."
+   ],
+   "unsourced_assertions": [
+    "Prevalence shares are given from the masks alone, with no external prevalence source."
+   ],
+   "stale_markers": [
+    "Reader verdicts: none recorded in the export; the README says no study is reader confirmed until the qa_review step is built.",
+    "VerSe gold 3 is \"provisional until the sacrum is seen\".",
+    "VerSe's series \"have no mask views yet\".",
+    "\"A provisional patent in preparation\"."
+   ],
+   "external_sources": [],
+   "cross_references": [
+    "Thread \"Finish scan import and tier counts\"",
+    "tools/gold3_ct.py",
+    "docs/research/gold3-ct/page-data.json",
+    "the note table \"What the ribs say about the unusual lumbar counts\"",
+    "STATS.md and QA.md",
+    "bordercall holdings/enhance_views.py"
+   ],
+   "confidentiality": "schwingnet-other",
+   "related_titles": [
+    {
+     "title": "Spinal border variants",
+     "relation": "same-topic",
+     "why": "Same L6, four-lumbar and rib-count classes of border variants, here as counts over ENHANCE.PET and VerSe."
+    },
+    {
+     "title": "Rib anchor audit",
+     "relation": "builds-on",
+     "why": "The call by ribs depends on rib numbering; this page keeps names and ribs apart."
+    },
+    {
+     "title": "Counting against two anchors",
+     "relation": "same-topic",
+     "why": "The names/ribs disagreement used as an anomaly signal appears here as status classes."
+    }
+   ],
+   "people_by_role": [
+    "owner (asked for the page)",
+    "readers (record verdicts on the bench)"
+   ],
+   "coverage_notes": "Read the README (2,244 bytes), the page text, and the page-data line of index.html (361,836 bytes) by targeted searches since the line is too long to open whole; read the template's text and build_page.py only via the listing, not line by line. The SQLite store is not in the folder and was not read; most per-study rows (including per-check pass/fail counts) are inside it. The 191 views/*.png images were not opened; they are projections of masks. The share link and grid paths are withheld.",
+   "notes": "Mostly the page's code and labels; the figures sit in the data line. The text file's second half repeats template.html. The site totals (199, 379, 979) and the ENHANCE.PET totals (1,557 whole, 1,597 published) are stated on the page. No other artifact in the synthesis names this dataset, so no cross-artifact figure could be compared.",
+   "read_on": "2026-10-29"
+  }
  }
 ]
