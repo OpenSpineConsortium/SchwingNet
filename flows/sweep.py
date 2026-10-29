@@ -23,9 +23,10 @@ The sweep trains networks, so it keeps the owner's rule of 2026-10-29 through fl
 start holds the run to the block smoke test's frozen PREREG (docs/research/block-smoke/PREREG.md)
 and end holds it there again, since a resume clones start; every step keeps its line on the
 run's progress page, a row's line moving with its epochs; and end checks the CLAIM 2024 and
-REFORMS report (tools/report.py) of every row that ran as the row left it: a row whose report is
-not what its run gives, or cannot be written where the row left none, makes the verdict 1,
-whatever the row did.
+REFORMS report (tools/report.py) of every row that ran as the row left it: a row trained in this
+run whose report is not what its run gives, or a row whose report cannot be written, makes the
+verdict 1, whatever the row did, while a stale report of a row this run cloned or found finished
+is written anew under the report tool as it is now and is well (stage.claim_report).
 
 Where a list is empty, Metaflow 2.19's switch, a conditional next, steps past its foreach, which
 Metaflow refuses over nothing.
@@ -296,11 +297,13 @@ def verdict_of(results, faults, reports):
     return 0 if clean and not faults and all(ok for ok, _ in reports) else 1
 
 
-def row_reports(state, results):
+def row_reports(state, results, began=None):
     """The CLAIM 2024 and REFORMS report of every row that ran, each checked in the row's own run
-    folder, where tools/flow.py wrote it after the row's last step, and written there only where
-    the row left none (stage.claim_report): (current, line)."""
-    return [stage.claim_report(Path(state) / entry["slug"]) for entry in results.get("rows", [])
+    folder, where tools/flow.py wrote it after the row's last step, before anything is written
+    (stage.claim_report): stale, it fails the run where the row's work was done since the run
+    began, and is written anew and well where it was done before, a row this run cloned or found
+    finished. (well, line)."""
+    return [stage.claim_report(Path(state) / entry["slug"], began=began) for entry in results.get("rows", [])
             if isinstance(entry, dict) and entry.get("outcome") == RAN]
 
 
@@ -405,7 +408,7 @@ class SweepFlow(FlowSpec):
             if results is None:
                 raise SweepFault(f"block_sweep results exited {done.returncode} and left no results.json in {self.state}")
             self.counts = results.get("counts", {})
-            reports = row_reports(self.state, results)
+            reports = row_reports(self.state, results, stage.run_began())
             self.reports = [line for _, line in reports]
             self.verdict = verdict_of(results, self.faults, reports)
             pathspec = f"{current.flow_name}/{current.run_id}"

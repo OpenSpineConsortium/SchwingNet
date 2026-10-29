@@ -18,15 +18,20 @@ steps run:
 - Beat, around a step's work: the step's line on the run's progress page (flows/stage_progress.py),
   running from its start, then done or failed, with its last lines; run_watched runs a command
   under it and rewrites that line every BEAT_SECONDS from what the work has written so far.
-- claim_report, in end: the CLAIM 2024 and REFORMS report (tools/report.py) of what the run made,
-  checked against the run's files before anything is written, since a check right after a write
-  only compares the files with what was just rendered. A report the run wrote and that is current
-  is the good case; a run folder with no report has one written then and checked; a report the
-  run wrote that is not what its files give is written anew, so the folder and the page hold the
-  current one, and makes the run's verdict 1, as does a report that cannot be written. So no run
-  ends well with a stale report. Items no file of the run answers are counted as missing and
-  shown, never inferred; `check --complete`, which fails while any is missing, stays the gate for
-  numbers that are to be published (tools/report.py).
+- claim_report, in end: the CLAIM 2024 and REFORMS report (tools/report.py) of a run folder,
+  checked against the folder's files before anything is written, since a check right after a
+  write only compares the files with what was just rendered. A report that is current is the good
+  case; a folder with no report has one written then and checked; a report that is not what the
+  folder's files give is written anew, so the folder and the page hold the current one. Where the
+  folder's work was done in this Metaflow run (done_since, from when Metaflow registered the run,
+  run_began), a stale report is the run's own failure and makes its verdict 1, as does a report
+  that cannot be written: no run ends well with a stale report it wrote. Where the work was done
+  before this run began, a row cloned from the run a resume carries on or one tools/flow.py
+  found finished, a stale report says only that tools/report.py, data/reporting/study.json or the
+  checklists changed since, which no run's key names; it is written anew under the report tool
+  as it is now and is well, and its line says so. Items no file answers are counted as missing
+  and shown, never inferred; `check --complete`, which fails while any is missing, stays the gate
+  for numbers that are to be published (tools/report.py).
 - finish, in end: the verdict and the reports on the page, those not current first.
 
 Nothing here ever fails a step for its page: a page that cannot be written or drawn, for whatever
@@ -47,6 +52,10 @@ import stage_registry as registry
 REPO = Path(os.environ.get("SCHWINGNET") or Path(__file__).resolve().parent.parent)
 BEAT_SECONDS = 15
 REPORT_FILES = ("claim.json", "reforms.json")
+# The report's own files, which a write makes, so never a sign of when a folder's work was done.
+REPORT_OUTPUTS = ("REPORT.md", *REPORT_FILES)
+# What tools/flow.py writes last in a run folder, once its work and its report are done.
+FINISHED_MARK = "FINISHED.json"
 
 
 class StageFault(Exception):
@@ -206,22 +215,61 @@ def last_words(done):
     return ((done.stderr or done.stdout).strip().splitlines() or [f"exit {done.returncode}"])[-1]
 
 
-def claim_report(folder, study=None):
-    """The report of one run folder held to the folder's files: (whether the run's report is
-    current, one line saying so with its counts). The check comes first: tools/report.py's check
-    compares the report's files with what a write would render now, so a check right after a write
-    always passes, and only the report the run itself left says whether the run kept it current.
-    The reason, where there is one, comes last, after "why:", which the gate's status withholds
-    where it quotes a path or a value."""
+def run_began():
+    """When this Metaflow run began, in seconds since the epoch, as Metaflow registered it: a resume
+    is a run of its own, so what its origin did comes before it. None where the client cannot say,
+    which holds every folder to the run (claim_report)."""
+    try:
+        from metaflow import Run, namespace
+
+        namespace(None)
+        return Run(f"{current.flow_name}/{current.run_id}").created_at.timestamp()
+    except Exception as error:  # the client's own errors have no common base worth naming
+        print(f"{current.flow_name}: when this run began could not be read ({type(error).__name__}: {error}); "
+              f"every report is held to this run", file=sys.stderr, flush=True)
+        return None
+
+
+def done_since(folder, began):
+    """Whether a folder's work was done since the run began: its FINISHED.json, which tools/flow.py
+    writes last, else the newest of the files at its top the report reads, every one but the
+    report's own, written then or after. Where the run's start is not known or the folder shows no
+    such file, its work counts as this run's, the stricter reading."""
+    if began is None:
+        return True
+    folder = Path(folder)
+    try:
+        if (folder / FINISHED_MARK).is_file():
+            return (folder / FINISHED_MARK).stat().st_mtime >= began
+        times = [path.stat().st_mtime for path in folder.iterdir() if path.is_file() and path.name not in REPORT_OUTPUTS]
+    except OSError:
+        return True
+    return not times or max(times) >= began
+
+
+def claim_report(folder, study=None, began=None):
+    """The report of one run folder held to the folder's files: (whether it is well, one line saying
+    so with its counts). The check comes first: tools/report.py's check compares the report's files
+    with what a write would render now, so a check right after a write always passes, and only the
+    report the folder held says whether its run kept it current. began is when this Metaflow run
+    began (run_began): a stale report of work done since then is the run's failure, and of work
+    done before it is written anew and well (done_since); None holds every folder to the run. The
+    reason, where there is one, comes last, after "why:", which the gate's status withholds where
+    it quotes a path or a value."""
     name = Path(folder).name
     if not (Path(folder) / "claim.json").is_file():
         return report_written_now(folder, name, study)
+    ours = done_since(folder, began)
+    whose = "the run" if ours else "an earlier run"
     checked = report_tool("check", folder, study)
     if checked.returncode == 0:
-        return True, f"{name}: current as the run wrote it; {tally_words(folder)}"
+        return True, f"{name}: current as {whose} wrote it; {tally_words(folder)}"
     wrote = report_tool("write", folder, study)
     if wrote.returncode != 0:
-        return False, f"{name}: NOT CURRENT as the run wrote it, and not written anew; why: {last_words(checked)}"
+        return False, f"{name}: NOT CURRENT as {whose} wrote it, and not written anew; why: {last_words(checked)}"
+    if not ours:
+        return True, (f"{name}: written anew under the report tool as it is now, its work done before this run began; "
+                      f"{tally_words(folder)}; it was not current, why: {last_words(checked)}")
     return False, f"{name}: NOT CURRENT as the run wrote it, so written anew; why: {last_words(checked)}"
 
 

@@ -710,6 +710,43 @@ class ClaimReportTest(unittest.TestCase):
         self.assertFalse(ok, line)
         self.assertEqual(line, f"row: NOT WRITTEN at the end; why: report: {self.folder}: no RUN.json, so this is not a run folder")
 
+    def finished_at(self, when):
+        """FINISHED.json, which tools/flow.py writes last, dated as a run that ended then left it."""
+        (self.folder / "FINISHED.json").write_text(json.dumps({"run_id": "row-1"}), encoding="utf-8")
+        os.utime(self.folder / "FINISHED.json", (when, when))
+
+    def test_a_stale_report_of_work_done_before_this_run_began_is_written_anew_and_is_well(self):
+        # a row the run cloned from its origin, or found finished: the report tool, the study's
+        # answers or the checklists changed since, which no run's key names, and the row is not to blame
+        self.assertEqual(self.stage.report_tool("write", self.folder).returncode, 0)
+        (self.folder / "RUN.json").write_text(json.dumps({"run_id": "row-2"}), encoding="utf-8")
+        self.finished_at(time.time() - 3600)
+        ok, line = self.stage.claim_report(self.folder, began=time.time() - 60)
+        self.assertTrue(ok, line)
+        self.assertRegex(line, r"^row: written anew under the report tool as it is now, its work done before this run began; "
+                               r"CLAIM 2024: \d+ met, .*; it was not current, why: ")
+        self.assertEqual(self.check(), 0, "the folder holds the current report once end has run")
+        ok, line = self.stage.claim_report(self.folder, began=time.time() - 60)
+        self.assertEqual((ok, line.split(";")[0]), (True, "row: current as an earlier run wrote it"))
+
+    def test_a_stale_report_of_work_done_in_this_run_is_the_runs_failure(self):
+        self.assertEqual(self.stage.report_tool("write", self.folder).returncode, 0)
+        (self.folder / "RUN.json").write_text(json.dumps({"run_id": "row-2"}), encoding="utf-8")
+        self.finished_at(time.time() - 30)
+        ok, line = self.stage.claim_report(self.folder, began=time.time() - 60)
+        self.assertFalse(ok, line)
+        self.assertTrue(line.startswith("row: NOT CURRENT as the run wrote it, so written anew; why: "), line)
+
+    def test_when_a_folders_work_was_done_is_read_from_its_last_file_and_never_from_its_report(self):
+        began = time.time() - 60
+        self.assertTrue(self.stage.done_since(self.folder, None), "with no start known every folder is held to the run")
+        os.utime(self.folder / "RUN.json", (began - 600, began - 600))
+        self.assertFalse(self.stage.done_since(self.folder, began))
+        self.assertEqual(self.stage.report_tool("write", self.folder).returncode, 0)
+        self.assertFalse(self.stage.done_since(self.folder, began), "a report written now says nothing of the work")
+        self.finished_at(began + 30)
+        self.assertTrue(self.stage.done_since(self.folder, began))
+
 
 @unittest.skipIf(NO_METAFLOW, "needs the train environment (metaflow missing)")
 class BeatTest(unittest.TestCase):

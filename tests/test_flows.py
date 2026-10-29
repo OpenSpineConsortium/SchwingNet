@@ -637,7 +637,10 @@ def row():
 
 
 def run_folder(folder, slug):
-    """RUN.json and the report, as tools/flow.py leaves a row's run folder."""
+    """RUN.json, the report and FINISHED.json last, as tools/flow.py leaves a row's run folder; a
+    folder it finished before is left as it is, as tools/flow.py writes nothing for a finished run."""
+    if (folder / "FINISHED.json").is_file():
+        return
     write(folder / "RUN.json", {"run_id": slug})
     if slug in os.environ.get("FLOW_TEST_UNREPORTED", "").split():
         return
@@ -645,6 +648,7 @@ def run_folder(folder, slug):
     subprocess.run(report, env=dict(os.environ, FLOW_TEST_REPORT_BY="row"), check=True)
     if slug in os.environ.get("FLOW_TEST_STALE", "").split():
         write(folder / "RUN.json", {"run_id": slug, "changed": "after its report"})
+    write(folder / "FINISHED.json", {"run_id": slug})
 
 
 def results():
@@ -667,6 +671,8 @@ def results():
 # would render now and fails, naming them, where any differs, and both refuse a folder with no
 # RUN.json. Each call is logged beside the stub of block_sweep's, in <its log>.reports, with who
 # made it: the row, as tools/flow.py writes the report after the row's last step, or the end step.
+# FLOW_TEST_REPORT_VERSION stands for a change of the tool, or of what it reads beside the run, after
+# a row's report was written: the same run's files render another report.
 STUB_REPORT = '''"""A stand-in for tools/report.py in SweepFlowTest."""
 import hashlib
 import json
@@ -683,7 +689,8 @@ if not record.is_file():
     sys.exit(1)
 digest = hashlib.sha256(record.read_bytes()).hexdigest()
 tally = {"met": 20, "declared": 3, "not applicable": 2, "missing": 4}
-rendered = {"REPORT.md": f"# The report of the run whose RUN.json is {digest}\\n"}
+version = os.environ.get("FLOW_TEST_REPORT_VERSION", "1")
+rendered = {"REPORT.md": f"# The report, version {version}, of the run whose RUN.json is {digest}\\n"}
 for name, checklist in (("claim.json", "CLAIM 2024"), ("reforms.json", "REFORMS")):
     rendered[name] = json.dumps({"checklist": checklist, "run_sha256": digest, "tally": tally}) + "\\n"
 if action == "write":
@@ -1009,6 +1016,26 @@ class SweepFlowTest(unittest.TestCase):
         again = subprocess.run([sys.executable, str(self.repo / "tools" / "report.py"), "check", "--run", str(folder)],
                                env=base_env(FLOW_TEST_CALLS=str(self.tmp / "calls-again")), capture_output=True, text=True, timeout=60)
         self.assertEqual(again.returncode, 0, again.stderr)
+
+    def test_a_report_gone_stale_since_an_earlier_run_finished_its_row_is_written_anew_and_the_run_is_well(self):
+        # tools/report.py, data/reporting/study.json and the checklists are in no run's key, so they
+        # can change between a run and the next launch of the same words, a new run whose rows
+        # tools/flow.py finds finished: their reports are written anew under the tool as it is now,
+        # and the run is not failed for what it never did
+        plan = {"plan": "reported", "first": ["a"], "second": []}
+        code, said, out, calls = self.sweep(plan, 1)
+        self.assertEqual((code, said[-1]["verdict"]), (0, 0), out)
+        code, said, out, calls = self.sweep(plan, 2, FLOW_TEST_REPORT_VERSION="2")
+        self.assertEqual((code, said[0]["decision"], said[-1]["verdict"]), (0, "run", 0), out)
+        self.assertEqual(calls, ["prepare", "row a", "results"])
+        _, lines = self.progress_of(said)
+        self.assertEqual(lines[2:4], ["verdict: 0", "ended: the launcher exited 0, the flow succeeded"])
+        folder = self.out / "reported" / "state" / "a"
+        self.assertIn("report: a: written anew under the report tool as it is now, its work done before this run began; CLAIM 2024: "
+                      "20 met, 3 declared, 2 not applicable, 4 missing; REFORMS: 20 met, 3 declared, 2 not applicable, 4 missing; it was "
+                      f"not current, why: {folder}: REPORT.md not what the run gives; run python3 tools/report.py write --run {folder}", lines)
+        reports = (self.tmp / "calls-reported-2.reports").read_text(encoding="utf-8").splitlines()
+        self.assertEqual(reports, ["end check a", "end write a"])
 
     def test_a_plan_the_frozen_prereg_does_not_cover_or_a_moved_prereg_starts_nothing(self):
         code, said, out, calls = self.sweep({"plan": "trials", "first": ["a"], "second": []}, 1)

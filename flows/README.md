@@ -121,11 +121,16 @@ request.
   step that only routes the flow, `claim_report` in end, and `finish`, the verdict and the
   report's lines on the page. `claim_report` checks a run folder's report with tools/report.py
   before it writes anything, since the tool's check compares the report's files with what a write
-  would render now and so always passes right after one: a report the run left that is current is
-  well; a folder with none has it written then and checked, and the line says it was written at
-  the end; a report the run left that is not what its files give is written anew, so the folder
-  and the page hold the current one, and makes the verdict 1, as a report that cannot be written
-  does. An item a report counts
+  would render now and so always passes right after one: a current report is well; a folder with
+  none has it written then and checked, and the line says it was written at the end; a report not
+  what the folder's files give is written anew, so the folder and the page hold the current one.
+  That stale report makes the verdict 1 where the folder's work was done in this Metaflow run, its
+  FINISHED.json (or, with none, its newest file but the report's) written after Metaflow
+  registered the run (`run_began`, `done_since`); a folder done before, a row a resume cloned or
+  one tools/flow.py found finished, is only stale because tools/report.py, the study's answers or
+  the checklists changed since, which no run's key names, so it is written anew under the tool as
+  it is now and is well, and its line says so. A report that cannot be written makes the verdict 1
+  either way. An item a report counts
   as missing is shown, never inferred; `tools/report.py check --complete` stays the gate for a
   number that is to be published.
 - `stage_progress.py` draws the page. Each run keeps <datastore root>/progress/<Flow>/<run>/:
