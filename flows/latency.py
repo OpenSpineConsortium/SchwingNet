@@ -36,6 +36,7 @@ flow writes nothing the report reads.
 
 The key reads the checkpoint's and the catalog's bytes and each sweep input's listing, so a
 checkpoint, a catalog or a sweep replaced at the same path is never carried on as the one it was.
+Paths and words are read as V1Flow reads them, by flows/flow_tool.py's helpers.
 """
 
 import hashlib
