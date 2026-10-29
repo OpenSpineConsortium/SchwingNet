@@ -321,6 +321,8 @@ class DesignTest(StudyFolder):
         self.assertIn("the calibration lines reading flexray mmd flagged none, auc interval above half 0; physics mmd flagged none, auc interval above half 0", claim["40"]["evidence"])
         self.assertIn('"What the run does not support, in the fixture: its film persons are files."', claim["40"]["evidence"])
         self.assertIn("render fixture_cts: 10 CTs chosen of 10", claim["21"]["evidence"])
+        self.assertIn("; render fixture_cts: 10 CTs chosen of 10 with every mask of 12 CTs (moose 10); 10 kept by every group", claim["8"]["evidence"])
+        self.assertIn("of which the analysis reads only those every render group on the folder kept (README section 7)", claim["8"]["evidence"])
         self.assertIn("the records of its ThunderDB as FleXray's reader lists them: fluxray", reforms["3b"]["evidence"])
         self.assertIn("salt fixture-salt", reforms["3b"]["evidence"])
         self.assertIn("synthetic, flexray_drr, flexray_drr_ct, fluxray; fluoroscopy, fixture_fluoro; film, fixture_film", reforms["1a"]["evidence"])
@@ -399,10 +401,19 @@ class DesignTest(StudyFolder):
         lines = self.lines()
         start = lines.index("space flexray dim 8 rows 160 spread 0.111 pca64 0.22")
         end = lines.index("space imagenet not run, no ImageNet weights in this fixture")
-        self.write_lines(lines[:start] + ["space flexray not run, no features in this fixture"] + lines[end:])
+        self.write_lines(lines[:start] + ["space flexray not run, no features"] + lines[end:])
         evidence = self.rows("claim")["30"]["evidence"]
-        self.assertIn("flexray_as_stored was never made, since the space it reads did not run", evidence)
+        self.assertIn("flexray_as_stored was never made, since the space it reads had no features", evidence)
         self.assertNotIn("it does not name flexray_as_stored", evidence)
+
+    def test_a_reading_of_a_space_whose_invariant_head_alone_failed_was_made(self):
+        lines = self.lines()
+        start = lines.index("space flexray dim 8 rows 160 spread 0.111 pca64 0.22")
+        end = lines.index("space imagenet not run, no ImageNet weights in this fixture")
+        self.write_lines(lines[:start] + ["space flexray not run, every image has the same features"] + lines[end:])
+        evidence = self.rows("claim")["30"]["evidence"]
+        self.assertIn("it does not name flexray_as_stored, which its 80-line budget gave up", evidence)
+        self.assertNotIn("never made", evidence)
 
     def test_the_verdict_is_the_verdict_pair_s_and_no_other_pair_s(self):
         lines = self.lines()
@@ -424,15 +435,43 @@ class DesignTest(StudyFolder):
         self.assertIn("reads replicated, the AUC's lower bound of 0.45 at most the bar of 0.6 and the MMD's q of 0.070 at least 0.05", evidence)
         self.assertIn("so the frozen rule's word on the MMD is not read in this run", evidence)
 
-    def test_a_verdict_the_classifier_decides_stands_under_either_family(self):
+    def pair_verdict(self, lo, q, family, word="not replicated"):
+        """The fixture with the verdict pair's line at this AUC lower bound and MMD q, its q's
+        family the frozen one or the contrasts alone; CLAIM 30's evidence."""
         calibration = " calibration split-half auc median 0.33 range 0.32 to 0.34 over 1, mmd flagged 0, auc interval above half 0"
-        lines = self.lines()
+        self.base = getattr(self, "base", None) or self.lines()
+        lines = list(self.base)
         at = lines.index(calibration)
-        pair = " replication flexray_replica vs flexray_reference persons 10/10 n 40/40 auc 0.80 [0.70, 0.90] p 0.010 knn 0.80 mmd p 0.200 q 0.300 fd64 9.0 kid64 1.000 prdc 0.50 0.50 0.50 0.50 not replicated"
-        self.write_lines(lines[:at + 1] + [pair] + lines[at + 1:])
-        self.replace_line("replication flexray_replica vs flexray_reference", "replication flexray_replica vs flexray_reference in flexray (invariant): not replicated (persons 10/10 n 40/40; mmd q 0.300)")
-        evidence = self.rows("claim")["30"]["evidence"]
-        self.assertIn("the classifier told them apart (AUC lower bound 0.70), the MMD's q of 0.300 being at least 0.05, so the word rests on the classifier alone, and the classifier decides the word whichever family the MMD's q is taken over", evidence)
+        pair = f" replication flexray_replica vs flexray_reference persons 10/10 n 40/40 auc 0.80 [{lo}, 0.90] p 0.010 knn 0.80 mmd p 0.040 q {q} fd64 9.0 kid64 1.000 prdc 0.50 0.50 0.50 0.50 {word}"
+        self.write_lines(lines[:at] + [calibration + (", nulls in the mmd q family" if family else ""), pair] + lines[at + 1:])
+        self.replace_line("replication flexray_replica vs flexray_reference", f"replication flexray_replica vs flexray_reference in flexray (invariant): {word} (persons 10/10 n 40/40; mmd q {q})")
+        return self.rows("claim")["30"]["evidence"]
+
+    def test_a_verdict_the_classifier_decides_stands_under_either_family(self):
+        evidence = self.pair_verdict("0.70", "0.300", False)
+        self.assertIn("the classifier told them apart (AUC lower bound 0.70), which decides the word whichever family the MMD's q is taken over (DEVIATIONS.md, item 11); the MMD's q is 0.300; that q was taken over the space's contrasts alone", evidence)
+        self.assertNotIn("rests on the classifier alone", evidence)
+        self.assertIn("the classifier told them apart (AUC lower bound 0.70), the MMD's q of 0.300 being at least 0.05, so the word rests on the classifier alone", self.pair_verdict("0.70", "0.300", True))
+
+    def test_the_mmd_s_bar_is_said_in_the_design_s_words_only_under_the_frozen_family(self):
+        alone = self.pair_verdict("0.65", "0.048", False)
+        self.assertIn("in PREREG.md section 5's words this project's blocks did not reproduce FleXray's own renders of its recipe: the classifier told them apart (AUC lower bound 0.65), which decides", alone)
+        self.assertNotIn("the MMD told them apart", alone)
+        self.assertIn("so the frozen rule's word on the MMD is not read in this run", alone)
+        frozen = self.pair_verdict("0.65", "0.048", True)
+        self.assertIn("the classifier told them apart (AUC lower bound 0.65) and the MMD told them apart (q 0.048);", frozen)
+
+    def test_a_number_printed_at_its_bar_places_nothing(self):
+        auc_at = self.pair_verdict("0.60", "0.046", True)
+        self.assertIn("the MMD told them apart (q 0.046), the AUC's lower bound printed as 0.60, the bar of 0.6 to the digits the summary prints, so whether the classifier told them apart too is not read here", auc_at)
+        self.assertNotIn("rests on the MMD alone", auc_at)
+        mmd_at = self.pair_verdict("0.65", "0.050", True)
+        self.assertIn("the MMD's q printed as 0.050, the bar of 0.05 to the digits the summary prints, so whether the MMD told them apart too is not read here", mmd_at)
+        self.assertNotIn("rests on the classifier alone", mmd_at)
+
+    def test_the_endpoints_item_reads_the_verdict_as_the_others_do(self):
+        self.pair_verdict("0.50", "0.048", False)
+        self.assertIn("read here, the verdict, flexray_replica against flexray_reference in the flexray space read inversion-invariant, reads not replicated, the MMD's q of 0.048 being under the bar of 0.05", self.rows("claim")["37"]["evidence"])
 
     def test_every_descriptive_line_the_summary_prints_is_named(self):
         lines = self.lines()

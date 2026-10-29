@@ -1151,7 +1151,7 @@ def study_endpoints(run):
     text += f"; not read: {'; '.join(unread)}" if unread else ""
     text += f"; not in summary.txt: {', '.join(absent)}" if absent else ""
     verdicts = run["body"]["verdicts"]
-    return met(text + (f"; the replication verdict: {'; '.join(verdicts)}" if verdicts else ""))
+    return met(text + (f"; the replication verdict: {'; '.join(verdicts)}" if verdicts else "") + f"; read here, {verdict_said(run)}")
 
 
 @recorded("study")
@@ -1411,12 +1411,22 @@ def family_caveat(family):
     return ""
 
 
+def bar_side(printed, bar, tells_above):
+    """Which side of its bar a printed number lies: told, the pair told apart by it; passed; or at,
+    where it equals the bar to the digits the summary prints, so that the word, worked out on the
+    unrounded number (src/schwingnet/domain_gap.py, replication_word), may lie on either side."""
+    value = float(printed)
+    if abs(value - bar) < 1e-9:
+        return "at"
+    return "told" if (value > bar) == tells_above else "passed"
+
+
 def verdict_said(run):
     """The study's verdict, the verdict pair's word, and which of the replication's two bars the
     pair's line passes or fails, in PREREG.md section 5's words where the word stands under the
-    frozen rule; or why summary.txt does not tell. A word that turns on the MMD's q stands under the
-    frozen rule only where the q's family is the frozen one (DEVIATIONS.md, item 11); a word the
-    classifier decides stands under either family."""
+    frozen rule; or why summary.txt does not tell. The MMD's bar is read under the frozen rule only
+    where the q's family is the frozen one (DEVIATIONS.md, item 11), and a number printed at its bar
+    places nothing; a word the classifier decides stands under either family."""
     verdict, why = verdict_of(run)
     if verdict is None:
         return why
@@ -1427,27 +1437,36 @@ def verdict_said(run):
     if numbers is None:
         return f"{pair} reads {verdict['word']}, and its space holds no line of the pair with its AUC interval and MMD q, so which bars it passed or failed is not read here"
     lo, q, family = numbers["lo"], numbers["q"], q_family(run, space)
-    told_by_auc, told_by_mmd = float(lo) > 0.6, float(q) < 0.05
+    auc, mmd = bar_side(lo, 0.6, True), bar_side(q, 0.05, False)
     if verdict["word"] == "replicated":
         return f"{pair} reads replicated, the AUC's lower bound of {lo} at most the bar of 0.6 and the MMD's q of {q} at least 0.05" + family_caveat(family)
-    if not told_by_auc and not told_by_mmd:
-        return f"{pair} reads not replicated on an AUC lower bound of {lo} and an MMD q of {q}, which as printed do not show which bar it failed"
-    if not told_by_auc and family != "frozen":
-        return f"{pair} reads not replicated, the MMD's q of {q} being under the bar of 0.05 and the AUC's lower bound of {lo} at most the bar of 0.6, so the word rests on the MMD alone" + family_caveat(family)
-    failed = [f"the classifier told them apart (AUC lower bound {lo})"] * told_by_auc + [f"the MMD told them apart (q {q})"] * told_by_mmd
-    return (f"{pair} reads not replicated, and in PREREG.md section 5's words this project's blocks did not reproduce FleXray's own renders of its recipe: {' and '.join(failed)}{resting_on(lo, q, family)};"
+    if auc == "told":
+        return failure_in_design_words(pair, [f"the classifier told them apart (AUC lower bound {lo})"] + [f"the MMD told them apart (q {q})"] * (mmd == "told" and family == "frozen"), beside_the_classifier(q, mmd, family))
+    if mmd == "told" and family == "frozen":
+        rests = f", the AUC's lower bound of {lo} being at most the bar of 0.6, so the word rests on the MMD alone" if auc == "passed" else f", the AUC's lower bound printed as {lo}, the bar of 0.6 to the digits the summary prints, so whether the classifier told them apart too is not read here"
+        return failure_in_design_words(pair, [f"the MMD told them apart (q {q})"], rests)
+    if mmd == "told":
+        rests = f"the AUC's lower bound of {lo} at most the bar of 0.6, so the word rests on the MMD alone" if auc == "passed" else f"the AUC's lower bound printed as {lo}, the bar of 0.6 to the digits the summary prints, so which bar the word rests on is not read here"
+        return f"{pair} reads not replicated, the MMD's q of {q} being under the bar of 0.05 and {rests}" + family_caveat(family)
+    at = " and at least one of them at its bar to the digits the summary prints" if "at" in (auc, mmd) else ""
+    return f"{pair} reads not replicated on an AUC lower bound of {lo} and an MMD q of {q}{at}, which as printed do not show which bar it failed"
+
+
+def failure_in_design_words(pair, failed, tail):
+    """A not-replicated verdict in PREREG.md section 5's sentence, with the bars it failed."""
+    return (f"{pair} reads not replicated, and in PREREG.md section 5's words this project's blocks did not reproduce FleXray's own renders of its recipe: {' and '.join(failed)}{tail};"
             " every comparison read through the blocks is then a comparison of this project's renders, not FleXray's")
 
 
-def resting_on(lo, q, family):
-    """Which bar a not-replicated word rests on, and, where the classifier decides it, that it does
-    so under either family of the MMD's q."""
-    if float(lo) <= 0.6:
-        return f", the AUC's lower bound of {lo} being at most the bar of 0.6, so the word rests on the MMD alone"
-    alone = f", the MMD's q of {q} being at least 0.05, so the word rests on the classifier alone" if float(q) >= 0.05 else ""
-    if family == "frozen":
-        return alone
-    return alone + ", and the classifier decides the word whichever family the MMD's q is taken over (DEVIATIONS.md, item 11)"
+def beside_the_classifier(q, mmd, family):
+    """What the MMD says beside a classifier that told the pair apart, which decides the word alone."""
+    if family != "frozen":
+        return f", which decides the word whichever family the MMD's q is taken over (DEVIATIONS.md, item 11); the MMD's q is {q}" + family_caveat(family)
+    if mmd == "passed":
+        return f", the MMD's q of {q} being at least 0.05, so the word rests on the classifier alone"
+    if mmd == "at":
+        return f", the MMD's q printed as {q}, the bar of 0.05 to the digits the summary prints, so whether the MMD told them apart too is not read here"
+    return ""
 
 
 # The words a contrast line ends with where the design words it (PREREG.md section 4); a line of a
@@ -1558,7 +1577,8 @@ def study_inclusion(run):
     return met(f"in: the {len(table['groups'])} groups of the table ({run['table_note']}), a group's images being, by its source, {frames}; each group at most its cap of images chosen person by person, with the five frozen test persons of data/splits/test-persons.json left out of every group;"
                " out before the run, each with its reason in README section 2, the corpora PREREG.md section 2 names: fluoro_video_clips, fluorocap, carmlspine_sweeps, spinesac, mendeley_5jdfdgp762, COBRA, ljubljana_2d3d_gs, the undecodable videos and the archives never unpacked"
                + noted_out(table)
-               + f"; in the run, a group with fewer than 20 decoded images is left out and one with fewer than five persons is plotted and never tested; summary.txt: {skips_said(run)}")
+               + f"; in the run, a group with fewer than 20 decoded images is left out and one with fewer than five persons is plotted and never tested; summary.txt: {skips_said(run)}"
+               + "".join(f"; {line}" for line in run["body"]["renders"]))
 
 
 @recorded("study")
@@ -1571,7 +1591,7 @@ def study_no_reference_standard(run):
 def study_no_annotation(run):
     """CLAIM 16, 17: no reference-standard annotation; the one labelling is a segmenter's."""
     return not_applicable(run, "the study makes no reference-standard annotation and no person reads an image: the label every test reads is the image's group or pooled family, which the groups table sets, or, in a split-half null, its half of one group split by person;"
-                               " the only labels made for the study are moosez's segmentations of the render CTs, made in the segment job (README section 2.1), which the render recipes read to aim and crop and no test reads")
+                               " the only labels made for the study are moosez's segmentations of the render CTs, made in the segment job, which the render recipes read to weight and drop crops, to aim the isocentre and, where the attenuation randomisation is on, to draw each structure's attenuation factor, and which the study's own code reads to choose the CTs, and no test reads them (README section 2.1; src/schwingnet/render_blocks.py, reads_labels)")
 
 
 @recorded("study")
@@ -1601,20 +1621,26 @@ def spaces_said(run):
     return ran, not_run
 
 
+# Why a space has no features, the reasons tools/domain_gap.py's reading_heads gives where it makes
+# neither of the space's readings (unavailable, or no features file); a space that ran and whose
+# inversion-invariant head alone is invalid ("every image has the same features", space_head) still
+# has its as-stored reading made.
+NO_FEATURES = ("no features", "no FleXray bundle (ensemble.json)", "no ImageNet ResNet-18 file")
+
+
 def given_up_said(run):
-    """The design's spaces and readings summary.txt does not name: a reading of a space the summary
-    says did not run was never made (tools/domain_gap.py, reading_heads), and the rest its line
-    budget gave up."""
+    """The design's spaces and readings summary.txt does not name: a reading of a space that had no
+    features was never made (tools/domain_gap.py, reading_heads), and the rest its line budget gave up."""
     spaces = run["body"]["spaces"]
     absent = [key for key in run["config"]["readings"] if key not in spaces]
-    never = [key for key in absent if key.endswith("_as_stored") and spaces.get(key[:-len("_as_stored")], {}).get("reason") is not None]
+    never = [key for key in absent if key.endswith("_as_stored") and spaces.get(key[:-len("_as_stored")], {}).get("reason") in NO_FEATURES]
     given_up = [key for key in absent if key not in never]
     text = ""
     if given_up:
         text += (f", and of the design's spaces and readings it does not name {', '.join(given_up)}, which its 80-line budget gave up, the summary giving up whole sections from the highest rank down"
                  " (tools/domain_gap.py, RANK and fit_lines; README section 6), so what results.json on the grid holds of them is not read here")
     if never:
-        text += f", and {', '.join(never)} {'was' if len(never) == 1 else 'were'} never made, since the space it reads did not run (tools/domain_gap.py, reading_heads)"
+        text += f", and {', '.join(never)} {'was' if len(never) == 1 else 'were'} never made, since the space it reads had no features (tools/domain_gap.py, reading_heads)"
     return text
 
 
@@ -1625,7 +1651,7 @@ def study_robustness(run):
     if not ran:
         return missing("needs a feature space that ran: summary.txt names none" + (f" ({'; '.join(not_run)})" if not_run else ""))
     both = any("without nulls" in line for line in run["body"]["verdicts"])
-    return met("the primary words and the study's verdict are read in one view, FleXray's space read inversion-invariant (PREREG.md section 4); as secondary description (its section 6) the design reads every contrast again in the imagenet and physics spaces and in FleXray's space as stored, by two classifiers, logistic regression and 15 nearest neighbours, beside the MMD, FD64, KID64 and PRDC,"
+    return met("the primary words and the study's verdict are read in one view, FleXray's space read inversion-invariant (PREREG.md section 4); as secondary description (its section 6) the design reads every contrast again in the imagenet and physics spaces and in FleXray's space as stored, by two classifiers, logistic regression and 15 nearest neighbours, beside the MMD, FD64 and KID64, with PRDC only for each synthetic group against each pooled family and for the replication pairs (tools/domain_gap.py, contrast, family_unit and replication_unit),"
                f" and runs a split-half null on each group of 40 persons or more (its section 3), {without_null_said(run)}; PREREG.md plans no analysis of how a word moves with the bar of 0.6 or with the seed, every draw being from one seed;"
                f" summary.txt carries {'; '.join(ran + not_run)}{given_up_said(run)}; {verdict_said(run)}"
                + ("; and the verdict lines print each worded pair's MMD q with the split-half nulls in its family and without them (DEVIATIONS.md, item 11)" if both else ""))
@@ -1745,7 +1771,7 @@ FRAMES = {
     "index": "the image rows the sample index lists with no read error under its sources (grid/run-samples.sh) that its rules keep: the table's formats and globs, a least side, the table's or 256, a single plane, for a DICOM a projection modality, the table's or CR, DX, RF, XA, DF, RG, PX, OT and SC, and no exclude word in the path, the table's or the study's (src/schwingnet/domain_gap.py, GroupSpec; tools/domain_gap.py, refusal)",
     "walk": "the files seen under its folder on the data root, up to the walk's limit, that the table's formats and globs and its exclude words, the table's or the study's, keep (tools/domain_gap.py, walk_candidates)",
     "thunderdb": "the records of its ThunderDB as FleXray's reader lists them",
-    "render": "the held TotalSegmentator v2.0.1 CTs with masks under every segmenter its folder's groups read (README section 2.1)",
+    "render": "the held TotalSegmentator v2.0.1 CTs with masks under every segmenter its folder's groups read (README section 2.1), of which the analysis reads only those every render group on the folder kept (README section 7)",
 }
 
 
