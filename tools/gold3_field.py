@@ -49,6 +49,11 @@ pooled with SPINEPS or with the release's masks, and never raising a tier.
     python3 tools/gold3_field.py show ID   # one study's verdict and the numbers behind it
     python3 tools/gold3_field.py take MEMBER FACTS.jsonl --read-on TEXT --bordercall-commit SHA --source TEXT
                                            # bordercall's reading of a member's masks into data/gold3-ct/<member>/
+    python3 tools/gold3_field.py machine-jobs --segout DIR --masks DIR --tsdir DIR --segmenter FILE --out JOBS.json
+                                           # the studies bordercall's holdings.fullspine_complete completes
+    python3 tools/gold3_field.py take-machine OUT --jobs FILE --bordercall-commit SHA --date D --ct-source TEXT --masks-kept TEXT
+                                           # its records and completed rows into data/gold3-ct/machine-arm/,
+                                           # judged a second time by write (machine_rule_record)
 
 Everything here is the standard library over committed files.
 """
@@ -71,6 +76,12 @@ FACTS_OF = {"verse": VERSE_FACTS, "totalsegmentator": TOTALSEG_FACTS}
 READER = "bordercall holdings/fullspine_facts.py"
 ADMISSION = f"{DATA}/admission.json"
 PAGE = "docs/research/gold3-ct/ADMISSION.md"
+MACHINE = f"{DATA}/machine-arm"
+MACHINE_RECORDS = f"{MACHINE}/records.jsonl"
+MACHINE_FACTS = f"{MACHINE}/facts.jsonl"
+MACHINE_RECORD = f"{MACHINE}/RECORD.json"
+MACHINE_ADMISSION = f"{MACHINE}/admission.json"
+MATCHER = "bordercall holdings/fullspine_complete.py"
 MEMBER_ORDER = ("enhance_pet", "verse", "totalsegmentator")
 RULE_VERSION = 2
 
@@ -168,10 +179,15 @@ def read_jsonl(path):
 
 
 def load_inputs(repo=ROOT):
+    """The committed rows the field test reads; the machine arm's two files are empty lists where the
+    arm is not committed."""
     repo = Path(repo)
+    arm = (repo / MACHINE_RECORDS).is_file()
     return {"enhance_pet": read_jsonl(repo / ENHANCE_FACTS), "verse": read_jsonl(repo / VERSE_FACTS),
             "totalsegmentator": read_jsonl(repo / TOTALSEG_FACTS), "verse_series": read_json(repo / VERSE_SERIES),
-            "totalseg_subjects": read_json(repo / TOTALSEG_SUBJECTS)}
+            "totalseg_subjects": read_json(repo / TOTALSEG_SUBJECTS),
+            "machine_records": read_jsonl(repo / MACHINE_RECORDS) if arm else [],
+            "machine": read_jsonl(repo / MACHINE_FACTS) if arm and (repo / MACHINE_FACTS).is_file() else []}
 
 
 # ---------------------------------------------------------------- one study, in level names
@@ -313,8 +329,10 @@ def named_study(row, person, age, site):
     step = row["grid"]["zooms"][row["grid"]["head_foot_axis"]]
     top = row["field_mm"]["top"] if planes[0] is None else round(planes[0] + step / 2, 1)
     bottom = row["field_mm"]["bottom"] if planes[1] is None else round(planes[1] - step / 2, 1)
+    machine = row.get("machine_levels", {})
     return {"member": row["member"], "id": row["id"], "top": top, "bottom": bottom,
-            "levels": {name: named_level(row, e, planes, slack) for name, e in row["levels"].items()},
+            "levels": {name: {**named_level(row, e, planes, slack), "machine": name in machine}
+                       for name, e in row["levels"].items()},
             "person": person, "age": age, "site": site, "image_planes": [p is not None for p in planes]}
 
 
@@ -466,12 +484,16 @@ def head_end(study, table):
     """drawn, in_view, border, out or no_column, with the numbers it rests on. A C2 the release draws is
     in view however the field cuts it, as version 1 had it: a person drew what the CT shows, and a C2 in
     the top slice is flagged for a look (flags), not left out; but where the field's top cuts the level
-    below C2 too, the field holds no more of C2 than a sliver beside that level, and the end is out."""
+    below C2 too, the field holds no more of C2 than a sliver beside that level, and the end is out. A C2
+    the segmenter drew (the machine arm's) that the field's top cuts is a border case, since no person
+    read what the field holds of it."""
     c2 = drawn(study, "C2")
     if c2:
         below = drawn_below(study, "C2")
         if c2["head_cut"] and below and drawn(study, below)["head_cut"]:
             return OUT, {"why": f"C2 and {below} are both cut by the field's top: the field holds a sliver of C2"}
+        if c2["head_cut"] and c2.get("machine"):
+            return BORDER, {"why": "the segmenter's C2 is cut by the field's top, and no person read what the field holds of it"}
         return DRAWN, {}
     top = head_most(study)
     if top is None:
@@ -776,6 +798,72 @@ def admission(inputs):
     }
 
 
+def machine_rule_record():
+    return {"rule": "The machine arm's second judgement, beside admission.json and never replacing it: every study "
+                    "the segmenter completed is judged again by rule version 2 and its tables, made from the "
+                    "release's masks alone, with the segmenter's levels drawn beside the release's. A C2 of the "
+                    "segmenter's that the field's top cuts is a border case, a look, since no person read what the "
+                    "field holds of it; a sacrum of the segmenter's is in view only with s1_view_mm of it in the "
+                    "field below its top, as a drawn one is. A study admitted with nothing left to add is whole "
+                    "from C2 to the sacrum with the machine arm, flagged machine_levels.",
+            "asked": "the owner, 2026-10-29 03:32 UTC: \"segment the c2 and sacrums which are on ct volumes they just "
+                     "lack the masks and convert them all to gold tier 3 data\", and his choice at 04:23 UTC of "
+                     "'Run SPINEPS here now'",
+            "matcher": MATCHER, "s1_view_mm": S1_VIEW_MM}
+
+
+def refusals(record):
+    return [{"name": o["name"], "reason": o["reason"]} for o in record["targets"] if o["state"] == "refused"]
+
+
+def machine_entry(record, first, second):
+    entry = {"member": record["member"], "id": record["id"], "asked": record["asked"], "added": record["added"],
+             "refused": refusals(record),
+             "first": {k: first[k] for k in ("verdict", "head", "foot", "complete")} if first else None}
+    if second is None:
+        return {**entry, "second": None, "whole_with_machine_arm": False}
+    second = {k: second[k] for k in ("verdict", "head", "foot", "complete", "flags")}
+    second["flags"] = sorted({*second["flags"], "machine_levels"})
+    whole = second["verdict"] == ADMITTED and not second["complete"]
+    return {**entry, "second": second, "whole_with_machine_arm": whole}
+
+
+def machine_counts(entries, member):
+    rows = [e for e in entries if e["member"] == member]
+    added, refused = {}, {}
+    for row in rows:
+        for name in row["added"]:
+            added[name] = added.get(name, 0) + 1
+        for item in row["refused"]:
+            refused[item["name"]] = refused.get(item["name"], 0) + 1
+    seconds = [{"verdict": (r["second"] or r["first"] or {}).get("verdict")} for r in rows]
+    return {"studies_read": len(rows), "with_a_level_added": sum(1 for r in rows if r["added"]),
+            "whole_with_machine_arm": sum(1 for r in rows if r["whole_with_machine_arm"]),
+            "added": {n: added[n] for n in ORDER if n in added},
+            "refused": {n: refused[n] for n in ORDER if n in refused},
+            "second_verdicts": count(seconds, "verdict")}
+
+
+def machine_admission(inputs, table, judged):
+    """The machine arm's second judgement: each study the arm read, its first verdict, and, where the arm
+    added a level, its verdict judged again with the segmenter's levels drawn (machine_rule_record)."""
+    first = {(j["member"], j["id"]): j for j in judged}
+    completed = studies_of({**inputs, "enhance_pet": [], "verse": [r for r in inputs["machine"] if r["member"] == "verse"],
+                            "totalsegmentator": [r for r in inputs["machine"] if r["member"] == "totalsegmentator"]})[0]
+    second = {(s["member"], s["id"]): judge(s, table) for s in completed}
+    entries = [machine_entry(r, first.get((r["member"], r["id"])), second.get((r["member"], r["id"])))
+               for r in inputs["machine_records"] if "error" not in r]
+    errors = [{"member": r.get("member"), "id": r.get("id"), "error": r["error"]}
+              for r in inputs["machine_records"] if "error" in r]
+    return {"about": "The machine arm's second judgement (tools/gold3_field.py, machine_rule_record): every study "
+                     "the segmenter's levels were matched to, its first verdict from admission.json and, where a level "
+                     "was added, its verdict judged again. Written by `python3 tools/gold3_field.py write`; never "
+                     "edited by hand. admission.json stays the first word.",
+            "rule": machine_rule_record(),
+            "members": {m: machine_counts(entries, m) for m in MEMBER_ORDER if any(e["member"] == m for e in entries)},
+            "errors": errors, "studies": entries}
+
+
 def rule_record():
     return {"version": RULE_VERSION,
             "rule": "A CT is admitted when its field holds C2 and the top of the sacrum, whatever its masks hold; "
@@ -919,6 +1007,33 @@ def page_text(data):
     return "\n".join(sections)
 
 
+def machine_page_text(arm):
+    rows = [[m, c["studies_read"], c["with_a_level_added"], c["whole_with_machine_arm"],
+             ", ".join(f"{n} {k}" for n, k in c["added"].items()) or "none",
+             ", ".join(f"{n} {k}" for n, k in c["refused"].items()) or "none",
+             ", ".join(f"{n} {k}" for n, k in c["second_verdicts"].items())] for m, c in arm["members"].items()]
+    studies = [[e["member"], e["id"], (e["first"] or {}).get("verdict", "-"), (e["second"] or {}).get("verdict", "-"),
+                ", ".join(e["added"]) or "none", ", ".join((e["second"] or e["first"] or {}).get("complete", [])) or "none",
+                "yes" if e["whole_with_machine_arm"] else "no"] for e in arm["studies"]]
+    return "\n".join([
+        "## The machine arm, judged second",
+        "",
+        "Written from data/gold3-ct/machine-arm/admission.json. " + arm["rule"]["rule"],
+        "",
+        "Each level the segmenter added is a machine mask, kept in its own arm and never pooled with the "
+        "release's. The matcher refuses a level it cannot name safely, and records why: "
+        f"{MATCHER}, whose records are data/gold3-ct/machine-arm/records.jsonl.",
+        "",
+        table_text(["member", "studies read", "a level added", "whole with the arm", "levels added (studies)",
+                    "levels refused (studies)", "second verdicts (studies)"], rows),
+        "",
+        table_text(["member", "id", "first verdict", "second verdict", "added", "still to add", "whole with the arm"], studies),
+        "",
+        "Errors: " + (", ".join(f"{e['member']} {e['id']}" for e in arm["errors"]) or "none"),
+        "",
+    ])
+
+
 def json_text(data):
     return json.dumps(data, indent=1, sort_keys=False, ensure_ascii=True) + "\n"
 
@@ -967,12 +1082,100 @@ def command_take(args):
     return 0
 
 
+# ---------------------------------------------------------------- the machine arm's run
+
+
+def machine_jobs(repo, segout, masks, tsdir):
+    """The matcher's studies: every VerSe and TotalSegmentator study admission.json asks levels of,
+    admitted or a look, whose CT the segmenter has drawn on its grid under segout/<id>/ctgrid/. Its
+    targets are admission.json's completion list as it stands. ENHANCE.PET's are left out: its CTs are
+    not where a cloud container reads them."""
+    facts = {m: {r["id"]: r for r in read_jsonl(Path(repo) / rel)} for m, rel in FACTS_OF.items()}
+    studies, skipped = [], []
+    for s in read_json(Path(repo) / ADMISSION)["studies"]:
+        if s["member"] not in FACTS_OF or not s["complete"] or s["verdict"] == NOT_ADMITTED:
+            continue
+        row, grid = facts[s["member"]][s["id"]], Path(segout) / s["id"] / "ctgrid"
+        if not (grid / "input.json").is_file():
+            skipped.append({"member": s["member"], "id": s["id"], "why": "the segmenter has not drawn it"})
+            continue
+        if s["member"] == "verse":
+            (name,) = row["files"]
+            release = Path(masks) / row["release"] / name
+        else:
+            release = Path(tsdir) / s["id"]
+        studies.append({"id": s["id"], "member": s["member"], "release": str(release),
+                        "machine": str(grid / "vert.nii.gz"), "spine": str(grid / "spine.nii.gz"),
+                        "input": str(grid / "input.json"), "targets": s["complete"],
+                        "verdict": s["verdict"], "head": s["head"], "foot": s["foot"]})
+    return studies, skipped
+
+
+def command_machine_jobs(args):
+    studies, skipped = machine_jobs(args.repo, args.segout, args.masks, args.tsdir)
+    spec = {"segmenter": read_json(args.segmenter),
+            "facts": {m: str(Path(args.repo) / rel) for m, rel in FACTS_OF.items()},
+            "studies": studies, "skipped": skipped}
+    Path(args.out).write_text(json.dumps(spec, indent=1) + "\n", encoding="ascii", newline="\n")
+    print(f"{len(studies)} studies, {len(skipped)} skipped")
+    return 0
+
+
+def file_sum(path):
+    digest, size = hashlib.sha256(), 0
+    with open(path, "rb") as f:
+        for block in iter(lambda: f.read(1 << 20), b""):
+            digest.update(block)
+            size += len(block)
+    return {"bytes": size, "sha256": digest.hexdigest()}
+
+
+def machine_row(row):
+    """A facts row of the machine arm as committed: a TotalSegmentator row already carries its masks'
+    digest and is kept as it is; any other is compacted as take compacts it."""
+    return row if "sha256_of_sums" in row.get("files", {}) else compact(row)
+
+
+def command_take_machine(args):
+    out = Path(args.out)
+    records = read_jsonl(out / "records.jsonl")
+    facts = read_jsonl(out / "facts.jsonl") if (out / "facts.jsonl").is_file() else []
+    segmenters = {json.dumps(r.get("segmenter"), sort_keys=True) for r in records}
+    if len(segmenters) != 1:
+        raise FieldError(f"{out}: the records name {len(segmenters)} segmenters, where one ran")
+    jobs = read_json(args.jobs)
+    cts = {j["id"]: {"file": Path(j["ct"]).name, **file_sum(j["ct"])} for j in jobs if j["id"] in {r["id"] for r in records}}
+    target = Path(args.repo) / MACHINE
+    target.mkdir(parents=True, exist_ok=True)
+    def lines(rows):
+        return "".join(json.dumps(r, sort_keys=True, separators=(",", ":")) + "\n" for r in rows)
+    (target / "records.jsonl").write_text(lines({k: v for k, v in r.items() if k != "segmenter"} for r in records),
+                                          encoding="ascii", newline="\n")
+    (target / "facts.jsonl").write_text(lines(machine_row(r) for r in facts), encoding="ascii", newline="\n")
+    record = {"segmenter": json.loads(segmenters.pop()), "matcher": MATCHER, "bordercall_commit": args.bordercall_commit,
+              "date": args.date, "cts": {k: cts[k] for k in sorted(cts)}, "ct_source": args.ct_source,
+              "masks": args.masks_kept, "records": len(records), "completed_rows": len(facts),
+              "matcher_output_sha256": {name: file_sum(out / name)["sha256"] for name in ("records.jsonl", "facts.jsonl")
+                                        if (out / name).is_file()}}
+    (target / "RECORD.json").write_text(json.dumps(record, indent=1) + "\n", encoding="ascii", newline="\n")
+    print(f"wrote {MACHINE}: {len(records)} records, {len(facts)} completed rows, {len(cts)} CT sums")
+    return 0
+
+
 # ---------------------------------------------------------------- the command line
 
 
 def written(repo=ROOT):
-    data = admission(load_inputs(repo))
-    return {ADMISSION: json_text(data), PAGE: page_text(data)}
+    inputs = load_inputs(repo)
+    data = admission(inputs)
+    out = {ADMISSION: json_text(data), PAGE: page_text(data)}
+    if inputs["machine_records"]:
+        studies, _ = studies_of(inputs)
+        judged = [judge(s, data["tables"]) for s in studies]
+        arm = machine_admission(inputs, data["tables"], judged)
+        out[MACHINE_ADMISSION] = json_text(arm)
+        out[PAGE] = page_text(data) + machine_page_text(arm)
+    return out
 
 
 def command_write(args):
@@ -1017,8 +1220,22 @@ def main(argv=None):
     take.add_argument("--source", required=True)
     take.add_argument("--date", required=True)
     take.add_argument("--ct-check", required=True, help="how the masks were found on their CTs' grids")
+    jobs = sub.add_parser("machine-jobs", help="the matcher's JOBS.json from admission.json and the segmenter's masks")
+    jobs.add_argument("--segout", required=True, help="the segmenter's output folder, <id>/ctgrid/ under it")
+    jobs.add_argument("--masks", required=True, help="VerSe's released masks, <release>/<file> under it")
+    jobs.add_argument("--tsdir", required=True, help="TotalSegmentator's subjects, <id>/ under it")
+    jobs.add_argument("--segmenter", required=True, help="the segmenter's record, copied into every row")
+    jobs.add_argument("--out", required=True)
+    machine = sub.add_parser("take-machine", help="the matcher's OUT folder into data/gold3-ct/machine-arm/")
+    machine.add_argument("out")
+    machine.add_argument("--jobs", required=True, help="the segmenter's job list, with each CT's path")
+    machine.add_argument("--bordercall-commit", required=True)
+    machine.add_argument("--date", required=True)
+    machine.add_argument("--ct-source", required=True)
+    machine.add_argument("--masks-kept", required=True, help="where the machine masks are kept, never in git")
     args = parser.parse_args(argv)
-    handlers = {"write": command_write, "check": command_check, "show": command_show, "take": command_take}
+    handlers = {"write": command_write, "check": command_check, "show": command_show, "take": command_take,
+                "machine-jobs": command_machine_jobs, "take-machine": command_take_machine}
     try:
         return handlers[args.command](args)
     except FieldError as error:
