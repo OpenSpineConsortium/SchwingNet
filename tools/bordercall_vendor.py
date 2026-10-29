@@ -21,7 +21,9 @@ engine's packages at the clone's root, morphometry, scanimport and screening, co
 as grid/bordercall/<name>, without their tests/ folders, so that a job's
 PYTHONPATH=$REPO/grid/bordercall imports each as the clone does; morphometry's code stamp, which
 names every run, hashes only the top-level .py files of morphometry and scanimport, so the copy
-stamps as the clone does.
+stamps as the clone does. The gold tier 3 holdings package at the clone's root, holdings, comes
+the same way for grid/bordercall-complete.sbatch, with its tests/ folder, since that job runs the
+matcher's own tests first and trusts nothing it reads where they fail.
 """
 from __future__ import annotations
 
@@ -40,9 +42,20 @@ RECORD = TARGET / "VENDORED"
 KEEP = ("bordercall", "testdata", "README.md", "HANDOFF.md", "requirements.txt")
 # what grid/morphometry.sbatch needs: the measuring engine's packages at the clone's root
 ENGINE = ("morphometry", "scanimport", "screening")
-# a package's tests never run on the grid, a cache or an output folder is nobody's record, and the
-# old package's reference papers and the renders its tables were read from are not its code
+# what grid/bordercall-complete.sbatch needs: the gold tier 3 holdings at the clone's root, whose
+# tests the job runs before the matcher (holdings.tests.test_fullspine_complete and
+# test_fullspine_facts, which import the package's other tests), so its tests/ folder comes too
+HOLDINGS = ("holdings",)
+# a package's tests never run on the grid (but the holdings', above), a cache or an output folder
+# is nobody's record, and the old package's reference papers and the renders its tables were read
+# from are not its code
 SKIP_DIRS = {"__pycache__", "figures", "out", "tests", "papers", "provenance"}
+TESTS_KEPT = set(HOLDINGS)
+
+
+def skipped_dirs(name: str) -> set:
+    """The folder names left out of the copy of the clone's folder called name."""
+    return SKIP_DIRS - {"tests"} if name in TESTS_KEPT else SKIP_DIRS
 
 
 def sha256(path: Path) -> str:
@@ -55,7 +68,8 @@ def sha256(path: Path) -> str:
 
 def files_under(root: Path):
     for p in sorted(root.rglob("*")):
-        if p.is_file() and not (set(p.relative_to(root).parts[:-1]) & SKIP_DIRS) and p.name != "VENDORED":
+        parts = p.relative_to(root).parts
+        if p.is_file() and not (set(parts[:-1]) & skipped_dirs(parts[0])) and p.name != "VENDORED":
             yield p
 
 
@@ -95,11 +109,11 @@ def copy(source: str) -> int:
         shutil.rmtree(TARGET)
     TARGET.mkdir(parents=True)
     tracked = tracked_files(src)
-    for folder, names in ((archive, KEEP), (src, ENGINE)):
+    for folder, names in ((archive, KEEP), (src, ENGINE), (src, HOLDINGS)):
         for name in names:
             s = folder / name
             if s.is_dir():
-                shutil.copytree(s, TARGET / name, ignore=shutil.ignore_patterns(*SKIP_DIRS))
+                shutil.copytree(s, TARGET / name, ignore=shutil.ignore_patterns(*skipped_dirs(name)))
                 drop_untracked(TARGET / name, s, src, tracked)
             elif s.exists():
                 shutil.copy2(s, TARGET / name)

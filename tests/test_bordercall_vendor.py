@@ -1,5 +1,6 @@
 """tools/bordercall_vendor.py on a made-up clone: copy() reads the old package from the clone's
-archive/ and the engine's packages from its root, leaves their tests behind, records every file
+archive/ and the engine's packages from its root, leaves their tests behind, takes the holdings
+package with its tests, since grid/bordercall-complete.sbatch runs them first, records every file
 in VENDORED, and check() holds the copy to that record; morphometry's code stamp, which names
 every run on the grid, is the same over the copy as over the clone. The clone is a real git
 repository in a temporary folder, since copy() reads its commit and refuses a dirty tree.
@@ -31,7 +32,9 @@ GIT_ENV = dict(os.environ, GIT_CONFIG_COUNT=str(len(QUIET)),
                **{f"GIT_CONFIG_VALUE_{i}": v for i, v in enumerate(QUIET.values())})
 GIT_ENV.update(GIT_AUTHOR_NAME="t", GIT_AUTHOR_EMAIL="t@t", GIT_COMMITTER_NAME="t", GIT_COMMITTER_EMAIL="t@t")
 
-# the clone's layout since the engine replaced the old package: the archive and the three packages
+# the clone's layout since the engine replaced the old package: the archive, the three packages and
+# the holdings package, whose tests ride along (they import one another, as test_fullspine_facts
+# imports test_count_enhance_pet)
 CLONE_FILES = {
     "archive/bordercall/run.py": "print('run')\n",
     "archive/bordercall/reference/table.csv": "a,b\n1,2\n",
@@ -47,6 +50,10 @@ CLONE_FILES = {
     "scanimport/tests/__init__.py": "",
     "screening/c.py": "C = 3\n",
     "screening/tables.json": "{}\n",
+    "holdings/__init__.py": "",
+    "holdings/fullspine_complete.py": "D = 4\n",
+    "holdings/tests/__init__.py": "",
+    "holdings/tests/test_d.py": "from holdings import fullspine_complete\n",
 }
 
 
@@ -110,7 +117,7 @@ class BordercallVendorTest(unittest.TestCase):
         lines = self.record.read_text(encoding="utf-8").splitlines()
         return lines[0], {line.split("  ", 1)[1]: line.split("  ", 1)[0] for line in lines[1:]}
 
-    def test_copy_takes_the_archive_and_the_engine_and_leaves_the_tests_behind(self):
+    def test_copy_takes_the_archive_the_engine_and_the_holdings_and_leaves_the_engines_tests_behind(self):
         commit = make_clone(self.clone)
         rc, said = quiet(BV.copy, str(self.clone))
         self.assertEqual(rc, 0, said)
@@ -119,6 +126,8 @@ class BordercallVendorTest(unittest.TestCase):
         self.assertEqual(present, [
             "HANDOFF.md", "README.md", "VENDORED",
             "bordercall/reference/table.csv", "bordercall/run.py",
+            "holdings/__init__.py", "holdings/fullspine_complete.py",
+            "holdings/tests/__init__.py", "holdings/tests/test_d.py",
             "morphometry/__init__.py", "morphometry/a.py",
             "requirements.txt",
             "scanimport/__init__.py", "scanimport/b.py",
@@ -151,6 +160,12 @@ class BordercallVendorTest(unittest.TestCase):
         rc, said = quiet(BV.check)
         self.assertEqual(rc, 1)
         self.assertIn("missing: testdata/x", said)
+        # the holdings' tests are part of the record, so a change there is caught as any other
+        (self.target / "testdata" / "x").write_text("fixture\n", encoding="utf-8")
+        (self.target / "holdings" / "tests" / "test_d.py").write_text("", encoding="utf-8")
+        rc, said = quiet(BV.check)
+        self.assertEqual(rc, 1)
+        self.assertIn("changed: holdings/tests/test_d.py", said)
 
     def test_the_code_stamp_is_the_same_over_the_copy_as_over_the_clone(self):
         make_clone(self.clone)
@@ -167,6 +182,7 @@ class BordercallVendorTest(unittest.TestCase):
         self.assertEqual(rc, 0, said)
         self.assertTrue((self.target / "bordercall" / "run.py").exists())
         self.assertFalse((self.target / "morphometry").exists())
+        self.assertFalse((self.target / "holdings").exists())
         self.assertEqual(self.recorded()[0], "bordercall %s OpenSpineConsortium/bordercall" % commit)
 
     def test_a_folder_that_is_no_clone_or_a_dirty_clone_is_refused(self):

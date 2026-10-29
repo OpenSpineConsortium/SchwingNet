@@ -43,7 +43,7 @@ FAKE_HPCWORKER = ROOT / "tests" / "fakes" / "hpcworker"
 NEW_SCRIPTS = ("gate.sh", "hpcw.sh", "box.sh", "bin/pixi", "bin/train-cpu-python", "00-setup.sbatch", "00-weights.sbatch",
                "00-carmlspine.sbatch", "v1-driver.sbatch", "experiment-driver.sbatch", "run-xray-chain.sh",
                "run-platform-fetch.sh", "sweep-driver.sbatch", "v1-version.sh", "realism.sbatch", "venv.sh",
-               "drr-gap.sbatch", "drr-seg.sbatch", "morphometry.sbatch", "gold3-census.sbatch")
+               "drr-gap.sbatch", "drr-seg.sbatch", "morphometry.sbatch", "gold3-census.sbatch", "bordercall-complete.sbatch")
 ENVS = ("default", "train-cpu", "train-gpu", "telemetry")
 # What bench flexray_drr_gap's word says of a mask folder that is there: the study reads too few CTs'
 # masks as none, which its summary says, so the word says only where the folder is.
@@ -173,6 +173,9 @@ class GateTest(unittest.TestCase):
         (self.repo / "tools" / "leaks.py").write_text("", encoding="utf-8")
         # the freeze and the rule the split-check marker names (grid/03-catalog.sbatch, grid/v1-version.sh)
         shutil.copytree(ROOT / "data" / "splits", self.repo / "data" / "splits")
+        # the flows the launcher starts, whose job scripts are the only GPU jobs the gate queues
+        (self.repo / "flows").mkdir(exist_ok=True)
+        shutil.copy(ROOT / "flows" / "registry.txt", self.repo / "flows" / "registry.txt")
         self.data = self.tmp / "data"
         self.runs = self.tmp / "runs"
         self.models = self.tmp / "models"
@@ -180,6 +183,12 @@ class GateTest(unittest.TestCase):
         for folder in (self.data, self.runs, self.models):
             folder.mkdir()
         self.netrc = self.tmp / "netrc"
+
+    def launched_for_the_test(self, script):
+        """The copy's flows/registry.txt names SCRIPT as a flow's job script, as it will once its word
+        is moved onto a flow, so a test of the word's own logic is not refused for not being moved yet."""
+        with (self.repo / "flows" / "registry.txt").open("a", encoding="utf-8") as registry:
+            registry.write(f"stand_in StandIn STAND_IN_RC {script} -\n")
 
     def gate(self, *words, data_root=None, **extra):
         env = self.gate_env(data_root)
@@ -637,7 +646,7 @@ class GateTest(unittest.TestCase):
         self.assertIn(f"RUNS={self.runs} WEIGHTS={self.models}/resnet18-f37072fd.pth", line)
         self.assertIn("catalog: catalog-000002-0123456789ab.sqlite qualifies for the run (grid/v1-version.sh); no job", done.stdout)
 
-    REQUEST = "recipe: none\nepochs: 12\nseed: 3\nhours: 2.5\nblock: architecture=resnet34\nblock: optimiser=adamw\n"
+    REQUEST = "recipe: none\nepochs: 12\nseed: 3\nhours: 2.5\nblock: architecture=resnet18\nblock: optimiser=adamw\n"
 
     def experiment(self, *words, requests):
         """The gate with EXPERIMENTS_DIR standing in for the branch experiments, as a test must."""
@@ -679,7 +688,7 @@ class GateTest(unittest.TestCase):
         # 2.5 hours of training fit the driver's own 24 hours, which stay the floor
         self.assertIn("--time 24:00:00", line)
         self.assertIn("catalog: catalog-000002-0123456789ab.sqlite qualifies for the run", done.stdout)
-        self.assertIn("request: recipe: none epochs: 12 seed: 3 hours: 2.5 block: architecture=resnet34 block: optimiser=adamw", done.stdout)
+        self.assertIn("request: recipe: none epochs: 12 seed: 3 hours: 2.5 block: architecture=resnet18 block: optimiser=adamw", done.stdout)
         self.assertEqual((self.repo / "grid" / "logs" / "experiment-250.request").read_text(encoding="utf-8"), self.REQUEST)
         job = self.recorded()["experiment_250"]
         (self.fake / "queue").write_text(job + "\n", encoding="utf-8")
@@ -693,6 +702,23 @@ class GateTest(unittest.TestCase):
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
         self.assertIn("--time 51:00:00", self.line_of("experiment-driver.sbatch")[1])
         self.assertIn("wall time: 51:00:00 for 40 hours of training", done.stdout)
+
+    def test_a_gpu_job_whose_script_starts_no_launched_flow_is_refused_before_anything_is_queued(self):
+        # the owner's rule of 2026-10-29: every GPU job starts through flows/launch.py, so a word whose
+        # script flows/registry.txt does not name, the public benchmarks' bench.sbatch now, queues nothing
+        self.environments_ready()
+        self.weights_ready()
+        self.carmlspine_shards()
+        self.catalog_ready(version=2)
+        bundle = self.data / "hf_flexray_weights" / "raw"
+        bundle.mkdir(parents=True)
+        (bundle / "ensemble.json").write_text("{}\n", encoding="utf-8")
+        (self.data / "realxray" / "carmlspine" / "meta").mkdir(parents=True, exist_ok=True)
+        done = self.gate("bench", "flexray_carmlspine")
+        self.assertNotEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("refusing: bench_flexray_carmlspine is a GPU job whose script bench.sbatch flows/registry.txt does not name, "
+                      "and every GPU job starts through flows/launch.py", done.stdout + done.stderr)
+        self.assertFalse(self.line_of("bench.sbatch"), "nothing was queued")
 
     def test_experiment_refuses_a_request_with_a_strange_line_before_anything_is_submitted(self):
         self.environments_ready()
@@ -933,6 +959,7 @@ echo "the split is not disjoint; no training step reads this version"; exit 1
         ends as the launcher ends then, with 143."""
         (self.repo / "grid" / "box.sh").write_text(
             '#!/bin/bash\necho "$* hold=$(cat "$SCHWINGNET/grid/logs/HOLD" 2>/dev/null)" >> "$FAKE/box.log"\n'
+            'printf \'<%s>\' "$@" >> "$FAKE/box-items.log"; echo >> "$FAKE/box-items.log"\n'
             'if [[ "$*" == *split-check* ]] && [ -f "$FAKE/split_fails" ]; then exit 1; fi\n'
             'if [[ "$*" == *flows/launch.py* ]] && [ -f "$FAKE/launch_holds" ]; then\n'
             '  sleep 60 & flow=$!\n'
@@ -942,6 +969,11 @@ echo "the split is not disjoint; no training step reads this version"; exit 1
             '  wait "$flow"\n'
             'fi\n'
             'echo \'{"run_dir": "/nowhere"}\'\n', encoding="utf-8")
+
+    def boxed_items(self):
+        """Each call to the fake box with its arguments one per <item>, so one word is told from several."""
+        log = self.fake / "box-items.log"
+        return log.read_text(encoding="utf-8").splitlines() if log.exists() else []
 
     def boxed(self):
         log = self.fake / "box.log"
@@ -1012,6 +1044,94 @@ echo "the split is not disjoint; no training step reads this version"; exit 1
         self.assertIn("SN_V1_RC=143", out)
         report = (self.repo / "grid" / "logs" / "v1-driver-STAGE-REPORT.md").read_text(encoding="utf-8")
         self.assertIn('- Metaflow: {"flow": "v1", "run": "V1Flow/12", "successful": false', report)
+        self.assertIn("- launcher exited 143\n", report)
+        self.assertFalse((self.repo / "grid" / "logs" / "HOLD").exists())
+
+    def experiment_driver(self, request, popen=False):
+        env = dict(os.environ, SCHWINGNET=str(self.repo), DATA_ROOT=str(self.data), RUNS=str(self.runs), FAKE=str(self.fake),
+                   WEIGHTS=str(self.models / "resnet18-f37072fd.pth"), SLURM_JOB_ID="778", REQUEST=str(request), ISSUE="250")
+        env.pop("STORE", None)
+        command = ["bash", str(self.repo / "grid" / "experiment-driver.sbatch")]
+        if popen:
+            return subprocess.Popen(command, cwd=self.repo / "grid", env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        return subprocess.run(command, cwd=self.repo / "grid", env=env, capture_output=True, text=True, timeout=60)
+
+    def test_an_experiment_runs_its_request_as_the_launched_flow_experiment(self):
+        self.weights_ready()
+        self.carmlspine_shards()
+        self.catalog_ready(version=2)
+        self.fake_box()
+        request = self.tmp / "experiment-250.request"
+        request.write_text(self.REQUEST, encoding="utf-8")
+        done = self.experiment_driver(request)
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        boxed = self.boxed()
+        check = [i for i, line in enumerate(boxed) if "tools/experiments_panel.py check --request" in line]
+        split = [i for i, line in enumerate(boxed) if "tools/catalog.py split-check" in line]
+        flow = [i for i, line in enumerate(boxed) if "flows/launch.py" in line]
+        self.assertTrue(check and split and flow and check[0] < split[0] < flow[0], boxed)
+        # the request runs as the launched flow, held to its frozen PREREG, never tools/flow.py around it
+        self.assertIn("pixi run --locked -e train-gpu python flows/launch.py experiment --max-workers 1 -- --issue 250 "
+                      f"--request {request} --catalog {self.data}/_catalog/versions/catalog-000002-0123456789ab.sqlite ", boxed[flow[0]])
+        self.assertIn("--epochs 12 --seed 3 --hours 2.5 ", boxed[flow[0]])
+        self.assertIn("--recipe none --blocks architecture=resnet18 optimiser=adamw hold=778", boxed[flow[0]])
+        # the blocks reach the launcher as one word, and the hold is written before the request is checked
+        launched = [line for line in self.boxed_items() if "<flows/launch.py>" in line]
+        self.assertTrue(launched and launched[0].endswith("<--blocks><architecture=resnet18 optimiser=adamw>"), launched)
+        self.assertIn(" hold=778 ", boxed[check[0]] + " ")
+        self.assertFalse([line for line in boxed if "tools/flow.py" in line], boxed)
+        self.assertIn("- launcher: it printed no decision line", done.stdout)
+        self.assertIn("- run directory: /nowhere", done.stdout)
+        self.assertIn("SN_EXPERIMENT_RC=0", done.stdout)
+        self.assertFalse((self.repo / "grid" / "logs" / "HOLD").exists())
+
+    def test_an_experiment_with_no_block_lines_gives_the_launcher_one_empty_blocks_word(self):
+        self.weights_ready()
+        self.carmlspine_shards()
+        self.catalog_ready(version=2)
+        self.fake_box()
+        request = self.tmp / "experiment-250.request"
+        request.write_text("recipe: none\nepochs: 12\nseed: 3\nhours: 2.5\n", encoding="utf-8")
+        done = self.experiment_driver(request)
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        launched = [line for line in self.boxed_items() if "<flows/launch.py>" in line]
+        self.assertTrue(launched and launched[0].endswith("<--blocks><>"), launched)
+
+    def test_an_experiment_for_an_architecture_with_no_imagenet_file_trains_nothing(self):
+        self.weights_ready()
+        self.carmlspine_shards()
+        self.catalog_ready(version=2)
+        self.fake_box()
+        request = self.tmp / "experiment-250.request"
+        request.write_text(self.REQUEST.replace("architecture=resnet18", "architecture=resnet34"), encoding="utf-8")
+        done = self.experiment_driver(request)
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("FAILED: architecture=resnet34: no ImageNet file for it on the grid, so the request waits for one", done.stdout)
+        self.assertEqual(self.boxed(), [])
+        self.assertFalse((self.repo / "grid" / "logs" / "HOLD").exists())
+
+    def test_job_submits_early_term_reaches_the_experiment_launcher_at_once(self):
+        self.weights_ready()
+        self.carmlspine_shards()
+        self.catalog_ready(version=2)
+        self.fake_box()
+        (self.fake / "launch_holds").write_text("", encoding="utf-8")
+        request = self.tmp / "experiment-250.request"
+        request.write_text(self.REQUEST, encoding="utf-8")
+        driver = self.experiment_driver(request, popen=True)
+        self.addCleanup(driver.kill)
+        for _ in range(300):
+            if (self.fake / "launch_held").exists():
+                break
+            time.sleep(0.1)
+        began = time.monotonic()
+        driver.send_signal(signal.SIGTERM)
+        out, _ = driver.communicate(timeout=60)
+        self.assertLess(time.monotonic() - began, 30, "the TERM reached the launcher before its flow ended on its own")
+        self.assertEqual(driver.returncode, 143, out)
+        self.assertEqual((self.fake / "stopped").read_text(encoding="utf-8"), "TERM\n")
+        self.assertIn("SN_EXPERIMENT_RC=143", out)
+        report = (self.repo / "grid" / "logs" / "experiment-250-STAGE-REPORT.md").read_text(encoding="utf-8")
         self.assertIn("- launcher exited 143\n", report)
         self.assertFalse((self.repo / "grid" / "logs" / "HOLD").exists())
 
@@ -1813,6 +1933,7 @@ esac
 
     def test_bench_queues_one_gpu_job_per_model_and_then_keeps_printing_its_report(self):
         # no name, two names and a name of no benchmark are refused before anything is read
+        self.launched_for_the_test("bench.sbatch")
         self.assertEqual(self.gate("bench").returncode, 64)
         self.assertEqual(self.gate("bench", "a", "b").returncode, 64)
         self.assertEqual(self.gate("bench", "fluorosam").returncode, 64)
@@ -1859,6 +1980,7 @@ esac
         # a benchmark that failed scored nothing: once a fix has moved the checkout past the commit
         # its report names, one more send keeps the report under its job's number and queues it
         # again (#312); on the same commit, or once it succeeded, a send queues nothing
+        self.launched_for_the_test("bench.sbatch")
         bundle = self.data / "hf_flexray_weights" / "raw"
         bundle.mkdir(parents=True)
         (bundle / "ensemble.json").write_text("{}\n", encoding="utf-8")
@@ -1981,6 +2103,52 @@ esac
             done = self.gate("anomaly", "select")
             self.assertEqual(done.returncode, 0, done.stdout)
             self.assertIn("- exit 0", done.stdout)
+        self.assertEqual(len(self.submitted()), 1)
+
+    def test_bordercall_complete_queues_one_cpu_job_once_and_never_again_without_the_owners_word(self):
+        # the owner's count of 2026-10-29 15:22 UTC is one CPU job: a stage it does not know is refused
+        refused = self.gate("bordercall", "tune")
+        self.assertEqual(refused.returncode, 64, refused.stdout)
+        self.assertIn("pilot, full or complete", refused.stdout)
+        # with no vendored matcher (the checkout's copy carries one, so it is taken away first), or no
+        # job script or tool, nothing is queued
+        matcher = self.repo / "grid" / "bordercall" / "holdings" / "fullspine_complete.py"
+        matcher.unlink(missing_ok=True)
+        missing = self.gate("bordercall", "complete")
+        self.assertEqual(missing.returncode, 2, missing.stdout)
+        self.assertIn("no vendored matcher", missing.stdout)
+        matcher.parent.mkdir(parents=True, exist_ok=True)
+        matcher.write_text("", encoding="utf-8")
+        self.assertEqual(self.gate("bordercall", "complete").returncode, 2)
+        (self.repo / "tools" / "gold3_complete_grid.py").write_text("", encoding="utf-8")
+        # no pilot comes before it and no setup job goes with it, the environments not made here
+        done = self.gate("bordercall", "complete")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        lines = self.submitted()
+        self.assertEqual(len(lines), 1, lines)
+        self.assertIn("--class batch --name bordercall_complete", lines[0])
+        self.assertIn("--no-requeue", lines[0])
+        self.assertIn("--time 08:00:00", lines[0])
+        self.assertIn("bordercall-complete.sbatch", lines[0])
+        job = self.recorded()["bordercall_complete"]
+        self.live(job)
+        busy = self.gate("bordercall", "complete")
+        self.assertEqual(busy.returncode, 75, busy.stdout)
+        # while it runs, the corpus's stages wait for it too
+        self.assertEqual(self.gate("bordercall", "pilot").returncode, 75)
+        (self.fake / "queue").write_text("", encoding="utf-8")
+        # a job that ended with no report is not queued again: a second one waits for the owner's word
+        again = self.gate("bordercall", "complete")
+        self.assertEqual(again.returncode, 64, again.stdout)
+        self.assertIn("left no report", again.stdout)
+        report = self.repo / "grid" / "logs" / "BORDERCALL-complete.md"
+        report.write_text("# bordercall complete: job 1 on node, commit abc1234\n- FAILED at match: x\n- exit 1 at now\n",
+                          encoding="utf-8")
+        # a standing report is printed and queues nothing, even one that failed: a rerun is a new count
+        for _ in range(2):
+            shown = self.gate("bordercall", "complete")
+            self.assertEqual(shown.returncode, 0, shown.stdout)
+            self.assertIn("FAILED at match", shown.stdout)
         self.assertEqual(len(self.submitted()), 1)
 
     def test_census_gold3_queues_one_cpu_job_once_and_never_again_without_the_owners_word(self):
@@ -2202,6 +2370,7 @@ esac
         self.assertEqual(len(self.submitted()), 2)
 
     def test_a_realism_stage_and_the_runs_that_hold_the_checkout_each_wait_for_the_others(self):
+        self.launched_for_the_test("bench.sbatch")
         self.environments_ready()
         self.weights_ready()
         self.carmlspine_shards()
@@ -2650,6 +2819,7 @@ exit "${FAKE_RC:-0}"
         return ssn, conda
 
     def test_timing_waits_for_a_sane_select_report_then_queues_one_gpu_job_and_leaves_a_blackwell_node_for_another(self):
+        self.launched_for_the_test("anomaly.sbatch")
         self.environments_ready()
         ssn, conda = self.spineps_fakes()
         logs = self.repo / "grid" / "logs"
@@ -3105,6 +3275,7 @@ exit "${FAKE_RC:-0}"
         (bundle / "ensemble.json").write_text("{}\n", encoding="utf-8")
         (self.repo / "grid" / "box.sh").write_text(
             '#!/bin/bash\necho "$* hold=$(cat "$SCHWINGNET/grid/logs/HOLD" 2>/dev/null)" >> "$FAKE/box.log"\n'
+            'printf \'<%s>\' "$@" >> "$FAKE/box-items.log"; echo >> "$FAKE/box-items.log"\n'
             '[[ "$*" == *bench_public.py* ]] || exit 0\n'
             'if [ -f "$FAKE/move" ]; then\n'
             '  git -C "$SCHWINGNET" -c user.name=t -c user.email=t@t -c gc.auto=0 -c maintenance.auto=false commit -q --allow-empty -m moved\n'
@@ -3128,6 +3299,7 @@ exit "${FAKE_RC:-0}"
         self.assertFalse(hold.exists())
 
     def test_a_benchmark_and_the_runs_that_hold_the_checkout_each_wait_for_the_others(self):
+        self.launched_for_the_test("bench.sbatch")
         self.environments_ready()
         self.weights_ready()
         self.carmlspine_shards()
@@ -3149,6 +3321,7 @@ exit "${FAKE_RC:-0}"
         self.assertIn(f"--dependency=afterany:{job} ", self.line_of("v1-driver.sbatch")[0])
 
     def test_bench_with_stale_environments_queues_one_setup_job_that_every_bench_waits_on(self):
+        self.launched_for_the_test("bench.sbatch")
         bundle = self.data / "hf_flexray_weights" / "raw"
         bundle.mkdir(parents=True)
         (bundle / "ensemble.json").write_text("{}\n", encoding="utf-8")
@@ -3725,7 +3898,7 @@ exit "${FAKE_RC:-0}"
         self.drr_gap_box()
         self.git_repo()
         (self.repo / "tools" / "domain_gap.py").write_text("# the study's tool; grid/box.sh stands in for it\n", encoding="utf-8")
-        (self.repo / "flows").mkdir()
+        (self.repo / "flows").mkdir(exist_ok=True)
         (self.repo / "flows" / "launch.py").write_text("# the launcher; grid/box.sh stands in for it\n", encoding="utf-8")
         (self.repo / "pixi.toml").write_text("[workspace]\n", encoding="utf-8")
         (self.repo / "data" / "reporting").mkdir(parents=True)
@@ -5021,7 +5194,7 @@ exit "${FAKE_RC:-0}"
 
     def test_the_repositorys_own_prereg_covers_its_smoke_plans_and_not_the_trials(self):
         self.environments_ready()
-        (self.repo / "flows").mkdir()
+        (self.repo / "flows").mkdir(exist_ok=True)
         shutil.copy(ROOT / "flows" / "registry.txt", self.repo / "flows" / "registry.txt")
         shutil.copytree(ROOT / "docs" / "research" / "block-smoke", self.repo / "docs" / "research" / "block-smoke")
         done = self.gate("sweep", "trials")

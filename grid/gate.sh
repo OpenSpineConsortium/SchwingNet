@@ -131,7 +131,12 @@
 #                   tools/bordercall_corpus.py, the copy under grid/bordercall/): pilot, the first few hundred countable
 #                   cases, then full, every countable mask, which the gate takes only once the pilot's report ended
 #                   well; each queued once as one batch job, the next send printing logs/BORDERCALL-<stage>.md, and
-#                   every later one printing it again and queueing nothing
+#                   every later one printing it again and queueing nothing; and complete, the gold tier 3
+#                   completion (the owner's count of 2026-10-29 15:22 UTC, one CPU job; grid/bordercall-complete.sbatch,
+#                   tools/gold3_complete_grid.py, the matcher under grid/bordercall/holdings/): bordercall's matcher
+#                   over the census's existing SPINEPS masks, nothing segmented, queued once with no pilot before
+#                   it, the next send printing logs/BORDERCALL-complete.md and every later one printing it again;
+#                   a job that left no report is not queued again without the owner's word
 #   census gold3    the gold tier census, one CPU job that reads only and segments nothing (the owner's tap of
 #                   2026-10-29 12:26 UTC, "Send the 1 CPU job now"; grid/gold3-census.sbatch, tools/gold3_census.py):
 #                   the older TotalSegmentator list, the autoPET match, gold 4 over the census's SPINEPS masks,
@@ -313,8 +318,23 @@ record() {  # record ID WHAT: one line of the gate's own job list, the word with
   echo "$1 $word${id:+:$id} $2 $(date -u '+%FT%TZ')" >> "$STATE"
   echo "  $2: job $1"
 }
+# Every deep learning job on the grid starts through flows/launch.py (the owner's rule of 2026-10-29):
+# a GPU job's script must be one flows/registry.txt names in its fourth column, the job script that
+# starts the launcher, so a word not yet moved onto a flow is refused here before anything is queued.
+launched_script() {  # launched_script SCRIPT: status 0 where flows/registry.txt names SCRIPT as a flow's job script
+  awk -v script="$1" '$1 !~ /^#/ && NF == 5 && $4 == script { found = 1 } END { exit !found }' "$REPO/flows/registry.txt" 2>/dev/null
+}
+script_of() {  # script_of ARGS...: the word after --, the job script a submit names
+  while [ $# -gt 1 ] && [ "$1" != "--" ]; do shift; done
+  [ "${1:-}" = "--" ] && echo "${2:-}"
+}
 submit() {  # submit WHAT CLASS [K=V...] [job submit options...] -- SCRIPT: the job id on stdout, the record on stderr
-  local what=$1 out
+  local what=$1 out script
+  script=$(script_of "$@")
+  if [ "$2" = gpu ] && ! launched_script "$script"; then
+    echo "  refusing: $what is a GPU job whose script ${script:-(none)} flows/registry.txt does not name, and every GPU job starts through flows/launch.py; it waits for its flow (flows/README.md); nothing was queued" >&2
+    return 90
+  fi
   out=$(hpcw_submit "$@" 2>&1) || { echo "  $out" >&2; return 1; }
   record "$out" "$what" >&2
   echo "$out"
@@ -1707,9 +1727,10 @@ word_bordercall() {  # the bordercall corpus, pilot then full (the owner's count
   case "$id" in
     pilot) wall=12:00:00 ;;
     full) wall=36:00:00 ;;
-    *) echo "refusing: bordercall takes pilot or full"; return 64 ;;
+    complete) word_bordercall_complete; return ;;
+    *) echo "refusing: bordercall takes pilot, full or complete"; return 64 ;;
   esac
-  busy=$( { live_of bordercall_pilot; live_of bordercall_full; } | tr '\n' ' ')
+  busy=$( { live_of bordercall_pilot; live_of bordercall_full; live_of bordercall_complete; } | tr '\n' ' ')
   [ -z "${busy// /}" ] || { echo "refusing: a bordercall stage is still queued or running (job $busy); send bordercall $id again once it ends"; return 75; }
   if [ -f "$report" ]; then
     # Kept, so the owner's count of one job a stage holds: a report that stands queues nothing.
@@ -1733,6 +1754,33 @@ word_bordercall() {  # the bordercall corpus, pilot then full (the owner's count
   depend_on "$(joined "$setup" "$holds")" || return 1
   submit "bordercall_$id" batch STAGE="$id" ${opts[@]+"${opts[@]}"} --no-requeue --time "$wall" -- bordercall.sbatch > /dev/null || return 1
   echo "submitted the bordercall stage $id. Send bordercall $id again once it ends to read its report, logs/BORDERCALL-$id.md."
+}
+word_bordercall_complete() {  # the gold tier 3 completion (the owner's count of 2026-10-29 15:22 UTC, one CPU job): queued once, its report printed on every later send
+  local report=$LOGS/BORDERCALL-complete.md busy holds job opts=()
+  busy=$( { live_of bordercall_pilot; live_of bordercall_full; live_of bordercall_complete; } | tr '\n' ' ')
+  [ -z "${busy// /}" ] || { echo "refusing: a bordercall stage is still queued or running (job $busy); send bordercall complete again once it ends"; return 75; }
+  if [ -f "$report" ]; then
+    # Kept, so the owner's count of one job holds: a report that stands queues nothing, failed or not,
+    # since a second job is a second count and waits for his word.
+    echo "## $(basename "$report") ($(date -r "$report" '+%F %T'))"
+    head -n 200 "$report" | LC_ALL=C tr -cd '\11\12\40-\176' | masked | head -c 30000
+    return 0
+  fi
+  job=$(awk '$3 == "bordercall_complete" { job = $1 } END { print job }' "$STATE" 2>/dev/null)
+  if [ -n "$job" ]; then
+    [ ! -f "$report.part" ] || { echo "## $(basename "$report").part, unfinished: what job $job wrote before it ended"; head -n 200 "$report.part" | LC_ALL=C tr -cd '\11\12\40-\176' | masked | head -c 30000; }
+    echo "refusing: a bordercall complete job was queued before (job $job) and left no report; the owner's count was one job, so another waits for his word"
+    return 64
+  fi
+  [ -f "$REPO/grid/bordercall/holdings/fullspine_complete.py" ] || { echo "refusing: no vendored matcher under grid/bordercall/holdings/ at this commit (tools/bordercall_vendor.py copy)"; return 2; }
+  [ -f "$REPO/grid/bordercall-complete.sbatch" ] && [ -f "$REPO/tools/gold3_complete_grid.py" ] || { echo "refusing: no completion job script or tool at this commit"; return 2; }
+  # The job runs in the SPINEPS environment's python, not the pixi environments, so no setup job goes
+  # with it; it holds the checkout as a benchmark does, so it waits for the live runs that hold it.
+  holds=$(checkout_holders)
+  [ -z "$holds" ] || echo "  the checkout: after the live runs that hold it ($holds)"
+  depend_on "$holds" || return 1
+  submit bordercall_complete batch ${opts[@]+"${opts[@]}"} --no-requeue --time 08:00:00 -- bordercall-complete.sbatch > /dev/null || return 1
+  echo "submitted the bordercall complete job: one CPU job that reads the census's SPINEPS masks and segments nothing. Send bordercall complete again once it ends to read its report, logs/BORDERCALL-complete.md."
 }
 
 word_census() {  # the gold tier census (the owner's tap of 2026-10-29 12:26 UTC, one CPU job): queued once, its report printed on every later send

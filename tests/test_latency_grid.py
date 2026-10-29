@@ -6,8 +6,10 @@ fake hpcworker under tests/fakes/ records what would be queued, and nothing reac
 Standard library only, so the required check runs it."""
 
 import os
+import signal
 import subprocess
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -15,6 +17,23 @@ ROOT = Path(__file__).resolve().parent.parent
 GRID = ROOT / "grid"
 
 FAKE_HPCWORKER = ROOT / "tests" / "fakes" / "hpcworker"
+# A stand-in for `pixi run` in the job: it records its words and answers as flows/launch.py would,
+# or, where FAKE_PIXI_HOLD is set, holds until a TERM and then ends as the launcher ends on one.
+FAKE_PIXI = """#!/bin/bash
+echo "$*" >> "$FAKE_PIXI_LOG"
+if [ -n "${FAKE_PIXI_HOLD:-}" ]; then
+  trap 'echo TERM > "$FAKE_PIXI_STOPPED"; echo "{\\"flow\\": \\"latency\\", \\"run\\": \\"LatencyFlow/4\\", \\"successful\\": false, \\"verdict\\": null}"; exit 143' TERM
+  echo '{"decision": "run", "flow": "latency", "key": "k", "origin": null}'
+  : > "$FAKE_PIXI_HOLD"
+  while :; do sleep 0.1; done
+fi
+echo '{"decision": "run", "flow": "latency", "key": "k", "origin": null}'
+echo 'LatencyFlow: end: r1: current as an earlier run wrote it; CLAIM 2024: 20 met'
+echo 'LatencyFlow: end: part gpu, verdict 1'
+echo '{"flow": "latency", "run": "LatencyFlow/3", "successful": true, "verdict": 1}'
+echo 'LATENCY_RC=1 2026-10-29 16:00:00'
+exit "${FAKE_PIXI_RC:-0}"
+"""
 
 
 class LatencyGridTest(unittest.TestCase):
@@ -130,6 +149,87 @@ class LatencyGridTest(unittest.TestCase):
         done, lines = self.submit(str(self.make_run("a")))
         self.assertEqual(done.returncode, 64)
         self.assertEqual(lines, [])
+
+
+
+class LatencyJobTest(unittest.TestCase):
+    """grid/latency-sweep.sbatch's network parts: each starts the launched flow latency with its
+    part's words, reports what the launcher said and ends with its exit, and hears job submit's
+    early TERM at once; a fake pixi stands in for the launcher, so no flow runs."""
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+        self.repo = self.tmp / "repo"
+        (self.repo / "grid").mkdir(parents=True)
+        (self.repo / "grid" / "latency-sweep.sbatch").write_bytes((GRID / "latency-sweep.sbatch").read_bytes())
+        bin_dir = self.tmp / "bin"
+        bin_dir.mkdir()
+        (bin_dir / "pixi").write_text(FAKE_PIXI, encoding="utf-8")
+        (bin_dir / "pixi").chmod(0o755)
+        self.calls = self.tmp / "pixi.log"
+        self.run_dir = LatencyGridTest.make_run(self, "run-a")
+        self.catalog = self.tmp / "catalog.sqlite"
+        self.catalog.write_bytes(b"")
+        self.base = dict(os.environ, PATH=f"{bin_dir}:{os.environ['PATH']}", SCHWINGNET=str(self.repo), FAKE_PIXI_LOG=str(self.calls),
+                         RUN=str(self.run_dir), CATALOG=str(self.catalog), SLURM_JOB_ID="55")
+        self.base.pop("SLURM_ARRAY_TASK_ID", None)
+
+    def job(self, **extra):
+        done = subprocess.run(["bash", str(self.repo / "grid" / "latency-sweep.sbatch")], env=dict(self.base, **extra),
+                              capture_output=True, text=True, timeout=60)
+        return done, self.calls.read_text(encoding="utf-8").splitlines() if self.calls.exists() else []
+
+    def report(self, label):
+        return (self.repo / "grid" / "logs" / f"latency-{label}-STAGE-REPORT.md").read_text(encoding="utf-8")
+
+    def test_the_gpu_part_starts_the_launched_flow_and_ends_with_its_exit_and_its_lines(self):
+        done, calls = self.job(PART="gpu", FAKE_PIXI_RC="1")
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("SN_LATENCY_RC=1", done.stdout)
+        self.assertEqual(calls, [f"run --locked -e train-gpu python flows/launch.py latency --max-workers 1 -- --part gpu "
+                                 f"--run-dir {self.run_dir} --catalog {self.catalog} --threads 8 --frames 300"])
+        report = self.report("gpu")
+        for line in ('- launcher: {"decision": "run", "flow": "latency", "key": "k", "origin": null}',
+                     "- r1: current as an earlier run wrote it; CLAIM 2024: 20 met", "- part gpu, verdict 1",
+                     '- Metaflow: {"flow": "latency", "run": "LatencyFlow/3", "successful": true, "verdict": 1}', "- launcher exited 1"):
+            self.assertIn(line + "\n", report)
+
+    def test_the_cpu_part_runs_in_the_cpu_environment_on_its_threads(self):
+        done, calls = self.job(PART="cpu", THREADS="4")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertEqual(calls, [f"run --locked -e train-cpu python flows/launch.py latency --max-workers 1 -- --part cpu "
+                                 f"--run-dir {self.run_dir} --catalog {self.catalog} --threads 4 --frames 300"])
+        self.assertIn("- launcher exited 0\n", self.report("cpu"))
+
+    def test_each_task_of_the_sweep_array_runs_its_own_sweep(self):
+        done, calls = self.job(PART="sweep", SWEEPS="case134:bank=/b case39:/f:/b.jsonl", SLURM_ARRAY_TASK_ID="1")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertEqual(calls, [f"run --locked -e train-gpu python flows/launch.py latency --max-workers 1 -- --part sweep "
+                                 f"--run-dir {self.run_dir} --sweep case39:/f:/b.jsonl --sweep-runtime onnxruntime --box-source truth"])
+        self.assertIn("- sweep: case39\n", self.report("sweep-1"))
+
+    def test_job_submits_early_term_reaches_the_latency_launcher_at_once(self):
+        # As the sweep driver's: job submit's TERM two minutes before the limit goes to the batch
+        # shell alone, and a launcher run in the shell's foreground would not hear it in time.
+        held, stopped = self.tmp / "held", self.tmp / "stopped"
+        job = subprocess.Popen(["bash", str(self.repo / "grid" / "latency-sweep.sbatch")],
+                               env=dict(self.base, PART="gpu", FAKE_PIXI_HOLD=str(held), FAKE_PIXI_STOPPED=str(stopped)),
+                               stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        self.addCleanup(job.kill)
+        for _ in range(300):
+            if held.exists():
+                break
+            time.sleep(0.1)
+        began = time.monotonic()
+        job.send_signal(signal.SIGTERM)
+        out, _ = job.communicate(timeout=60)
+        self.assertLess(time.monotonic() - began, 30, out)
+        self.assertEqual(job.returncode, 143, out)
+        self.assertEqual(stopped.read_text(encoding="utf-8"), "TERM\n")
+        self.assertIn("SN_LATENCY_RC=143", out)
+        report = self.report("gpu")
+        self.assertIn('- Metaflow: {"flow": "latency", "run": "LatencyFlow/4", "successful": false', report)
+        self.assertIn("- launcher exited 143\n", report)
 
 
 if __name__ == "__main__":

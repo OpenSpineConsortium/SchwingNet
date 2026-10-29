@@ -458,6 +458,98 @@ class Take(unittest.TestCase):
         self.assertEqual(field.compact(row), row)
 
 
+class MachineArm(unittest.TestCase):
+    """The second judgement of the studies a segmenter completed, beside the first and never over it."""
+
+    def setUp(self):
+        self.table = field.tables(population())
+
+    def test_a_cut_c2_the_segmenter_drew_is_drawn_as_a_persons_is(self):
+        levels = column()
+        levels["C2"] = {**levels["C2"], "head_cut": True}
+        persons = study(without(levels, "C1"), levels["C2"]["top"] + 0.5, levels["sacrum"]["bottom"] - 5)
+        self.assertEqual(field.head_end(persons, self.table["head"])[0], "drawn")
+        levels["C2"]["machine"] = True
+        machines = study(without(levels, "C1"), levels["C2"]["top"] + 0.5, levels["sacrum"]["bottom"] - 5)
+        self.assertEqual(field.head_end(machines, self.table["head"])[0], "drawn")
+        self.assertEqual(field.judge(machines, self.table)["verdict"], "admitted")
+
+    def test_a_cut_c2_the_segmenter_drew_over_a_cut_c3_is_a_sliver(self):
+        levels = column()
+        levels["C2"] = {**levels["C2"], "head_cut": True, "machine": True}
+        levels["C3"] = {**levels["C3"], "head_cut": True}
+        machines = study(without(levels, "C1"), levels["C2"]["top"] + 0.5, levels["sacrum"]["bottom"] - 5)
+        self.assertEqual(field.head_end(machines, self.table["head"])[0], "out")
+
+    def test_a_whole_c2_the_segmenter_drew_is_drawn(self):
+        levels = column()
+        levels["C2"] = {**levels["C2"], "machine": True}
+        found = field.judge(study(without(levels, "C1"), levels["C2"]["top"] + 20, levels["sacrum"]["bottom"] - 5),
+                            self.table)
+        self.assertEqual((found["verdict"], found["head"], found["complete"]), ("admitted", "drawn", []))
+
+    def test_a_sacrum_the_segmenter_drew_is_drawn_however_little_the_field_holds(self):
+        levels = column()
+        levels["sacrum"] = {**levels["sacrum"], "machine": True, "foot_cut": True}
+        short = study(levels, levels["C1"]["top"] + 5, levels["sacrum"]["top"] - 10)
+        self.assertEqual(field.foot_end(short, self.table["foot"])[0], "drawn")
+        self.assertEqual(field.foot_end(short, self.table["foot"], 20.0)[0], "border")
+
+    def test_the_second_judgement_reads_the_completed_rows_and_keeps_the_first(self):
+        record = {"member": "verse", "id": "verse001", "asked": ["sacrum"], "added": ["sacrum"],
+                  "targets": [{"name": "sacrum", "state": "added"}]}
+        refused = {"member": "verse", "id": "verse002", "asked": ["C2"], "added": [],
+                   "targets": [{"name": "C2", "state": "refused", "reason": "no level above C3"}]}
+        first = {"member": "verse", "id": "verse001", "verdict": "admitted", "head": "drawn", "foot": "in_view",
+                 "complete": ["sacrum"]}
+        completed = study(column(), column()["C1"]["top"] + 5, column()["sacrum"]["bottom"] - 5,
+                          member="verse", sid="verse001")
+        second = field.judge(completed, self.table)
+        entry = field.machine_entry(record, first, second)
+        self.assertEqual(entry["first"]["complete"], ["sacrum"])
+        self.assertEqual((entry["second"]["verdict"], entry["second"]["complete"]), ("admitted", []))
+        self.assertIn("machine_levels", entry["second"]["flags"])
+        self.assertTrue(entry["whole_with_machine_arm"])
+        nothing = field.machine_entry(refused, {**first, "id": "verse002", "complete": ["C2"]}, None)
+        self.assertEqual((nothing["second"], nothing["whole_with_machine_arm"]), (None, False))
+        self.assertEqual(nothing["refused"], [{"name": "C2", "reason": "no level above C3"}])
+        counts = field.machine_counts([entry, nothing], "verse")
+        self.assertEqual((counts["studies_read"], counts["with_a_level_added"], counts["whole_with_machine_arm"]), (2, 1, 1))
+        self.assertEqual((counts["added"], counts["refused"]), ({"sacrum": 1}, {"C2": 1}))
+
+    def test_a_digest_of_masks_is_kept_and_not_digested_again(self):
+        digest = {"count": 54, "bytes": 900, "sha256_of_sums": "4" * 64}
+        row = {"id": "s0001", "files": digest}
+        self.assertEqual(field.machine_row(row), row)
+        two = {"id": "verse001", "files": {"a.nii.gz": {"bytes": 1, "sha256": "1" * 64},
+                                           "b.nii.gz": {"bytes": 2, "sha256": "2" * 64}}}
+        self.assertEqual(field.machine_row(two)["files"]["count"], 2)
+
+    def test_the_jobs_are_the_studies_asked_and_drawn(self):
+        tmp = Path(tempfile.mkdtemp(prefix="gold3-machine-test-"))
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
+        repo = tmp / "repo"
+        for rel in (field.VERSE_FACTS, field.TOTALSEG_FACTS, field.ADMISSION):
+            (repo / rel).parent.mkdir(parents=True, exist_ok=True)
+        (repo / field.VERSE_FACTS).write_text(json.dumps({"id": "verse001", "release": "verse20",
+                                                          "files": {"verse001_seg.nii.gz": {}}}) + "\n")
+        (repo / field.TOTALSEG_FACTS).write_text(json.dumps({"id": "s0001", "files": {}}) + "\n")
+        studies = [{"member": "verse", "id": "verse001", "verdict": "look", "head": "border", "foot": "in_view",
+                    "complete": ["C2", "sacrum"]},
+                   {"member": "totalsegmentator", "id": "s0001", "verdict": "admitted", "head": "drawn",
+                    "foot": "drawn", "complete": ["T5"]},
+                   {"member": "enhance_pet", "id": "0001", "verdict": "look", "head": "border", "foot": "drawn",
+                    "complete": ["C2"]}]
+        (repo / field.ADMISSION).write_text(json.dumps({"studies": studies}))
+        segout = tmp / "seg"
+        (segout / "verse001" / "ctgrid").mkdir(parents=True)
+        (segout / "verse001" / "ctgrid" / "input.json").write_text("{}")
+        found, skipped = field.machine_jobs(repo, segout, tmp / "masks", tmp / "ts")
+        self.assertEqual([(s["id"], s["targets"]) for s in found], [("verse001", ["C2", "sacrum"])])
+        self.assertEqual(found[0]["release"], str(tmp / "masks" / "verse20" / "verse001_seg.nii.gz"))
+        self.assertEqual(skipped, [{"member": "totalsegmentator", "id": "s0001", "why": "the segmenter has not drawn it"}])
+
+
 class Written(unittest.TestCase):
     """The page and the admission written from the committed files are what is committed."""
 
