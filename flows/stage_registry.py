@@ -9,9 +9,10 @@ Metaflow pipeline, started only by flows/launch.py, under a PREREG.md frozen bef
 the CLAIM 2024 and REFORMS report enforced and a progress page in the browser. flows/registry.txt
 is the one list of the flows: each kind's class, the word the launcher ends with, the job script
 under grid/ that starts it when Slurm runs it, and its PREREG, or "-" for a stage that trains and
-runs no network (bank and catalog). The launcher refuses a deep kind whose PREREG is missing or
-no longer the one frozen before any flow starts, so the job ends having done nothing, and the
-flow's start step holds the run to it again, in the checkout the steps run from.
+runs no network, which only bank and catalog are (NO_NETWORK). The launcher refuses a deep kind
+whose PREREG is missing or no longer the one frozen before any flow starts, so the job ends having
+done nothing, and the flow's start step holds the run to it again, in the checkout the steps run
+from.
 
 A PREREG may cover only some of the runs of its kind: its line `Covers: <part>, <part>` names them,
 and a flow whose runs differ in design, as the sweep's plans do, names the part a run is and the
@@ -44,6 +45,14 @@ CLASS = re.compile(r"[A-Z][A-Za-z0-9]{0,63}Flow")
 WORD = re.compile(r"[A-Z][A-Z0-9_]{0,39}_RC")
 SCRIPT = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}\.(?:sbatch|sh)")
 HASH_LINE = re.compile(r"([0-9a-f]{64}) [ *]PREREG\.md\n?")
+# A PREREG's path as the registry names it: relative to the checkout, each folder a plain name, so
+# none is absolute, none climbs out with .. and none hides behind a dot.
+PREREG_PATH = re.compile(r"(?:[A-Za-z0-9_][A-Za-z0-9._-]{0,63}/){1,8}PREREG\.md")
+# The kinds that may name no PREREG: the stages that train and run no network, bank (each raw copy
+# into a bank and a shard) and catalog (the versioned catalog and its split check), which decide
+# nothing a design could be frozen for. Every other kind is held to a frozen PREREG, so a kind
+# added with "-" is refused rather than run with none.
+NO_NETWORK = ("bank", "catalog")
 COVERS = re.compile(r"^Covers: (.+)$", re.M)
 COVERED = re.compile(r"(?P<part>[A-Za-z0-9_.-]{1,64})(?:=(?P<sha256>[0-9a-f]{64}))?")
 # Where the launcher stops a job whose PREREG is not the one frozen: the Lab Recipe's exit code.
@@ -80,8 +89,9 @@ def entry_of(number, words):
     for value, shape, what in ((kind, KIND, "kind"), (flow_class, CLASS, "class"), (word, WORD, "word"), (script, SCRIPT, "script")):
         if not shape.fullmatch(value):
             raise RegistryError(f"{REGISTRY}:{number}: {value!r} is no {what} ({shape.pattern})")
-    if prereg != NO_PREREG and not (prereg.endswith("/PREREG.md") and prereg.isascii() and ".." not in prereg.split("/")):
-        raise RegistryError(f"{REGISTRY}:{number}: the PREREG is a path to a PREREG.md under the checkout, or -, not {prereg!r}")
+    if prereg != NO_PREREG and not PREREG_PATH.fullmatch(prereg):
+        raise RegistryError(f"{REGISTRY}:{number}: the PREREG is a relative path to a PREREG.md inside the checkout, "
+                            f"with no . or .. folder, or -, not {prereg!r}")
     return {"kind": kind, "class": flow_class, "word": word, "script": script, "prereg": None if prereg == NO_PREREG else prereg}
 
 
@@ -122,8 +132,11 @@ def frozen_prereg(kind, repo=ROOT):
     """The kind's PREREG, (path under the checkout, sha256), once its bytes are the ones frozen; None
     for a stage that trains and runs no network; a PreregError where it is missing or moved."""
     prereg = entry(kind, repo)["prereg"]
-    if prereg is None:
+    if prereg is None and kind in NO_NETWORK:
         return None
+    if prereg is None:
+        raise PreregError(f"the {kind} flow names no PREREG, which only {' and '.join(NO_NETWORK)}, the stages that train and "
+                          f"run no network, may do; a PREREG frozen before its runs is its first file")
     path = Path(repo) / prereg
     try:
         digest = hashlib.sha256(path.read_bytes()).hexdigest()
@@ -179,6 +192,28 @@ def script_starts(repo, script, kind):
     return re.search(rf'flows/launch\.py"?\s+{re.escape(kind)}(?![a-z0-9_])', text) is not None
 
 
+def flow_text(repo, kind):
+    """The flow's own file, or "" where there is none."""
+    flow = Path(repo) / "flows" / f"{kind}.py"
+    return flow.read_text(encoding="utf-8") if flow.is_file() else ""
+
+
+def prereg_problems(repo, kind, prereg, flow):
+    """What keeps a kind's PREREG from holding: a path that leads out of the checkout, a freeze that
+    does not hold, a Covers line of another shape, or one the flow names no part for."""
+    if prereg is not None and not (Path(repo) / prereg).resolve().is_relative_to(Path(repo).resolve()):
+        return [f"{kind}: {prereg} leads out of the checkout"]
+    try:
+        frozen = frozen_prereg(kind, repo)
+        parts = covered(Path(repo) / frozen[0]) if frozen else []
+    except PreregError as error:
+        return [f"{kind}: {error}"]
+    if parts and "def prereg_part(" not in flow:
+        return [f"{kind}: {prereg} names the parts it covers, but flows/{kind}.py defines no prereg_part, so no run "
+                f"would say which part it is and every run would pass as covered"]
+    return []
+
+
 def problems(repo=ROOT):
     """What keeps the registry from holding together, one line each; none where it does."""
     try:
@@ -187,15 +222,12 @@ def problems(repo=ROOT):
         return [str(error)]
     found = []
     for kind, item in listed.items():
-        flow = Path(repo) / "flows" / f"{kind}.py"
-        if not flow.is_file() or f"class {item['class']}(" not in flow.read_text(encoding="utf-8"):
+        flow = flow_text(repo, kind)
+        if f"class {item['class']}(" not in flow:
             found.append(f"{kind}: flows/{kind}.py defines no class {item['class']}")
         if not script_starts(repo, item["script"], kind):
             found.append(f"{kind}: grid/{item['script']} names no flows/launch.py {kind}")
-        try:
-            frozen_prereg(kind, repo)
-        except PreregError as error:
-            found.append(f"{kind}: {error}")
+        found += prereg_problems(repo, kind, item["prereg"], flow)
     return found
 
 

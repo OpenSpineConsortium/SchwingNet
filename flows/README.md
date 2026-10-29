@@ -56,9 +56,11 @@ enforced and a page that shows its progress in the browser; a plain Slurm job is
 
 - `registry.txt` is the one list of the flows: per kind its class in flows/<kind>.py, the word the
   launcher's last line ends with, the job script under grid/ that starts the launcher when Slurm
-  runs it, and its PREREG.md, or `-` for a stage that trains and runs no network (bank, catalog).
+  runs it, and its PREREG.md, a relative path inside the checkout, or `-`, which only the stages
+  that train and run no network may name (bank, catalog; NO_NETWORK in flows/stage_registry.py).
   `python3 flows/stage_registry.py check`, which scripts/check.sh runs, fails on a line whose class
-  or script does not hold or whose PREREG is not the one frozen.
+  or script does not hold, whose PREREG is not the one frozen or leads out of the checkout, or
+  whose PREREG has a Covers line for a flow that names no part (no `prereg_part`).
 - A PREREG is frozen as the Lab Recipe says, `sha256sum PREREG.md > PREREG.md.sha256` in its
   folder, both committed, and never edited again: a departure goes in DEVIATIONS.md beside it. The
   launcher refuses a kind whose PREREG is missing or moved before it imports Metaflow, with the

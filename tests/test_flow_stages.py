@@ -46,6 +46,10 @@ ALPHA = hashlib.sha256(b"the plan alpha\n").hexdigest()
 PREREG = f"# A design\n\nCovers: alpha={ALPHA}, beta\n\n## 1. The question\n\nWhether it runs.\n"
 
 
+# A flow whose PREREG covers parts names the part a run is, as the sweep does.
+DEEP_FLOW = "class DeepFlow(FlowSpec):\n    pass\n\n\ndef prereg_part(words, folder):\n    return None, None\n"
+
+
 def freeze(folder, text=PREREG):
     """A PREREG.md and the PREREG.md.sha256 `sha256sum PREREG.md` writes beside it."""
     folder.mkdir(parents=True, exist_ok=True)
@@ -61,7 +65,7 @@ class RegistryTest(unittest.TestCase):
         self.addCleanup(shutil.rmtree, self.repo, ignore_errors=True)
         (self.repo / "flows").mkdir()
         (self.repo / "grid").mkdir()
-        (self.repo / "flows" / "deep.py").write_text("class DeepFlow(FlowSpec):\n    pass\n", encoding="utf-8")
+        (self.repo / "flows" / "deep.py").write_text(DEEP_FLOW, encoding="utf-8")
         (self.repo / "grid" / "deep.sbatch").write_text('exec python "$REPO/flows/launch.py" deep -- "$@"\n', encoding="utf-8")
         self.digest = freeze(self.repo / "docs" / "deep")
         self.write_registry("deep DeepFlow DEEP_RC deep.sbatch docs/deep/PREREG.md")
@@ -140,11 +144,45 @@ class RegistryTest(unittest.TestCase):
         self.assertIn("deep: flows/deep.py defines no class OtherFlow", registry.problems(self.repo))
         for line, words in (("deep DeepFlow DEEP_RC deep.sbatch", "five words"),
                             ("deep DeepFlow DEEP deep.sbatch -", "is no word"),
-                            ("deep DeepFlow DEEP_RC deep.sbatch ../PREREG.md", "a path to a PREREG.md"),
+                            ("deep DeepFlow DEEP_RC deep.sbatch ../PREREG.md", "a relative path to a PREREG.md inside the checkout"),
+                            ("deep DeepFlow DEEP_RC deep.sbatch docs/../../PREREG.md", "with no . or .. folder"),
+                            ("deep DeepFlow DEEP_RC deep.sbatch /etc/deep/PREREG.md", "a relative path"),
+                            ("deep DeepFlow DEEP_RC deep.sbatch docs/./deep/PREREG.md", "with no . or .. folder"),
                             ("deep DeepFlow DEEP_RC deep.sbatch -\ndeep DeepFlow DEEP_RC other.sbatch -", "listed twice")):
             self.write_registry(line)
             with self.assertRaisesRegex(registry.RegistryError, words):
                 registry.entries(self.repo)
+
+    def test_a_prereg_folder_that_leads_out_of_the_checkout_is_refused(self):
+        outside = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, outside, ignore_errors=True)
+        freeze(outside)
+        (self.repo / "docs" / "away").symlink_to(outside, target_is_directory=True)
+        self.write_registry("deep DeepFlow DEEP_RC deep.sbatch docs/away/PREREG.md")
+        self.assertEqual(registry.problems(self.repo), ["deep: docs/away/PREREG.md leads out of the checkout"])
+
+    def test_only_the_stages_that_run_no_network_may_name_no_prereg(self):
+        self.assertEqual(registry.NO_NETWORK, ("bank", "catalog"))
+        self.write_registry("deep DeepFlow DEEP_RC deep.sbatch -")
+        with self.assertRaisesRegex(registry.PreregError, "the deep flow names no PREREG, which only bank and catalog"):
+            registry.frozen_prereg("deep", self.repo)
+        self.assertEqual(len(registry.problems(self.repo)), 1)
+        (self.repo / "flows" / "bank.py").write_text("class BankFlow(FlowSpec):\n    pass\n", encoding="utf-8")
+        (self.repo / "grid" / "bank.sbatch").write_text('exec python "$REPO/flows/launch.py" bank\n', encoding="utf-8")
+        self.write_registry("bank BankFlow BANK_RC bank.sbatch -")
+        self.assertIsNone(registry.frozen_prereg("bank", self.repo))
+        self.assertEqual(registry.problems(self.repo), [])
+
+    def test_a_prereg_that_names_parts_needs_a_flow_that_names_the_part_a_run_is(self):
+        message = ("deep: docs/deep/PREREG.md names the parts it covers, but flows/deep.py defines no prereg_part, "
+                   "so no run would say which part it is and every run would pass as covered")
+        self.assertEqual(registry.problems(self.repo), [])
+        (self.repo / "flows" / "deep.py").write_text("class DeepFlow(FlowSpec):\n    pass\n", encoding="utf-8")
+        self.assertEqual(registry.problems(self.repo), [message])
+        # a PREREG with no Covers line covers every run of its kind, which needs no part
+        (self.repo / "flows" / "deep.py").write_text("class DeepFlow(FlowSpec):\n    pass\n", encoding="utf-8")
+        freeze(self.repo / "docs" / "deep", "# A design of one part\n")
+        self.assertEqual(registry.problems(self.repo), [])
 
     def test_the_command_line_prints_the_prereg_or_stops_with_90(self):
         done = subprocess.run([sys.executable, str(ROOT / "flows" / "stage_registry.py"), "prereg", "sweep"], cwd=ROOT,
