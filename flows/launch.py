@@ -452,12 +452,20 @@ class Page:
 
     def __init__(self, root, head):
         self.root, self.head, self.run, self.said = root, head, "", False
+        self.started = stage_progress.utc_now()
 
     def begin(self, run):
+        """The head of a run Metaflow has named, started when the launcher started its flow, since
+        the launcher may name the run only as its flow ends, one that ended within the second."""
         self.run = run
-        self.write(lambda: stage_progress.write_head(self.root, dict(self.head, run=run, started=stage_progress.utc_now())))
+        self.write(lambda: stage_progress.write_head(self.root, dict(self.head, run=run, started=self.started)))
 
-    def end(self, record):
+    def end(self, record, run=""):
+        """How the flow ended, as the launcher saw it, on the page of the run it ran; a flow that
+        ended before the heartbeat's first look named its run is begun here first, so its page has
+        its head."""
+        if run and not self.run:
+            self.begin(run)
         if self.run:
             self.write(lambda: stage_progress.write_launch(self.root, self.head["flow"], self.run, record))
 
@@ -581,9 +589,8 @@ def launch(argv):
         run_id = run_id_file.read_text(encoding="utf-8").strip() if run_id_file.is_file() else ""
     successful, verdict = ended(flow_class, run_id)
     code_out = exit_code(flow_code, verdict)
-    page.run = page.run or run_id
     page.end({"words": f"the launcher exited {code_out}, the flow {'succeeded' if successful else 'did not succeed'}",
-              "exit": code_out, "successful": successful, "verdict": verdict, "at": stage_progress.utc_now()})
+              "exit": code_out, "successful": successful, "verdict": verdict, "at": stage_progress.utc_now()}, run_id)
     say({"flow": name, "run": f"{flow_class}/{run_id}" if run_id else None, "successful": successful,
          "verdict": verdict})
     return code_out

@@ -11,7 +11,9 @@ files: view.json, what the page says; index.html, the page; and PROGRESS.txt, th
 lines for the gate's status, how the run ended right after its head and each step's tasks cut
 short, so the gate's cut of the file never loses the verdict. A file is
 written whole and renamed into place, so a reader never meets half of one, and no two tasks write
-the same file, so two that draw the page at once each draw it from whole files and the later wins.
+the same task file. Two that draw a run's page, or the list of runs, at once each draw it from whole
+files; the one renamed last stands, though it may have read the files a moment before the other
+did, and the next write of any task draws it again, so a page is never more than one write behind.
 <root>/progress/index.html lists the newest runs of every flow.
 
 On the grid the folder is on the lab volume, which Open OnDemand's Files app reaches in a browser
@@ -28,6 +30,7 @@ import html
 import json
 import os
 import re
+import socket
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -57,9 +60,12 @@ def utc_now():
 
 
 def write_whole(path, text):
-    """A file written beside itself and renamed into place, so a reader never meets half of it."""
+    """A file written beside itself and renamed into place, so a reader never meets half of it. The
+    part is named by the host and the process, since tasks on two nodes of the grid, whose process
+    numbers can meet, draw the same list of runs on the lab volume."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    part = path.with_name(f".{path.name}.{os.getpid()}.part")
+    host = re.sub(r"[^A-Za-z0-9.-]", "_", socket.gethostname())
+    part = path.with_name(f".{path.name}.{host}-{os.getpid()}.part")
     part.write_text(text, encoding="utf-8")
     os.replace(part, path)
 
@@ -74,6 +80,12 @@ def read_json(path):
     except (OSError, ValueError):
         return None
     return data if isinstance(data, dict) else None
+
+
+def one_line(value):
+    """A value as one line, since PROGRESS.txt is read a line at a time: a line break in a task's
+    label or line, or in a report's, would start a line of another shape."""
+    return " ".join(str(value).split()) if value is not None else ""
 
 
 def task_name(step, task):
@@ -177,9 +189,9 @@ def step_state(tasks):
 
 
 def task_view(task):
-    label = str(task.get("label") or task.get("task"))
-    state = "cloned" if task.get("cloned") and task.get("state") == "done" else str(task.get("state"))
-    lines = [str(line) for line in task.get("lines") or []]
+    label = one_line(task.get("label") or task.get("task"))
+    state = "cloned" if task.get("cloned") and task.get("state") == "done" else one_line(task.get("state"))
+    lines = [one_line(line) for line in task.get("lines") or []]
     return {"label": label, "state": state, "line": lines[-1] if lines else ""}
 
 
@@ -238,8 +250,8 @@ def view_of_folder(root, flow, run, now=None):
     view = {key: head.get(key) for key in ("flow", "run", "kind", "key", "commit", "code", "prereg", "prereg_sha256", "origin", "started")}
     view.update(flow=flow, run=str(run), updated=updated, steps=steps,
                 state=run_state(result, launch, steps, updated, now if now is not None else time.time()),
-                verdict=(result or {}).get("verdict"), report=[str(line) for line in (result or {}).get("lines") or []],
-                report_summary=report_summary(result), ended=(launch or {}).get("words"))
+                verdict=(result or {}).get("verdict"), report=[one_line(line) for line in (result or {}).get("lines") or []],
+                report_summary=report_summary(result), ended=one_line((launch or {}).get("words")) or None)
     return view
 
 

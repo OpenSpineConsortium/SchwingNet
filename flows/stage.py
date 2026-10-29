@@ -104,7 +104,7 @@ class Beat:
     def __init__(self, flow, label=None):
         self.root, self.flow, self.run = datastore_root(), current.flow_name, current.run_id
         self.steps = graph_of(flow)
-        self.task = {"step": current.step_name, "task": str(current.task_id), "label": label, "state": "running",
+        self.task = {"step": current.step_name, "task": str(current.task_id), "label": progress.one_line(label) or None, "state": "running",
                      "attempt": current.retry_count, "started": progress.utc_now(), "lines": []}
         self.said = False
 
@@ -128,8 +128,9 @@ class Beat:
     def say(self, line):
         """A line of the work's own, the newest kept last; the page is drawn again with it. Whether
         it was new, and so written."""
+        line = progress.one_line(line)
         if line and (not self.task["lines"] or self.task["lines"][-1] != line):
-            self.task["lines"] = (self.task["lines"] + [str(line)])[-progress.LINES_KEPT:]
+            self.task["lines"] = (self.task["lines"] + [line])[-progress.LINES_KEPT:]
             self.write()
             return True
         return False

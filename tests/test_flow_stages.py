@@ -399,6 +399,21 @@ class LauncherBeatTest(unittest.TestCase):
         self.assertEqual(err.getvalue().count("launch: the progress page could not be written: RuntimeError"), 1, err.getvalue())
         self.assertFalse(heartbeat.path.exists(), "the beat is taken away when the flow ends")
 
+    def test_a_flow_that_ended_before_the_heartbeat_named_its_run_still_has_its_head_on_its_page(self):
+        root = self.tmp / "metaflow"
+        page = self.launch.Page(root, {"flow": "SweepFlow", "kind": "sweep", "key": "68974c7ccabf5595"})
+        started = page.started
+        page.end({"words": "the launcher exited 0, the flow succeeded"}, "1792902585286456")
+        folder = root / "progress" / "SweepFlow" / "1792902585286456"
+        head = json.loads((folder / "run.json").read_text(encoding="utf-8"))
+        self.assertEqual((head["run"], head["kind"], head["started"]), ("1792902585286456", "sweep", started))
+        self.assertEqual(json.loads((folder / "launch.json").read_text(encoding="utf-8"))["words"], "the launcher exited 0, the flow succeeded")
+        self.assertRegex((folder / "PROGRESS.txt").read_text(encoding="utf-8"), r"^flow SweepFlow/1792902585286456 sweep: failed, started ")
+        # a flow Metaflow never named leaves no page
+        unnamed = self.launch.Page(self.tmp / "other", {"flow": "SweepFlow", "kind": "sweep"})
+        unnamed.end({"words": "the launcher exited 137, the flow did not succeed"})
+        self.assertFalse((self.tmp / "other").exists())
+
 
 @unittest.skipIf(NO_METAFLOW, "needs the train environment (metaflow missing)")
 class ClaimReportTest(unittest.TestCase):
@@ -503,6 +518,14 @@ class BeatTest(unittest.TestCase):
         updated = self.task_file()["updated"]
         self.assertNotEqual(updated, "2026-01-01T00:00:00Z")
         self.assertEqual(progress.view_of_folder(self.root, "SweepFlow", "1", now=progress.parse_time(updated) + 60)["state"], "running")
+
+    def test_a_line_with_line_breaks_is_kept_as_one_line(self):
+        beat = self.beat()
+        beat.task["label"] = "row\nx"
+        beat.say("Outcome: ran,\nmatched the check.\r\n")
+        self.assertEqual(self.task_file()["lines"], ["Outcome: ran, matched the check."])
+        text = (self.root / "progress" / "SweepFlow" / "1" / "PROGRESS.txt").read_text(encoding="utf-8")
+        self.assertIn("task first row x: running; Outcome: ran, matched the check.\n", text)
 
     def test_a_page_that_cannot_be_drawn_or_a_line_that_cannot_be_read_never_fails_the_step(self):
         beat, err = self.beat(), io.StringIO()
@@ -692,6 +715,24 @@ class ProgressPageTest(unittest.TestCase):
         self.assertEqual(first["counts"]["done"], 2)
         self.assertEqual([task["label"] for task in first["tasks"]][0], "resnet50-96px-6133c32a")
         self.assertEqual(back["notes"], ["(a line of another shape)"])
+
+    def test_every_value_is_one_short_line_whatever_a_task_file_holds(self):
+        a_run(self.root)
+        progress.write_task(self.root, "SweepFlow", "1792902585286456", {"step": "first", "task": "6", "label": "two\nlines",
+                                                                        "state": "done", "lines": ["a fault\nwhy: x"]})
+        progress.write_result(self.root, "SweepFlow", "1792902585286456", {"verdict": 1, "lines": ["row: NOT CURRENT\nwhy: y"]})
+        lines = progress.text_lines(progress.draw(self.root, "SweepFlow", "1792902585286456"))
+        self.assertIn("task first two lines: done; a fault why: x", lines)
+        self.assertIn("report: row: NOT CURRENT why: y", lines)
+
+    def test_a_file_is_written_beside_itself_under_the_host_and_the_process(self):
+        replaced = []
+        real_replace = os.replace
+        with mock.patch.object(progress.os, "replace", side_effect=lambda part, path: replaced.append(Path(part).name) or real_replace(part, path)), \
+                mock.patch.object(progress.socket, "gethostname", return_value="node12.grid"):
+            progress.write_whole(self.root / "index.html", "a page\n")
+        self.assertEqual(replaced, [f".index.html.node12.grid-{os.getpid()}.part"])
+        self.assertEqual((self.root / "index.html").read_text(encoding="utf-8"), "a page\n")
 
     def test_a_task_that_cannot_write_its_page_never_fails_the_page_of_another(self):
         a_run(self.root)
