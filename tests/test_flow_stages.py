@@ -427,14 +427,19 @@ Path(os.environ["STUB_PIDS"]).write_text(f"{os.getpid()} {child.pid}\\n", encodi
 time.sleep(600)
 """
 # The launcher's run_flow in a process of its own, which the test sends the signal to, with a grace
-# of one second.
+# of one second; what it returned is printed, and written to the file a fifth word names, for a test
+# whose reader of the output has gone.
 RUN_FLOW = """import importlib.util, json, sys
+from pathlib import Path
 spec = importlib.util.spec_from_file_location("launch_signal_under_test", sys.argv[1])
 launch = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(launch)
 launch.STOP_GRACE_SECONDS = 1
 code, stopped_by = launch.run_flow([sys.executable, sys.argv[2]], sys.argv[3], sys.argv[3])
-print(json.dumps({"code": code, "stopped_by": stopped_by}))
+said = json.dumps({"code": code, "stopped_by": stopped_by})
+if len(sys.argv) > 4:
+    Path(sys.argv[4]).write_text(said, encoding="utf-8")
+launch.tell(said, sys.stdout)
 """
 
 
@@ -459,11 +464,15 @@ class LauncherSignalTest(unittest.TestCase):
         (self.tmp / "flow.py").write_text(SLEEPING_FLOW, encoding="utf-8")
         (self.tmp / "run_flow.py").write_text(RUN_FLOW, encoding="utf-8")
 
-    def stopped(self, signum, **env):
+    def started(self, output, **env):
+        """run_flow in a process of its own, its output to the file object or pipe given, once its
+        flow and the flow's child run: (the process, their process ids)."""
         pids_file = self.tmp / "pids"
-        process = subprocess.Popen([sys.executable, str(self.tmp / "run_flow.py"), str(LAUNCH), str(self.tmp / "flow.py"), str(self.tmp)],
-                                   env=dict(os.environ, STUB_PIDS=str(pids_file), **env), stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                   text=True)
+        for left in (pids_file, self.tmp / "said.json"):  # an earlier start's, in a test that starts twice
+            left.unlink(missing_ok=True)
+        process = subprocess.Popen([sys.executable, str(self.tmp / "run_flow.py"), str(LAUNCH), str(self.tmp / "flow.py"), str(self.tmp),
+                                    str(self.tmp / "said.json")], env=dict(os.environ, STUB_PIDS=str(pids_file), **env), stdout=output,
+                                   stderr=output, text=True)
         self.addCleanup(process.kill)
         for _ in range(300):
             if pids_file.is_file() and pids_file.read_text(encoding="utf-8").endswith("\n"):
@@ -471,15 +480,37 @@ class LauncherSignalTest(unittest.TestCase):
             time.sleep(0.1)
         pids = [int(word) for word in pids_file.read_text(encoding="utf-8").split()]
         self.addCleanup(lambda: [os.kill(pid, signal.SIGKILL) for pid in pids if alive(pid)])
-        process.send_signal(signum)
-        out, err = process.communicate(timeout=60)
-        self.assertEqual(process.returncode, 0, err)
+        return process, pids
+
+    def all_ended(self, pids):
         for _ in range(50):
             if not any(alive(pid) for pid in pids):
                 break
             time.sleep(0.1)
         self.assertEqual([pid for pid in pids if alive(pid)], [], "no process of the flow outlives the launcher")
+
+    def stopped(self, signum, **env):
+        process, pids = self.started(subprocess.PIPE, **env)
+        process.send_signal(signum)
+        out, err = process.communicate(timeout=60)
+        self.assertEqual(process.returncode, 0, err)
+        self.all_ended(pids)
         return json.loads(out.splitlines()[-1]), err
+
+    def stopped_with_no_reader(self, signum, **env):
+        """As stopped, with the reader of the launcher's output gone before the signal comes, as a
+        pipe's reader, tee in a job's script, goes with its job: every line the launcher says then
+        meets a broken pipe."""
+        reader, writer = os.pipe()
+        try:
+            process, pids = self.started(writer, **env)
+        finally:
+            os.close(writer)
+        os.close(reader)
+        process.send_signal(signum)
+        self.assertEqual(process.wait(timeout=60), 0, "the launcher's stop ran to its end whatever its words met")
+        self.all_ended(pids)
+        return json.loads((self.tmp / "said.json").read_text(encoding="utf-8"))
 
     def test_a_sigterm_reaches_every_process_of_the_flow(self):
         said, err = self.stopped(signal.SIGTERM)
@@ -498,6 +529,25 @@ class LauncherSignalTest(unittest.TestCase):
         said, err = self.stopped(signal.SIGTERM, STUB_IGNORES_TERM="yes")
         self.assertEqual(said, {"code": -signal.SIGKILL, "stopped_by": signal.SIGTERM})
         self.assertIn("launch: the flow's processes did not end within 1 s, so they were killed", err)
+
+    def test_a_reader_gone_before_the_signal_never_cuts_the_stop_short(self):
+        # its message met a broken pipe before the signal was passed on, so the flow ran on unstopped
+        # and the launcher fell out of its stop with its beat taken away (the review of the fixes)
+        self.assertEqual(self.stopped_with_no_reader(signal.SIGTERM), {"code": -signal.SIGTERM, "stopped_by": signal.SIGTERM})
+        # and where the flow ignores the signal, its message no longer comes before the kill either
+        self.assertEqual(self.stopped_with_no_reader(signal.SIGTERM, STUB_IGNORES_TERM="yes"),
+                         {"code": -signal.SIGKILL, "stopped_by": signal.SIGTERM})
+
+    def test_a_line_the_launcher_cannot_write_is_dropped_and_its_stream_written_nowhere_after(self):
+        launch = load(LAUNCH, "launch_tell_under_test")
+        reader, writer = os.pipe()
+        os.close(reader)
+        stream = os.fdopen(writer, "w", encoding="utf-8")
+        self.addCleanup(lambda: stream.close() if not stream.closed else None)
+        launch.tell("a line nobody reads", stream)
+        launch.tell("and another", stream)
+        stream.flush()
+        self.assertEqual(os.path.realpath(f"/proc/self/fd/{stream.fileno()}"), os.devnull)
 
     def launch_exit(self, said):
         return load(LAUNCH, "launch_exit_under_test").exit_code(said["code"], None, said["stopped_by"])

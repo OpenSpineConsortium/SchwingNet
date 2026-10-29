@@ -210,7 +210,10 @@ execs it, as bank and catalog do. Without that the TERM killed the launcher and 
 runtime and tasks running, its beat stale and its page open. What has not ended 60 s later
 (STOP_GRACE_SECONDS) is killed; the beat is taken away as at any end, so the job Slurm queues
 again resumes the run at once; launch.json says which signal ended it; and the launcher exits
-128 plus the signal, 143 for SIGTERM. A sweep's driver runs the launcher in the foreground of a
+128 plus the signal, 143 for SIGTERM. The signal is passed on before the launcher says a word of
+it, and a line it cannot write, its reader gone as a pipe's tee goes with its job, is dropped and
+its stream pointed at /dev/null, so no message ever cuts a stop short; a launcher that breaks for
+any other reason while its flow runs kills the flow before its beat goes. A sweep's driver runs the launcher in the foreground of a
 pipeline, so its batch shell holds job submit's early TERM until the pipeline ends, and the
 launcher hears Slurm's TERM at the limit itself.
 

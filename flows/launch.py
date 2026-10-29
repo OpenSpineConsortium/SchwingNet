@@ -51,7 +51,10 @@ runs in a process group of its own, and a SIGTERM or SIGINT the launcher is sent
 Slurm's at a time limit or a preemption among them, is passed on to every process of the flow;
 what has not ended STOP_GRACE_SECONDS later is killed, the beat is taken away as at any end, so
 the job Slurm queues again resumes the run at once, the page says which signal ended it, and the
-launcher exits 128 plus the signal's number, 143 for SIGTERM, as a shell reports a killed job. A
+launcher exits 128 plus the signal's number, 143 for SIGTERM, as a shell reports a killed job. The
+signal is passed on before a word of it is said, and a word the launcher cannot write, its reader
+gone as a pipe's reader goes with its job, is dropped (tell), so no stop is ever cut short by its
+own message; a launcher that breaks while its flow runs kills the flow before its beat goes. A
 refusal is the line LaunchError: <words> on stderr, before any flow starts, with the exit code 64
 for words the launcher does not take, 69 for what the node lacks and 70 for a rule of
 schwingnet.pipeline the runs broke; anything else that stops it prints its traceback and exits 1.
@@ -132,6 +135,34 @@ POLL_SECONDS = 0.5
 # (the second review of #252, finding 6). A kind the registry does not list, or a registry that
 # cannot be read, ends with LAUNCH_RC.
 NO_WORD = "LAUNCH_RC"
+
+
+def tell(text, stream=None):
+    """One line of the launcher's own, flushed, on stderr unless another stream is named. A reader
+    that has gone, as a pipe's reader killed with its job by Slurm's TERM, never stops the launcher,
+    least of all in the middle of stopping its flow: the stream is pointed at /dev/null from then on,
+    so neither this line nor Python's own flush at exit fails again. A line said by a signal's
+    handler while the main thread was writing one is dropped as well, since Python refuses that
+    second write rather than mixing the two."""
+    stream = sys.stderr if stream is None else stream
+    try:
+        print(text, file=stream, flush=True)
+    except RuntimeError:  # a reentrant write, from a signal's handler: the line is lost, not the stop
+        pass
+    except (OSError, ValueError):  # a reader gone (BrokenPipeError among them) or a stream closed
+        to_nowhere(stream)
+
+
+def to_nowhere(stream):
+    """The stream's file pointed at /dev/null, where it has one."""
+    try:
+        nowhere = os.open(os.devnull, os.O_WRONLY)
+        try:
+            os.dup2(nowhere, stream.fileno())
+        finally:
+            os.close(nowhere)
+    except (OSError, ValueError):
+        pass
 
 
 class LaunchError(Exception):
@@ -456,7 +487,7 @@ class Heartbeat:
             os.replace(part, self.path)
         except OSError as error:
             if not self.said:
-                print(f"launch: the heartbeat {self.path} could not be written: {error}", file=sys.stderr, flush=True)
+                tell(f"launch: the heartbeat {self.path} could not be written: {error}")
             self.said = True
 
 
@@ -490,7 +521,7 @@ class Page:
             stage_progress.draw(self.root, self.head["flow"], self.run)
         except Exception as error:  # a page, whatever stops it, never stops the beat or the launch
             if not self.said:
-                print(f"launch: the progress page could not be written: {type(error).__name__}: {error}", file=sys.stderr, flush=True)
+                tell(f"launch: the progress page could not be written: {type(error).__name__}: {error}")
             self.said = True
 
 
@@ -551,7 +582,7 @@ def ended(flow_class, run_id):
             return False, None
         verdict = getattr(run["end"].task.data, "verdict", None)
     except Exception as error:  # the client's own errors have no common base worth naming
-        print(f"launch: Metaflow could not say how {flow_class}/{run_id} ended: {error}", file=sys.stderr, flush=True)
+        tell(f"launch: Metaflow could not say how {flow_class}/{run_id} ended: {error}")
         return False, None
     return True, verdict if isinstance(verdict, int) and not isinstance(verdict, bool) else None
 
@@ -569,7 +600,7 @@ def exit_code(flow_code, verdict, stopped_by=None):
 
 
 def say(record):
-    print(json.dumps(record, sort_keys=True), flush=True)
+    tell(json.dumps(record, sort_keys=True), sys.stdout)
 
 
 def live_members(group):
@@ -598,12 +629,15 @@ class FlowProcess:
         self.process, self.stopped_by, self.deadline = None, None, None
 
     def stop(self, signum, _frame=None):
-        """A stop signal's handler: passed on to the flow's group, which has until the deadline."""
-        if self.stopped_by is None:
+        """A stop signal's handler: passed on to the flow's group, which has until the deadline, and
+        only then said, since the saying may meet a reader that has gone (tell)."""
+        first = self.stopped_by is None
+        if first:
             self.stopped_by, self.deadline = signum, time.monotonic() + STOP_GRACE_SECONDS
-            print(f"launch: {signal.Signals(signum).name}: passed on to every process of the flow, which has "
-                  f"{STOP_GRACE_SECONDS} s to end", file=sys.stderr, flush=True)
         self.signal_group(signum)
+        if first:
+            tell(f"launch: {signal.Signals(signum).name}: passed on to every process of the flow, which has "
+                 f"{STOP_GRACE_SECONDS} s to end")
 
     def signal_group(self, signum):
         if self.process is None:
@@ -647,9 +681,8 @@ class FlowProcess:
             if code is not None and (self.stopped_by is None or not self.group_alive()):
                 return code
             if self.deadline is not None and time.monotonic() >= self.deadline:
-                print(f"launch: the flow's processes did not end within {STOP_GRACE_SECONDS} s, so they were killed",
-                      file=sys.stderr, flush=True)
                 self.signal_group(signal.SIGKILL)
+                tell(f"launch: the flow's processes did not end within {STOP_GRACE_SECONDS} s, so they were killed")
                 return code if code is not None else self.process.wait()
 
 
@@ -662,6 +695,11 @@ def run_flow(command, root, repo):
     previous = {signum: signal.signal(signum, flow.stop) for signum in STOP_SIGNALS}
     try:
         code = flow.run(command, root, env)
+    except BaseException:
+        # The beat is taken away as the launcher unwinds, so a flow left running would be resumed
+        # by the next launch of its key while it still runs; nothing of it outlives a broken launcher.
+        flow.signal_group(signal.SIGKILL)
+        raise
     finally:
         for signum, handler in previous.items():
             signal.signal(signum, handler)
@@ -717,7 +755,7 @@ def launch(argv):
 
 def refused(error):
     """A refusal in words, as the line LaunchError: <words>, whose words the gate's status withholds."""
-    print(f"LaunchError: {error}", file=sys.stderr, flush=True)
+    tell(f"LaunchError: {error}")
     return error.code
 
 
@@ -734,7 +772,7 @@ def rc_word(argv):
 
 def say_ended(argv, code):
     """The launcher's last line: its stage's word, the exit code and the time, and no value of a run."""
-    print(f"{rc_word(argv)}={code} {datetime.now():%Y-%m-%d %H:%M:%S}", flush=True)
+    tell(f"{rc_word(argv)}={code} {datetime.now():%Y-%m-%d %H:%M:%S}", sys.stdout)
 
 
 def main(argv=None):
@@ -747,7 +785,7 @@ def main(argv=None):
         code = refused(LaunchError(f"a rule of schwingnet.pipeline was broken, so no run was started or resumed: {error}",
                                    EX_SOFTWARE))
     except Exception:  # anything else ends the job as Python ends it, with its traceback, and then the line
-        traceback.print_exc()
+        tell(traceback.format_exc().rstrip())
         code = 1
     say_ended(argv, code)
     return code

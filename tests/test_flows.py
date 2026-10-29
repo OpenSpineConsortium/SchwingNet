@@ -813,6 +813,25 @@ class SweepFlowTest(unittest.TestCase):
         self.assertEqual((code, said[0]["decision"], said[0]["origin"]), (0, "resume", run), out)
         self.assertEqual(calls, ["row b", "results"])
 
+    def test_a_launcher_whose_reader_has_gone_still_stops_its_flow_and_closes_its_page(self):
+        # A job's TERM reaches the tee a script pipes the launcher into as well, so the launcher's
+        # words meet a broken pipe: they never stop it from stopping its flow, taking its beat away
+        # and saying on the page how it ended, which is all a reader of it has left.
+        plan = {"plan": "smoke", "first": ["a", "b"], "second": []}
+        held, release = self.tmp / "held", self.tmp / "release"
+        words, env, _ = self.sweep_launch(plan, 1, FLOW_TEST_HOLD="b", FLOW_TEST_HELD=str(held), FLOW_TEST_RELEASE=str(release))
+        first = start_launch(words, self.work, env, self.root)
+        self.addCleanup(first.kill)
+        self.addCleanup(release.touch)
+        wait_for(held)
+        first.stdout.close()
+        first.send_signal(signal.SIGTERM)
+        self.assertEqual(first.wait(timeout=TIMEOUT), 143)
+        self.assertEqual(flow_processes(self.repo), [])
+        self.assertEqual(list((self.root / "launches" / "SweepFlow").glob("*/*.json")), [])
+        ended = [json.loads(path.read_text(encoding="utf-8")) for path in (self.root / "progress" / "SweepFlow").glob("*/launch.json")]
+        self.assertEqual([(record["signal"], record["exit"]) for record in ended], [("SIGTERM", 143)])
+
     def test_a_beat_left_by_a_launcher_that_is_gone_keeps_no_run_from_being_resumed(self):
         plan = {"plan": "gone", "first": ["a", "b"], "second": []}
         code, said, out, calls = self.sweep(plan, 1, FLOW_TEST_KILL="b")
