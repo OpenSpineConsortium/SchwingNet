@@ -39,6 +39,24 @@ Metaflow's own resume rather than by anything written around it.
   again, which tools/flow.py carries on from its last epoch (tools/train.py --resume). Its runs
   are held to docs/research/block-smoke/PREREG.md, which covers the plans synthetic, real and
   two_source; `sweep trials` is refused until the six trials have a PREREG of their own.
+- `realism.py`, RealismFlow: the FluXray reproduction (docs/research/flux-realism/PREREG.md), one
+  run per stage on the owner's count of 2026-10-29 (two GPU jobs, edit and then stats; grid word
+  `realism <stage>`, grid/realism.sbatch). start holds the run to the PREREG and to its frozen block,
+  which must equal schwingnet.realism.frozen_lines(), and checks every input (`tools/realism.py
+  inputs`) before a GPU second is spent. For edit, prepare draws the subjects by the frozen seed into
+  shards, a foreach runs `render`, `edit` and `score` per shard (`@retry(times=1)`; a shard that
+  still fails fails the run, and a later launch of the same key resumes it from that shard, every
+  sample already whole skipped and a half-written one redone), and join_shards runs `keep`,
+  `fluxray-export` and `measure` over all of them;
+  for stats, a foreach runs `stats` on the kept edits and on the raw renders, and join_comparisons
+  reads the replication's word and the geometry's; the stats start records its own environment and
+  the weights' sha256 (`tools/realism.py environment`). Each run works in
+  <out>/<stage>-<run key>-<run id>, a resume in the folder its first run made and a new run of the
+  same key in an empty one; end writes RECORD.json (with where, the run that made the folder, and
+  ended_in, the run that ended it) and SUMMARY.md, checks the run's CLAIM 2024 and REFORMS report
+  (`tools/report.py --study flux-realism`, tools/realism_report.py), and, for an edit with verdict 0,
+  writes <out>/edit.json, the one way the stats stage finds its edit. lora and eval are refused until
+  they have a count and a PREREG of their own.
 
 Every flow's end step sets an int artifact `verdict`, 0 when all went well and 1 otherwise.
 

@@ -4,10 +4,14 @@ ENHANCE.PET's labels mapped onto MOOSE's dense ids by name, the 256-pixel canvas
 tests reading identical sets as chance and shifted sets as separable, Benjamini-Hochberg over the
 feature spaces, the paired filter per pose group, the PNG round trip, the trainer's pairs and
 configuration, the subject split and the seeded draws of CTs and poses, the neighbours of the
-classifier test taken from other subjects only, the labels shuffled within the strata, the seed
-arms judged apart, the inputs refused before any GPU work, and the endplate angle read from a tilted rectangle at 1024 and
-at 256. It needs numpy and the package's checkers (beartype, icontract), so it runs in the train
-environment and skips under a plain python3."""
+classifier test taken from other subjects only, the labels shuffled within the strata (by sample
+where two sets hold the same samples, so a small paired shift is seen and a null is not piled at
+1), the principal components each comparison read recorded, the seed arms judged apart, the inputs
+refused before any GPU work where too few subjects have the plan's poses on the grid, the stats
+stage's environment record, a render or an edit cut short redone and never skipped, and the
+endplate angle read from a tilted rectangle at 1024 and at 256. It needs numpy and the package's
+checkers (beartype, icontract), so it runs in the train environment and skips under a plain
+python3."""
 
 import importlib.util
 import json
@@ -409,6 +413,25 @@ class RealismToolTest(unittest.TestCase):
         self.assertEqual(report["paired"]["pairs"], 24)
         self.assertIn(report["verdict"], self.realism.VERDICTS)
         self.assertIn("| physics |", (out / "stats.md").read_text(encoding="utf-8"))
+        # 36 images of 57 physics features: k is what the data gives, recorded and said, never a bare 64
+        physics = report["spaces"]["physics"]
+        self.assertEqual(physics["a_vs_b"]["components"], 36)
+        self.assertEqual(physics["b_split_half"]["components"], 12)
+        self.assertEqual(physics["arm_null"]["components"], 24)
+        self.assertIn("k here: physics 36", report["rules"]["distances"])
+        self.assertIn("k here: physics 36", report["rules"]["mmd"])
+        self.assertIn("each sample", report["rules"]["permutation"])
+        # the edits and FluXray's images share their samples, the split halves share none
+        self.assertEqual(physics["a_vs_b"]["c2st"]["strata"], "sample")
+        self.assertEqual(physics["a_vs_b"]["mmd"]["strata"], "sample")
+        self.assertEqual({entry["mmd"]["strata"] for entry in physics["arms"].values()}, {"sample"})
+        self.assertEqual(physics["arm_null"]["c2st"]["strata"], "sample")
+        self.assertEqual(physics["b_split_half"]["c2st"]["strata"], "subject")
+        page = (out / "stats.md").read_text(encoding="utf-8")
+        self.assertNotIn("FD64", page)
+        self.assertIn("| k |", page)
+        self.assertIn("physics 36", page)
+        self.assertIn("sample for a against b and each arm, subject for b's split halves, sample for the arm null", page)
         self.assertEqual(self.tool.main(["stats", "--a", str(self.tmp / "kept"), "--b", str(self.tmp / "fluxray"), "--out", str(out),
                                          "--index", str(render), "--size", "64", "--require-spaces", "physics,imagenet"]), 2)
         np.save(self.tmp / "fluxray" / "stray.npy", np.zeros((64, 64), dtype=np.float16))
@@ -460,13 +483,14 @@ class RealismToolTest(unittest.TestCase):
         (self.tmp / "db").mkdir()
         (self.tmp / "db" / "data.mdb").write_bytes(b"d")
         samples = self.tmp / "samples.csv"
-        self.tool.write_rows(samples, [{"sample_id": "0001_0", "subject_id": "0001"}], ["sample_id", "subject_id"])
+        rows = [self.sample(f"0001_{p}", "0001", p, *self.realism.pose_of(p)) for p in range(4)]
+        self.tool.write_rows(samples, rows, list(rows[0]))
         (self.tmp / "ct").mkdir()
         (self.tmp / "ct" / "0001.nii.gz").write_bytes(b"c")
         (self.tmp / "truth" / "Vertebrae").mkdir(parents=True)
         (self.tmp / "truth" / "Vertebrae" / "0001.nii.gz").write_bytes(b"t")
         original = self.tool.thunder_ids
-        self.tool.thunder_ids = lambda root: {"0001_0": {"subject_id": "0001", "split": "test"}}
+        self.tool.thunder_ids = lambda root: {row["sample_id"]: {"subject_id": "0001", "split": "test"} for row in rows}
         self.addCleanup(setattr, self.tool, "thunder_ids", original)
         words = ["inputs", "--samples", str(samples), "--db", str(self.tmp / "db"), "--ct", str(self.tmp / "ct"),
                  "--truth", str(self.tmp / "truth"), "--klein", str(klein), "--bundle", str(bundle),
@@ -487,6 +511,345 @@ class RealismToolTest(unittest.TestCase):
         self.assertEqual(len(record["klein_sha256"]), 64)
         self.assertTrue(record["pins_differ"])
         self.assertEqual(self.tool.main(words[:-1]), 2)
+
+    def test_eligibility_counts_the_plans_poses_on_the_grid_and_the_draw_refuses_a_short_sample(self):
+        # 0001 has four grid poses; 0002 three and one off the grid; 0003 four but one off axis;
+        # 0004 four and no CT. Only 0001 can give the plan's four poses and be rendered.
+        rows = [self.sample(f"0001_{p}", "0001", p, *self.realism.pose_of(p)) for p in range(4)]
+        rows += [self.sample(f"0002_{p}", "0002", p, *self.realism.pose_of(p)) for p in range(3)]
+        rows += [self.sample("0002_9", "0002", 9, 700, -300, 0)]
+        rows += [self.sample(f"0003_{p}", "0003", p, *self.realism.pose_of(p), **({"beta_deg": 2.0} if p == 0 else {}))
+                 for p in range(4)]
+        rows += [self.sample(f"0004_{p}", "0004", p, *self.realism.pose_of(p)) for p in range(4)]
+        (self.tmp / "ct").mkdir()
+        (self.tmp / "truth" / "Vertebrae").mkdir(parents=True)
+        for subject in ("0001", "0002", "0003"):
+            (self.tmp / "ct" / f"{subject}.nii.gz").write_bytes(b"c")
+            (self.tmp / "truth" / "Vertebrae" / f"{subject}.nii.gz").write_bytes(b"t")
+        volumes, truth = self.tool.volumes_under(self.tmp / "ct"), self.tool.truth_under(self.tmp / "truth")
+        self.assertEqual(self.tool.subjects_with_poses(rows, 4), {"0001", "0004"})
+        self.assertEqual(self.tool.eligible_for_draw(rows, volumes, truth, 4), ["0001"])
+        self.assertEqual(self.tool.eligible_for_draw(rows, volumes, truth, 3), ["0001", "0002", "0003"])
+        # the split refuses a limit it cannot fill, from the same set inputs counts
+        with self.assertRaises(self.tool.Refused):
+            self.tool.split_subjects(["0001", "0002", "0003"], 4, 7)
+        self.assertEqual(len(self.tool.split_subjects(["0001", "0002", "0003"], 3, 7)[0]), 3)
+        poses = self.tmp / "poses.json"
+        self.tool.write_json(poses, self.tool.poses_from_samples(rows))
+        inputs = self.tmp / "inputs.json"
+        self.tool.write_json(inputs, {"eligible": ["0001", "0002", "0003"]})
+        words = ["split", "--poses", str(poses), "--eligible", str(inputs), "--out", str(self.tmp / "split"), "--seed", "7"]
+        self.assertEqual(self.tool.main([*words, "--limit", "4"]), 2)
+        self.assertFalse((self.tmp / "split" / "split.json").exists())
+        self.assertEqual(self.tool.main([*words, "--limit", "3"]), 0)
+        self.assertEqual(json.loads((self.tmp / "split" / "split.json").read_text(encoding="utf-8"))["from"], 3)
+        # a drawn subject with fewer samples than the plan draws is refused, never drawn short
+        found = json.loads(poses.read_text(encoding="utf-8"))
+        self.assertEqual(len(self.tool.drawn_samples(found, ["0001"], 4, 7)["0001"]), 4)
+        with self.assertRaises(self.tool.Refused):
+            self.tool.drawn_samples(found, ["0001", "0002"], 4, 7)
+        with self.assertRaises(self.tool.Refused):
+            self.tool.drawn_samples(found, ["0009"], 4, 7)
+
+    def test_inputs_refuse_where_too_few_subjects_have_the_plans_poses_on_the_grid(self):
+        klein, bundle = self.tmp / "klein", self.tmp / "bundle"
+        klein.mkdir()
+        (klein / "model_index.json").write_text("{}", encoding="utf-8")
+        bundle.mkdir()
+        (bundle / "ensemble.json").write_text("{}", encoding="utf-8")
+        (self.tmp / "resnet.pth").write_bytes(b"w")
+        (self.tmp / "db").mkdir()
+        (self.tmp / "db" / "data.mdb").write_bytes(b"d")
+        # both subjects have a CT and truth, but 0002 has only three samples at the grid's poses
+        rows = [self.sample(f"0001_{p}", "0001", p, *self.realism.pose_of(p)) for p in range(4)]
+        rows += [self.sample(f"0002_{p}", "0002", p, *self.realism.pose_of(p)) for p in range(3)]
+        rows += [self.sample("0002_3", "0002", 3, 650, -300, 0, x=4.0)]
+        samples = self.tmp / "samples.csv"
+        self.tool.write_rows(samples, rows, list(rows[0]))
+        (self.tmp / "ct").mkdir()
+        (self.tmp / "truth" / "Vertebrae").mkdir(parents=True)
+        for subject in ("0001", "0002"):
+            (self.tmp / "ct" / f"{subject}.nii.gz").write_bytes(b"c")
+            (self.tmp / "truth" / "Vertebrae" / f"{subject}.nii.gz").write_bytes(b"t")
+        original = self.tool.thunder_ids
+        self.tool.thunder_ids = lambda root: {row["sample_id"]: {"subject_id": row["subject_id"], "split": "test"} for row in rows}
+        self.addCleanup(setattr, self.tool, "thunder_ids", original)
+        original_plan = self.realism.REPLICATION
+        self.addCleanup(setattr, self.realism, "REPLICATION", original_plan)
+        words = ["inputs", "--samples", str(samples), "--db", str(self.tmp / "db"), "--ct", str(self.tmp / "ct"),
+                 "--truth", str(self.tmp / "truth"), "--klein", str(klein), "--bundle", str(bundle),
+                 "--imagenet", str(self.tmp / "resnet.pth"), "--out", str(self.tmp / "inputs.json"), "--no-pins"]
+        self.realism.REPLICATION = self.realism.ReplicationPlan(subjects=2)
+        self.assertEqual(self.tool.main(words), 2)
+        self.assertFalse((self.tmp / "inputs.json").exists())
+        self.realism.REPLICATION = self.realism.ReplicationPlan(subjects=1)
+        self.assertEqual(self.tool.main(words), 0)
+        self.assertEqual(json.loads((self.tmp / "inputs.json").read_text(encoding="utf-8"))["eligible"], ["0001"])
+        # a samples.csv with no pose columns cannot be checked against the grid, so it is refused
+        bare = self.tmp / "bare.csv"
+        self.tool.write_rows(bare, [{"sample_id": r["sample_id"], "subject_id": r["subject_id"]} for r in rows],
+                             ["sample_id", "subject_id"])
+        self.assertEqual(self.tool.main(["inputs", "--samples", str(bare), *words[3:]]), 2)
+
+    def test_the_environment_record_names_the_pins_and_the_weights_by_sha256(self):
+        bundle = self.tmp / "bundle"
+        (bundle / "members" / "flux000").mkdir(parents=True)
+        (bundle / "ensemble.json").write_text("{}", encoding="utf-8")
+        (bundle / "members" / "flux000" / "model.safetensors").write_bytes(b"weights")
+        imagenet = self.tmp / "resnet18-f37072fd.pth"
+        imagenet.write_bytes(b"resnet")
+        out = self.tmp / "stats" / "environment.json"
+        original = self.tool.environment_record
+        self.addCleanup(setattr, self.tool, "environment_record", original)
+        self.tool.environment_record = lambda: ({"diffusers": "absent", "torch": "2.9.0", "gpu": "none"},
+                                                ["diffusers absent, pinned 0.42.0"])
+        words = ["environment", "--bundle", str(bundle), "--imagenet", str(imagenet), "--out", str(out)]
+        self.assertEqual(self.tool.main(words), 2)
+        self.assertFalse(out.exists())
+        self.assertEqual(self.tool.main([*words, "--no-pins"]), 0)
+        record = json.loads(out.read_text(encoding="utf-8"))
+        self.assertEqual(record["environment"]["torch"], "2.9.0")
+        self.assertEqual(record["pins_differ"], ["diffusers absent, pinned 0.42.0"])
+        self.assertEqual((record["bundle"], record["imagenet"]), (str(bundle), str(imagenet)))
+        self.assertEqual(record["bundle_sha256"], self.tool.folder_digest(self.tool.folder_files(bundle)))
+        self.assertEqual(record["imagenet_sha256"], self.tool.file_sha256(imagenet))
+        self.tool.environment_record = lambda: ({"diffusers": "0.42.0", "gpu": "none"}, [])
+        self.assertEqual(self.tool.main(words), 0)
+        self.assertEqual(json.loads(out.read_text(encoding="utf-8"))["pins_differ"], [])
+        (bundle / "ensemble.json").unlink()
+        self.assertEqual(self.tool.main(words), 2)
+        (bundle / "ensemble.json").write_text("{}", encoding="utf-8")
+        imagenet.unlink()
+        self.assertEqual(self.tool.main(words), 2)
+
+    # --- the paired permutation ---------------------------------------------------------------------
+
+    def paired_sets(self, seed, shift, subjects=16, poses=4, dims=6, pose_spread=3.0):
+        """Set a two edits of each sample, set b one image of it, every sample a subject's view with
+        its own anatomy (a pose far from the subject's other poses) and noise on each image."""
+        import numpy as np
+
+        rng = np.random.default_rng(seed)
+        anatomy = (rng.normal(size=(subjects, 1, dims)) + pose_spread * rng.normal(size=(subjects, poses, dims))).reshape(-1, dims)
+        names = np.array([f"s{s}_{p}" for s in range(subjects) for p in range(poses)])
+        groups = np.array([f"s{s}" for s in range(subjects) for _ in range(poses)])
+        a = np.concatenate([anatomy + rng.normal(size=anatomy.shape) + shift for _ in range(2)])
+        b = anatomy + rng.normal(size=anatomy.shape)
+        return a, b, np.concatenate([groups, groups]), groups, np.concatenate([names, names]), names
+
+    def test_paired_sets_shuffle_labels_only_among_each_samples_images(self):
+        import numpy as np
+
+        # samples p and q in both sets, r in set a only, t in set b only
+        labels = np.array([0, 0, 0, 0, 1, 1, 1])
+        samples = np.array(["p", "p", "q", "r", "p", "q", "t"])
+        subjects = np.array(["m", "m", "m", "m", "m", "m", "m"])
+        layers, by = self.tool.permutation_strata(labels, subjects, samples)
+        self.assertEqual(by, "sample")
+        rng = np.random.default_rng(0)
+        seen = set()
+        for _ in range(40):
+            permuted = self.tool.permuted_labels(labels, layers, rng)
+            self.assertEqual(int(permuted[[0, 1, 4]].sum()), 1)
+            self.assertEqual(int(permuted[[2, 5]].sum()), 1)
+            self.assertEqual((permuted[3], permuted[6]), (0, 1))
+            seen.add(tuple(permuted))
+        self.assertGreater(len(seen), 1)
+        # sets that share no sample, as FluXray's split halves, move whole subjects as before
+        disjoint = np.array(["p", "p", "q", "r", "u", "v", "t"])
+        self.assertEqual(self.tool.permutation_strata(labels, subjects, disjoint)[1], "subject")
+        self.assertEqual(self.tool.permutation_strata(labels, subjects)[1], "subject")
+        self.assertIsNone(self.tool.pooled_names(["p"], None))
+
+    def test_a_small_paired_shift_is_detected_and_a_paired_null_is_not_piled_at_one(self):
+        import numpy as np
+
+        # a shuffle across a subject's poses adds anatomy to the null and to no observed statistic:
+        # by subject, a true null reads p = 1 and a small shift reads nothing; by sample it is a null
+        nulls, by_subject = [], []
+        for seed in range(8):
+            a, b, ga, gb, na, nb = self.paired_sets(seed, 0.0)
+            paired = self.tool.mmd_test(a, b, ga, gb, 0, permutations=60, samples_a=na, samples_b=nb)
+            self.assertEqual(paired["strata"], "sample")
+            nulls.append(paired["p"])
+            by_subject.append(self.tool.mmd_test(a, b, ga, gb, 0, permutations=60)["p"])
+        self.assertGreater(min(by_subject), 0.95)
+        self.assertLess(float(np.median(nulls)), 0.9)
+        self.assertGreater(float(np.median(nulls)), 0.1)
+        self.assertLessEqual(sum(p >= 0.95 for p in nulls), 2)
+        a, b, ga, gb, na, nb = self.paired_sets(3, 0.5)
+        self.assertLessEqual(self.tool.mmd_test(a, b, ga, gb, 0, permutations=60, samples_a=na, samples_b=nb)["p"], 0.05)
+        self.assertGreater(self.tool.mmd_test(a, b, ga, gb, 0, permutations=60)["p"], 0.2)
+        # the classifier's p uses the same strata, and its paired null is not piled at 1 either
+        c_nulls = []
+        for seed in range(8):
+            a, b, ga, gb, na, nb = self.paired_sets(seed, 0.0)
+            result = self.tool.c2st(a, b, ga, gb, 0, bootstraps=10, permutations=60, samples_a=na, samples_b=nb)
+            self.assertEqual(result["strata"], "sample")
+            c_nulls.append(result["p"])
+        self.assertLess(float(np.median(c_nulls)), 0.9)
+        self.assertLessEqual(sum(p >= 0.95 for p in c_nulls), 2)
+
+    def test_compare_records_the_components_and_strata_it_read(self):
+        a, b, ga, gb = self.two_sets(0.5, dims=6)
+        entry = self.tool.compare(a, b, ga, gb, 0)
+        self.assertEqual(entry["components"], 6)
+        self.assertEqual(entry["c2st"]["strata"], "subject")
+        self.assertIn("frechet64", entry)
+        self.assertIn("kid64", entry)
+        null = self.tool.split_half(b, gb, 0)
+        self.assertEqual((null["components"], null["mmd"]["strata"]), (6, "subject"))
+        a, b, ga, gb, na, nb = self.paired_sets(0, 0.0, dims=70)
+        wide = self.tool.compare(a, b, ga, gb, 0, na, nb)
+        self.assertEqual(wide["components"], self.tool.PCA_COMPONENTS)
+        self.assertEqual((wide["c2st"]["strata"], wide["mmd"]["strata"]), ("sample", "sample"))
+
+    # --- resuming a cut run ---------------------------------------------------------------------
+
+    def test_a_whole_write_leaves_no_half_file_and_a_torn_log_line_is_passed_over(self):
+        import numpy as np
+
+        path = self.tmp / "raw" / "s1.npy"
+        self.tool.save_npy(path, np.ones((4, 4), dtype=np.float16))
+        self.assertEqual(sorted(p.name for p in path.parent.iterdir()), ["s1.npy"])
+        self.assertEqual(float(np.load(path).sum()), 16.0)
+        log = self.tmp / "manifest.jsonl"
+        log.write_text(json.dumps({"sample_id": "s0"}) + "\n" + '{"sample_id": "s1", "subj', encoding="utf-8")
+        self.assertEqual([r["sample_id"] for r in self.tool.json_lines(log)], ["s0"])
+        with self.tool.open_log(log) as handle:
+            handle.write(json.dumps({"sample_id": "s1"}) + "\n")
+        self.assertEqual([r["sample_id"] for r in self.tool.json_lines(log)], ["s0", "s1"])
+        self.assertEqual(sorted(self.tool.manifest_rows(self.tmp)), ["s0", "s1"])
+
+    def render_folder(self, done=(), orphans=(), truncated=(), parts=()):
+        """A render folder as a cut leaves it: whole samples with their row, raw files with no row,
+        a mask cut off midway, a temporary file left behind."""
+        import numpy as np
+
+        out = self.tmp / "render"
+        (out / "raw").mkdir(parents=True, exist_ok=True)
+        (out / "masks").mkdir(exist_ok=True)
+        with open(out / "manifest.jsonl", "a", encoding="utf-8") as manifest:
+            for name in done:
+                np.save(out / "raw" / f"{name}.npy", np.full((8, 8), 0.5, dtype=np.float16))
+                np.save(out / "masks" / f"{name}.npy", np.packbits(np.ones((2, 8, 8), dtype=bool), axis=-1))
+                manifest.write(json.dumps({"sample_id": name, "subject_id": name.split("_")[0], "grid_pose": 0}) + "\n")
+        for name in orphans:
+            np.save(out / "raw" / f"{name}.npy", np.full((8, 8), 0.5, dtype=np.float16))
+        for name in truncated:
+            (out / "raw" / f"{name}.npy").write_bytes(b"\x93NUMPY\x01\x00v\x00{'descr': '<f2'")
+            (out / "masks" / f"{name}.npy").write_bytes(b"\x93NUM")
+        for name in parts:
+            (out / "masks" / f"{name}.npy.part").write_bytes(b"half")
+        return out
+
+    def test_a_render_cut_short_is_redone_and_never_skipped(self):
+        import numpy as np
+
+        out = self.render_folder(done=["0001_0"], orphans=["0001_1"], truncated=["0001_2"], parts=["0001_3"])
+        samples = [{"sample_id": f"0001_{p}", "subject_id": "0001", "grid_pose": p} for p in range(4)]
+        done = self.tool.manifest_rows(out)
+        self.assertTrue(self.tool.rendered(out, done, "0001_0"))
+        self.assertFalse(self.tool.rendered(out, done, "0001_1"))
+        todo = self.tool.renders_to_do(out, done, samples)
+        self.assertEqual([s["sample_id"] for s in todo], ["0001_1", "0001_2", "0001_3"])
+        # only the cut samples' own files went; the whole sample is untouched
+        self.assertEqual(sorted(p.name for p in (out / "raw").iterdir()), ["0001_0.npy"])
+        self.assertEqual(sorted(p.name for p in (out / "masks").iterdir()), ["0001_0.npy"])
+        # a cut between the masks and the raw image leaves no row, so the sample is done again
+        original = self.tool.save_npy
+        self.addCleanup(setattr, self.tool, "save_npy", original)
+
+        def cut_at_raw(path, array):
+            if Path(path).parent.name == "raw" and Path(path).stem == "0001_2":
+                raise KeyboardInterrupt("the job's time is up")
+            original(path, array)
+
+        self.tool.save_npy = cut_at_raw
+        masks = np.packbits(np.ones((2, 8, 8), dtype=bool), axis=-1)
+        image = np.full((8, 8), 0.25, dtype=np.float16)
+        with self.assertRaises(KeyboardInterrupt):
+            with self.tool.open_log(out / "manifest.jsonl") as manifest:
+                for sample in todo:
+                    self.tool.write_render(out, manifest, dict(sample), image, masks)
+        self.tool.save_npy = original
+        done = self.tool.manifest_rows(out)
+        self.assertEqual(sorted(done), ["0001_0", "0001_1"])
+        again = self.tool.renders_to_do(out, done, samples)
+        self.assertEqual([s["sample_id"] for s in again], ["0001_2", "0001_3"])
+        self.assertFalse((out / "masks" / "0001_2.npy").exists())
+        with self.tool.open_log(out / "manifest.jsonl") as manifest:
+            for sample in again:
+                self.tool.write_render(out, manifest, dict(sample), image, masks)
+        done = self.tool.manifest_rows(out)
+        self.assertTrue(all(self.tool.rendered(out, done, s["sample_id"]) for s in samples))
+        self.assertEqual(self.tool.renders_to_do(out, done, samples), [])
+        for folder in ("raw", "masks"):
+            for path in (out / folder).iterdir():
+                self.assertEqual(path.suffix, ".npy")
+                np.load(path)
+
+    @unittest.skipIf(importlib.util.find_spec("torch") is None or importlib.util.find_spec("PIL") is None,
+                     "the edit's stand-in pipeline needs torch and Pillow")
+    def test_an_edit_cut_short_is_redone_and_never_skipped(self):
+        import sys
+        import types
+
+        import numpy as np
+
+        render = self.render_folder(done=["0001_0", "0001_1"])
+        out = self.tmp / "edit"
+        (out / "edited").mkdir(parents=True)
+        whole = self.tool.edit_name("0001_0", 0)
+        np.save(out / "edited" / f"{whole}.npy", np.zeros((8, 8), dtype=np.float16))
+        # one edit whole with its row; one cut off midway; one whole with no row; one temporary file
+        (out / "edited" / f"{self.tool.edit_name('0001_0', 1)}.npy").write_bytes(b"\x93NUMPY\x01")
+        np.save(out / "edited" / f"{self.tool.edit_name('0001_1', 0)}.npy", np.zeros((8, 8), dtype=np.float16))
+        (out / "edited" / f"{self.tool.edit_name('0001_1', 1)}.npy.part").write_bytes(b"half")
+        (out / "edits.jsonl").write_text(json.dumps({"sample_id": "0001_0", "arm": 0}) + "\n" + '{"sample_id": "0001_0", "ar',
+                                         encoding="utf-8")
+        calls = []
+
+        class Pipe:
+            def to(self, device):
+                return self
+
+            def __call__(self, image, **settings):
+                calls.append(settings["generator"].initial_seed())
+                return types.SimpleNamespace(images=[image])
+
+        # the stand-in goes into sys.modules alone: a snapshot of sys.modules put back afterwards
+        # would drop torch had it first been imported here, and a second import of torch crashes
+        fake = types.ModuleType("diffusers")
+        fake.Flux2KleinPipeline = types.SimpleNamespace(from_pretrained=lambda *args, **kwargs: Pipe())
+        previous = sys.modules.get("diffusers")
+        sys.modules["diffusers"] = fake
+        self.addCleanup(lambda: sys.modules.pop("diffusers") if previous is None else sys.modules.update(diffusers=previous))
+        words = ["edit", "--raw", str(render), "--weights", str(self.tmp / "klein"), "--out", str(out), "--arms", "2",
+                 "--device", "cpu"]
+        self.assertEqual(self.tool.main(words), 0)
+        self.assertEqual(len(calls), 3)
+        done = self.tool.edit_rows(out)
+        self.assertEqual(done, {(s, arm) for s in ("0001_0", "0001_1") for arm in (0, 1)})
+        for path in (out / "edited").iterdir():
+            self.assertEqual(path.suffix, ".npy")
+            self.assertEqual(np.load(path).shape, (8, 8))
+        self.assertEqual(self.tool.main(words), 0)
+        self.assertEqual(len(calls), 3)
+
+    def test_the_kept_folder_holds_exactly_this_filters_kept_edits(self):
+        import numpy as np
+
+        edited = self.tmp / "edited"
+        edited.mkdir()
+        for name in ("a__a0", "b__a0", "c__a0"):
+            np.save(edited / f"{name}.npy", np.zeros((2, 2), dtype=np.float16))
+        kept = self.tmp / "filter" / "kept"
+        self.tool.link_kept(kept, {"a__a0": edited / "a__a0.npy", "b__a0": edited / "b__a0.npy"})
+        self.tool.link_kept(kept, {"b__a0": edited / "b__a0.npy", "c__a0": edited / "c__a0.npy"})
+        self.assertEqual(sorted(path.name for path in kept.iterdir()), ["b__a0.npy", "c__a0.npy"])
+        self.assertTrue(all(path.is_symlink() for path in kept.iterdir()))
+        self.assertEqual(sorted(path.name for path in edited.iterdir()), ["a__a0.npy", "b__a0.npy", "c__a0.npy"])
 
     def test_the_endplate_angle_reads_a_tilted_body_at_1024_and_at_256(self):
         import numpy as np
