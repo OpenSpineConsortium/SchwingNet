@@ -76,19 +76,30 @@ request.
 
 - `registry.txt` is the one list of the flows: per kind its class in flows/<kind>.py, the word the
   launcher's last line ends with, the job script under grid/ that starts the launcher when Slurm
-  runs it, and its PREREG.md, a relative path inside the checkout, or `-`, which only the stages
-  that train and run no network may name (bank, catalog; NO_NETWORK in flows/stage_registry.py).
+  runs it, and its PREREG.md, a relative path under docs/research/, where git holds its freeze
+  (below), or `-`, which only the stages that train and run no network may name (bank, catalog;
+  NO_NETWORK in flows/stage_registry.py).
   `python3 flows/stage_registry.py check`, which scripts/check.sh runs, fails on a line whose class
   or script does not hold, whose PREREG is not the one frozen or leads out of the checkout, or
   whose PREREG has a Covers line for a flow that names no part (no `prereg_part`).
 - A PREREG is frozen as the Lab Recipe says, `sha256sum PREREG.md > PREREG.md.sha256` in its
-  folder, both committed, and never edited again: a departure goes in DEVIATIONS.md beside it. Git
-  holds the freeze too, since an edit with its .sha256 written again passes every check of the
-  bytes: `python3 flows/stage_registry.py frozen`, in scripts/check.sh, fails where a PREREG.md or
-  PREREG.md.sha256 under docs/research/ that origin/main holds differs at HEAD, or a DEVIATIONS.md
-  beside a frozen PREREG no longer begins with its text there (in CI, whose checkout of a pull
-  request is one commit deep, it fetches main one commit deep first; a clone with no origin/main
-  skips it with a line). The
+  folder, both committed, and never edited again: a departure goes in DEVIATIONS.md beside it, and
+  a correction of a departure is a new dated entry below the last, never an edit of an earlier
+  one. Git holds the freeze too, since an edit with its .sha256 written again passes every check
+  of the bytes: `python3 flows/stage_registry.py frozen`, in scripts/check.sh, fails where a
+  PREREG.md or PREREG.md.sha256 under docs/research/ or docs/history/ that the base holds differs
+  at HEAD, or a DEVIATIONS.md beside a frozen PREREG no longer begins with its text there. A frozen
+  folder moved whole to docs/history/, as .claude/rules/research.md lets a settled note move, is
+  held at its new place, and moved and edited is gone. The base: in CI, whose checkout of a pull
+  request is GitHub's merge commit one commit deep, the commit it was merged onto, its first
+  parent, fetched one commit deep, so a run queued behind a merge to main, or run again, is never
+  held to a newer main; elsewhere where HEAD left origin/main, and a clone that has no origin/main,
+  or too shallow for git to tell where HEAD left it, skips the check with a line. scripts/check.sh
+  runs the default branch's own copy of the check from a scratch folder against the checkout
+  (`frozen --repo`), so a change that loosens flows/stage_registry.py is still held by the copy it
+  loosened. What is still open: a change that edits scripts/check.sh's frozen_check, or
+  .github/workflows/ci.yml, which runs it, can skip the check; its diff shows that, and the owner's
+  review of such a change is what holds it. The
   launcher refuses a kind whose PREREG is missing or moved before it imports Metaflow, with the
   recipe's exit 90 and the line `LaunchError: ... STOP: <PREREG> changed since the freeze`, so the
   job does nothing. A PREREG's line `Covers: <part>, ...` names the parts of its kind it covers,

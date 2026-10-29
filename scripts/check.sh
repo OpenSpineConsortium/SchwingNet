@@ -125,10 +125,30 @@ python3 tools/report.py check-recorded
 # job script or PREREG does not hold, a PREREG edited since its PREREG.md.sha256 froze it among them.
 python3 flows/stage_registry.py check
 # The same freeze held by git, since a PREREG.md edited with its PREREG.md.sha256 written again passes the
-# line above: no PREREG.md or PREREG.md.sha256 that origin/main holds under docs/research/ may change, and a
-# DEVIATIONS.md beside a frozen one only grows. CI checks out a pull request's merge commit one commit deep,
-# so there it fetches main one commit deep first; a clone with no origin/main skips it with a line.
-python3 flows/stage_registry.py frozen
+# line above: no PREREG.md or PREREG.md.sha256 under docs/research/ or docs/history/ that the base holds may
+# change, and a DEVIATIONS.md beside a frozen one only grows. The base is the commit a pull request was merged
+# onto in CI, where HEAD left origin/main elsewhere, and a clone that has neither skips it with a line
+# (flows/stage_registry.py). It runs the default branch's own copy of the check, from a scratch folder, where
+# that copy takes --repo, so a change cannot loosen the check that holds it without editing this function,
+# which its diff shows; before the default branch holds such a copy, the checkout's own runs. Under GitHub
+# Actions, whose checkout is one commit deep with no origin/main, main is fetched one commit deep to read it.
+frozen_check() {
+  local copy scratch status=0
+  scratch=$(mktemp -d)
+  copy=flows/stage_registry.py
+  if { git rev-parse -q --verify 'origin/main^{commit}' >/dev/null && git show origin/main:flows/stage_registry.py; } > "$scratch/stage_registry.py" 2>/dev/null \
+    || { [ "${GITHUB_ACTIONS:-}" = true ] && git fetch --no-tags --quiet --depth=1 origin main 2>/dev/null \
+         && git show FETCH_HEAD:flows/stage_registry.py > "$scratch/stage_registry.py" 2>/dev/null; }; then
+    if grep -q 'frozen \[--base REV\] \[--repo DIR\]' "$scratch/stage_registry.py"; then
+      copy=$scratch/stage_registry.py
+      echo "registry: the freeze is held by the default branch's own copy of flows/stage_registry.py"
+    fi
+  fi
+  python3 "$copy" frozen --repo "$PWD" || status=$?
+  rm -rf "$scratch"
+  return "$status"
+}
+frozen_check
 
 # The textbook's storage panel (docs/textbook/figures/22/, chapter 22) is drawn by tools/storage_panel.py from
 # the committed snapshot of spine-datasets' feed, standard library: a snapshot refreshed without the page built

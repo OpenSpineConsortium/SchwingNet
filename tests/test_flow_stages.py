@@ -72,8 +72,8 @@ class RegistryTest(unittest.TestCase):
         (self.repo / "grid").mkdir()
         (self.repo / "flows" / "deep.py").write_text(DEEP_FLOW, encoding="utf-8")
         (self.repo / "grid" / "deep.sbatch").write_text('exec python "$REPO/flows/launch.py" deep -- "$@"\n', encoding="utf-8")
-        self.digest = freeze(self.repo / "docs" / "deep")
-        self.write_registry("deep DeepFlow DEEP_RC deep.sbatch docs/deep/PREREG.md")
+        self.digest = freeze(self.repo / "docs" / "research" / "deep")
+        self.write_registry("deep DeepFlow DEEP_RC deep.sbatch docs/research/deep/PREREG.md")
 
     def write_registry(self, *lines):
         (self.repo / "flows" / "registry.txt").write_text("# kind class word script PREREG\n" + "\n".join(lines) + "\n", encoding="utf-8")
@@ -89,18 +89,18 @@ class RegistryTest(unittest.TestCase):
         self.assertEqual(registry.frozen_prereg("sweep", ROOT)[0], "docs/research/block-smoke/PREREG.md")
 
     def test_a_frozen_prereg_is_its_path_and_sha256(self):
-        self.assertEqual(registry.frozen_prereg("deep", self.repo), ("docs/deep/PREREG.md", self.digest))
+        self.assertEqual(registry.frozen_prereg("deep", self.repo), ("docs/research/deep/PREREG.md", self.digest))
         self.assertEqual(registry.problems(self.repo), [])
 
     def test_a_prereg_edited_since_its_freeze_stops_the_job_in_the_lab_recipes_words(self):
-        with (self.repo / "docs" / "deep" / "PREREG.md").open("a", encoding="utf-8") as prereg:
+        with (self.repo / "docs" / "research" / "deep" / "PREREG.md").open("a", encoding="utf-8") as prereg:
             prereg.write("A hypothesis added after the data were seen.\n")
-        with self.assertRaisesRegex(registry.PreregError, r"^STOP: docs/deep/PREREG.md changed since the freeze"):
+        with self.assertRaisesRegex(registry.PreregError, r"^STOP: docs/research/deep/PREREG.md changed since the freeze"):
             registry.frozen_prereg("deep", self.repo)
         self.assertEqual(len(registry.problems(self.repo)), 1)
 
     def test_a_prereg_never_frozen_or_frozen_in_another_shape_is_refused(self):
-        record = self.repo / "docs" / "deep" / "PREREG.md.sha256"
+        record = self.repo / "docs" / "research" / "deep" / "PREREG.md.sha256"
         record.write_text(f"{self.digest}\n", encoding="ascii")
         with self.assertRaisesRegex(registry.PreregError, "not one line of `sha256sum PREREG.md`"):
             registry.frozen_prereg("deep", self.repo)
@@ -109,13 +109,13 @@ class RegistryTest(unittest.TestCase):
             registry.frozen_prereg("deep", self.repo)
 
     def test_a_part_the_prereg_does_not_cover_waits_for_a_prereg_of_its_own(self):
-        self.assertEqual(registry.covered(self.repo / "docs" / "deep" / "PREREG.md"), [("alpha", ALPHA), ("beta", None)])
-        self.assertEqual(registry.frozen_for("deep", "beta", repo=self.repo), ("docs/deep/PREREG.md", self.digest))
+        self.assertEqual(registry.covered(self.repo / "docs" / "research" / "deep" / "PREREG.md"), [("alpha", ALPHA), ("beta", None)])
+        self.assertEqual(registry.frozen_for("deep", "beta", repo=self.repo), ("docs/research/deep/PREREG.md", self.digest))
         with self.assertRaisesRegex(registry.PreregError, "covers alpha, beta, not trials: a run of it waits for a PREREG of its own"):
             registry.frozen_for("deep", "trials", repo=self.repo)
 
     def test_a_part_covered_by_its_bytes_is_covered_only_while_they_are_the_ones_frozen(self):
-        self.assertEqual(registry.frozen_for("deep", "alpha", ALPHA, self.repo), ("docs/deep/PREREG.md", self.digest))
+        self.assertEqual(registry.frozen_for("deep", "alpha", ALPHA, self.repo), ("docs/research/deep/PREREG.md", self.digest))
         edited = hashlib.sha256(b"the plan alpha, edited\n").hexdigest()
         with self.assertRaisesRegex(registry.PreregError, rf"covers alpha as the bytes of sha256 {ALPHA[:16]}, and its bytes "
                                                           rf"now have sha256 {edited[:16]}: a alpha changed since the freeze is another design"):
@@ -123,10 +123,10 @@ class RegistryTest(unittest.TestCase):
         with self.assertRaisesRegex(registry.PreregError, "and its bytes were not read"):
             registry.frozen_for("deep", "alpha", None, self.repo)
         # an entry named alone takes any bytes, as the name is all it holds the part to
-        self.assertEqual(registry.frozen_for("deep", "beta", edited, self.repo)[0], "docs/deep/PREREG.md")
+        self.assertEqual(registry.frozen_for("deep", "beta", edited, self.repo)[0], "docs/research/deep/PREREG.md")
 
     def test_a_covers_entry_of_another_shape_covers_nothing(self):
-        self.digest = freeze(self.repo / "docs" / "deep", PREREG.replace(f"alpha={ALPHA}", "alpha=0123"))
+        self.digest = freeze(self.repo / "docs" / "research" / "deep", PREREG.replace(f"alpha={ALPHA}", "alpha=0123"))
         with self.assertRaisesRegex(registry.PreregError, "holds 'alpha=0123', which is neither a part nor <part>=<sha256>"):
             registry.frozen_for("deep", "beta", repo=self.repo)
 
@@ -145,14 +145,17 @@ class RegistryTest(unittest.TestCase):
         self.assertEqual(registry.problems(self.repo), ["deep: grid/deep.sbatch names no flows/launch.py deep"])
         (self.repo / "grid" / "deep.sbatch").write_text('exec python "$REPO/flows/launch.py" deeper\n', encoding="utf-8")
         self.assertEqual(registry.problems(self.repo), ["deep: grid/deep.sbatch names no flows/launch.py deep"])
-        self.write_registry("deep OtherFlow DEEP_RC deep.sbatch docs/deep/PREREG.md")
+        self.write_registry("deep OtherFlow DEEP_RC deep.sbatch docs/research/deep/PREREG.md")
         self.assertIn("deep: flows/deep.py defines no class OtherFlow", registry.problems(self.repo))
         for line, words in (("deep DeepFlow DEEP_RC deep.sbatch", "five words"),
                             ("deep DeepFlow DEEP deep.sbatch -", "is no word"),
-                            ("deep DeepFlow DEEP_RC deep.sbatch ../PREREG.md", "a relative path to a PREREG.md inside the checkout"),
-                            ("deep DeepFlow DEEP_RC deep.sbatch docs/../../PREREG.md", "with no . or .. folder"),
+                            ("deep DeepFlow DEEP_RC deep.sbatch ../PREREG.md", "a relative path to a PREREG.md under docs/research/"),
+                            ("deep DeepFlow DEEP_RC deep.sbatch docs/research/../../PREREG.md", "with no . or .. folder"),
                             ("deep DeepFlow DEEP_RC deep.sbatch /etc/deep/PREREG.md", "a relative path"),
-                            ("deep DeepFlow DEEP_RC deep.sbatch docs/./deep/PREREG.md", "with no . or .. folder"),
+                            ("deep DeepFlow DEEP_RC deep.sbatch docs/research/./deep/PREREG.md", "with no . or .. folder"),
+                            # only under docs/research/ does git hold the freeze (frozen), so nowhere else
+                            ("deep DeepFlow DEEP_RC deep.sbatch grid/sweeps/design/PREREG.md", "under docs/research/, where git holds"),
+                            ("deep DeepFlow DEEP_RC deep.sbatch docs/history/deep/PREREG.md", "under docs/research/, where git holds"),
                             ("deep DeepFlow DEEP_RC deep.sbatch -\ndeep DeepFlow DEEP_RC other.sbatch -", "listed twice")):
             self.write_registry(line)
             with self.assertRaisesRegex(registry.RegistryError, words):
@@ -162,9 +165,9 @@ class RegistryTest(unittest.TestCase):
         outside = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, outside, ignore_errors=True)
         freeze(outside)
-        (self.repo / "docs" / "away").symlink_to(outside, target_is_directory=True)
-        self.write_registry("deep DeepFlow DEEP_RC deep.sbatch docs/away/PREREG.md")
-        self.assertEqual(registry.problems(self.repo), ["deep: docs/away/PREREG.md leads out of the checkout"])
+        (self.repo / "docs" / "research" / "away").symlink_to(outside, target_is_directory=True)
+        self.write_registry("deep DeepFlow DEEP_RC deep.sbatch docs/research/away/PREREG.md")
+        self.assertEqual(registry.problems(self.repo), ["deep: docs/research/away/PREREG.md leads out of the checkout"])
 
     def test_only_the_stages_that_run_no_network_may_name_no_prereg(self):
         self.assertEqual(registry.NO_NETWORK, ("bank", "catalog"))
@@ -179,14 +182,14 @@ class RegistryTest(unittest.TestCase):
         self.assertEqual(registry.problems(self.repo), [])
 
     def test_a_prereg_that_names_parts_needs_a_flow_that_names_the_part_a_run_is(self):
-        message = ("deep: docs/deep/PREREG.md names the parts it covers, but flows/deep.py defines no prereg_part, "
+        message = ("deep: docs/research/deep/PREREG.md names the parts it covers, but flows/deep.py defines no prereg_part, "
                    "so no run would say which part it is and every run would pass as covered")
         self.assertEqual(registry.problems(self.repo), [])
         (self.repo / "flows" / "deep.py").write_text("class DeepFlow(FlowSpec):\n    pass\n", encoding="utf-8")
         self.assertEqual(registry.problems(self.repo), [message])
         # a PREREG with no Covers line covers every run of its kind, which needs no part
         (self.repo / "flows" / "deep.py").write_text("class DeepFlow(FlowSpec):\n    pass\n", encoding="utf-8")
-        freeze(self.repo / "docs" / "deep", "# A design of one part\n")
+        freeze(self.repo / "docs" / "research" / "deep", "# A design of one part\n")
         self.assertEqual(registry.problems(self.repo), [])
 
     def test_the_command_line_prints_the_prereg_or_stops_with_90(self):
@@ -301,27 +304,124 @@ class FrozenTest(unittest.TestCase):
         self.git("checkout", "-q", "topic")
         self.assertEqual(self.frozen()[0], 0)
 
-    def test_under_github_actions_a_checkout_one_commit_deep_fetches_main_and_elsewhere_it_skips(self):
-        freeze(self.study, PREREG + "An edit.\n")
-        self.commit("an edit, frozen again")
-        work = self.tmp / "work"
-        subprocess.run(["git", "clone", "-q", "--depth", "1", "--branch", "topic", f"file://{self.repo}", str(work)], check=True,
+    def shallow_clone(self, branch, name):
+        """A clone of one branch one commit deep, as actions/checkout makes one, with no origin/main."""
+        work = self.tmp / name
+        subprocess.run(["git", "clone", "-q", "--depth", "1", "--branch", branch, f"file://{self.repo}", str(work)], check=True,
                        capture_output=True, timeout=60)
         for key, value in QUIET.items():
             self.git("config", key, value, repo=work)
         self.assertEqual(self.git("for-each-ref", "refs/remotes/origin/main", repo=work), "")
+        return work
+
+    def merged_onto_main(self, branch):
+        """The merge commit GitHub makes of a pull request onto main, as the branch pull/merge."""
+        self.git("checkout", "-q", "-b", "pull/merge", "main")
+        self.git("merge", "-q", "--no-ff", "--no-edit", branch)
+        self.git("checkout", "-q", branch)
+        return self.git("rev-parse", "main").strip()
+
+    def test_under_github_actions_a_pull_requests_merge_commit_is_held_to_the_commit_it_was_merged_onto(self):
+        freeze(self.study, PREREG + "An edit.\n")
+        self.commit("an edit, frozen again")
+        onto = self.merged_onto_main("topic")
+        work = self.shallow_clone("pull/merge", "work")
         code, said = self.frozen(base=None, repo=work)
         self.assertEqual(code, 0, said)
         self.assertIn("no origin/main here and not under GitHub Actions, so whether a frozen PREREG moved was not checked", said)
         self.assertFalse((work / ".git" / "FETCH_HEAD").exists(), "nothing is fetched outside GitHub Actions")
-        code, said = self.frozen(base=None, repo=work, environ={"GITHUB_ACTIONS": "true"})
+        code, said = self.frozen(base=None, repo=work, environ={"GITHUB_ACTIONS": "true", "GITHUB_EVENT_NAME": "pull_request"})
+        self.assertEqual(code, 1, said)
+        self.assertIn(f"docs/research/study/PREREG.md changed since {onto}", said)
+
+    def test_a_clean_pull_request_is_never_held_to_what_main_froze_after_its_merge_commit(self):
+        # main froze another design and added a departure after GitHub made the merge commit, as a
+        # run queued behind that merge, or run again, finds it: the change is held to what it was
+        # merged onto, never to the newer main
+        (self.repo / "README.md").write_text("work\n", encoding="utf-8")
+        self.commit("other work")
+        onto = self.merged_onto_main("topic")
+        self.git("checkout", "-q", "main")
+        freeze(self.repo / "docs" / "research" / "later")
+        deviations = self.study / "DEVIATIONS.md"
+        deviations.write_text(deviations.read_text(encoding="utf-8") + "- 2026-10-30: on main.\n", encoding="utf-8")
+        self.commit("a later design on main")
+        self.git("checkout", "-q", "topic")
+        work = self.shallow_clone("pull/merge", "work")
+        code, said = self.frozen(base=None, repo=work, environ={"GITHUB_ACTIONS": "true", "GITHUB_EVENT_NAME": "pull_request"})
+        self.assertEqual(code, 0, said)
+        self.assertIn(f"on {onto[:12]}, the commit it was merged onto", said)
+
+    def test_where_git_cannot_tell_where_head_left_main_the_check_says_so_and_never_blames_a_newer_main(self):
+        # a branch checked out one commit deep, as a run of another event finds it: main fetched one
+        # commit deep shares no commit with it that git can see, so the check is skipped
+        freeze(self.study, PREREG + "An edit.\n")
+        self.commit("an edit, frozen again")
+        work = self.shallow_clone("topic", "work")
+        code, said = self.frozen(base=None, repo=work, environ={"GITHUB_ACTIONS": "true", "GITHUB_EVENT_NAME": "workflow_dispatch"})
+        self.assertEqual(code, 0, said)
+        self.assertIn("git cannot tell where HEAD left ", said)
+        self.assertTrue((work / ".git" / "FETCH_HEAD").exists())
+        # a whole clone reads origin/main, where HEAD left it, and fetches nothing
+        whole = self.tmp / "whole"
+        subprocess.run(["git", "clone", "-q", "--branch", "topic", f"file://{self.repo}", str(whole)], check=True, capture_output=True,
+                       timeout=60)
+        code, said = self.frozen(base=None, repo=whole)
         self.assertEqual(code, 1, said)
         self.assertIn("docs/research/study/PREREG.md changed since ", said)
-        self.assertTrue((work / ".git" / "FETCH_HEAD").exists())
-        # a clone with origin/main reads it and fetches nothing
-        self.git("fetch", "-q", "origin", "main:refs/remotes/origin/main", repo=self.tmp / "work")
-        code, said = self.frozen(base=None, repo=work)
+        self.assertFalse((whole / ".git" / "FETCH_HEAD").exists())
+        self.assertFalse((whole / ".git" / "shallow").exists(), "a clone of one's own is never made shallow")
+
+    def test_a_frozen_folder_moved_whole_to_the_history_is_held_there(self):
+        history = self.repo / "docs" / "history" / "study"
+        history.parent.mkdir(parents=True)
+        self.git("mv", "docs/research/study", "docs/history/study")
+        self.commit("the settled study moved to the history")
+        self.assertEqual(self.frozen()[0], 0, self.frozen()[1])
+        deviations = history / "DEVIATIONS.md"
+        deviations.write_text(deviations.read_text(encoding="utf-8") + "- 2026-10-30: the second.\n", encoding="utf-8")
+        self.commit("a departure added where it now is")
+        self.assertEqual(self.frozen()[0], 0)
+        # moved and edited is no move: the PREREG main froze is gone
+        freeze(history, PREREG + "An edit where it now is.\n")
+        self.commit("an edit, frozen again, in the history")
+        code, said = self.frozen()
         self.assertEqual(code, 1, said)
+        self.assertIn("docs/research/study/PREREG.md is gone since ", said)
+        # once the move has landed, the history is where it is held
+        self.git("branch", "-f", "main", "topic~1")
+        code, said = self.frozen()
+        self.assertEqual(code, 1, said)
+        self.assertIn("docs/history/study/PREREG.md changed since ", said)
+
+    def test_scripts_check_runs_the_default_branchs_own_copy_of_the_freeze(self):
+        # a change that edits a frozen PREREG and loosens the check in the same change: the copy on
+        # main holds it, so only an edit of scripts/check.sh itself, which its diff shows, could skip it
+        (self.repo / "flows").mkdir()
+        shutil.copy(ROOT / "flows" / "stage_registry.py", self.repo / "flows" / "stage_registry.py")
+        self.git("checkout", "-q", "main")
+        self.git("add", "-A")
+        self.git("commit", "-q", "-m", "the check on main")
+        self.git("checkout", "-q", "topic")
+        self.git("merge", "-q", "main")
+        freeze(self.study, PREREG + "An edit.\n")
+        loosened = (ROOT / "flows" / "stage_registry.py").read_text(encoding="utf-8").replace(
+            "    at_base, at_head = frozen_blobs(repo, base), frozen_blobs(repo, \"HEAD\")\n", "    return []\n")
+        (self.repo / "flows" / "stage_registry.py").write_text(loosened, encoding="utf-8")
+        self.commit("an edit, frozen again, and the check loosened")
+        self.git("update-ref", "refs/remotes/origin/main", "main")
+        function = re.search(r"^frozen_check\(\) \{\n.*?^\}\n", (ROOT / "scripts" / "check.sh").read_text(encoding="utf-8"), re.S | re.M)
+        done = subprocess.run(["bash", "-c", "set -eu\n" + function.group(0) + "frozen_check\n"], cwd=self.repo, capture_output=True,
+                              text=True, timeout=60)
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("the freeze is held by the default branch's own copy of flows/stage_registry.py", done.stdout)
+        self.assertIn("registry: docs/research/study/PREREG.md changed since ", done.stderr)
+        # a default branch with no such copy yet leaves the checkout's own to run, here the loosened one
+        self.git("update-ref", "refs/remotes/origin/main", "main~1")
+        done = subprocess.run(["bash", "-c", "set -eu\n" + function.group(0) + "frozen_check\n"], cwd=self.repo, capture_output=True,
+                              text=True, timeout=60)
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertNotIn("default branch's own copy", done.stdout)
 
     def test_a_base_that_is_not_there_is_said_and_fails(self):
         code, said = self.frozen(base="no-such-branch")
