@@ -1,0 +1,303 @@
+{
+ "study": "drr-domain-gap",
+ "run_id": "40859208",
+ "checklist": "REFORMS",
+ "source": "Kapoor et al., REFORMS: consensus-based recommendations for machine-learning-based science, arXiv 2308.07832; the item list and the code-or-declared split of artifacts/reforms-compliance-checklist-bpzdoi",
+ "study_sha256": "b5b110d8ec9683c0a1edd72b5528e3310103dc3857a2b56b4de908d880db89e9",
+ "tally": {
+  "met": 17,
+  "declared": 0,
+  "not applicable": 1,
+  "missing": 14
+ },
+ "items": [
+  {
+   "id": "1a",
+   "section": "Study goals",
+   "asks": "Population the claim is about",
+   "basis": "declared",
+   "fact": "population",
+   "state": "missing",
+   "evidence": "needs the owner's answer under \"population\" in data/reporting/studies/drr-domain-gap.json"
+  },
+  {
+   "id": "1b",
+   "section": "Study goals",
+   "asks": "Why that population",
+   "basis": "declared",
+   "fact": "population_rationale",
+   "state": "missing",
+   "evidence": "needs the owner's answer under \"population_rationale\" in data/reporting/studies/drr-domain-gap.json"
+  },
+  {
+   "id": "1c",
+   "section": "Study goals",
+   "asks": "Why machine learning",
+   "basis": "declared",
+   "fact": "ml_rationale",
+   "state": "missing",
+   "evidence": "needs the owner's answer under \"ml_rationale\" in data/reporting/studies/drr-domain-gap.json"
+  },
+  {
+   "id": "2a",
+   "section": "Computational reproducibility",
+   "asks": "Dataset with link or DOI",
+   "basis": "code",
+   "fact": "sources",
+   "state": "met",
+   "evidence": "data/domain_gap/groups.json, version 1, sha256 92a1-640b-70f1-b6c6 as the record names it: 23 groups over 18 sources, aariz, aasce, buu_lspine_3600, csxa_cervical_xray_atlas, deepfluoro_vendor, devcorpus, fluorogen_synthetic, geneva_hip, hf_flexray_data, ieee_dataport_lateral_236, ieee_dataport_lateral_fullspine_236, kub_stonex, lumos, nhanes2_cdc_films, rare_class, realxray, totalsegmentator_v201, vindr_spinexr; each group's licence, as the table records it, is in the data and licences section"
+  },
+  {
+   "id": "2b",
+   "section": "Computational reproducibility",
+   "asks": "Code",
+   "basis": "code",
+   "fact": "code_state",
+   "state": "met",
+   "evidence": "commit 6e908e6 from a clean tree and the digest of the code the study runs, e2ac-c706-01bb-c897 (summary.txt record); BENCH.md names the same commit"
+  },
+  {
+   "id": "2c",
+   "section": "Computational reproducibility",
+   "asks": "Computing infrastructure",
+   "basis": "code",
+   "fact": "compute",
+   "state": "met",
+   "evidence": "jobs prepare 40859208, an array 40859209 of 16 tasks and merge 40859211, on GPUs NVIDIA L40S x17; seconds by stage: render 336, plan 86, images 154, features 262, heads 8, analysis 354 wall, units 17668 summed, figures 19 (summary.txt record); BENCH.md: exit 0 at 2026-10-29 01:04:00 UTC; run log: 25 lines in BENCH.md, 2026-10-29 00:30:24 to 2026-10-29 01:03:43 UTC, shown in the section Run log"
+  },
+  {
+   "id": "2d",
+   "section": "Computational reproducibility",
+   "asks": "README with instructions",
+   "basis": "code",
+   "fact": "reproduce",
+   "state": "met",
+   "evidence": "at commit 6e908e6, the gate words and local commands of docs/research/drr-domain-gap/README.md section 7, over the groups table 92a1-640b-70f1-b6c6 with seed 0, the plan the run ran on being 95a4-ba7b-ebfa-cac9, with the frozen pre-registration PREREG.md 3ca1-b6b7-aea6-0f00 (summary.txt record)"
+  },
+  {
+   "id": "2e",
+   "section": "Computational reproducibility",
+   "asks": "Reproduction script",
+   "basis": "code",
+   "fact": "reproduce",
+   "state": "met",
+   "evidence": "at commit 6e908e6, the gate words and local commands of docs/research/drr-domain-gap/README.md section 7, over the groups table 92a1-640b-70f1-b6c6 with seed 0, the plan the run ran on being 95a4-ba7b-ebfa-cac9, with the frozen pre-registration PREREG.md 3ca1-b6b7-aea6-0f00 (summary.txt record)"
+  },
+  {
+   "id": "3a",
+   "section": "Data quality",
+   "asks": "Data sources per split",
+   "basis": "code",
+   "fact": "sources_per_group",
+   "state": "met",
+   "evidence": "each group is one side of its tests and is read whole into each test's folds (data/domain_gap/groups.json, version 1, sha256 92a1-640b-70f1-b6c6 as the record names it; summary.txt, found/chosen/decoded/persons): flexray_drr from totalsegmentator_v201: 104/104/104/26; flexray_drr_ct from totalsegmentator_v201: 104/104/104/26 (the counts of flexray_drr); flexray_replica from totalsegmentator_v201: 104/104/104/26 (the counts of flexray_drr); flexray_reference from totalsegmentator_v201: 104/104/104/26 (the counts of flexray_drr); flexray_spineps from totalsegmentator_v201: 104/104/104/26 (the counts of flexray_drr); fluxray_raw from totalsegmentator_v201: 104/104/103/26; fluxray_raw_reference from totalsegmentator_v201: 104/104/103/26 (the counts of fluxray_raw); fluxray from hf_flexray_data: 138063/1000/1000/1000; ts_drr_project from rare_class: 1316/76/74/19; devcorpus from devcorpus: 39506/568/568/142; fluorogen from fluorogen_synthetic: 2725/1000/1000/1000; carmlspine_spots from realxray: 299/288/288/144; deepfluoro from deepfluoro_vendor: 2659/1000/1000/14; geneva_hip from geneva_hip: 116/100/100/1; vindr_spinexr from vindr_spinexr: skipped (20932 index rows, none kept: format 10466, modality 10466); buu_lspine from buu_lspine_3600: 7204/1000/1000/1000; aasce from aasce: 294/294/294/294; nhanes2 from nhanes2_cdc_films: 17073/1000/1000/1000; csxa from csxa_cervical_xray_atlas: 4959/1000/1000/1000; kub_stonex from kub_stonex: 5188/1000/1000/1000; ieee_lateral from ieee_dataport_lateral_fullspine_236, ieee_dataport_lateral_236: 236/236/236/236; lumos from lumos: skipped (no folder lumos/bank under the data root); aariz from aariz: 841/841/841/841"
+  },
+  {
+   "id": "3b",
+   "section": "Data quality",
+   "asks": "Sampling frame",
+   "basis": "declared",
+   "fact": "sampling_frame",
+   "state": "missing",
+   "evidence": "needs the owner's answer under \"sampling_frame\" in data/reporting/studies/drr-domain-gap.json"
+  },
+  {
+   "id": "3c",
+   "section": "Data quality",
+   "asks": "Why the dataset fits the task",
+   "basis": "declared",
+   "fact": "fitness_rationale",
+   "state": "missing",
+   "evidence": "needs the owner's answer under \"fitness_rationale\" in data/reporting/studies/drr-domain-gap.json"
+  },
+  {
+   "id": "3d",
+   "section": "Data quality",
+   "asks": "Outcome variable and its statistics",
+   "basis": "code",
+   "fact": "outcome",
+   "state": "met",
+   "evidence": "the outcome of every test is which of its two sets an image came from, a group or a pooled family, known for every image by its group in the table; decoded images by family (summary.txt): synthetic 3368 in 11 groups, fluoroscopy 1388 in 3 groups, film 5371 in 7 groups"
+  },
+  {
+   "id": "3e",
+   "section": "Data quality",
+   "asks": "Sample size and outcome frequencies",
+   "basis": "code",
+   "fact": "sample_size",
+   "state": "met",
+   "evidence": "summary.txt: 10127 images decoded, 21 groups with at least 20 of them; decoded images by group: flexray_drr 104; flexray_drr_ct 104; flexray_replica 104; flexray_reference 104; flexray_spineps 104; fluxray_raw 103; fluxray_raw_reference 103; fluxray 1000; ts_drr_project 74; devcorpus 568; fluorogen 1000; carmlspine_spots 288; deepfluoro 1000; geneva_hip 100; buu_lspine 1000; aasce 294; nhanes2 1000; csxa 1000; kub_stonex 1000; ieee_lateral 236; aariz 841"
+  },
+  {
+   "id": "3f",
+   "section": "Data quality",
+   "asks": "Missing data, by class",
+   "basis": "code",
+   "fact": "missing_data",
+   "state": "met",
+   "evidence": "summary.txt: 2 groups skipped, each with its reason, vindr_spinexr (20932 index rows, none kept: format 10466, modality 10466); lumos (no folder lumos/bank under the data root); 4 chosen images undecoded in 3 groups; a group with fewer than 20 decoded images is left out of every test and one with fewer than five persons is plotted and never tested (README section 4)"
+  },
+  {
+   "id": "3g",
+   "section": "Data quality",
+   "asks": "Representativeness",
+   "basis": "declared",
+   "fact": "representativeness",
+   "state": "missing",
+   "evidence": "needs the owner's answer under \"representativeness\" in data/reporting/studies/drr-domain-gap.json"
+  },
+  {
+   "id": "4a",
+   "section": "Data preprocessing",
+   "asks": "Excluded samples, with the reason",
+   "basis": "code",
+   "fact": "exclusions",
+   "state": "met",
+   "evidence": "summary.txt, found/chosen/decoded/persons of each group: flexray_drr 104/104/104/26; flexray_drr_ct 104/104/104/26 (the counts of flexray_drr); flexray_replica 104/104/104/26 (the counts of flexray_drr); flexray_reference 104/104/104/26 (the counts of flexray_drr); flexray_spineps 104/104/104/26 (the counts of flexray_drr); fluxray_raw 104/104/103/26; fluxray_raw_reference 104/104/103/26 (the counts of fluxray_raw); fluxray 138063/1000/1000/1000; ts_drr_project 1316/76/74/19; devcorpus 39506/568/568/142; fluorogen 2725/1000/1000/1000; carmlspine_spots 299/288/288/144; deepfluoro 2659/1000/1000/14; geneva_hip 116/100/100/1; vindr_spinexr skipped (20932 index rows, none kept: format 10466, modality 10466); buu_lspine 7204/1000/1000/1000; aasce 294/294/294/294; nhanes2 17073/1000/1000/1000; csxa 4959/1000/1000/1000; kub_stonex 5188/1000/1000/1000; ieee_lateral 236/236/236/236; lumos skipped (no folder lumos/bank under the data root); aariz 841/841/841/841"
+  },
+  {
+   "id": "4b",
+   "section": "Data preprocessing",
+   "asks": "Corrupt samples",
+   "basis": "code",
+   "fact": "undecoded",
+   "state": "met",
+   "evidence": "summary.txt: 4 chosen images undecoded, by group fluxray_raw 1; ts_drr_project 2; fluxray_raw_reference 1; the failures by kind stay in results.json on the grid"
+  },
+  {
+   "id": "4c",
+   "section": "Data preprocessing",
+   "asks": "All transforms, from raw data to the model's input",
+   "basis": "code",
+   "fact": "transforms",
+   "state": "met",
+   "evidence": "every image, synthetic or real, decoded to floats (DICOM through its modality LUT, MONOCHROME1 turned bone-bright, a cine's middle frame), windowed to its own 0.5 and 99.5 percentiles, cut to the centre square of 0.9 of its shorter side and resized to 256 by area; each feature space reads the mean of its features of the image and of its inverse, and FleXray's space also the image as stored (tools/domain_gap.py at commit 6e908e6, README section 3)"
+  },
+  {
+   "id": "5a",
+   "section": "Modeling",
+   "asks": "All models trained",
+   "basis": "code",
+   "fact": "models_trained",
+   "state": "met",
+   "evidence": "no network is trained; the models fit are the two-sample classifiers, logistic regression and 15 nearest neighbours, in each fold of every contrast, every contrast kept in results.json on the grid and 35 of them in summary.txt's lines; units 768 of 768 done, 0 failed (summary.txt record)"
+  },
+  {
+   "id": "5b",
+   "section": "Modeling",
+   "asks": "Why these model types",
+   "basis": "declared",
+   "fact": "model_rationale",
+   "state": "missing",
+   "evidence": "needs the owner's answer under \"model_rationale\" in data/reporting/studies/drr-domain-gap.json"
+  },
+  {
+   "id": "5c",
+   "section": "Modeling",
+   "asks": "Evaluation method and splits",
+   "basis": "code",
+   "fact": "partitions",
+   "state": "met",
+   "evidence": "every two-sample test scored out of fold over at most five folds grouped by person and stratified by label, so a person is wholly on one side of each split; the split-half nulls split each group of at least 40 persons in two by person; every draw from seed 0 (summary.txt record; tools/domain_gap.py at commit 6e908e6, README sections 1 and 4)"
+  },
+  {
+   "id": "5d",
+   "section": "Modeling",
+   "asks": "How the reported model was chosen",
+   "basis": "code",
+   "fact": "no_model_selection",
+   "state": "not applicable",
+   "evidence": "Not applicable: the study selects no model: its encoders, its two-sample classifiers and their settings are fixed by the frozen pre-registration the run read, PREREG.md 3ca1-b6b7-aea6-0f00, as docs/research/drr-domain-gap/README.md section 4 sets them out with the primary endpoints (summary.txt record: study drr-domain-gap, commit 6e908e6, code e2ac-c706-01bb-c897)"
+  },
+  {
+   "id": "5e",
+   "section": "Modeling",
+   "asks": "Hyperparameter tuning",
+   "basis": "declared",
+   "fact": "tuning",
+   "state": "missing",
+   "evidence": "needs the owner's answer under \"tuning\" in data/reporting/studies/drr-domain-gap.json"
+  },
+  {
+   "id": "5f",
+   "section": "Modeling",
+   "asks": "Appropriate baselines",
+   "basis": "declared",
+   "fact": "baselines",
+   "state": "missing",
+   "evidence": "needs the owner's answer under \"baselines\" in data/reporting/studies/drr-domain-gap.json"
+  },
+  {
+   "id": "6a",
+   "section": "Data leakage",
+   "asks": "Preprocessing fit on training data only",
+   "basis": "declared",
+   "fact": "preprocessing_fit",
+   "state": "missing",
+   "evidence": "needs the owner's answer under \"preprocessing_fit\" in data/reporting/studies/drr-domain-gap.json"
+  },
+  {
+   "id": "6b",
+   "section": "Data leakage",
+   "asks": "Dependencies and duplicates across splits",
+   "basis": "code",
+   "fact": "disjoint",
+   "state": "met",
+   "evidence": "by person: every test's folds are grouped by person, so no person is on both sides of a split, and two render groups on one CT folder are read as a paired sample whose two views of a CT fall in one fold (tools/domain_gap.py at commit 6e908e6); in the 7 groups whose persons are their files (summary.txt, persons by file: fluorogen, aasce, nhanes2, csxa, kub_stonex, ieee_lateral, aariz) only files are held apart"
+  },
+  {
+   "id": "6c",
+   "section": "Data leakage",
+   "asks": "Each feature legitimate",
+   "basis": "declared",
+   "fact": "feature_legitimacy",
+   "state": "missing",
+   "evidence": "needs the owner's answer under \"feature_legitimacy\" in data/reporting/studies/drr-domain-gap.json"
+  },
+  {
+   "id": "7a",
+   "section": "Metrics and uncertainty",
+   "asks": "All metrics",
+   "basis": "code",
+   "fact": "metrics",
+   "state": "met",
+   "evidence": "summary.txt, 35 contrast lines in the spaces flexray, imagenet: the logistic two-sample AUC with its interval, its permutation p, the 15-nearest-neighbour AUC, the MMD's permutation p, its Benjamini-Hochberg q, FD64, KID64, the gap ratio, precision, recall, density and coverage; the split-half calibration or the real-real baselines in 2 spaces"
+  },
+  {
+   "id": "7b",
+   "section": "Metrics and uncertainty",
+   "asks": "Uncertainty and how it was computed",
+   "basis": "code",
+   "fact": "uncertainty",
+   "state": "met",
+   "evidence": "summary.txt: 35 AUCs with an interval, 34 with a C2ST permutation p, 34 MMD permutation p and 6 Benjamini-Hochberg q; each interval the 95 percent percentile interval of a person-cluster bootstrap of 1,000 draws, the C2ST's p from 100 permutations and the MMD's from 1,000, all by person, and the q by Benjamini-Hochberg within a space, the MMD's over its contrasts and its split-half nulls as PREREG.md section 3 says, the worded pairs' q over the contrasts alone on their verdict lines (DEVIATIONS.md, item 11) (tools/domain_gap.py at commit 6e908e6 and tools/domain_gap_stats.py, README section 4)"
+  },
+  {
+   "id": "7c",
+   "section": "Metrics and uncertainty",
+   "asks": "Statistical tests and their assumptions",
+   "basis": "declared",
+   "fact": "statistical_tests",
+   "state": "missing",
+   "evidence": "needs the owner's answer under \"statistical_tests\" in data/reporting/studies/drr-domain-gap.json"
+  },
+  {
+   "id": "8a",
+   "section": "Generalizability and limitations",
+   "asks": "External validity",
+   "basis": "declared",
+   "fact": "external_validity",
+   "state": "missing",
+   "evidence": "needs the owner's answer under \"external_validity\" in data/reporting/studies/drr-domain-gap.json"
+  },
+  {
+   "id": "8b",
+   "section": "Generalizability and limitations",
+   "asks": "Where the findings will not hold",
+   "basis": "declared",
+   "fact": "non_generalization",
+   "state": "missing",
+   "evidence": "needs the owner's answer under \"non_generalization\" in data/reporting/studies/drr-domain-gap.json"
+  }
+ ]
+}
