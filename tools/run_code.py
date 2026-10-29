@@ -58,7 +58,7 @@ KINDS = {
     "row": ROW,
     "state": STATE,
     "sweep": (*STATE, "flows/sweep.py", "flows/stage.py", "flows/stage_registry.py"),
-    "v1": (*ROW, "flows/v1.py", "flows/stage.py", "flows/stage_registry.py"),
+    "v1": (*ROW, "flows/v1.py", "flows/flow_tool.py", "flows/stage.py", "flows/stage_registry.py"),
     "bank": (*STAGE, "flows/bank.py", "grid/02-bank-ingest.sbatch", "tools/bank.py", "tools/ingest.py"),
     "catalog": (*STAGE, "flows/catalog.py", "grid/03-catalog.sbatch"),
 }

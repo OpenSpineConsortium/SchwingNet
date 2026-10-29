@@ -980,7 +980,7 @@ class V1FlowTest(unittest.TestCase):
         self.repo = self.tmp / "repo"
         (self.repo / "flows").mkdir(parents=True)
         (self.repo / "tools").mkdir()
-        for name in ("v1.py", "stage.py", "stage_progress.py", "stage_registry.py", "registry.txt"):
+        for name in ("v1.py", "flow_tool.py", "stage.py", "stage_progress.py", "stage_registry.py", "registry.txt"):
             shutil.copy(ROOT / "flows" / name, self.repo / "flows" / name)
         (self.repo / "tools" / "flow.py").write_text(STUB_FLOW_TOOL, encoding="utf-8")
         (self.repo / "tools" / "report.py").write_text(STUB_REPORT, encoding="utf-8")
