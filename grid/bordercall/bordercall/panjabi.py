@@ -182,7 +182,8 @@ def _profile(ref, measure, levels, blend_at=None, blend=0.0, extra_l6=False):
 
 def synthesize(ref, phenotype: str, rng: np.random.Generator, scale_sd: float = 0.07,
                rho: float = 0.5, noise_mm: float = 1.0, blend: float = 0.5,
-               measures: Sequence[str] = MEASURES, draws: Optional[dict] = None) -> Column:
+               measures: Sequence[str] = MEASURES, draws: Optional[dict] = None,
+               r_between: float = 0.0) -> Column:
     """One column of the given phenotype.
 
     `draws` lets a caller make twins: the same patient size, offsets and per-level draws
@@ -215,7 +216,14 @@ def synthesize(ref, phenotype: str, rng: np.random.Generator, scale_sd: float = 
     draws = draws if draws is not None else {}
     if "scale" not in draws:
         draws["scale"] = float(np.exp(rng.normal(0.0, scale_sd)))
-        draws["offset"] = {m: float(rng.normal()) for m in measures}
+        # The patient offsets are correlated r_between with each other. At 0.0 this is
+        # exactly the old independent draw, so the recorded runs still reproduce. Zero is
+        # NOT neutral: it gives each measure the most independent information it could
+        # carry, so an accuracy scored there is an upper bound. Nothing published supplies
+        # the real number -- Panjabi's ratio rows are ratios of means and carry none -- so
+        # it is swept rather than guessed. See covariance.py.
+        from covariance import correlated_offsets
+        draws["offset"] = correlated_offsets(rng, measures, r_between)
         # per-level draws are keyed by level name, so a twin reuses them level for level
         draws["level"] = {m: {l: float(rng.normal()) for l in LEVELS + ["L6", "T13"]}
                           for m in measures}

@@ -43,7 +43,7 @@ FAKE_HPCWORKER = ROOT / "tests" / "fakes" / "hpcworker"
 NEW_SCRIPTS = ("gate.sh", "hpcw.sh", "box.sh", "bin/pixi", "bin/train-cpu-python", "00-setup.sbatch", "00-weights.sbatch",
                "00-carmlspine.sbatch", "v1-driver.sbatch", "experiment-driver.sbatch", "run-xray-chain.sh",
                "run-platform-fetch.sh", "sweep-driver.sbatch", "v1-version.sh", "realism.sbatch", "venv.sh",
-               "drr-gap.sbatch", "drr-seg.sbatch")
+               "drr-gap.sbatch", "drr-seg.sbatch", "morphometry.sbatch")
 ENVS = ("default", "train-cpu", "train-gpu", "telemetry")
 # What bench flexray_drr_gap's word says of a mask folder that is there: the study reads too few CTs'
 # masks as none, which its summary says, so the word says only where the folder is.
@@ -928,10 +928,19 @@ echo "the split is not disjoint; no training step reads this version"; exit 1
 
     def fake_box(self):
         """box.sh as a fake: it logs what it was asked, fails a split check while $FAKE/split_fails is
-        there, and says where the hold was when it was asked."""
+        there, and says where the hold was when it was asked; asked for the launcher while
+        $FAKE/launch_holds is there, it runs until a TERM comes, says it came in $FAKE/stopped and
+        ends as the launcher ends then, with 143."""
         (self.repo / "grid" / "box.sh").write_text(
             '#!/bin/bash\necho "$* hold=$(cat "$SCHWINGNET/grid/logs/HOLD" 2>/dev/null)" >> "$FAKE/box.log"\n'
             'if [[ "$*" == *split-check* ]] && [ -f "$FAKE/split_fails" ]; then exit 1; fi\n'
+            'if [[ "$*" == *flows/launch.py* ]] && [ -f "$FAKE/launch_holds" ]; then\n'
+            '  sleep 60 & flow=$!\n'
+            '  trap \'kill "$flow"; echo TERM >> "$FAKE/stopped"; '
+            'echo "{\\"flow\\": \\"v1\\", \\"run\\": \\"V1Flow/12\\", \\"successful\\": false, \\"verdict\\": null}"; exit 143\' TERM\n'
+            '  touch "$FAKE/launch_held"\n'
+            '  wait "$flow"\n'
+            'fi\n'
             'echo \'{"run_dir": "/nowhere"}\'\n', encoding="utf-8")
 
     def boxed(self):
@@ -948,10 +957,15 @@ echo "the split is not disjoint; no training step reads this version"; exit 1
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
         boxed = self.boxed()
         check = [i for i, line in enumerate(boxed) if "tools/catalog.py split-check" in line]
-        flow = [i for i, line in enumerate(boxed) if "flow.py" in line]
+        flow = [i for i, line in enumerate(boxed) if "flows/launch.py" in line]
         self.assertTrue(check and flow and check[0] < flow[0], boxed)
         self.assertIn(f"split-check {self.data}/_catalog --version 2 hold=777 ", boxed[check[0]])
+        # the run is the launched flow v1, held to its frozen PREREG, never tools/flow.py around it
+        self.assertIn("pixi run --locked -e train-gpu python flows/launch.py v1 --max-workers 1 -- ", boxed[flow[0]])
         self.assertIn(f"--catalog {self.data}/_catalog/versions/catalog-000002-0123456789ab.sqlite ", boxed[flow[0]])
+        self.assertFalse([line for line in boxed if "tools/flow.py" in line], boxed)
+        self.assertIn("- launcher: it printed no decision line", done.stdout)
+        self.assertIn("- run directory: /nowhere", done.stdout)
         self.assertIn("CURRENT names catalog-000003-0123456789ab.sqlite; the run takes catalog-000002-0123456789ab.sqlite", done.stdout)
         # the split check fails on the chosen file: the run says so and never starts the flow
         (self.fake / "box.log").unlink()
@@ -959,7 +973,7 @@ echo "the split is not disjoint; no training step reads this version"; exit 1
         done = self.driver()
         self.assertEqual(done.returncode, 1)
         self.assertIn("FAILED: the split check of version 2 failed; no run reads it", done.stdout)
-        self.assertFalse([line for line in self.boxed() if "flow.py" in line])
+        self.assertFalse([line for line in self.boxed() if "launch.py" in line or "flow.py" in line])
         # no version holds the test part: the run says so and starts nothing
         (self.fake / "split_fails").unlink()
         (self.data / "_catalog" / "VERSIONS.jsonl").write_text("", encoding="utf-8")
@@ -968,6 +982,37 @@ echo "the split is not disjoint; no training step reads this version"; exit 1
         self.assertEqual(done.returncode, 1)
         self.assertIn("no catalog version to run on: no catalog version holds both of the C-ArmLSpine parts", done.stdout)
         self.assertEqual(self.boxed(), [])
+        self.assertFalse((self.repo / "grid" / "logs" / "HOLD").exists())
+
+    def test_job_submits_early_term_reaches_the_v1_launcher_at_once_and_the_report_says_how_it_ended(self):
+        # As the sweep driver's: job submit's TERM two minutes before the limit goes to the batch
+        # shell alone, and a launcher run in the shell's foreground would hear only Slurm's own TERM
+        # at the limit, with no time left to close the run's page.
+        self.weights_ready()
+        self.carmlspine_shards()
+        self.catalog_ready(version=2)
+        self.fake_box()
+        (self.fake / "launch_holds").write_text("", encoding="utf-8")
+        env = dict(os.environ, SCHWINGNET=str(self.repo), DATA_ROOT=str(self.data), RUNS=str(self.runs), FAKE=str(self.fake),
+                   WEIGHTS=str(self.models / "resnet18-f37072fd.pth"), SLURM_JOB_ID="777")
+        env.pop("STORE", None)
+        driver = subprocess.Popen(["bash", str(self.repo / "grid" / "v1-driver.sbatch")], cwd=self.repo / "grid", env=env,
+                                  stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        self.addCleanup(driver.kill)
+        for _ in range(300):
+            if (self.fake / "launch_held").exists():
+                break
+            time.sleep(0.1)
+        began = time.monotonic()
+        driver.send_signal(signal.SIGTERM)
+        out, _ = driver.communicate(timeout=60)
+        self.assertLess(time.monotonic() - began, 30, "the TERM reached the launcher before its flow ended on its own")
+        self.assertEqual(driver.returncode, 143, out)
+        self.assertEqual((self.fake / "stopped").read_text(encoding="utf-8"), "TERM\n")
+        self.assertIn("SN_V1_RC=143", out)
+        report = (self.repo / "grid" / "logs" / "v1-driver-STAGE-REPORT.md").read_text(encoding="utf-8")
+        self.assertIn('- Metaflow: {"flow": "v1", "run": "V1Flow/12", "successful": false', report)
+        self.assertIn("- launcher exited 143\n", report)
         self.assertFalse((self.repo / "grid" / "logs" / "HOLD").exists())
 
     def test_the_chooser_wants_both_parts_every_head_shard_and_a_current_split_check(self):
@@ -2139,6 +2184,112 @@ esac
         lines = self.submitted()
         self.assertEqual(len(lines), 1, lines)
         self.assertIn("--class gpu --name realism_edit", lines[0])
+
+    def morphometry_inputs(self, *which):
+        """The data root as the fetches the morphometry sets read leave it, each named set landed by
+        one file, and engine, the pinned copy's morphometry package under the test's grid/."""
+        markers = {"truth": ("aws_enhance_pet_labels", "raw", "Vertebrae", "0001.nii.gz"),
+                   "verse": ("verse_masks_2026_10_29", "raw", "verse004.nii.gz"),
+                   "totalseg": ("totalsegmentator_v300", "raw", "Totalsegmentator_dataset_v300.zip")}
+        for name in which:
+            if name == "engine":
+                path = self.repo / "grid" / "bordercall" / "morphometry" / "__main__.py"
+            else:
+                path = self.data.joinpath(*markers[name])
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("", encoding="utf-8")
+
+    def test_morphometry_refuses_a_set_it_does_not_know_and_names_each_missing_input_in_turn(self):
+        # no set, two sets and a set that is not one of the count's two are refused before anything is read
+        self.assertEqual(self.gate("morphometry").returncode, 64)
+        self.assertEqual(self.gate("morphometry", "enhance", "verse").returncode, 64)
+        refused = self.gate("morphometry", "spineps")
+        self.assertEqual(refused.returncode, 64, refused.stdout)
+        self.assertIn("enhance or verse", refused.stdout)
+        self.environments_ready()
+        # the pinned copy must carry the engine, whatever has landed; the checkout's grid/ carries it,
+        # so the test's copy drops it first
+        shutil.rmtree(self.repo / "grid" / "bordercall" / "morphometry", ignore_errors=True)
+        self.morphometry_inputs("truth", "verse", "totalseg")
+        for which in ("enhance", "verse"):
+            refused = self.gate("morphometry", which)
+            self.assertEqual(refused.returncode, 2, refused.stdout)
+            self.assertIn("no vendored morphometry under grid/bordercall/", refused.stdout)
+        # then each set's inputs, named in turn
+        shutil.rmtree(self.data)
+        self.data.mkdir()
+        self.morphometry_inputs("engine")
+        refused = self.gate("morphometry", "enhance")
+        self.assertEqual(refused.returncode, 2, refused.stdout)
+        self.assertIn("fetch aws_enhance_pet_labels first", refused.stdout)
+        steps = (((), "fetch verse_masks_2026_10_29 first"), (("verse",), "fetch totalsegmentator_v300 first"))
+        for landed, said in steps:
+            self.morphometry_inputs(*landed)
+            refused = self.gate("morphometry", "verse")
+            self.assertEqual(refused.returncode, 2, refused.stdout)
+            self.assertIn(said, refused.stdout)
+        self.assertEqual(self.submitted(), [])
+
+    def test_morphometry_queues_each_set_once_as_one_batch_job_and_then_prints_its_report(self):
+        self.environments_ready()
+        self.morphometry_inputs("engine", "truth", "verse", "totalseg")
+        done = self.gate("morphometry", "enhance")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        lines = self.submitted()
+        self.assertEqual(len(lines), 1, lines)
+        self.assertIn("--class batch --name morphometry_enhance", lines[0])
+        self.assertIn("SET=enhance", lines[0])
+        self.assertIn("--no-requeue", lines[0])
+        self.assertIn("--time 24:00:00", lines[0])
+        self.assertIn("morphometry.sbatch", lines[0])
+        self.assertIn("submitted the morphometry job for enhance", done.stdout)
+        # one job at a time: the other set waits while this one is live
+        job = self.recorded()["morphometry_enhance"]
+        self.live(job)
+        for which in ("enhance", "verse"):
+            refused = self.gate("morphometry", which)
+            self.assertEqual(refused.returncode, 75, refused.stdout)
+            self.assertIn(f"job {job}", refused.stdout)
+        (self.fake / "queue").write_text("", encoding="utf-8")
+        logs = self.repo / "grid" / "logs"
+        report = logs / "MORPHOMETRY-enhance.md"
+        report.write_text("# morphometry enhance: job 4242 on node, commit 0000000, 2026-10-29 16:00:00 UTC\n"
+                          "- ENHANCE.PET: 1561 masks linked; 1561 studies chosen, 1561 to measure, code 81e732f142d3aa16\n"
+                          "- exit 0 at 2026-10-29 20:00:00 UTC\n", encoding="utf-8")
+        for _ in range(2):
+            done = self.gate("morphometry", "enhance")
+            self.assertEqual(done.returncode, 0, done.stdout)
+            self.assertIn("## MORPHOMETRY-enhance.md", done.stdout)
+            self.assertIn("1561 studies chosen", done.stdout)
+            self.assertIn("- exit 0", done.stdout)
+        self.assertEqual(len(self.submitted()), 1)
+        # the second set is its own job
+        done = self.gate("morphometry", "verse")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        lines = self.submitted()
+        self.assertEqual(len(lines), 2, lines)
+        self.assertIn("--class batch --name morphometry_verse", lines[1])
+        self.assertIn("SET=verse", lines[1])
+        # a set that failed on older code is queued once more, its report kept under its job's number
+        report.write_text("# morphometry enhance: job 4242 on node, commit 0000000, 2026-10-29 16:00:00 UTC\n"
+                          "- FAILED at run: boom\n- exit 1 at 2026-10-29 16:10:00 UTC\n", encoding="utf-8")
+        done = self.gate("morphometry", "enhance")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("ended in failure on older code: queueing the set again", done.stdout)
+        self.assertFalse(report.exists())
+        self.assertTrue((logs / "MORPHOMETRY-enhance-4242.md").exists())
+        self.assertEqual(len(self.submitted()), 3)
+
+    def test_the_morphometry_job_refuses_a_set_it_does_not_know_before_touching_anything(self):
+        for which in ("", "bogus", "spineps"):
+            env = dict(os.environ, SCHWINGNET=str(self.repo), DATA_ROOT=str(self.data), LAB_VOLUME=str(self.tmp), SET=which)
+            done = subprocess.run(["bash", str(self.repo / "grid" / "morphometry.sbatch")], cwd=self.repo / "grid", env=env,
+                                  capture_output=True, text=True, timeout=60)
+            self.assertEqual(done.returncode, 64, done.stdout + done.stderr)
+            self.assertIn("SN_MORPHOMETRY_RC=64", done.stdout)
+            self.assertIn("enhance or verse", done.stdout)
+        self.assertFalse((self.repo / "grid" / "logs").exists())
+        self.assertFalse(list((self.tmp).glob("**/MORPHOMETRY-*")))
 
     def test_the_realism_job_refuses_a_stage_it_does_not_know_before_touching_anything(self):
         for stage in ("", "train", "lora", "eval"):
