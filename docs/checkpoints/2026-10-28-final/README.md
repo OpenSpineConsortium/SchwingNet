@@ -4,6 +4,8 @@ Source: the thread "Synthesize project status across accounts" in the claude.ai 
 
 This folder supersedes docs/checkpoints/2026-10-27-restart-kit/ as the entry point. That kit stays the record of the older work: its FINDINGS.md is still the findings of the studies before 2026-10-27, and its memory files are folded into memory/ here.
 
+What came after it, the five pieces of work the owner restarted at 22:58 and 23:03 UTC, his answers of that night and the checkpoint of 2026-10-29 00:38 UTC, is docs/checkpoints/2026-10-29-checkpoint/README.md, which a new project reads right after this file.
+
 ## 0. Read this first
 
 1. Hold grid/WSU-data use for the Bayesian work until greg's own attorney advises. Nothing goes to the grid. Why is the owner's own question, recorded in bordercall research_notes/provisional/README.md (section 3); this folder says nothing more of it.
