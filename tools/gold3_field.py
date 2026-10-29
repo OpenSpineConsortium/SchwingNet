@@ -308,8 +308,10 @@ def named_level(row, entry, planes, slack):
             "field_top": field_top, "field_bottom": field_bottom, "centre": entry["centroid_mm"][2]}
 
 
-def named_study(row, person, age, site):
-    planes = image_planes(row)
+def named_study(row, person, age, site, planes=None):
+    """A study in level names. The planes the image reaches are the cord's and the column's (image_planes)
+    unless given: the grid census (tools/gold3_census.py extent) gives each CT's own, read from its voxels."""
+    planes = image_planes(row) if planes is None else planes
     slack = plane_slack(row["grid"], LEVEL_SPAN_MM)
     step = row["grid"]["zooms"][row["grid"]["head_foot_axis"]]
     top = row["field_mm"]["top"] if planes[0] is None else round(planes[0] + step / 2, 1)

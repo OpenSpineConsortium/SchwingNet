@@ -137,6 +137,15 @@
 #                   over the census's existing SPINEPS masks, nothing segmented, queued once with no pilot before
 #                   it, the next send printing logs/BORDERCALL-complete.md and every later one printing it again;
 #                   a job that left no report is not queued again without the owner's word
+#   census gold3    the gold tier census, one CPU job that reads only and segments nothing (the owner's tap of
+#                   2026-10-29 12:26 UTC, "Send the 1 CPU job now"; grid/gold3-census.sbatch, tools/gold3_census.py):
+#                   the older TotalSegmentator list, the autoPET match, gold 4 over the census's SPINEPS masks,
+#                   TotalSegmentator's own image extents and the held files; queued once as one batch job, requeueable
+#                   (a preemption starts the same job again where it stopped), from git's copy of its code at the
+#                   gate's commit, so it holds no checkout; refused while a root it reads is not on the volume;
+#                   the next send printing logs/CENSUS-gold3.md, or the unfinished .part a job killed outright
+#                   left, and every later one printing it again and queueing nothing; a second job only where
+#                   CENSUS_RERUNS, committed by pull request, carries the owner's word for it
 #   morphometry <set>  bordercall's morphometry engine (the packages morphometry, scanimport and screening,
 #                   pinned under grid/bordercall/ beside the archived package) over one gold tier 3 set
 #                   (the thread "Extract morphometrics from gold tier 3 CT"; the owner's count of 2026-10-29
@@ -251,20 +260,23 @@ DRR_GAP_FOLDER=flexray_drr_gap_run3
 # before it, flexray_drr_gap:40828920, was his tap of 2026-10-28 16:28 UTC and his go of 22:58 UTC,
 # spent by the second run, prepare 40859208.
 BENCH_RERUNS="flexray_drr_gap:40859208"
+# The owner's word for one more census job, <id>:<job of the report or the record it replaces>, or
+# <id>:lost for a submission whose answer was lost; one word, one more job (word_census).
+CENSUS_RERUNS=""
 LOGS=$REPO/grid/logs
 STATE=$LOGS/GATE_JOBS.txt
-WORDS="start status leaks v1 latency fetch explore dropzip unpack nodequota folders samples sweep bank experiment bench anomaly bordercall realism morphometry literature stop cancel"
+WORDS="start status leaks v1 latency fetch explore dropzip unpack nodequota folders samples sweep bank experiment bench anomaly bordercall census realism morphometry literature stop cancel"
 ENVS="default train-cpu train-gpu telemetry"
 
 word=${1:-}
 id=${2:-}
 # Matched whole, so one argument holding two words ("v1 latency") is refused and never runs nothing.
 case "$word" in
-  start|status|leaks|v1|latency|fetch|explore|dropzip|unpack|nodequota|folders|samples|sweep|bank|experiment|bench|anomaly|bordercall|realism|morphometry|literature|stop|cancel) ;;
+  start|status|leaks|v1|latency|fetch|explore|dropzip|unpack|nodequota|folders|samples|sweep|bank|experiment|bench|anomaly|bordercall|census|realism|morphometry|literature|stop|cancel) ;;
   "") echo "refusing: no word; one of: $WORDS"; exit 64 ;;
   *) echo "refusing: '$word' is not one of: $WORDS"; exit 64 ;;
 esac
-if [ "$word" = fetch ] || [ "$word" = explore ] || [ "$word" = dropzip ] || [ "$word" = unpack ] || [ "$word" = sweep ] || [ "$word" = bank ] || [ "$word" = bench ] || [ "$word" = anomaly ] || [ "$word" = bordercall ] || [ "$word" = realism ] || [ "$word" = morphometry ] || [ "$word" = literature ]; then
+if [ "$word" = fetch ] || [ "$word" = explore ] || [ "$word" = dropzip ] || [ "$word" = unpack ] || [ "$word" = sweep ] || [ "$word" = bank ] || [ "$word" = bench ] || [ "$word" = anomaly ] || [ "$word" = bordercall ] || [ "$word" = census ] || [ "$word" = realism ] || [ "$word" = morphometry ] || [ "$word" = literature ]; then
   [ $# -eq 2 ] || { echo "refusing: $word takes exactly one id"; exit 64; }
   case "$id" in ""|*[!a-z0-9_]*) echo "refusing: an id is lower-case letters, digits and _"; exit 64 ;; esac
   [ ${#id} -le 40 ] || { echo "refusing: an id is at most 40 characters"; exit 64; }
@@ -1756,6 +1768,78 @@ word_bordercall_complete() {  # the gold tier 3 completion (the owner's count of
   echo "submitted the bordercall complete job: one CPU job that reads the census's SPINEPS masks and segments nothing. Send bordercall complete again once it ends to read its report, logs/BORDERCALL-complete.md."
 }
 
+word_census() {  # the gold tier census (the owner's tap of 2026-10-29 12:26 UTC, one CPU job): queued once, its report printed on every later send
+  local report=$LOGS/CENSUS-$id.md sent=$LOGS/CENSUS-$id.sent busy job missing again=""
+  case "$id" in
+    gold3) ;;
+    *) echo "refusing: census takes gold3"; return 64 ;;
+  esac
+  busy=$(live_of "census_$id")
+  [ -z "$busy" ] || { echo "refusing: the census $id job is still queued or running (job $busy); send census $id again once it ends"; return 75; }
+  if [ -f "$report" ]; then
+    # Kept, so the owner's count of one job holds: a report that stands queues nothing, unless the
+    # owner's word for one more job names the report's job in CENSUS_RERUNS (committed by pull request).
+    echo "## $(basename "$report") ($(date -r "$report" '+%F %T'))"
+    head -n 400 "$report" | LC_ALL=C tr -cd '\11\12\40-\176' | report_shapes | masked | head -c 40000
+    job=$(census_job_of "$report")
+    census_rerun_allowed "$job" || return 0
+    mv "$report" "$LOGS/CENSUS-$id-$job.md" || return 1
+    again="is job $job's, which CENSUS_RERUNS lets the owner's count run once more"
+  elif [ -f "$report.part" ]; then
+    # A job that ended past its trap (killed outright, a node lost) leaves the parts it finished here.
+    echo "## $(basename "$report").part, unfinished ($(date -r "$report.part" '+%F %T')): what the job wrote before it ended"
+    head -n 400 "$report.part" | LC_ALL=C tr -cd '\11\12\40-\176' | report_shapes | masked | head -c 40000
+  fi
+  if [ -z "$again" ]; then
+    job=$(awk -v what="census_$id" '$3 == what { job = $1 } END { print job }' "$STATE" 2>/dev/null)
+    if [ -n "$job" ]; then
+      census_rerun_allowed "$job" || {
+        echo "refusing: a census $id job was queued before (job $job) and left no report; the owner's count was one job, so another waits for his word, committed as CENSUS_RERUNS=$id:$job in grid/gate.sh"
+        return 64
+      }
+      [ ! -f "$report.part" ] || mv "$report.part" "$LOGS/CENSUS-$id-$job.part" || return 1
+      again="is job $job's, which CENSUS_RERUNS lets the owner's count run once more"
+    elif [ -f "$sent" ]; then
+      # A submission whose answer was lost (the controller timed out after it queued the job) leaves no
+      # record and no live job the gate knows; the owner's word, as above, is what queues another.
+      census_rerun_allowed lost || {
+        echo "refusing: a census $id job was submitted at $(cat "$sent") and no job id came back, so it may be queued or ended under Slurm's name schwingnet-census_$id; another waits for the owner's word, committed as CENSUS_RERUNS=$id:lost in grid/gate.sh"
+        return 64
+      }
+      rm -f "$sent"
+      again="follows a submission whose answer was lost, which CENSUS_RERUNS lets the owner's count run once more"
+    fi
+  fi
+  [ -f "$REPO/tools/gold3_census.py" ] && [ -f "$REPO/grid/gold3-census.sbatch" ] || { echo "refusing: no census tool or job script at this commit"; return 2; }
+  missing=$(census_inputs_missing)
+  [ -z "$missing" ] || { echo "refusing: the census would read nothing from $missing; the one job is not spent on an empty root"; return 2; }
+  # The job's shape is asked before the submission is marked, so a refused shape marks nothing.
+  hpcw_check "census_$id" batch -- gold3-census.sbatch || return 1
+  [ -z "$again" ] || echo "  the census $again"
+  echo "$(date -u '+%F %T') UTC at commit $commit" > "$sent"
+  submit "census_$id" batch CENSUS_COMMIT="$(git -C "$REPO" rev-parse HEAD 2>/dev/null || echo "")" -- gold3-census.sbatch > /dev/null || return 1
+  rm -f "$sent"
+  echo "submitted the census $id job: one CPU job that reads only and segments nothing. Send census $id again once it ends to read its report, logs/CENSUS-$id.md."
+}
+census_job_of() {  # the job number a census report's first line names
+  head -n 1 "$1" | sed -n 's/^# census [a-z0-9]*: job \([0-9][0-9]*\) .*/\1/p'
+}
+census_rerun_allowed() {  # census_rerun_allowed JOB: CENSUS_RERUNS names JOB beside the census's id
+  case " $CENSUS_RERUNS " in *" $id:$1 "*) return 0 ;; esac
+  return 1
+}
+census_inputs_missing() {  # what the census would find no file of, one line, or nothing
+  # Each root the parts read, tested on the login node as the data root holds them, so the one job is
+  # never spent on a root that moved: every part counts a missing root as zero and ends 0.
+  local what="" root
+  lacks() { what="${what:+$what; }$1"; }
+  [ -f "$VOLUME/go2432/ruleclass/tiers/tier1.tsv" ] && [ -f "$VOLUME/go2432/ruleclass/tiers/tier2.tsv" ] \
+    || lacks "the census tier lists under the lab volume's go2432/ruleclass/tiers"
+  for root in totalsegmentator_v300 aws_enhance_pet_labels/raw aws_enhance_pet_ct/raw tcia_fdg_pet_ct_lesions versefusion/raw/VerSeFusion_data/raw; do
+    [ -d "$DATA_ROOT/$root" ] || lacks "$DATA_ROOT/$root"
+  done
+  echo "$what"
+}
 morphometry_inputs_missing() {  # what morphometry $id still lacks on the data root, one line, or nothing
   case "$id" in
     enhance)
@@ -2257,6 +2341,7 @@ case "$word" in
   bench) word_bench ;;
   anomaly) word_anomaly ;;
   bordercall) word_bordercall ;;
+  census) word_census ;;
   realism) word_realism ;;
   morphometry) word_morphometry ;;
   literature) word_literature ;;
