@@ -229,8 +229,13 @@ def _is_id(text: object) -> bool:
 
 
 def _is_number(value: object) -> bool:
-    """A finite int or float that is not a bool."""
-    return isinstance(value, int | float) and not isinstance(value, bool) and math.isfinite(value)
+    """A finite int or float that is not a bool; an int is finite however large, and asking
+    math.isfinite of one beyond float's range raises instead of answering."""
+    if isinstance(value, bool):
+        return False
+    if isinstance(value, int):
+        return True
+    return isinstance(value, float) and math.isfinite(value)
 
 
 def _is_share(value: object) -> bool:
@@ -270,7 +275,10 @@ def _word_value(word: str) -> str:
 
 
 def _within(value: float) -> bool:
-    """A number the contracts sum or weigh: finite and within REWARD_BOUND either way."""
+    """A number the contracts sum or weigh: finite and within REWARD_BOUND either way; an int is
+    compared as it is, since math.isfinite of one beyond float's range raises."""
+    if isinstance(value, int):
+        return abs(value) <= REWARD_BOUND
     return math.isfinite(value) and abs(value) <= REWARD_BOUND
 
 
@@ -1105,7 +1113,10 @@ def summary_lines(ledger: Mapping[str, object]) -> list[str]:
     is summarised as far as it reads."""
     trials, rounds, manifest = ledger.get("trials"), ledger.get("rounds"), ledger.get("manifest")
     count = len(trials) if isinstance(trials, dict) else 0
-    scored = len(last_rewards(trials)) if isinstance(trials, dict) else 0
+    # only the trials named by a string are read, since last_rewards takes no other key
+    items = trials.items() if isinstance(trials, dict) else []
+    named = {k: v for k, v in items if isinstance(k, str)}
+    scored = len(last_rewards(named))
     rows = cast(list[ManifestRow], manifest) if _manifest_holds(manifest) else []
     parts = ", ".join(f"{part} {len(part_ids(rows, part))}" for part in PARTS)
     made = len(rounds) if isinstance(rounds, list) else 0

@@ -514,3 +514,15 @@ def test_the_best_trial_is_the_highest_last_rung_reward_ties_by_id_and_the_summa
 
 def test_the_plan_keys_are_the_ones_the_file_lists():
     assert set(PLAN_KEYS) == set(plan_record())
+
+
+def test_a_reward_beyond_floats_range_and_a_trial_not_named_by_a_string_are_passed_over() -> None:
+    # the gate's counterexamples of 2026-10-29: math.isfinite raises on an int beyond float's range,
+    # and last_rewards takes no key but a string, so summary_lines hands it none
+    assert last_rewards(
+        {"a": {"rungs": [{"reward": 10**400}]}, "b": {"rungs": [{"reward": 1}]}}
+    ) == {"b": 1.0}
+    assert (
+        summary_lines({"trials": {10: 10}})[0]
+        == "search None: 0 rounds, 1 trials, 0 with a rung scored"
+    )
