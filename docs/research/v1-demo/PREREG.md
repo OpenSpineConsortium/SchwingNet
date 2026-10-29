@@ -31,8 +31,10 @@ None is tested, as the owner chose on 2026-10-29 at 03:23 UTC, asked whether ver
 
 ## 5. What counts as failure
 
-- The run cannot be run or recorded: a dirty tree, a split that is not disjoint, a catalog or weights file whose bytes are not the ones the record names, or a step that exits other than 0. The verdict is 1, with the sentence "version 1 did not run to its end: <the step and its last line>", and no number of it is quoted.
-- A run whose CLAIM 2024 and REFORMS report cannot be written or is not current: the verdict is 1, with the sentence "version 1 ran and its CLAIM 2024 and REFORMS report is not current".
+- The run cannot be run or recorded: a dirty tree, a split that is not disjoint, a catalog or weights file whose bytes are not the ones the record names, or a step that exits other than 0 once retried. The flow fails, the launcher exits other than 0, and the run's progress page shows the step that failed with its last line, "tools/flow.py run exited <code>: <its last line>" where tools/flow.py failed; no number of it is quoted.
+- tools/flow.py ended without finishing the run: the verdict is 1, with the line "<run>: no FINISHED.json, so tools/flow.py did not finish the run" on the page.
+- The run's CLAIM 2024 and REFORMS report, as tools/flow.py left it, is not what the run's files give, or cannot be written or does not check once written: the verdict is 1, with one of these lines on the page: "<run>: NOT CURRENT as the run wrote it, so written anew; why: <the check's words>", "<run>: NOT CURRENT as the run wrote it, and not written anew; why: <the check's words>", "<run>: NOT WRITTEN at the end; why: <the tool's words>" or "<run>: NOT CURRENT once written at the end; why: <the check's words>". A stale report is written anew where the tool can write it, so the folder holds the current one; the verdict stays 1.
+- A stale report of work done before this Metaflow run began, a run resumed after tools/flow.py had finished, is no failure: it says only that tools/report.py or its inputs changed since, which no key names. It is written anew with the line "<run>: written anew under the report tool as it is now, its work done before this run began; <its counts>; it was not current, why: <the check's words>".
 - A checkout that moved during the run: the run is not used and runs again (grid/v1-driver.sbatch).
 - An item the report counts as missing is shown and is not a failure of the run; `tools/report.py check --complete` stays the gate before any number is published (docs/research/run-report.md).
 
@@ -42,4 +44,4 @@ The checkpoint is chosen on the validation part before the test part is read; th
 
 ## 7. Freeze
 
-Frozen on 2026-10-29 by the thread named above, from the commit named above, before any run of version 1 under this file: `sha256sum PREREG.md > PREREG.md.sha256` in this folder, both committed. No further edits: a departure goes in DEVIATIONS.md beside it, and a second design, a bar the owner sets among them, is a new file with its own freeze.
+Frozen on 2026-10-29 by the thread named above, from the commit named above, before any run of version 1 under this file: `sha256sum PREREG.md > PREREG.md.sha256` in this folder, both committed. Frozen again the same day, before this file was merged and before any run had used the first freeze, after the thread's own review: section 5 now names the lines the flow's end step and its page give, which the first freeze worded as sentences no code writes, and says that a stale report of work done before the Metaflow run began is written anew and is no failure. No further edits: a departure goes in DEVIATIONS.md beside it, and a second design, a bar the owner sets among them, is a new file with its own freeze.

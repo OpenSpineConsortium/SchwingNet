@@ -1259,6 +1259,10 @@ class V1FlowTest(unittest.TestCase):
         self.assertEqual(said[-1]["successful"], False, out)
         self.assertEqual(len(calls), 2, calls)
         self.assertIn("tools/flow.py run exited 1: flow: train exited 1; see the train log", out)
+        # the page shows the step that failed with its last line, as the PREREG's section 5 says
+        _, lines = self.progress_of(said)
+        self.assertTrue([line for line in lines if line.startswith("task train_evaluate train and evaluate: failed")
+                         and "V1Fault: tools/flow.py run exited 1: flow: train exited 1; see the train log" in line], lines)
 
     def test_a_kill_mid_training_resumes_the_step_and_a_new_catalog_runs_anew(self):
         code, said, out, calls = self.v1(1, FLOW_TEST_KILL="1")
