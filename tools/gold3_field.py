@@ -33,7 +33,12 @@ planes, so the field's top over a level is where the world's head-foot line thro
 leaves the volume. TotalSegmentator's CTs are sometimes padded inside their grid with slices that hold no
 image; there the spinal cord, which runs on above every cervical level and below the conus, stops with
 the column at one plane, and that plane over the column, not the grid's face, is the field's edge
-(image_planes); a level is cut by it within a slice and the plane's tilt across a vertebra's depth.
+(image_planes); a level is cut by it within a slice and the plane's tilt across a vertebra's depth. Where
+the grid census has read the CT itself (data/gold3-ct/totalsegmentator/planes.json, written from the
+census job's extent part, which the gate word `census gold3` prints), the CT's own constant slices say
+where the image ends, and that reading replaces the cord's for every subject: a subject the file lists
+has a padded end at the height given, and one it does not list is not padded and keeps its field's own
+edges, the owner's rule of 2026-10-29 23:46 UTC that a CT whose image shows C2 and the sacrum is in.
 
 A name the column's order expects and no mask draws, between two drawn levels, is a level to add when the
 two levels' centres stand farther apart than the study's own spacing of neighbours allows, and a count
@@ -73,6 +78,7 @@ VERSE_FACTS = f"{DATA}/verse/facts.jsonl"
 VERSE_SERIES = f"{DATA}/verse/series.json"
 TOTALSEG_FACTS = f"{DATA}/totalsegmentator/facts.jsonl"
 TOTALSEG_SUBJECTS = f"{DATA}/totalsegmentator/subjects.json"
+TOTALSEG_PLANES = f"{DATA}/totalsegmentator/planes.json"
 FACTS_OF = {"verse": VERSE_FACTS, "totalsegmentator": TOTALSEG_FACTS}
 READER = "bordercall holdings/fullspine_facts.py"
 ADMISSION = f"{DATA}/admission.json"
@@ -187,6 +193,7 @@ def load_inputs(repo=ROOT):
     return {"enhance_pet": read_jsonl(repo / ENHANCE_FACTS), "verse": read_jsonl(repo / VERSE_FACTS),
             "totalsegmentator": read_jsonl(repo / TOTALSEG_FACTS), "verse_series": read_json(repo / VERSE_SERIES),
             "totalseg_subjects": read_json(repo / TOTALSEG_SUBJECTS),
+            "totalseg_planes": read_json(repo / TOTALSEG_PLANES) if (repo / TOTALSEG_PLANES).is_file() else None,
             "machine_records": read_jsonl(repo / MACHINE_RECORDS) if arm else [],
             "machine": read_jsonl(repo / MACHINE_FACTS) if arm and (repo / MACHINE_FACTS).is_file() else []}
 
@@ -344,9 +351,13 @@ def verse_study(row, series):
     return named_study(row, f"verse:{entry['patient']}", entry.get("age"), None)
 
 
-def totalseg_study(row, subjects):
+def totalseg_study(row, subjects, planes=None):
+    """planes is the census's reading of the CTs' own extent (TOTALSEG_PLANES), or None before it is
+    read: with it, every subject's padded ends are the CT's own (none where it is not listed) and the
+    cord's guess is not used; without it, image_planes reads the cord and the column."""
     entry = subjects.get(row["id"], {})
-    return named_study(row, f"totalsegmentator:{row['id']}", entry.get("age"), entry.get("institute") or None)
+    own = None if planes is None else tuple(planes["planes"].get(row["id"], [None, None]))
+    return named_study(row, f"totalsegmentator:{row['id']}", entry.get("age"), entry.get("institute") or None, planes=own)
 
 
 def studies_of(inputs):
@@ -355,6 +366,7 @@ def studies_of(inputs):
     under its own id, as tools/gold3_ct.py reads it."""
     series = {s["series"]: s for s in inputs["verse_series"]["series"]}
     subjects = inputs["totalseg_subjects"]["subjects"]
+    planes = inputs.get("totalseg_planes")
     out, unread = [], []
     repaired = {row["repaired_from"]: row for row in inputs["enhance_pet"] if "repaired_from" in row}
     for row in inputs["enhance_pet"]:
@@ -364,7 +376,7 @@ def studies_of(inputs):
         study["id"] = row["id"]
         out.append(study)
     for member, make in (("verse", lambda r: verse_study(r, series)),
-                         ("totalsegmentator", lambda r: totalseg_study(r, subjects))):
+                         ("totalsegmentator", lambda r: totalseg_study(r, subjects, planes))):
         for row in inputs[member]:
             if "error" in row:
                 unread.append({"member": member, "id": row["id"], "error": row["error"]})
@@ -788,6 +800,8 @@ def admission(inputs):
                  "every study of the three members with its verdict, its two ends and the levels a segmenter must "
                  "add. Written by `python3 tools/gold3_field.py write`; never edited by hand.",
         "rule": rule_record(),
+        "planes": (inputs["totalseg_planes"]["source"] if inputs.get("totalseg_planes")
+                   else "the spinal cord and the column (image_planes), until the census reads each TotalSegmentator CT's own extent"),
         "tables": table,
         "checks": {"head_with_c1_c2_hidden": hide_and_judge(studies, table, ("C1", "C2"), "head"),
                    "foot_with_sacrum_hidden": hide_and_judge(studies, table, ("sacrum",), "foot"),
@@ -878,6 +892,7 @@ def rule_record():
                     "an undrawn one is in view when the field's foot lies below where the sacrum's top lies in 95 of "
                     "100 spines. The field is read "
                     "over each level along the world's vertical line, and a padded grid's field ends where the "
+                    "CT's own constant slices begin once the census has read the CT (planes.json), else where the "
                     "spinal cord and the column stop together. A name missing between two drawn levels is a level "
                     "to add when their centres stand more than room_times the study's spacing of neighbours apart, "
                     "else a count variant, flagged.",

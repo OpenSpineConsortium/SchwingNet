@@ -389,6 +389,20 @@ class Geometry(unittest.TestCase):
         self.assertEqual(found["levels"]["C6"]["field_top"], 71.0)
         self.assertFalse(found["levels"]["C6"]["head_cut"])
 
+    def test_the_cts_own_planes_replace_the_cords_once_the_census_has_read_them(self):
+        # the census read the CT itself: its constant slices begin 10 mm above the cord's end, and a subject
+        # it does not list is not padded, whatever the cord says (the owner's rule of 2026-10-29 23:46 UTC)
+        row = self.padded(-22.7)
+        own = {"source": "census job 7", "planes": {"s0102": [-12.7, None]}}
+        found = field.totalseg_study(row, {}, own)
+        self.assertEqual(found["levels"]["C6"]["field_top"], -11.9)
+        self.assertEqual(found["image_planes"], [True, False])
+        unlisted = field.totalseg_study({**row, "id": "s0999"}, {}, own)
+        self.assertEqual(unlisted["levels"]["C6"]["field_top"], 71.0)
+        self.assertEqual(unlisted["image_planes"], [False, False])
+        before = field.totalseg_study(row, {}, None)
+        self.assertEqual(before["levels"]["C6"]["field_top"], -21.9)
+
     def tilted_padded(self, cord_top, skull_top=None):
         # Each step along the first axis climbs 0.5 mm: the plane's height changes 33 mm across 100 mm of
         # the slice and 13 mm across a vertebra's 40.
