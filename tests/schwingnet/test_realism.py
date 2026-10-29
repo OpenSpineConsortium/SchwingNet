@@ -7,6 +7,7 @@ import math
 from pathlib import Path
 
 import pytest
+from icontract import ViolationError
 
 from schwingnet.realism import (
     CHANCE_AUC,
@@ -23,6 +24,7 @@ from schwingnet.realism import (
     PROMPT,
     PROMPT_LINES,
     REPLICATION,
+    REPLICATION_WORDS,
     SPACES,
     STAGE_CLASS,
     STAGE_WHAT,
@@ -324,6 +326,16 @@ def test_a_null_that_tells_a_set_from_itself_leaves_its_space_undecided(word, lo
 )
 def test_the_replication_reads_the_edits_through_the_raw_renders_control(kept_word, raw_word, word):
     assert replication_word(kept_word, raw_word) == word
+
+
+def test_every_pair_of_verdict_words_reads_as_one_replication_word_under_its_contracts():
+    # The gate's CrossHair cannot build these strings (pyproject.toml, unproven), so the contracts
+    # are run here over every pair of the four words, and refuse any other word.
+    for kept_word in VERDICTS:
+        for raw_word in VERDICTS:
+            assert replication_word(kept_word, raw_word) in REPLICATION_WORDS
+    with pytest.raises(ViolationError):
+        replication_word("reproduced", "separable")
 
 
 def test_the_frozen_lines_name_every_number_the_replication_runs_by_once():
