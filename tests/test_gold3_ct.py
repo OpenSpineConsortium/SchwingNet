@@ -214,7 +214,22 @@ def bucket_for(rows):
 # The synthetic facts' 37 studies: 0034 has no C2, 0036 is repaired, the rest are whole.
 TIERS_OF_SYNTHETIC = {"gold3": 35, "gold4": 1, "silver3": 1}
 COPIED = (gold3.MEMBERS, gold3.VERSE, gold3.TOTALSEG, gold3.RECORD, gold3.RULE, gold3.TEST_PERSONS, gold3.HOLDOUT,
-          gold3.LICENCES, gold3.TOOL)
+          gold3.LICENCES, gold3.TOOL, gold3.ADMISSION, gold3.VERSE_FACTS, gold3.VERSE_SERIES, gold3.TOTALSEG_FACTS)
+
+
+def recorded(member):
+    """A member as the committed members.json records it, so the counts below follow the records."""
+    members = json.loads((ROOT / gold3.MEMBERS).read_text(encoding="utf-8"))["members"]
+    return next(m for m in members if m["member"] == member)
+
+
+def rows_of(member):
+    entry = recorded(member)
+    return entry["gold3"] + entry["gold4"] + entry["silver3"]
+
+
+def gold3_persons(member):
+    return recorded(member)["persons_by_records"][0]
 
 
 def write_json(path, value):
@@ -742,10 +757,12 @@ class Dataset(Scratch):
     def test_the_committed_files_build_with_no_facts(self):
         repo = mini_repo(self.tmp / "repo")
         db = self.built(repo)
-        self.assertEqual(db.execute("SELECT COUNT(*) FROM item").fetchone()[0], 17)
+        self.assertEqual(db.execute("SELECT COUNT(*) FROM item").fetchone()[0], rows_of("verse") + rows_of("totalsegmentator"))
         counts = {r["member"]: (r["gold3"], r["persons_low"], r["persons_high"])
                   for r in db.execute("SELECT * FROM member_count WHERE site = 'all'")}
-        self.assertEqual(counts, {"enhance_pet": (0, 865, 1478), "verse": (17, 17, 17), "totalsegmentator": (0, 142, 156)})
+        self.assertEqual(counts, {"enhance_pet": (0, 865, 1478),
+                                  **{m: (recorded(m)["gold3"], gold3_persons(m), gold3_persons(m))
+                                     for m in ("verse", "totalsegmentator")}})
 
     def test_the_synthetic_facts_give_their_classes_tiers_and_statuses(self):
         repo = mini_repo(self.tmp / "repo", synthetic_facts())
@@ -811,7 +828,7 @@ class Dataset(Scratch):
         repo = mini_repo(self.tmp / "repo", synthetic_facts())
         db = self.built(repo)
         persons = {r["member"]: r["person_keys"] for r in db.execute("SELECT * FROM gold3_persons_by_member")}
-        self.assertEqual(persons["verse"], 17)
+        self.assertEqual(persons["verse"], gold3_persons("verse"))
         self.assertTrue(db.execute("SELECT COUNT(*) FROM qa_failures WHERE check_id = 'Q06'").fetchone()[0])
         self.assertTrue(db.execute("SELECT COUNT(*) FROM anomalies_by_class_and_status").fetchone()[0])
 
@@ -878,7 +895,7 @@ class Store(Scratch):
         code, out, _ = run("--repo", self.repo, "query", "SELECT member, COUNT(*) AS n FROM item GROUP BY member",
                            "--root", self.store, "--json")
         self.assertEqual(code, 0)
-        self.assertIn({"member": "verse", "n": 17}, [json.loads(line) for line in out.splitlines()])
+        self.assertIn({"member": "verse", "n": rows_of("verse")}, [json.loads(line) for line in out.splitlines()])
         code, _, err = run("--repo", self.repo, "query", "DELETE FROM item", "--root", self.store)
         self.assertEqual(code, 1)
         self.assertIn("gold3_ct:", err)
@@ -990,7 +1007,7 @@ class Pages(Scratch):
         data = json.loads((repo / gold3.PAGE_DATA).read_text(encoding="utf-8"))
         self.assertTrue(data["facts_committed"])
         self.assertEqual(data["studies"]["columns"], list(gold3.PAGE_COLUMNS))
-        self.assertEqual(len(data["studies"]["rows"]), 17 + 37)
+        self.assertEqual(len(data["studies"]["rows"]), rows_of("verse") + rows_of("totalsegmentator") + 37)
 
     def test_check_fails_when_the_classes_miss_the_notes_table(self):
         repo = mini_repo(self.tmp / "repo", synthetic_facts())

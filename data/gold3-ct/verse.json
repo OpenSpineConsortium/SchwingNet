@@ -1,5 +1,5 @@
 {
- "about": "VerSe's 17 gold tier 3 CT series, one person each, with what the committed records say of each; no paths, which are in data/gold3-ct/members.json as a pattern. Gold 3 is provisional for all 17 until the sacrum is confirmed in each field on the grid, since VerSe labels no sacrum.",
+ "about": "VerSe's 17 series that the older records read, one person each, with what those records say of each; no paths, which are in data/gold3-ct/members.json as a pattern. Since 2026-10-29 every one of VerSe's 374 series has a row in data/gold3-ct/verse/facts.jsonl and the field test (tools/gold3_field.py, data/gold3-ct/admission.json) decides which are gold 3; these 17 keep their reads, which tools/gold3_ct.py gives their anomaly rows in place of the call by names.",
  "list_source": "pull request #420 (commit 4ff8301), data/corpus-tiers/sources.json rows verse and versefusion, from spinesurg-ct-nnunet's transitional_registry/verse/screened.csv columns mask and junction_ls_in_fov: 17 series of 17 distinct persons whose release masks run from C1 or C2 to L4-L6 with the lumbosacral junction in the field; bordercall holdings/gold-tier-3.md counts the same 17",
  "variant_vocabulary": "tools/anomaly_route.py truth_of: L6, T13, four_lumbar, eleven, normal; unread where no read is recorded",
  "series": [
