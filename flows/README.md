@@ -62,7 +62,13 @@ enforced and a page that shows its progress in the browser; a plain Slurm job is
   or script does not hold, whose PREREG is not the one frozen or leads out of the checkout, or
   whose PREREG has a Covers line for a flow that names no part (no `prereg_part`).
 - A PREREG is frozen as the Lab Recipe says, `sha256sum PREREG.md > PREREG.md.sha256` in its
-  folder, both committed, and never edited again: a departure goes in DEVIATIONS.md beside it. The
+  folder, both committed, and never edited again: a departure goes in DEVIATIONS.md beside it. Git
+  holds the freeze too, since an edit with its .sha256 written again passes every check of the
+  bytes: `python3 flows/stage_registry.py frozen`, in scripts/check.sh, fails where a PREREG.md or
+  PREREG.md.sha256 under docs/research/ that origin/main holds differs at HEAD, or a DEVIATIONS.md
+  beside a frozen PREREG no longer begins with its text there (in CI, whose checkout of a pull
+  request is one commit deep, it fetches main one commit deep first; a clone with no origin/main
+  skips it with a line). The
   launcher refuses a kind whose PREREG is missing or moved before it imports Metaflow, with the
   recipe's exit 90 and the line `LaunchError: ... STOP: <PREREG> changed since the freeze`, so the
   job does nothing. A PREREG's line `Covers: <part>, ...` names the parts of its kind it covers,

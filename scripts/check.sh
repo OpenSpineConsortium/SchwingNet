@@ -123,6 +123,11 @@ python3 tools/report.py check-recorded
 # standard library, fails here on a line whose flow class, job script or PREREG does not hold, a
 # PREREG edited since its PREREG.md.sha256 froze it among them.
 python3 flows/stage_registry.py check
+# The same freeze held by git, since a PREREG.md edited with its PREREG.md.sha256 written again passes the
+# line above: no PREREG.md or PREREG.md.sha256 that origin/main holds under docs/research/ may change, and a
+# DEVIATIONS.md beside a frozen one only grows. CI checks out a pull request's merge commit one commit deep,
+# so there it fetches main one commit deep first; a clone with no origin/main skips it with a line.
+python3 flows/stage_registry.py frozen
 
 # The textbook's storage panel (docs/textbook/figures/22/, chapter 22) is drawn by tools/storage_panel.py from
 # the committed snapshot of spine-datasets' feed, standard library: a snapshot refreshed without the page built

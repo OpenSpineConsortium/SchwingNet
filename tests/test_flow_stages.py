@@ -11,6 +11,7 @@ lines (flows/stage_progress.py), and the page drawn off the grid from the gate's
 
 import hashlib
 import importlib.util
+import io
 import json
 import os
 import shutil
@@ -20,7 +21,9 @@ import tempfile
 import time
 import unittest
 import warnings
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parent.parent
 LAUNCH = ROOT / "flows" / "launch.py"
@@ -190,6 +193,141 @@ class RegistryTest(unittest.TestCase):
         self.assertEqual(done.returncode, 0, done.stderr)
         self.assertRegex(done.stdout, r"^docs/research/block-smoke/PREREG\.md [0-9a-f]{64}\n$")
         done = subprocess.run([sys.executable, str(ROOT / "flows" / "stage_registry.py"), "check"], cwd=ROOT,
+                              capture_output=True, text=True, timeout=60)
+        self.assertEqual(done.returncode, 0, done.stderr)
+
+
+# No git of these tests runs gc or maintenance on its own, which once raced a scratch folder's removal
+# on GitHub's runners; set both in the environment and in each scratch repository's config.
+QUIET = {"gc.auto": "0", "gc.autoDetach": "false", "maintenance.auto": "false", "maintenance.autoDetach": "false",
+         "receive.autogc": "false"}
+GIT_ENV = {"GIT_AUTHOR_NAME": "Test", "GIT_AUTHOR_EMAIL": "test@example.invalid", "GIT_COMMITTER_NAME": "Test",
+           "GIT_COMMITTER_EMAIL": "test@example.invalid", "GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": os.devnull,
+           "GIT_CONFIG_COUNT": str(len(QUIET)), **{f"GIT_CONFIG_KEY_{i}": key for i, key in enumerate(QUIET)},
+           **{f"GIT_CONFIG_VALUE_{i}": value for i, value in enumerate(QUIET.values())}}
+
+
+class FrozenTest(unittest.TestCase):
+    """`stage_registry.py frozen` on scratch repositories: what main froze never changes, whatever a
+    pull request writes beside it, and a DEVIATIONS.md beside a frozen PREREG only grows."""
+
+    def setUp(self):
+        patcher = mock.patch.dict(os.environ, GIT_ENV)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        self.tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
+        self.repo = self.tmp / "repo"
+        self.init(self.repo)
+        self.study = self.repo / "docs" / "research" / "study"
+        freeze(self.study)
+        (self.study / "DEVIATIONS.md").write_text("# Deviations\n\n- 2026-10-29: the first.\n", encoding="utf-8")
+        self.commit("the study, frozen")
+        self.git("branch", "-M", "main")
+        self.git("checkout", "-q", "-b", "topic")
+
+    def git(self, *words, repo=None):
+        return subprocess.run(["git", "-C", str(repo or self.repo), *words], check=True, capture_output=True, text=True, timeout=60).stdout
+
+    def init(self, repo):
+        repo.mkdir(parents=True, exist_ok=True)
+        self.git("init", "-q", repo=repo)
+        for key, value in QUIET.items():
+            self.git("config", key, value, repo=repo)
+
+    def commit(self, message, repo=None):
+        self.git("add", "-A", repo=repo)
+        self.git("commit", "-q", "--allow-empty", "-m", message, repo=repo)
+
+    def frozen(self, base="main", repo=None, environ=None):
+        out, err = io.StringIO(), io.StringIO()
+        with redirect_stdout(out), redirect_stderr(err):
+            code = registry.frozen_check(base, repo or self.repo, environ if environ is not None else {})
+        return code, out.getvalue() + err.getvalue()
+
+    def test_a_branch_that_leaves_every_frozen_prereg_as_it_was_passes(self):
+        (self.repo / "README.md").write_text("work\n", encoding="utf-8")
+        self.commit("other work")
+        self.assertEqual(self.frozen(), (0, f"registry: every PREREG frozen where HEAD left main ({self.git('rev-parse', 'main')[:12]}) "
+                                             f"is as it was, and every DEVIATIONS.md beside one only grew\n"))
+
+    def test_a_prereg_edited_and_frozen_again_in_one_change_is_refused(self):
+        freeze(self.study, PREREG + "A hypothesis added after the data were seen.\n")
+        self.commit("an edit, frozen again")
+        # the freeze record agrees with the file, so the registry's own check sees nothing wrong
+        self.assertEqual(registry.frozen_hash(self.study / "PREREG.md"), hashlib.sha256((self.study / "PREREG.md").read_bytes()).hexdigest())
+        code, said = self.frozen()
+        self.assertEqual(code, 1, said)
+        self.assertIn("registry: docs/research/study/PREREG.md changed since ", said)
+        self.assertIn("registry: docs/research/study/PREREG.md.sha256 changed since ", said)
+        self.assertIn("a frozen PREREG is never edited; a departure goes in DEVIATIONS.md beside it", said)
+
+    def test_a_frozen_prereg_removed_is_refused_and_a_new_one_is_free_until_it_lands(self):
+        fresh = self.repo / "docs" / "research" / "fresh"
+        freeze(fresh)
+        self.commit("a new design")
+        freeze(fresh, PREREG + "Its design settled before it lands.\n")
+        self.commit("the new design, settled")
+        self.assertEqual(self.frozen()[0], 0)
+        (self.study / "PREREG.md.sha256").unlink()
+        self.commit("the freeze record taken away")
+        code, said = self.frozen()
+        self.assertEqual(code, 1, said)
+        self.assertIn("docs/research/study/PREREG.md.sha256 is gone since ", said)
+
+    def test_deviations_beside_a_frozen_prereg_only_grow(self):
+        deviations = self.study / "DEVIATIONS.md"
+        deviations.write_text(deviations.read_text(encoding="utf-8") + "- 2026-10-30: the second.\n", encoding="utf-8")
+        self.commit("a departure added")
+        self.assertEqual(self.frozen()[0], 0)
+        deviations.write_text("# Deviations\n\n- 2026-10-29: the first, said otherwise.\n", encoding="utf-8")
+        self.commit("a departure rewritten")
+        code, said = self.frozen()
+        self.assertEqual(code, 1, said)
+        self.assertIn("docs/research/study/DEVIATIONS.md no longer begins with its text at ", said)
+        deviations.unlink()
+        self.commit("the departures taken away")
+        self.assertIn("docs/research/study/DEVIATIONS.md is gone at ", self.frozen()[1])
+
+    def test_a_branch_behind_the_base_is_held_to_where_it_left_it(self):
+        # main froze another design after the branch left it, and added a departure: the branch has neither
+        self.git("checkout", "-q", "main")
+        freeze(self.repo / "docs" / "research" / "later")
+        deviations = self.study / "DEVIATIONS.md"
+        deviations.write_text(deviations.read_text(encoding="utf-8") + "- 2026-10-30: on main.\n", encoding="utf-8")
+        self.commit("a later design on main")
+        self.git("checkout", "-q", "topic")
+        self.assertEqual(self.frozen()[0], 0)
+
+    def test_under_github_actions_a_checkout_one_commit_deep_fetches_main_and_elsewhere_it_skips(self):
+        freeze(self.study, PREREG + "An edit.\n")
+        self.commit("an edit, frozen again")
+        work = self.tmp / "work"
+        subprocess.run(["git", "clone", "-q", "--depth", "1", "--branch", "topic", f"file://{self.repo}", str(work)], check=True,
+                       capture_output=True, timeout=60)
+        for key, value in QUIET.items():
+            self.git("config", key, value, repo=work)
+        self.assertEqual(self.git("for-each-ref", "refs/remotes/origin/main", repo=work), "")
+        code, said = self.frozen(base=None, repo=work)
+        self.assertEqual(code, 0, said)
+        self.assertIn("no origin/main here and not under GitHub Actions, so whether a frozen PREREG moved was not checked", said)
+        self.assertFalse((work / ".git" / "FETCH_HEAD").exists(), "nothing is fetched outside GitHub Actions")
+        code, said = self.frozen(base=None, repo=work, environ={"GITHUB_ACTIONS": "true"})
+        self.assertEqual(code, 1, said)
+        self.assertIn("docs/research/study/PREREG.md changed since ", said)
+        self.assertTrue((work / ".git" / "FETCH_HEAD").exists())
+        # a clone with origin/main reads it and fetches nothing
+        self.git("fetch", "-q", "origin", "main:refs/remotes/origin/main", repo=self.tmp / "work")
+        code, said = self.frozen(base=None, repo=work)
+        self.assertEqual(code, 1, said)
+
+    def test_a_base_that_is_not_there_is_said_and_fails(self):
+        code, said = self.frozen(base="no-such-branch")
+        self.assertEqual(code, 1)
+        self.assertIn("no commit no-such-branch in ", said)
+
+    def test_the_repositorys_own_freeze_holds_against_its_head(self):
+        done = subprocess.run([sys.executable, str(ROOT / "flows" / "stage_registry.py"), "frozen", "--base", "HEAD"], cwd=ROOT,
                               capture_output=True, text=True, timeout=60)
         self.assertEqual(done.returncode, 0, done.stderr)
 

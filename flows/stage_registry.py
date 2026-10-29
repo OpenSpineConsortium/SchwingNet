@@ -3,6 +3,7 @@
 Usage:
     python3 flows/stage_registry.py check        # every line of flows/registry.txt holds together
     python3 flows/stage_registry.py prereg KIND  # the kind's PREREG and its sha256, or why it is not frozen
+    python3 flows/stage_registry.py frozen [--base REV]  # no frozen PREREG moved since REV (origin/main)
 
 The owner's rule of 2026-10-29: every deep learning job on the grid runs on the block-based
 Metaflow pipeline, started only by flows/launch.py, under a PREREG.md frozen before the run, with
@@ -30,10 +31,23 @@ both committed, never edited again; a departure goes in DEVIATIONS.md beside it,
 is a new file with its own freeze. A PREREG that moved stops the job with exit 90, as the recipe's
 first line of every producing job does. Standard library only, so the launcher reads it before
 Metaflow is imported and the required check runs it with the runner's python.
+
+The freeze is held by git too, since a PREREG.md edited and its PREREG.md.sha256 written again in
+one change pass every check above: `frozen` fails where any PREREG.md or PREREG.md.sha256 under
+docs/research/ that the base holds differs at HEAD, removed or changed, and where a DEVIATIONS.md
+beside a PREREG frozen at the base does not begin with its text there, since departures are only
+ever added below the last. A PREREG new since the base is free to change until it lands. The base
+is where HEAD left REV, their merge base, where git can tell, so a branch behind REV is not blamed
+for what REV added since; in a clone one commit deep, as CI's checkout of a pull request's merge
+commit is, git cannot, and REV itself is the base. With no --base it is origin/main; where that is
+missing, under GitHub Actions it is fetched one commit deep, as tools/crowd_check.py fetches a
+base, and elsewhere the check says it was skipped, so a clone of one's own is never made shallow.
 """
 
 import hashlib
+import os
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -231,8 +245,117 @@ def problems(repo=ROOT):
     return found
 
 
+# --- the freeze, held by git -----------------------------------------------------------------------
+
+RESEARCH = "docs/research"
+FROZEN_FILES = ("PREREG.md", "PREREG.md.sha256")
+GROWS_ONLY = "DEVIATIONS.md"
+DEFAULT_BASE = "origin/main"
+
+
+def git(repo, *words, text=True):
+    return subprocess.run(["git", "-C", str(repo), *words], capture_output=True, text=text)
+
+
+def has_commit(repo, revision):
+    return git(repo, "rev-parse", "-q", "--verify", f"{revision}^{{commit}}").returncode == 0
+
+
+def base_of(repo, base=None, environ=None):
+    """The revision HEAD is held to: the one given, which must be there; else origin/main, fetched
+    one commit deep under GitHub Actions where the checkout lacks it; else None, where nothing is
+    fetched and the check is skipped."""
+    environ = os.environ if environ is None else environ
+    if base is not None:
+        if not has_commit(repo, base):
+            raise RegistryError(f"no commit {base} in {repo} to hold the frozen PREREGs to")
+        return base
+    if has_commit(repo, DEFAULT_BASE):
+        return DEFAULT_BASE
+    if environ.get("GITHUB_ACTIONS") != "true":
+        return None
+    done = git(repo, "fetch", "--no-tags", "--quiet", "--depth=1", "origin", "main")
+    if done.returncode != 0:
+        raise RegistryError(f"could not fetch main from origin to hold the frozen PREREGs to ({done.stderr.strip()[:200]}); run the check again")
+    return git(repo, "rev-parse", "FETCH_HEAD").stdout.strip()
+
+
+def merge_base(repo, base):
+    """Where HEAD left the base, or the base itself where git cannot tell, as in a clone one commit deep."""
+    done = git(repo, "merge-base", base, "HEAD")
+    return done.stdout.strip() if done.returncode == 0 and done.stdout.strip() else base
+
+
+def research_blobs(repo, revision):
+    """The PREREG.md, PREREG.md.sha256 and DEVIATIONS.md files under docs/research at a revision,
+    each path with its blob."""
+    done = git(repo, "ls-tree", "-r", "-z", revision, "--", RESEARCH)
+    if done.returncode != 0:
+        raise RegistryError(f"git could not list {RESEARCH} at {revision}: {done.stderr.strip()[:200]}")
+    blobs = {}
+    for record in filter(None, done.stdout.split("\0")):
+        head, path = record.split("\t", 1)
+        if Path(path).name in (*FROZEN_FILES, GROWS_ONLY):
+            blobs[path] = head.split()[2]
+    return blobs
+
+
+def blob_bytes(repo, blob):
+    return git(repo, "cat-file", "blob", blob, text=False).stdout
+
+
+def frozen_at(blobs, folder):
+    """Whether a folder held a frozen PREREG: its PREREG.md and the PREREG.md.sha256 beside it."""
+    return all(f"{folder}/{name}" in blobs for name in FROZEN_FILES)
+
+
+def frozen_problems(repo, base):
+    """What HEAD changed of what the base froze, one line each: a PREREG.md or PREREG.md.sha256 the
+    base holds that HEAD removed or changed, and a DEVIATIONS.md beside a PREREG frozen at the base
+    that HEAD removed or that no longer begins with its text there."""
+    at_base, at_head = research_blobs(repo, base), research_blobs(repo, "HEAD")
+    found = []
+    for path, blob in sorted(at_base.items()):
+        now = at_head.get(path)
+        if now == blob:
+            continue
+        name, folder = Path(path).name, str(Path(path).parent)
+        if name in FROZEN_FILES:
+            found.append(f"{path} {'is gone' if now is None else 'changed'} since {base}: a frozen PREREG is never "
+                         f"edited; a departure goes in {GROWS_ONLY} beside it and a new design is a new file with its own freeze")
+        elif frozen_at(at_base, folder) and (now is None or not blob_bytes(repo, now).startswith(blob_bytes(repo, blob))):
+            found.append(f"{path} {'is gone' if now is None else 'no longer begins with its text'} at {base}: it only "
+                         f"grows, each departure dated and added below the last")
+    return found
+
+
+def frozen_check(base=None, repo=ROOT, environ=None):
+    """The command `frozen`: 0 where no frozen PREREG moved since the base or the check was skipped, 1 otherwise."""
+    try:
+        given = base_of(repo, base, environ)
+        if given is None:
+            print(f"registry: no {DEFAULT_BASE} here and not under GitHub Actions, so whether a frozen PREREG moved was not "
+                  f"checked; CI checks it, or name a base with --base")
+            return 0
+        held = merge_base(repo, given)
+        found = frozen_problems(repo, held)
+    except RegistryError as error:
+        print(f"registry: {error}", file=sys.stderr)
+        return 1
+    for line in found:
+        print(f"registry: {line}", file=sys.stderr)
+    if not found:
+        print(f"registry: every PREREG frozen where HEAD left {given} ({held[:12]}) is as it was, and every {GROWS_ONLY} "
+              f"beside one only grew")
+    return 1 if found else 0
+
+
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
+    if argv == ["frozen"]:
+        return frozen_check()
+    if len(argv) == 3 and argv[:2] == ["frozen", "--base"]:
+        return frozen_check(argv[2])
     if argv == ["check"]:
         found = problems()
         for line in found:
