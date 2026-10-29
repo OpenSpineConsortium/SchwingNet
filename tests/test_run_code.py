@@ -30,6 +30,7 @@ ROOT = Path(__file__).resolve().parent.parent
 PYDRV = tuple(re.findall(r"^export PYDRV=\$REPO/(\S+)$", (ROOT / "grid" / "gate.sh").read_text(encoding="utf-8"), re.M))
 ENTRIES = {"row": ("tools/flow.py",), "state": ("tools/block_sweep.py",), "sweep": ("flows/sweep.py",), "v1": ("flows/v1.py",),
            "experiment": ("flows/experiment.py",),
+           "latency": ("flows/latency.py",),
            "bank": ("flows/bank.py", *PYDRV), "catalog": ("flows/catalog.py", *PYDRV),
            "drr_gap": ("flows/drr_gap.py",), "drr_seg": ("flows/drr_seg.py",), "realism": ("flows/realism.py",)}
 # The calls that load a neighbour of tools/ by its name: tools/domain_gap.py names its own helper tool,
@@ -272,6 +273,14 @@ class ListsTest(unittest.TestCase):
     def test_a_requested_experiment_holds_the_run_it_starts(self):
         """A change to anything tools/flow.py runs names a new experiment flow run, as it names a new run."""
         self.assertLessEqual(set(self.code.KINDS["row"]), set(self.code.KINDS["experiment"]))
+
+    def test_a_latency_run_holds_the_trainer_its_tools_load_and_both_of_its_tools(self):
+        """tools/latency.py loads tools/train.py for the model and its crops, so a change to anything a
+        row runs names a new latency run, and so does a change to either latency tool or its rules."""
+        kinds = self.code.KINDS
+        self.assertLessEqual(set(kinds["row"]), set(kinds["latency"]))
+        self.assertLessEqual({"tools/latency.py", "tools/sweep.py", "src/schwingnet/latency.py", "src/schwingnet/sweep.py",
+                              "flows/latency.py", "flows/flow_tool.py", "flows/stage.py"}, set(kinds["latency"]))
 
     def test_the_drr_studys_copy_holds_every_file_its_two_kinds_name(self):
         # prepare copies CODE_PATHS at its commit and every later step's launcher names the run's code
