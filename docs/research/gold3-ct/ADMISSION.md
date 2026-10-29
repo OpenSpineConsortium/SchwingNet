@@ -2,11 +2,11 @@
 
 Written by `python3 tools/gold3_field.py write` from data/gold3-ct/admission.json; never edited by hand. The rule, its reasons and the definition of held are docs/research/gold3-ct/README.md. Confidential.
 
-## The rule, version 2
+## The rule, version 3
 
-A CT is admitted when its field holds C2 and the top of the sacrum, whatever its masks hold; a level its masks do not draw is completed by a segmenter, kept as a machine mask of its own. The head end is out when the field's top cuts C2 and the level below it alike, a sliver of C2; the foot end is out when the field's foot cuts the sacrum, with less than s1_view_mm of it in the field, and the foot-most level above it too, and a border case when it cuts the sacrum alone or when the level above a sacrum in view runs on to the field's foot. The field is read over each level along the world's vertical line, and a padded grid's field ends where the spinal cord and the column stop together. A name missing between two drawn levels is a level to add when their centres stand more than room_times the study's spacing of neighbours apart, else a count variant, flagged.
+A CT is admitted when its field holds the foot of C2 and the top of the sacrum, whatever its masks hold; a level its masks do not draw is completed by a segmenter, kept as a machine mask of its own. A drawn C2 is in view however the field's top cuts it, unless it cuts the level below C2 too, a sliver of C2, and the end is out; an undrawn C2 is in view when the field's top lies above where C2's foot lies in 95 of 100 spines. A drawn sacrum is in view however little of it the field holds; an undrawn one is in view when the field's foot lies below where the sacrum's top lies in 95 of 100 spines. The field is read over each level along the world's vertical line, and a padded grid's field ends where the spinal cord and the column stop together. A name missing between two drawn levels is a level to add when their centres stand more than room_times the study's spacing of neighbours apart, else a count variant, flagged.
 
-Asked: the owner, 2026-10-28 22:58 UTC (#443's question): "if the full spune is in view in the volume, and just missing a mask or two, that should just be completed using a segmentation software of choice ... i dont think i should leave out any spines that have ct volumes with the full spine in view".
+Asked: the owner, 2026-10-28 22:58 UTC (#443's question): "if the full spune is in view in the volume, and just missing a mask or two, that should just be completed using a segmentation software of choice ... i dont think i should leave out any spines that have ct volumes with the full spine in view"; and for version 3, 2026-10-29 12:58 UTC: "If the top of the sacrum is visible that is acceptable, which I believe is all of them but check" and "Same for the bottom c2".
 
 ## The verdicts
 
@@ -14,16 +14,16 @@ A study is admitted when both ends are drawn or in view; look means a border cas
 
 | member | studies | admitted | whole by masks | to complete | look | not admitted | admitted persons |
 |---|---|---|---|---|---|---|---|
-| enhance_pet | 1597 | 1560 | 1560 | 0 | 1 | 36 | - |
-| verse | 374 | 18 | 0 | 18 | 9 | 347 | 18 |
-| totalsegmentator | 1939 | 151 | 145 | 6 | 1 | 1787 | 151 |
+| enhance_pet | 1597 | 1561 | 1560 | 1 | 0 | 36 | - |
+| verse | 374 | 21 | 0 | 21 | 6 | 347 | 21 |
+| totalsegmentator | 1939 | 154 | 147 | 7 | 0 | 1785 | 154 |
 
 ## The head end
 
 | member | C2 drawn | C2 in view, not drawn | border | out | no column |
 |---|---|---|---|---|---|
-| enhance_pet | 1560 | 0 | 1 | 36 | 0 |
-| verse | 76 | 1 | 10 | 287 | 0 |
+| enhance_pet | 1560 | 1 | 0 | 36 | 0 |
+| verse | 76 | 4 | 7 | 287 | 0 |
 | totalsegmentator | 494 | 0 | 61 | 1222 | 162 |
 
 ## The foot end
@@ -31,8 +31,8 @@ A study is admitted when both ends are drawn or in view; look means a border cas
 | member | sacrum drawn | sacrum in view, not drawn | border | out | no column |
 |---|---|---|---|---|---|
 | enhance_pet | 1597 | 0 | 0 | 0 | 0 |
-| verse | 0 | 293 | 3 | 78 | 0 |
-| totalsegmentator | 877 | 5 | 8 | 918 | 131 |
+| verse | 0 | 294 | 2 | 78 | 0 |
+| totalsegmentator | 901 | 8 | 0 | 899 | 131 |
 
 ## What a segmenter must draw
 
@@ -40,23 +40,23 @@ Levels to add over the admitted studies, by member: each a machine mask of its o
 
 | member | levels to add (studies) |
 |---|---|
-| enhance_pet | none |
-| verse | C2 1, sacrum 18 |
-| totalsegmentator | T4 1, T5 1, T6 2, T7 2, T8 3, T9 2, T10 1, T11 2, T12 2, L1 1, L4 3, L5 3, sacrum 2 |
+| enhance_pet | C2 1 |
+| verse | C2 4, sacrum 21 |
+| totalsegmentator | C4 1, C5 1, T4 1, T5 1, T6 2, T7 2, T8 3, T9 2, T10 1, T11 2, T12 2, L1 1, L4 3, L5 3, sacrum 2 |
 
 ## Flags on the admitted studies
 
 | member | flags (studies) |
 |---|---|
 | enhance_pet | c2_at_field_top 17, name_skipped 2, no_l5 39, sacrum_at_field_foot 1, small_column 1 |
-| verse | name_skipped 1, no_l5 3 |
-| totalsegmentator | c2_at_field_top 5, child 22, cut_in_plane 4, label_spans_levels 12, no_l5 1, sacrum_at_field_foot 14, small_column 17, stray_labels 9 |
+| verse | name_skipped 2, no_l5 3 |
+| totalsegmentator | c2_at_field_top 6, child 23, cut_in_plane 4, label_spans_levels 12, level_past_sacrum_top 2, no_l5 2, sacrum_at_field_foot 17, small_column 17, stray_labels 10 |
 
-What each flag means: c2_at_field_top, the field's top cuts C2; sacrum_at_field_foot, the field's foot cuts a sacrum label of any size; name_skipped, one name the column's order expects is missing where its neighbours' centres stand no farther apart than its own spacing of neighbours allows (a count variant, as eleven thoracic and then L1, or a skipped label, within 1.4 times that spacing), so nothing is added for it and the count reads it; cut_in_plane, a level touches a side face of the grid; no_l5, L4 is the last lumbar, no L5 or L6 drawn, with the foot in view; stray_labels, a label of fewer voxels than the floor; child, under 18 at the scan; small_column, C2's top to L1's foot under 300 mm; label_spans_levels, a label more than 4 times the study's median level height, as one label drawn over several bodies. A flag asks for a look and leaves a study's verdict as it is.
+What each flag means: c2_at_field_top, the field's top cuts C2; sacrum_at_field_foot, the field's foot cuts a sacrum label of any size; level_past_sacrum_top, the foot-most level above a drawn sacrum runs on past the sacrum's top to the field's foot, a label over the junction; name_skipped, one name the column's order expects is missing where its neighbours' centres stand no farther apart than its own spacing of neighbours allows (a count variant, as eleven thoracic and then L1, or a skipped label, within 1.4 times that spacing), so nothing is added for it and the count reads it; cut_in_plane, a level touches a side face of the grid; no_l5, L4 is the last lumbar, no L5 or L6 drawn, with the foot in view; stray_labels, a label of fewer voxels than the floor; child, under 18 at the scan; small_column, C2's top to L1's foot under 300 mm; label_spans_levels, a label more than 4 times the study's median level height, as one label drawn over several bodies. A flag asks for a look and leaves a study's verdict as it is.
 
 ## The head table
 
-How far C2's top lies above each level's top, in mm, in spines of all three members that draw both whole.
+How far C2's top (a level's own row) and C2's foot (its row to C2's foot) lie above each level's top, in mm, in spines of all three members that draw both whole; the rule reads the rows to C2's foot.
 
 | level | spines | p5 | median | p95 |
 |---|---|---|---|---|
@@ -148,16 +148,17 @@ The rule run with C1 and C2 hidden on spines that draw them whole and a level be
 
 | check | result (studies) |
 |---|---|
-| head_with_c1_c2_hidden | enhance_pet: border 11, enhance_pet: in_view 1532, totalsegmentator: border 12, totalsegmentator: in_view 352, verse: in_view 75 |
+| head_with_c1_c2_hidden | enhance_pet: in_view 1543, totalsegmentator: in_view 364, verse: in_view 75 |
 | foot_with_sacrum_hidden | enhance_pet: in_view 1596, totalsegmentator: in_view 791, totalsegmentator: out 1 |
 | head_most_level_cut_at_the_top | enhance_pet: out 36, totalsegmentator: out 1193, verse: out 48 |
 
-## How the counts move with S1_VIEW_MM (20 mm in the rule)
+## How the counts move with S1_VIEW_MM (0 mm in the rule)
 
 | s1 view mm | verdicts (studies) |
 |---|---|
-| 10 | admitted 1730, look 11, not_admitted 2169 |
-| 30 | admitted 1728, look 12, not_admitted 2170 |
+| 10 | admitted 1735, look 6, not_admitted 2169 |
+| 20 | admitted 1733, look 7, not_admitted 2170 |
+| 30 | admitted 1732, look 8, not_admitted 2170 |
 
 ## Unread
 

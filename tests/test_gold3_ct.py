@@ -215,6 +215,9 @@ def bucket_for(rows):
 
 # The synthetic facts' 37 studies: 0034 has no C2, 0036 is repaired, the rest are whole.
 TIERS_OF_SYNTHETIC = {"gold3": 35, "gold4": 1, "silver3": 1}
+# Their gold 3 persons: 19 autoPET studies, one person each with no repeat among 37, and 16 at the sites
+# with no person id, at most one person each.
+PERSONS_OF_SYNTHETIC = [19, 35]
 COPIED = (gold3.MEMBERS, gold3.VERSE, gold3.TOTALSEG, gold3.RECORD, gold3.RULE, gold3.TEST_PERSONS, gold3.HOLDOUT,
           gold3.LICENCES, gold3.TOOL, gold3.ADMISSION, gold3.VERSE_FACTS, gold3.VERSE_SERIES, gold3.TOTALSEG_FACTS)
 
@@ -247,7 +250,7 @@ def mini_repo(folder, facts=None):
         shutil.copyfile(ROOT / rel, folder / rel)
     if facts is not None:
         members = json.loads((ROOT / gold3.MEMBERS).read_text(encoding="utf-8"))
-        members["members"][0].update(TIERS_OF_SYNTHETIC)
+        members["members"][0].update(TIERS_OF_SYNTHETIC, persons_by_records=PERSONS_OF_SYNTHETIC)
         write_json(folder / gold3.MEMBERS, members)
         write_json(folder / gold3.RECORD, synthetic_record(json.loads((ROOT / gold3.RECORD).read_text(encoding="utf-8"))))
         write_json(folder / gold3.BUCKET, bucket_for(facts))
@@ -779,7 +782,7 @@ class Dataset(Scratch):
         self.assertEqual(db.execute("SELECT COUNT(*) FROM item").fetchone()[0], rows_of("verse") + rows_of("totalsegmentator"))
         counts = {r["member"]: (r["gold3"], r["persons_low"], r["persons_high"])
                   for r in db.execute("SELECT * FROM member_count WHERE site = 'all'")}
-        self.assertEqual(counts, {"enhance_pet": (0, 865, 1478),
+        self.assertEqual(counts, {"enhance_pet": (0, *recorded("enhance_pet")["persons_by_records"]),
                                   **{m: (recorded(m)["gold3"], gold3_persons(m), gold3_persons(m))
                                      for m in ("verse", "totalsegmentator")}})
 
@@ -968,9 +971,33 @@ class FieldRows(Scratch):
         locations = [r[0] for r in db.execute("SELECT ct_location FROM item WHERE member = 'totalsegmentator'")]
         self.assertTrue(locations and not any("<root>" in place for place in locations))
 
-    def test_a_border_case_of_the_field_test_is_provisional_silver_3(self):
+    def test_a_c2_the_field_holds_the_foot_of_is_provisional_gold_3_and_no_class_share(self):
         # 0034's field reaches 20 mm above C3's top: past C2's foot in every spine, short of C2's top in most.
+        # Rule 3 asks for C2's foot alone, so the study is gold 3 while a segmenter adds C2, and its class,
+        # which needs C2 drawn, is no share's.
         facts = [r for r in synthetic_facts() if r["id"] != "0034"] + [facts_row("0034", NORMAL[2:], top=-80.0, top_slice_mm=-60.0)]
+        db = self.built(mini_repo(self.tmp / "repo", sorted(facts, key=lambda r: r["id"])))
+        row = db.execute("SELECT item.tier, item.provisional, anomaly.class FROM item JOIN anomaly ON anomaly.item = item.item"
+                         " WHERE item.item = 'enhance_pet:0034'").fetchone()
+        self.assertEqual(tuple(row), ("gold3", 1, "not_whole"))
+        gold = db.execute("SELECT COUNT(*) FROM item WHERE member = 'enhance_pet' AND tier = 'gold3'").fetchone()[0]
+        self.assertEqual(gold3.class_shares(db, "enhance_pet")[0], gold - 1)
+
+    def test_a_whole_study_the_field_test_admits_with_a_level_to_add_is_provisional(self):
+        # 0099 draws no L3 between L2 and L4: version 1 keeps it whole, since a lumbar label missing never
+        # drops a spine, and the field test admits it with L3 to add, so it waits on a segmenter like any other.
+        row = facts_row("0099")
+        del row["labels"]["22"]
+        row["distances_mm"] = distances(row["labels"])
+        facts = synthetic_facts() + [row]
+        db = self.built(mini_repo(self.tmp / "repo", sorted(facts, key=lambda r: r["id"])))
+        tier, provisional, reason = db.execute("SELECT tier, provisional, tier_reason FROM item WHERE item = 'enhance_pet:0099'").fetchone()
+        self.assertEqual((tier, provisional), ("gold3", 1))
+        self.assertTrue(reason.startswith("C2's foot and the sacrum's top in the field (rule 3); a segmenter adds L3"), reason)
+
+    def test_a_border_case_of_the_field_test_is_provisional_silver_3(self):
+        # 0034's field reaches 5 mm above C4's top: past where C2's foot lies in some spines, short of it in others.
+        facts = [r for r in synthetic_facts() if r["id"] != "0034"] + [facts_row("0034", NORMAL[3:], top=-80.0, top_slice_mm=-75.0)]
         db = self.built(mini_repo(self.tmp / "repo", sorted(facts, key=lambda r: r["id"])))
         row = db.execute("SELECT tier, provisional FROM item WHERE item = 'enhance_pet:0034'").fetchone()
         self.assertEqual(tuple(row), ("silver3", 1))
@@ -1134,6 +1161,16 @@ class Pages(Scratch):
         code, _, err = run("--repo", repo, "check")
         self.assertEqual(code, 1)
         self.assertIn("enhance_pet: the rows give gold 3, gold 4 and silver 3 [35, 1, 1]", err)
+
+    def test_check_fails_when_the_persons_miss_the_records_range(self):
+        repo = mini_repo(self.tmp / "repo", synthetic_facts())
+        members = json.loads((repo / gold3.MEMBERS).read_text(encoding="utf-8"))
+        members["members"][0]["persons_by_records"] = [19, 34]
+        write_json(repo / gold3.MEMBERS, members)
+        self.write_pages(repo)
+        code, _, err = run("--repo", repo, "check")
+        self.assertEqual(code, 1)
+        self.assertIn("enhance_pet: the rows give 19 to 35 gold 3 persons, data/gold3-ct/members.json records 19 to 34", err)
 
     def test_check_fails_on_a_row_that_breaks_the_schema(self):
         facts = synthetic_facts()
