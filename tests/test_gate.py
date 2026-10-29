@@ -43,7 +43,7 @@ FAKE_HPCWORKER = ROOT / "tests" / "fakes" / "hpcworker"
 NEW_SCRIPTS = ("gate.sh", "hpcw.sh", "box.sh", "bin/pixi", "bin/train-cpu-python", "00-setup.sbatch", "00-weights.sbatch",
                "00-carmlspine.sbatch", "v1-driver.sbatch", "experiment-driver.sbatch", "run-xray-chain.sh",
                "run-platform-fetch.sh", "sweep-driver.sbatch", "v1-version.sh", "realism.sbatch", "venv.sh",
-               "drr-gap.sbatch", "drr-seg.sbatch")
+               "drr-gap.sbatch", "drr-seg.sbatch", "morphometry.sbatch", "gold3-census.sbatch")
 ENVS = ("default", "train-cpu", "train-gpu", "telemetry")
 # What bench flexray_drr_gap's word says of a mask folder that is there: the study reads too few CTs'
 # masks as none, which its summary says, so the word says only where the folder is.
@@ -1983,6 +1983,138 @@ esac
             self.assertIn("- exit 0", done.stdout)
         self.assertEqual(len(self.submitted()), 1)
 
+    def test_census_gold3_queues_one_cpu_job_once_and_never_again_without_the_owners_word(self):
+        # the owner's count of 2026-10-29 12:26 UTC is one CPU job: no id, another id and no tool are refused
+        self.assertEqual(self.gate("census").returncode, 64)
+        refused = self.gate("census", "tiers")
+        self.assertEqual(refused.returncode, 64, refused.stdout)
+        self.assertIn("census takes gold3", refused.stdout)
+        self.assertEqual(self.gate("census", "gold3").returncode, 2)
+        (self.repo / "tools" / "gold3_census.py").write_text("", encoding="utf-8")
+        # nor is the one job spent on roots the census would read nothing from
+        empty = self.gate("census", "gold3")
+        self.assertEqual(empty.returncode, 2, empty.stdout)
+        self.assertIn("the census would read nothing from the census tier lists under the lab volume's go2432/ruleclass/tiers; "
+                      f"{self.data}/totalsegmentator_v300; ", empty.stdout)
+        self.assertEqual(self.submitted(), [])
+        self.census_inputs()
+        done = self.gate("census", "gold3")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        lines = self.submitted()
+        # the environments are not made here, and still no setup job goes with it: the job finds its own python
+        self.assertEqual(len(lines), 1, lines)
+        self.assertIn("--class batch --name census_gold3", lines[0])
+        # requeueable, the batch class's default, since a requeued job carries on after the parts it finished
+        self.assertNotIn("--no-requeue", lines[0])
+        self.assertIn("gold3-census.sbatch", lines[0])
+        # the job copies the code from the commit the gate was sent from; none here, where the copy is no repository
+        self.assertTrue(lines[0].endswith(" CENSUS_COMMIT="), lines[0])
+        self.assertFalse((self.repo / "grid" / "logs" / "CENSUS-gold3.sent").exists())
+        job = self.recorded()["census_gold3"]
+        self.live(job)
+        self.assertEqual(self.gate("census", "gold3").returncode, 75)
+        (self.fake / "queue").write_text("", encoding="utf-8")
+        # a job that ended with no report is not queued again: a second one waits for the owner's word
+        again = self.gate("census", "gold3")
+        self.assertEqual(again.returncode, 64, again.stdout)
+        self.assertIn("left no report", again.stdout)
+        report = self.repo / "grid" / "logs" / "CENSUS-gold3.md"
+        report.write_text("# census gold3: job 1 on node, commit abc1234, 2026-10-29 15:00:00 UTC\n"
+                          "- gold4: idc rows 2, admitted 1\n- exit 0 at 2026-10-30 01:00:00 UTC\n", encoding="utf-8")
+        for _ in range(2):
+            done = self.gate("census", "gold3")
+            self.assertEqual(done.returncode, 0, done.stdout)
+            self.assertIn("gold4: idc rows 2, admitted 1", done.stdout)
+        self.assertEqual(len(self.submitted()), 1)
+
+    def allow_census_rerun(self, word):
+        """The owner's word for one more census job, as a pull request commits it in grid/gate.sh."""
+        gate = self.repo / "grid" / "gate.sh"
+        text, count = re.subn(r'(?m)^CENSUS_RERUNS="[^"]*"$', f'CENSUS_RERUNS="{word}"', gate.read_text(encoding="utf-8"))
+        self.assertEqual(count, 1)
+        gate.write_text(text, encoding="utf-8")
+
+    def test_census_gold3_queues_nothing_after_a_lost_answer_until_the_owners_word(self):
+        (self.repo / "tools" / "gold3_census.py").write_text("", encoding="utf-8")
+        self.census_inputs()
+        (self.fake / "lossy").write_text("census_gold3", encoding="utf-8")
+        lost = self.gate("census", "gold3", HPCW_LOSSY=str(self.fake / "lossy"))
+        self.assertNotEqual(lost.returncode, 0, lost.stdout)
+        # the controller queued it and lost its answer: the mark stands and no job is recorded
+        self.assertEqual(len(self.submitted()), 1)
+        self.assertTrue((self.repo / "grid" / "logs" / "CENSUS-gold3.sent").exists())
+        self.assertNotIn("census_gold3", self.recorded())
+        (self.fake / "lossy").write_text("", encoding="utf-8")
+        for _ in range(2):
+            refused = self.gate("census", "gold3")
+            self.assertEqual(refused.returncode, 64, refused.stdout)
+            self.assertIn("no job id came back", refused.stdout)
+            self.assertIn("CENSUS_RERUNS=gold3:lost", refused.stdout)
+        self.assertEqual(len(self.submitted()), 1)
+        # a rerun word naming another job is not this one's
+        self.allow_census_rerun("gold3:4242")
+        self.assertEqual(self.gate("census", "gold3").returncode, 64)
+        self.allow_census_rerun("gold3:lost")
+        done = self.gate("census", "gold3")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("follows a submission whose answer was lost", done.stdout)
+        self.assertEqual(len(self.submitted()), 2)
+        self.assertFalse((self.repo / "grid" / "logs" / "CENSUS-gold3.sent").exists())
+
+    def test_census_gold3_prints_an_unfinished_part_and_reruns_only_on_the_owners_word(self):
+        (self.repo / "tools" / "gold3_census.py").write_text("", encoding="utf-8")
+        self.census_inputs()
+        self.assertEqual(self.gate("census", "gold3").returncode, 0)
+        job = self.recorded()["census_gold3"]
+        logs = self.repo / "grid" / "logs"
+        part = logs / "CENSUS-gold3.md.part"
+        part.write_text(f"# census gold3: job {job} on node, commit abc1234, 2026-10-29 15:00:00 UTC\n"
+                        "- ts142: listed 142, admitted 120\n", encoding="utf-8")
+        shown = self.gate("census", "gold3")
+        self.assertEqual(shown.returncode, 64, shown.stdout)
+        self.assertIn("CENSUS-gold3.md.part, unfinished", shown.stdout)
+        self.assertIn("ts142: listed 142, admitted 120", shown.stdout)
+        self.assertIn(f"CENSUS_RERUNS=gold3:{job}", shown.stdout)
+        self.assertEqual(len(self.submitted()), 1)
+        self.allow_census_rerun(f"gold3:{job}")
+        again = self.gate("census", "gold3")
+        self.assertEqual(again.returncode, 0, again.stdout + again.stderr)
+        self.assertEqual(len(self.submitted()), 2)
+        # the unfinished part is kept under the job it came from, and the new job starts from none
+        self.assertFalse(part.exists())
+        self.assertTrue((logs / f"CENSUS-gold3-{job}.part").exists())
+
+    def test_census_gold3_reruns_a_finished_report_only_for_the_job_the_word_names(self):
+        (self.repo / "tools" / "gold3_census.py").write_text("", encoding="utf-8")
+        self.census_inputs()
+        logs = self.repo / "grid" / "logs"
+        logs.mkdir(parents=True, exist_ok=True)
+        report = logs / "CENSUS-gold3.md"
+        report.write_text("# census gold3: job 77 on node, commit abc1234, 2026-10-29 15:00:00 UTC\n- exit 0\n",
+                          encoding="utf-8")
+        self.allow_census_rerun("gold3:76")
+        kept = self.gate("census", "gold3")
+        self.assertEqual(kept.returncode, 0, kept.stdout)
+        self.assertEqual(self.submitted(), [])
+        self.assertTrue(report.exists())
+        self.allow_census_rerun("gold3:77")
+        again = self.gate("census", "gold3")
+        self.assertEqual(again.returncode, 0, again.stdout + again.stderr)
+        self.assertIn("is job 77's", again.stdout)
+        self.assertEqual(len(self.submitted()), 1)
+        self.assertTrue((logs / "CENSUS-gold3-77.md").exists())
+
+    def census_inputs(self):
+        """What the census reads, as the lab volume and the data root hold them: the tier lists and the
+        members' roots, each empty here, so the gate finds every root and the one job is not spent on none."""
+        tiers = self.tmp / "go2432" / "ruleclass" / "tiers"
+        tiers.mkdir(parents=True, exist_ok=True)
+        for name in ("tier1.tsv", "tier2.tsv"):
+            (tiers / name).write_text("tier\n", encoding="utf-8")
+        for root in ("totalsegmentator_v300", "aws_enhance_pet_labels/raw", "aws_enhance_pet_ct/raw", "tcia_fdg_pet_ct_lesions",
+                     "versefusion/raw/VerSeFusion_data/raw"):
+            (self.data / root).mkdir(parents=True, exist_ok=True)
+
     def realism_inputs(self, *which):
         """The data root as the realism fetches leave it, each named set landed by its marker file, and
         weights, the ImageNet file the weights job makes."""
@@ -2127,6 +2259,112 @@ esac
         lines = self.submitted()
         self.assertEqual(len(lines), 1, lines)
         self.assertIn("--class gpu --name realism_edit", lines[0])
+
+    def morphometry_inputs(self, *which):
+        """The data root as the fetches the morphometry sets read leave it, each named set landed by
+        one file, and engine, the pinned copy's morphometry package under the test's grid/."""
+        markers = {"truth": ("aws_enhance_pet_labels", "raw", "Vertebrae", "0001.nii.gz"),
+                   "verse": ("verse_masks_2026_10_29", "raw", "verse004.nii.gz"),
+                   "totalseg": ("totalsegmentator_v300", "raw", "Totalsegmentator_dataset_v300.zip")}
+        for name in which:
+            if name == "engine":
+                path = self.repo / "grid" / "bordercall" / "morphometry" / "__main__.py"
+            else:
+                path = self.data.joinpath(*markers[name])
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("", encoding="utf-8")
+
+    def test_morphometry_refuses_a_set_it_does_not_know_and_names_each_missing_input_in_turn(self):
+        # no set, two sets and a set that is not one of the count's two are refused before anything is read
+        self.assertEqual(self.gate("morphometry").returncode, 64)
+        self.assertEqual(self.gate("morphometry", "enhance", "verse").returncode, 64)
+        refused = self.gate("morphometry", "spineps")
+        self.assertEqual(refused.returncode, 64, refused.stdout)
+        self.assertIn("enhance or verse", refused.stdout)
+        self.environments_ready()
+        # the pinned copy must carry the engine, whatever has landed; the checkout's grid/ carries it,
+        # so the test's copy drops it first
+        shutil.rmtree(self.repo / "grid" / "bordercall" / "morphometry", ignore_errors=True)
+        self.morphometry_inputs("truth", "verse", "totalseg")
+        for which in ("enhance", "verse"):
+            refused = self.gate("morphometry", which)
+            self.assertEqual(refused.returncode, 2, refused.stdout)
+            self.assertIn("no vendored morphometry under grid/bordercall/", refused.stdout)
+        # then each set's inputs, named in turn
+        shutil.rmtree(self.data)
+        self.data.mkdir()
+        self.morphometry_inputs("engine")
+        refused = self.gate("morphometry", "enhance")
+        self.assertEqual(refused.returncode, 2, refused.stdout)
+        self.assertIn("fetch aws_enhance_pet_labels first", refused.stdout)
+        steps = (((), "fetch verse_masks_2026_10_29 first"), (("verse",), "fetch totalsegmentator_v300 first"))
+        for landed, said in steps:
+            self.morphometry_inputs(*landed)
+            refused = self.gate("morphometry", "verse")
+            self.assertEqual(refused.returncode, 2, refused.stdout)
+            self.assertIn(said, refused.stdout)
+        self.assertEqual(self.submitted(), [])
+
+    def test_morphometry_queues_each_set_once_as_one_batch_job_and_then_prints_its_report(self):
+        self.environments_ready()
+        self.morphometry_inputs("engine", "truth", "verse", "totalseg")
+        done = self.gate("morphometry", "enhance")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        lines = self.submitted()
+        self.assertEqual(len(lines), 1, lines)
+        self.assertIn("--class batch --name morphometry_enhance", lines[0])
+        self.assertIn("SET=enhance", lines[0])
+        self.assertIn("--no-requeue", lines[0])
+        self.assertIn("--time 24:00:00", lines[0])
+        self.assertIn("morphometry.sbatch", lines[0])
+        self.assertIn("submitted the morphometry job for enhance", done.stdout)
+        # one job at a time: the other set waits while this one is live
+        job = self.recorded()["morphometry_enhance"]
+        self.live(job)
+        for which in ("enhance", "verse"):
+            refused = self.gate("morphometry", which)
+            self.assertEqual(refused.returncode, 75, refused.stdout)
+            self.assertIn(f"job {job}", refused.stdout)
+        (self.fake / "queue").write_text("", encoding="utf-8")
+        logs = self.repo / "grid" / "logs"
+        report = logs / "MORPHOMETRY-enhance.md"
+        report.write_text("# morphometry enhance: job 4242 on node, commit 0000000, 2026-10-29 16:00:00 UTC\n"
+                          "- ENHANCE.PET: 1561 masks linked; 1561 studies chosen, 1561 to measure, code 81e732f142d3aa16\n"
+                          "- exit 0 at 2026-10-29 20:00:00 UTC\n", encoding="utf-8")
+        for _ in range(2):
+            done = self.gate("morphometry", "enhance")
+            self.assertEqual(done.returncode, 0, done.stdout)
+            self.assertIn("## MORPHOMETRY-enhance.md", done.stdout)
+            self.assertIn("1561 studies chosen", done.stdout)
+            self.assertIn("- exit 0", done.stdout)
+        self.assertEqual(len(self.submitted()), 1)
+        # the second set is its own job
+        done = self.gate("morphometry", "verse")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        lines = self.submitted()
+        self.assertEqual(len(lines), 2, lines)
+        self.assertIn("--class batch --name morphometry_verse", lines[1])
+        self.assertIn("SET=verse", lines[1])
+        # a set that failed on older code is queued once more, its report kept under its job's number
+        report.write_text("# morphometry enhance: job 4242 on node, commit 0000000, 2026-10-29 16:00:00 UTC\n"
+                          "- FAILED at run: boom\n- exit 1 at 2026-10-29 16:10:00 UTC\n", encoding="utf-8")
+        done = self.gate("morphometry", "enhance")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("ended in failure on older code: queueing the set again", done.stdout)
+        self.assertFalse(report.exists())
+        self.assertTrue((logs / "MORPHOMETRY-enhance-4242.md").exists())
+        self.assertEqual(len(self.submitted()), 3)
+
+    def test_the_morphometry_job_refuses_a_set_it_does_not_know_before_touching_anything(self):
+        for which in ("", "bogus", "spineps"):
+            env = dict(os.environ, SCHWINGNET=str(self.repo), DATA_ROOT=str(self.data), LAB_VOLUME=str(self.tmp), SET=which)
+            done = subprocess.run(["bash", str(self.repo / "grid" / "morphometry.sbatch")], cwd=self.repo / "grid", env=env,
+                                  capture_output=True, text=True, timeout=60)
+            self.assertEqual(done.returncode, 64, done.stdout + done.stderr)
+            self.assertIn("SN_MORPHOMETRY_RC=64", done.stdout)
+            self.assertIn("enhance or verse", done.stdout)
+        self.assertFalse((self.repo / "grid" / "logs").exists())
+        self.assertFalse(list((self.tmp).glob("**/MORPHOMETRY-*")))
 
     def test_the_realism_job_refuses_a_stage_it_does_not_know_before_touching_anything(self):
         for stage in ("", "train", "lora", "eval"):

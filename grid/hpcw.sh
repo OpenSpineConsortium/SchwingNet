@@ -60,6 +60,17 @@ hpcw_after() {  # hpcw_after DEPS: sbatch's dependency text (afterok:1,afterany:
   done
 }
 
+hpcw_check() {  # hpcw_check NAME CLASS [K=V...] [job submit options...] -- SCRIPT: the scheduler's answer to the job's shape, nothing queued
+  # The same --check hpcw_submit asks first, for a word that marks a submission before it makes one,
+  # so a shape the scheduler refuses marks nothing.
+  local name=$1 class=$2 envs=() bin out
+  shift 2
+  while [ $# -gt 0 ] && [[ $1 =~ ^[A-Z_][A-Z0-9_]*= ]]; do envs+=("$1"); shift; done
+  [ -z "${HPCW_DRY:-}" ] || return 0
+  bin=$(hpcw_bin) || return 1
+  out=$(env ${envs[@]+"${envs[@]}"} bash "$bin" job submit --project "$HPCW_PROJECT" --name "$name" --class "$class" --dir "$REPO/grid" --check "$@" 2>&1) \
+    || { echo "  hpcworker refused $name: $(printf '%s' "$out" | tail -n 3 | tr '\n' ' ')"; return 1; }
+}
 hpcw_is_array() {  # hpcw_is_array [job submit options...] -- ...: whether the options ask for an array
   while [ $# -gt 0 ] && [ "$1" != -- ]; do [ "$1" = --array ] && return 0; shift; done
   return 1
