@@ -55,6 +55,60 @@ def key_reads(words, folder):
     return [f"request {file_sha256(from_launcher(request, folder))}"] + flow_tool.inputs_read(words, folder)
 
 
+IMAGENET_ARCHITECTURE = "resnet18"
+
+
+def request_values(path):
+    """The request's values in the driver's line grammar (grid/experiment-driver.sbatch): recipe,
+    epochs, seed and hours once each, block lines in order; a line of another shape is refused."""
+    values, blocks = {"recipe": "none"}, []
+    for line in Path(path).read_text(encoding="utf-8").splitlines():
+        key, _, value = line.partition(": ")
+        if key == "block":
+            blocks.append(value)
+        elif key in ("recipe", "epochs", "seed", "hours"):
+            values[key] = value
+        else:
+            raise ExperimentFault(f"the request's line {line[:60]!r} is not one the gate takes")
+    values["blocks"] = " ".join(blocks)
+    return values
+
+
+def request_disagreements(values, flow):
+    """Each word the run was given that differs from its request, so a hand launch never trains one
+    configuration and records another."""
+    given = {"recipe": flow.recipe, "epochs": str(flow.epochs), "seed": str(flow.seed), "hours": str(flow.hours),
+             "blocks": " ".join(flow.blocks.split())}
+    return [f"{key}: the request says {values.get(key, 'nothing')!r}, the run was given {given[key]!r}"
+            for key in given if values.get(key) != given[key]]
+
+
+def architecture_refusal(blocks):
+    """The words that refuse a request for an architecture with no ImageNet file on the grid, else
+    nothing: every requested combination starts from ImageNet, as version 1 does."""
+    for word in blocks.split():
+        key, _, value = word.partition("=")
+        if key == "architecture" and value != IMAGENET_ARCHITECTURE:
+            return f"architecture={value}: no ImageNet file for it on the grid, so the request waits for one"
+    return ""
+
+
+def record_name(folder, issue):
+    """METAFLOW.json where the run's folder holds none or one of this issue's ExperimentFlow; else a
+    file of the issue's own beside it, so a request that equals version 1's never overwrites the
+    record of the V1Flow run that made the folder."""
+    record = Path(folder) / "METAFLOW.json"
+    if not record.is_file():
+        return record.name
+    try:
+        held = json.loads(record.read_text(encoding="utf-8"))
+    except ValueError:
+        held = {}
+    if held.get("flow") == "ExperimentFlow" and held.get("issue") == issue:
+        return record.name
+    return f"METAFLOW-experiment-{issue}.json"
+
+
 def block_words(blocks):
     """The request's KEY=VALUE words, one --block each, as tools/flow.py takes them."""
     words = []
@@ -100,6 +154,12 @@ class ExperimentFlow(FlowSpec):
             self.catalog_file, self.out_root = from_launcher(self.catalog), from_launcher(self.out)
             self.weights_file = from_launcher(self.weights)
             self.request_sha256 = file_sha256(self.request_file)
+            refused = architecture_refusal(self.blocks)
+            if refused:
+                raise ExperimentFault(refused)
+            differ = request_disagreements(request_values(self.request_file), self)
+            if differ:
+                raise ExperimentFault("the run's words are not its request's: " + "; ".join(differ))
             self.catalog_sha256 = file_sha256(self.catalog_file)
             self.weights_sha256 = file_sha256(self.weights_file)
             said = (f"issue #{self.issue}: recipe {self.recipe}, {self.epochs} epochs, seed {self.seed}, "
@@ -126,20 +186,25 @@ class ExperimentFlow(FlowSpec):
         """The run's report written and checked, the verdict, METAFLOW.json and the page's last lines."""
         with stage.Beat(self, "report") as beat:
             stage.still_held(self, KIND)
+            print(json.dumps({"run_id": self.run_id, "run_dir": self.run_dir}), flush=True)
             folder = Path(self.run_dir)
+            request_now = file_sha256(self.request_file)
+            request_held = request_now == self.request_sha256
+            moved = [] if request_held else [(False, f"the request file changed during the run: sha256 "
+                                                     f"{self.request_sha256[:12]} at start, {request_now[:12]} at the end")]
             finished = (folder / FINISHED_MARK).is_file()
             report_ok, report = stage.claim_report(folder, began=stage.run_began())
             self.report = report
-            self.verdict = verdict_of(finished, report_ok)
+            self.verdict = verdict_of(finished and request_held, report_ok)
             pathspec = f"{current.flow_name}/{current.run_id}"
             record = {"flow": "ExperimentFlow", "run": pathspec, "root": stage.datastore_root(), "page": str(stage.page_path()),
                       "issue": self.issue, "request_sha256": self.request_sha256}
-            (folder / "METAFLOW.json").write_text(json.dumps(record, indent=1, sort_keys=True) + "\n", encoding="utf-8")
+            (folder / record_name(folder, self.issue)).write_text(json.dumps(record, indent=1, sort_keys=True) + "\n", encoding="utf-8")
             unfinished = [] if finished else [(False, f"{folder.name}: no {FINISHED_MARK}, so tools/flow.py did not finish the run")]
             print(f"ExperimentFlow: report {report}", flush=True)
             print(f"ExperimentFlow: run {self.run_id}, verdict {self.verdict}", flush=True)
             beat.say(f"verdict {self.verdict}")
-            stage.finish(self.verdict, unfinished + [(report_ok, report)])
+            stage.finish(self.verdict, unfinished + moved + [(report_ok, report)])
         current.card.append(Markdown(f"# Experiment #{self.issue}, run {self.run_id}\n\nFolder {self.run_dir}; verdict "
                                      f"{self.verdict}. Report: {report}. Progress page: {stage.page_path()}."))
 

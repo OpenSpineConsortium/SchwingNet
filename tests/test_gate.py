@@ -637,7 +637,7 @@ class GateTest(unittest.TestCase):
         self.assertIn(f"RUNS={self.runs} WEIGHTS={self.models}/resnet18-f37072fd.pth", line)
         self.assertIn("catalog: catalog-000002-0123456789ab.sqlite qualifies for the run (grid/v1-version.sh); no job", done.stdout)
 
-    REQUEST = "recipe: none\nepochs: 12\nseed: 3\nhours: 2.5\nblock: architecture=resnet34\nblock: optimiser=adamw\n"
+    REQUEST = "recipe: none\nepochs: 12\nseed: 3\nhours: 2.5\nblock: architecture=resnet18\nblock: optimiser=adamw\n"
 
     def experiment(self, *words, requests):
         """The gate with EXPERIMENTS_DIR standing in for the branch experiments, as a test must."""
@@ -679,7 +679,7 @@ class GateTest(unittest.TestCase):
         # 2.5 hours of training fit the driver's own 24 hours, which stay the floor
         self.assertIn("--time 24:00:00", line)
         self.assertIn("catalog: catalog-000002-0123456789ab.sqlite qualifies for the run", done.stdout)
-        self.assertIn("request: recipe: none epochs: 12 seed: 3 hours: 2.5 block: architecture=resnet34 block: optimiser=adamw", done.stdout)
+        self.assertIn("request: recipe: none epochs: 12 seed: 3 hours: 2.5 block: architecture=resnet18 block: optimiser=adamw", done.stdout)
         self.assertEqual((self.repo / "grid" / "logs" / "experiment-250.request").read_text(encoding="utf-8"), self.REQUEST)
         job = self.recorded()["experiment_250"]
         (self.fake / "queue").write_text(job + "\n", encoding="utf-8")
@@ -933,6 +933,7 @@ echo "the split is not disjoint; no training step reads this version"; exit 1
         ends as the launcher ends then, with 143."""
         (self.repo / "grid" / "box.sh").write_text(
             '#!/bin/bash\necho "$* hold=$(cat "$SCHWINGNET/grid/logs/HOLD" 2>/dev/null)" >> "$FAKE/box.log"\n'
+            'printf \'<%s>\' "$@" >> "$FAKE/box-items.log"; echo >> "$FAKE/box-items.log"\n'
             'if [[ "$*" == *split-check* ]] && [ -f "$FAKE/split_fails" ]; then exit 1; fi\n'
             'if [[ "$*" == *flows/launch.py* ]] && [ -f "$FAKE/launch_holds" ]; then\n'
             '  sleep 60 & flow=$!\n'
@@ -942,6 +943,11 @@ echo "the split is not disjoint; no training step reads this version"; exit 1
             '  wait "$flow"\n'
             'fi\n'
             'echo \'{"run_dir": "/nowhere"}\'\n', encoding="utf-8")
+
+    def boxed_items(self):
+        """Each call to the fake box with its arguments one per <item>, so one word is told from several."""
+        log = self.fake / "box-items.log"
+        return log.read_text(encoding="utf-8").splitlines() if log.exists() else []
 
     def boxed(self):
         log = self.fake / "box.log"
@@ -1042,11 +1048,40 @@ echo "the split is not disjoint; no training step reads this version"; exit 1
         self.assertIn("pixi run --locked -e train-gpu python flows/launch.py experiment --max-workers 1 -- --issue 250 "
                       f"--request {request} --catalog {self.data}/_catalog/versions/catalog-000002-0123456789ab.sqlite ", boxed[flow[0]])
         self.assertIn("--epochs 12 --seed 3 --hours 2.5 ", boxed[flow[0]])
-        self.assertIn("--recipe none --blocks architecture=resnet34 optimiser=adamw hold=778", boxed[flow[0]])
+        self.assertIn("--recipe none --blocks architecture=resnet18 optimiser=adamw hold=778", boxed[flow[0]])
+        # the blocks reach the launcher as one word, and the hold is written before the request is checked
+        launched = [line for line in self.boxed_items() if "<flows/launch.py>" in line]
+        self.assertTrue(launched and launched[0].endswith("<--blocks><architecture=resnet18 optimiser=adamw>"), launched)
+        self.assertIn(" hold=778 ", boxed[check[0]] + " ")
         self.assertFalse([line for line in boxed if "tools/flow.py" in line], boxed)
         self.assertIn("- launcher: it printed no decision line", done.stdout)
         self.assertIn("- run directory: /nowhere", done.stdout)
         self.assertIn("SN_EXPERIMENT_RC=0", done.stdout)
+        self.assertFalse((self.repo / "grid" / "logs" / "HOLD").exists())
+
+    def test_an_experiment_with_no_block_lines_gives_the_launcher_one_empty_blocks_word(self):
+        self.weights_ready()
+        self.carmlspine_shards()
+        self.catalog_ready(version=2)
+        self.fake_box()
+        request = self.tmp / "experiment-250.request"
+        request.write_text("recipe: none\nepochs: 12\nseed: 3\nhours: 2.5\n", encoding="utf-8")
+        done = self.experiment_driver(request)
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        launched = [line for line in self.boxed_items() if "<flows/launch.py>" in line]
+        self.assertTrue(launched and launched[0].endswith("<--blocks><>"), launched)
+
+    def test_an_experiment_for_an_architecture_with_no_imagenet_file_trains_nothing(self):
+        self.weights_ready()
+        self.carmlspine_shards()
+        self.catalog_ready(version=2)
+        self.fake_box()
+        request = self.tmp / "experiment-250.request"
+        request.write_text(self.REQUEST.replace("architecture=resnet18", "architecture=resnet34"), encoding="utf-8")
+        done = self.experiment_driver(request)
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("FAILED: architecture=resnet34: no ImageNet file for it on the grid, so the request waits for one", done.stdout)
+        self.assertEqual(self.boxed(), [])
         self.assertFalse((self.repo / "grid" / "logs" / "HOLD").exists())
 
     def test_job_submits_early_term_reaches_the_experiment_launcher_at_once(self):
@@ -3032,6 +3067,7 @@ exit "${FAKE_RC:-0}"
         (bundle / "ensemble.json").write_text("{}\n", encoding="utf-8")
         (self.repo / "grid" / "box.sh").write_text(
             '#!/bin/bash\necho "$* hold=$(cat "$SCHWINGNET/grid/logs/HOLD" 2>/dev/null)" >> "$FAKE/box.log"\n'
+            'printf \'<%s>\' "$@" >> "$FAKE/box-items.log"; echo >> "$FAKE/box-items.log"\n'
             '[[ "$*" == *bench_public.py* ]] || exit 0\n'
             'if [ -f "$FAKE/move" ]; then\n'
             '  git -C "$SCHWINGNET" -c user.name=t -c user.email=t@t -c gc.auto=0 -c maintenance.auto=false commit -q --allow-empty -m moved\n'

@@ -54,10 +54,17 @@ case "$SEED" in ''|*[!0-9]*) fail "seed is not a whole number: ${SEED:-missing}"
 case "$HOURS" in ''|*[!0-9.]*) fail "hours is not a number: ${HOURS:-missing}" ;; esac
 blocks_text="${BLOCKS[*]+${BLOCKS[*]}}"
 report "request #$ISSUE: recipe $RECIPE, epochs $EPOCHS, seed $SEED, hours $HOURS, blocks ${blocks_text:-none (version 1)}"
-# The values against this checkout's recipes and blocks, inside the container, before any frame is read.
-said=$(bash grid/box.sh pixi run --locked python tools/experiments_panel.py check --request "$REQUEST" 2>&1) \
-  || fail "the request does not hold against src/schwingnet/blocks.py and data/recipes/ at this commit: $(printf '%s\n' "$said" | grep '^refused' | tr '\n' ' ')"
-# The run's code holds still while it lasts, as v1-driver.sbatch holds it: grid/logs/HOLD names this job and
+# Every requested combination starts from ImageNet, as version 1 does, and the grid holds the ResNet-18
+# file alone, so a request for another architecture waits for its file rather than failing at its first
+# epoch after the queue (flows/experiment.py refuses it again in its start).
+for block in ${BLOCKS[@]+"${BLOCKS[@]}"}; do
+  case "$block" in
+    architecture=resnet18) ;;
+    architecture=*) fail "${block}: no ImageNet file for it on the grid, so the request waits for one" ;;
+  esac
+done
+# The run's code holds still from before the request is checked to the run's end, as v1-driver.sbatch
+# holds it, so no gate word fast-forwards the checkout between the check and the run: grid/logs/HOLD names this job and
 # the commit, the gate's side skips its fast-forward while the file is there, and the gate clears a hold
 # whose job Slurm no longer holds. The commit is read again at the end, and a run whose checkout moved is
 # not used.
@@ -67,6 +74,9 @@ echo "${SLURM_JOB_ID:-$$} $started_at" > "$HOLD"
 unhold() { [ "$(awk '{ print $1; exit }' "$HOLD" 2>/dev/null)" != "${SLURM_JOB_ID:-$$}" ] || rm -f "$HOLD"; }
 trap unhold EXIT
 trap 'exit 143' TERM
+# The values against this checkout's recipes and blocks, inside the container, before any frame is read.
+said=$(bash grid/box.sh pixi run --locked python tools/experiments_panel.py check --request "$REQUEST" 2>&1) \
+  || fail "the request does not hold against src/schwingnet/blocks.py and data/recipes/ at this commit: $(printf '%s\n' "$said" | grep '^refused' | tr '\n' ' ')"
 # The version grid/v1-version.sh chooses, as for the version 1 run (issue #80): the newest that holds both
 # of C-ArmLSpine's parts and every C-ArmLSpine shard now on the volume, with a split-check marker for
 # today's test persons and rule. The name from stdout alone, so a warning on stderr never becomes part of the path.

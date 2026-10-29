@@ -1342,15 +1342,15 @@ class ExperimentFlowTest(unittest.TestCase):
         for words in (["add", "-A"], ["commit", "-q", "-m", message]):
             subprocess.run(self.git(*words), check=True, capture_output=True, timeout=60)
 
-    def experiment(self, n, **extra):
+    def experiment(self, n, blocks="optimiser=adamw augment=blur,noise", seed="2", **extra):
         """One launch of issue 250's request over the stub, as grid/experiment-driver.sbatch gives its words:
         (code, JSON lines, output, calls)."""
         calls = self.tmp / f"calls-{n}"
         calls.write_text("", encoding="utf-8")
         env = base_env(SCHWINGNET=str(self.repo), FLOW_TEST_CALLS=str(calls), FLOW_TEST_MARKER=str(self.tmp / "killed"), **extra)
         words = ["experiment", "--", "--issue", "250", "--request", str(self.request), "--catalog", str(self.catalog),
-                 "--out", str(self.runs), "--environment", "train-cpu", "--epochs", "3", "--seed", "2", "--hours", "1.5",
-                 "--weights", str(self.weights), "--recipe", "none", "--blocks", "optimiser=adamw augment=blur,noise"]
+                 "--out", str(self.runs), "--environment", "train-cpu", "--epochs", "3", "--seed", seed, "--hours", "1.5",
+                 "--weights", str(self.weights), "--recipe", "none", "--blocks", blocks]
         code, said, out = launch(words, self.work, env, self.root)
         return code, said, out, calls.read_text(encoding="utf-8").splitlines()
 
@@ -1381,8 +1381,36 @@ class ExperimentFlowTest(unittest.TestCase):
         self.assertEqual(code, 137, out)
         # the same path with other lines is another request: the key holds its bytes, so it is never carried on
         self.request.write_text(EXPERIMENT_REQUEST.replace("seed: 2", "seed: 9"), encoding="utf-8")
-        code, said, out, _ = self.experiment(4)
+        code, said, out, _ = self.experiment(4, seed="9")
         self.assertEqual((code, said[0]["decision"], said[0]["origin"]), (0, "run", None), out)
+
+    def test_words_that_are_not_the_requests_train_nothing(self):
+        code, said, out, calls = self.experiment(1, seed="9")
+        self.assertNotEqual(code, 0, out)
+        self.assertIn("the run's words are not its request's: seed: the request says '2', the run was given '9'", out)
+        self.assertEqual(calls, [], out)
+
+    def test_an_architecture_with_no_imagenet_file_trains_nothing(self):
+        self.request.write_text(EXPERIMENT_REQUEST + "block: architecture=resnet34\n", encoding="utf-8")
+        code, said, out, calls = self.experiment(1, blocks="optimiser=adamw augment=blur,noise architecture=resnet34")
+        self.assertNotEqual(code, 0, out)
+        self.assertIn("architecture=resnet34: no ImageNet file for it on the grid, so the request waits for one", out)
+        self.assertEqual(calls, [], out)
+
+    def test_a_request_with_no_blocks_is_version_1s_training_and_keeps_the_v1_record(self):
+        self.request.write_text("recipe: none\nepochs: 3\nseed: 2\nhours: 1.5\n", encoding="utf-8")
+        # the folder tools/flow.py names by code, catalog and configuration is the one V1Flow finished
+        (self.runs / "r1").mkdir(parents=True)
+        v1_record = json.dumps({"flow": "V1Flow", "run": "V1Flow/7"}) + "\n"
+        (self.runs / "r1" / "METAFLOW.json").write_text(v1_record, encoding="utf-8")
+        code, said, out, calls = self.experiment(1, blocks="")
+        self.assertEqual(code, 0, out)
+        self.assertEqual(calls, ["run 3 2 catalog-000001-abc.sqlite --hours 1.5"])
+        self.assertEqual((self.runs / "r1" / "METAFLOW.json").read_text(encoding="utf-8"), v1_record)
+        record = json.loads((self.runs / "r1" / "METAFLOW-experiment-250.json").read_text(encoding="utf-8"))
+        self.assertEqual((record["flow"], record["issue"]), ("ExperimentFlow", 250))
+        # end says the run's folder too, so a resume that clones train_evaluate still names it
+        self.assertGreaterEqual(out.count('"run_dir": "' + str(self.runs / "r1") + '"'), 2, out)
 
     def test_a_moved_prereg_starts_nothing(self):
         with (self.repo / "docs" / "research" / "experiments" / "PREREG.md").open("a", encoding="utf-8") as prereg:
