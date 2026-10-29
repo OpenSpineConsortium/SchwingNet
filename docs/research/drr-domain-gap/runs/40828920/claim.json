@@ -3,12 +3,12 @@
  "run_id": "40828920",
  "checklist": "CLAIM 2024",
  "source": "Tejani et al., Checklist for Artificial Intelligence in Medical Imaging (CLAIM): 2024 Update, Radiology: Artificial Intelligence 2024, doi 10.1148/ryai.240300; the short item texts as its checklist table gives them",
- "study_sha256": "b5b110d8ec9683c0a1edd72b5528e3310103dc3857a2b56b4de908d880db89e9",
+ "study_sha256": "349e215dfc828f43cd0c4d1051ecda61d284165386da4d8fc3aaca9e979f0daa",
  "tally": {
-  "met": 16,
+  "met": 24,
   "declared": 0,
-  "not applicable": 3,
-  "missing": 25
+  "not applicable": 10,
+  "missing": 10
  },
  "items": [
   {
@@ -18,7 +18,7 @@
    "basis": "declared",
    "fact": "title",
    "state": "missing",
-   "evidence": "needs the owner's answer under \"title\" in data/reporting/studies/drr-domain-gap.json"
+   "evidence": "needs the owner's answer under \"title\" in data/reporting/studies/drr-domain-gap.json, whose answers are run 40859208's, not this run's"
   },
   {
    "id": "2",
@@ -27,7 +27,7 @@
    "basis": "declared",
    "fact": "abstract",
    "state": "missing",
-   "evidence": "needs the owner's answer under \"abstract\" in data/reporting/studies/drr-domain-gap.json"
+   "evidence": "needs the owner's answer under \"abstract\" in data/reporting/studies/drr-domain-gap.json, whose answers are run 40859208's, not this run's"
   },
   {
    "id": "3",
@@ -36,16 +36,16 @@
    "basis": "declared",
    "fact": "background",
    "state": "missing",
-   "evidence": "needs the owner's answer under \"background\" in data/reporting/studies/drr-domain-gap.json"
+   "evidence": "needs the owner's answer under \"background\" in data/reporting/studies/drr-domain-gap.json, whose answers are run 40859208's, not this run's"
   },
   {
    "id": "4",
    "section": "Introduction",
    "asks": "Study aims, objectives, and hypotheses",
-   "basis": "declared",
+   "basis": "code",
    "fact": "aims",
-   "state": "missing",
-   "evidence": "needs the owner's answer under \"aims\" in data/reporting/studies/drr-domain-gap.json"
+   "state": "met",
+   "evidence": "the question, PREREG.md section 1: how far FleXray's synthetic DRRs are from real X-rays, plain film and intra-operative fluoroscopy, whether that distance is larger than the distance between two real corpora, and whether this project's rendering of FleXray's recipe reproduces FleXray's own; the hypotheses and their bars, its section 4: the primary endpoints, in the flexray space read inversion-invariant, the logistic C2ST AUC of flexray_drr, of flexray_drr_ct and of fluxray where fetched against pooled fluoroscopy and against pooled film, each with its interval, and FD64 of each against each family divided by the median FD64 between that family's own real corpora, the gap ratio, 1 meaning as far as two real corpora are from each other; the words beside each primary number, indistinguishable where the AUC's lower bound is at most 0.6, closer than two real corpora where it is below the median AUC of the family's real pairs and separable otherwise; and the replication, replicated for each of the two worded pairs, flexray_replica against flexray_reference and fluxray_raw against fluxray_raw_reference, where the logistic AUC's lower bound is at most 0.6 and the MMD's q at least 0.05, and not replicated otherwise, the first pair's word in that space and reading being the study's verdict"
   },
   {
    "id": "5",
@@ -54,16 +54,16 @@
    "basis": "declared",
    "fact": "study_design",
    "state": "missing",
-   "evidence": "needs the owner's answer under \"study_design\" in data/reporting/studies/drr-domain-gap.json"
+   "evidence": "needs the owner's answer under \"study_design\" in data/reporting/studies/drr-domain-gap.json, whose answers are run 40859208's, not this run's"
   },
   {
    "id": "6",
    "section": "Methods: study design",
    "asks": "Study goal",
-   "basis": "declared",
-   "fact": "study_goal",
-   "state": "missing",
-   "evidence": "needs the owner's answer under \"study_goal\" in data/reporting/studies/drr-domain-gap.json"
+   "basis": "code",
+   "fact": "goal",
+   "state": "met",
+   "evidence": "a measurement under pre-registered hypotheses: the primary endpoints and the replication verdict of PREREG.md section 4, every other number read as description (its section 6); the study trains no network and builds no model for use"
   },
   {
    "id": "7",
@@ -78,10 +78,10 @@
    "id": "8",
    "section": "Methods: data",
    "asks": "Inclusion and exclusion criteria",
-   "basis": "declared",
-   "fact": "inclusion_exclusion",
-   "state": "missing",
-   "evidence": "needs the owner's answer under \"inclusion_exclusion\" in data/reporting/studies/drr-domain-gap.json"
+   "basis": "code",
+   "fact": "inclusion",
+   "state": "met",
+   "evidence": "in: the 23 groups of the table (data/domain_gap/groups.json, version 1, sha256 92a1-640b-70f1-b6c6 as the record names it), a group's images being, by its source, for a group read from index, the image rows the sample index lists with no read error under its sources (grid/run-samples.sh) that its rules keep: the table's formats and globs, a least side, the table's or 256, a single plane, for a DICOM a projection modality, the table's or CR, DX, RF, XA, DF, RG, PX, OT and SC, and no exclude word in the path, the table's or the study's (src/schwingnet/domain_gap.py, GroupSpec; tools/domain_gap.py, refusal); for a group read from walk, the files seen under its folder on the data root, up to the walk's limit, that the table's formats and globs and its exclude words, the table's or the study's, keep (tools/domain_gap.py, walk_candidates); for a group read from thunderdb, the records of its ThunderDB as FleXray's reader lists them; for a group read from render, the held TotalSegmentator v2.0.1 CTs with masks under every segmenter its folder's groups read (README section 2.1), of which the analysis reads only those every render group on the folder kept (README section 7); each group at most its cap of images chosen person by person, with the five frozen test persons of data/splits/test-persons.json left out of every group; out before the run, each with its reason in README section 2, the corpora PREREG.md section 2 names: fluoro_video_clips, fluorocap, carmlspine_sweeps, spinesac, mendeley_5jdfdgp762, COBRA, ljubljana_2d3d_gs, the undecodable videos and the archives never unpacked; and what the table's notes say is left out: carmlspine_spots, \"The real-frame bank realxray/carmlspine, AP and lateral spots of one mobile C-arm; the five frozen test persons are left out.\"; buu_lspine, \"The 3600 release; buu_lspine_2000 is a subset of it and is left out.\"; aasce, \"Whole-spine AP; the second copy (aasce2019_boostnet) is left out; each file its own person.\"; in the run, a group with fewer than 20 decoded images is left out and one with fewer than five persons is plotted and never tested; summary.txt: 3 groups skipped, fluxray (its files could not be listed (Error)); vindr_spinexr (nothing found under its rules); lumos (no folder lumos/bank under the data root); render totalsegmentator_v201: 27 CTs chosen of 27 with every mask of 1228 CTs (moose 27, spineps 27); 26 kept by every group"
   },
   {
    "id": "9",
@@ -108,7 +108,7 @@
    "basis": "declared",
    "fact": "deidentification",
    "state": "missing",
-   "evidence": "needs the owner's answer under \"deidentification\" in data/reporting/studies/drr-domain-gap.json"
+   "evidence": "needs the owner's answer under \"deidentification\" in data/reporting/studies/drr-domain-gap.json, whose answers are run 40859208's, not this run's"
   },
   {
    "id": "12",
@@ -126,52 +126,52 @@
    "basis": "declared",
    "fact": "acquisition",
    "state": "missing",
-   "evidence": "needs the owner's answer under \"acquisition\" in data/reporting/studies/drr-domain-gap.json"
+   "evidence": "needs the owner's answer under \"acquisition\" in data/reporting/studies/drr-domain-gap.json, whose answers are run 40859208's, not this run's"
   },
   {
    "id": "14",
    "section": "Methods: reference standard",
    "asks": "Definition of method(s) used to obtain reference standard",
-   "basis": "declared",
-   "fact": "reference_standard",
-   "state": "missing",
-   "evidence": "needs the owner's answer under \"reference_standard\" in data/reporting/studies/drr-domain-gap.json"
+   "basis": "code",
+   "fact": "no_reference_standard",
+   "state": "not applicable",
+   "evidence": "Not applicable: the study has no reference standard: the one label its tests read is which group or pooled family an image belongs to, known for every image by construction from the groups table, and no image is scored against a clinical truth (summary.txt record: study drr-domain-gap, commit d3fe578, code 8943-e46c-a4c5-5779)"
   },
   {
    "id": "15",
    "section": "Methods: reference standard",
    "asks": "Rationale for choosing the reference standard",
-   "basis": "declared",
-   "fact": "reference_standard_rationale",
-   "state": "missing",
-   "evidence": "needs the owner's answer under \"reference_standard_rationale\" in data/reporting/studies/drr-domain-gap.json"
+   "basis": "code",
+   "fact": "no_reference_standard",
+   "state": "not applicable",
+   "evidence": "Not applicable: the study has no reference standard: the one label its tests read is which group or pooled family an image belongs to, known for every image by construction from the groups table, and no image is scored against a clinical truth (summary.txt record: study drr-domain-gap, commit d3fe578, code 8943-e46c-a4c5-5779)"
   },
   {
    "id": "16",
    "section": "Methods: reference standard",
    "asks": "Source of reference standard annotations",
-   "basis": "declared",
-   "fact": "annotation_source",
-   "state": "missing",
-   "evidence": "needs the owner's answer under \"annotation_source\" in data/reporting/studies/drr-domain-gap.json"
+   "basis": "code",
+   "fact": "no_annotation",
+   "state": "not applicable",
+   "evidence": "Not applicable: the study makes no reference-standard annotation and no person reads an image: the label every test reads is the image's group or pooled family, which the groups table sets, or, in a split-half null, its half of one group split by person; the only labels made for the study are moosez's segmentations of the render CTs, made in the segment job, which the render recipes read to weight and drop crops, to aim the isocentre and, where the attenuation randomisation is on, to draw each structure's attenuation factor, and which the study's own code reads to choose the CTs, and no test reads them (README section 2.1; src/schwingnet/render_blocks.py, reads_labels) (summary.txt record: study drr-domain-gap, commit d3fe578, code 8943-e46c-a4c5-5779)"
   },
   {
    "id": "17",
    "section": "Methods: reference standard",
    "asks": "Annotation of test set",
-   "basis": "declared",
-   "fact": "test_annotation",
-   "state": "missing",
-   "evidence": "needs the owner's answer under \"test_annotation\" in data/reporting/studies/drr-domain-gap.json"
+   "basis": "code",
+   "fact": "no_annotation",
+   "state": "not applicable",
+   "evidence": "Not applicable: the study makes no reference-standard annotation and no person reads an image: the label every test reads is the image's group or pooled family, which the groups table sets, or, in a split-half null, its half of one group split by person; the only labels made for the study are moosez's segmentations of the render CTs, made in the segment job, which the render recipes read to weight and drop crops, to aim the isocentre and, where the attenuation randomisation is on, to draw each structure's attenuation factor, and which the study's own code reads to choose the CTs, and no test reads them (README section 2.1; src/schwingnet/render_blocks.py, reads_labels) (summary.txt record: study drr-domain-gap, commit d3fe578, code 8943-e46c-a4c5-5779)"
   },
   {
    "id": "18",
    "section": "Methods: reference standard",
    "asks": "Measures of inter- and intrarater variability of features described by the annotators",
-   "basis": "declared",
-   "fact": "rater_variability",
-   "state": "missing",
-   "evidence": "needs the owner's answer under \"rater_variability\" in data/reporting/studies/drr-domain-gap.json"
+   "basis": "code",
+   "fact": "no_raters",
+   "state": "not applicable",
+   "evidence": "Not applicable: the study has no rater, so no inter- or intrarater variability: no person reads an image, and the words beside the numbers are computed from them by src/schwingnet/domain_gap.py and printed by the summary, so no reader chooses them (summary.txt record: study drr-domain-gap, commit d3fe578, code 8943-e46c-a4c5-5779)"
   },
   {
    "id": "19",
@@ -195,10 +195,10 @@
    "id": "21",
    "section": "Methods: testing data",
    "asks": "Intended sample size",
-   "basis": "declared",
-   "fact": "intended_sample_size",
-   "state": "missing",
-   "evidence": "needs the owner's answer under \"intended_sample_size\" in data/reporting/studies/drr-domain-gap.json"
+   "basis": "code",
+   "fact": "intended_size",
+   "state": "met",
+   "evidence": "the design fixes caps, not a target: each group at most its cap of images (1000, 100) and at most 1 to 100 a person by group, 300 images from each testable real group in a pooled family, at most 600 a group in the maps, and a group tested only with at least 20 decoded images and five persons (PREREG.md sections 2 and 3; data/domain_gap/groups.json, version 1, sha256 92a1-640b-70f1-b6c6 as the record names it); the render groups were planned on 250 CTs and stand on the CTs the segmentation job covered (DEVIATIONS.md, item 1), summary.txt: render totalsegmentator_v201: 27 CTs chosen of 27 with every mask of 1228 CTs (moose 27, spineps 27); 26 kept by every group; no file of the study records a power calculation for any size, and the bar of 0.6 is by the design's own account neither a published value nor a power calculation's (PREREG.md section 4)"
   },
   {
    "id": "22",
@@ -276,19 +276,19 @@
    "id": "30",
    "section": "Methods: evaluation",
    "asks": "Robustness or sensitivity analysis",
-   "basis": "declared",
+   "basis": "code",
    "fact": "robustness",
-   "state": "missing",
-   "evidence": "needs the owner's answer under \"robustness\" in data/reporting/studies/drr-domain-gap.json"
+   "state": "met",
+   "evidence": "the primary words and the study's verdict are read in one view, FleXray's space read inversion-invariant (PREREG.md section 4); as secondary description (its section 6) the design reads every contrast again in the imagenet and physics spaces and in FleXray's space as stored, by two classifiers, logistic regression and 15 nearest neighbours, beside the MMD, FD64 and KID64, with PRDC only for each synthetic group against each pooled family and for the replication pairs (tools/domain_gap.py, contrast, family_unit and replication_unit), and runs a split-half null on each group of 40 persons or more (its section 3), so these tested groups, by their persons in summary.txt, have none of their own: flexray_drr 26, flexray_drr_ct 26, flexray_replica 26, flexray_reference 26, flexray_spineps 26, fluxray_raw 26, fluxray_raw_reference 26, ts_drr_project 19, deepfluoro 14; PREREG.md plans no analysis of how a word moves with the bar of 0.6 or with the seed, every draw being from one seed; summary.txt carries flexray dim 1024; imagenet dim 512; physics dim 83, and of the design's spaces and readings it does not name flexray_as_stored, which its 80-line budget gave up, the summary giving up whole sections from the highest rank down (tools/domain_gap.py, RANK and fit_lines; README section 6), so what results.json on the grid holds of them is not read here; the verdict, flexray_replica against flexray_reference in the flexray space read inversion-invariant, reads not replicated, the MMD's q of 0.048 being under the bar of 0.05 and the AUC's lower bound of 0.50 at most the bar of 0.6, so the word rests on the MMD alone; that q was taken over the space's contrasts alone, where PREREG.md section 3 takes the split-half nulls into its family (DEVIATIONS.md, item 11), so the frozen rule's word on the MMD is not read in this run"
   },
   {
    "id": "31",
    "section": "Methods: evaluation",
    "asks": "Methods for explainability or interpretability",
-   "basis": "declared",
+   "basis": "code",
    "fact": "explainability",
-   "state": "missing",
-   "evidence": "needs the owner's answer under \"explainability\" in data/reporting/studies/drr-domain-gap.json"
+   "state": "met",
+   "evidence": "no per-image explanation, no saliency or attribution map, is made; what the study shows of how the groups differ is description (PREREG.md sections 3 and 6): the maps, PCA, t-SNE, UMAP and LDA, each but LDA with its trustworthiness; the silhouette, each group's neighbour purity and its neighbours' share in each family; the nearest real corpus that a classifier of the real corpora alone calls each synthetic group; and PRDC; and the physics space's features are named measures, the intensity histogram, the radial power spectrum's shape, the gradient histogram, the noise, the local contrast, the shares near black and white and the share of strong edges (README section 3); of these summary.txt prints PRDC and the silhouette, and the rest are on the grid and not in this record"
   },
   {
    "id": "32",
@@ -312,10 +312,10 @@
    "id": "34",
    "section": "Methods: evaluation",
    "asks": "Clinical trial registration",
-   "basis": "declared",
-   "fact": "trial_registration",
-   "state": "missing",
-   "evidence": "needs the owner's answer under \"trial_registration\" in data/reporting/studies/drr-domain-gap.json"
+   "basis": "code",
+   "fact": "no_trial",
+   "state": "not applicable",
+   "evidence": "Not applicable: the study is no clinical trial and is in no trial registry; its design is registered inside the project as PREREG.md 3ca1-b6b7-aea6-0f00, frozen on 2026-10-27 before any number of the study was read (its section 7), the pre-registration this record names (summary.txt record: study drr-domain-gap, commit d3fe578, code 8943-e46c-a4c5-5779)"
   },
   {
    "id": "35",
@@ -333,7 +333,7 @@
    "basis": "declared",
    "fact": "characteristics",
    "state": "missing",
-   "evidence": "needs the owner's answer under \"characteristics\" in data/reporting/studies/drr-domain-gap.json"
+   "evidence": "needs the owner's answer under \"characteristics\" in data/reporting/studies/drr-domain-gap.json, whose answers are run 40859208's, not this run's"
   },
   {
    "id": "37",
@@ -342,7 +342,7 @@
    "basis": "code",
    "fact": "endpoints",
    "state": "met",
-   "evidence": "the primary endpoints in the flexray space's inversion-invariant reading (summary.txt): flexray_drr vs fluoroscopy auc 0.95 [0.91, 0.98] p 0.010 knn 0.95 fd64 1007.8 ratio 1.27 mmd p 0.001 prdc 0.26 0.75 0.08 0.03 closer than two real corpora; flexray_drr vs film auc 0.96 [0.94, 0.98] p 0.010 knn 0.95 fd64 1244.8 ratio 1.66 mmd p 0.001 prdc 0.13 0.72 0.04 0.01 closer than two real corpora; flexray_drr_ct vs fluoroscopy auc 0.88 [0.82, 0.94] p 0.010 knn 0.90 fd64 601.4 ratio 0.76 mmd p 0.001 prdc 0.27 0.94 0.10 0.06 closer than two real corpora; flexray_drr_ct vs film auc 0.93 [0.90, 0.96] p 0.010 knn 0.88 fd64 716.2 ratio 0.96 mmd p 0.001 prdc 0.14 0.90 0.04 0.01 closer than two real corpora; not in summary.txt: fluxray vs fluoroscopy (group skipped, its files could not be listed (Error)), fluxray vs film (group skipped, its files could not be listed (Error)); the replication verdict: replication flexray_replica vs flexray_reference in flexray (invariant): not replicated (persons 26/26 n 104/104); replication fluxray_raw vs fluxray_raw_reference in flexray (invariant): replicated (persons 26/26 n 103/103)"
+   "evidence": "the primary endpoints in the flexray space's inversion-invariant reading (summary.txt): flexray_drr vs fluoroscopy auc 0.95 [0.91, 0.98] p 0.010 knn 0.95 fd64 1007.8 ratio 1.27 mmd p 0.001 prdc 0.26 0.75 0.08 0.03 closer than two real corpora; flexray_drr vs film auc 0.96 [0.94, 0.98] p 0.010 knn 0.95 fd64 1244.8 ratio 1.66 mmd p 0.001 prdc 0.13 0.72 0.04 0.01 closer than two real corpora; flexray_drr_ct vs fluoroscopy auc 0.88 [0.82, 0.94] p 0.010 knn 0.90 fd64 601.4 ratio 0.76 mmd p 0.001 prdc 0.27 0.94 0.10 0.06 closer than two real corpora; flexray_drr_ct vs film auc 0.93 [0.90, 0.96] p 0.010 knn 0.88 fd64 716.2 ratio 0.96 mmd p 0.001 prdc 0.14 0.90 0.04 0.01 closer than two real corpora; not in summary.txt: fluxray vs fluoroscopy (group skipped, its files could not be listed (Error)), fluxray vs film (group skipped, its files could not be listed (Error)); the replication verdict: replication flexray_replica vs flexray_reference in flexray (invariant): not replicated (persons 26/26 n 104/104); replication fluxray_raw vs fluxray_raw_reference in flexray (invariant): replicated (persons 26/26 n 103/103); read here, the verdict, flexray_replica against flexray_reference in the flexray space read inversion-invariant, reads not replicated, the MMD's q of 0.048 being under the bar of 0.05 and the AUC's lower bound of 0.50 at most the bar of 0.6, so the word rests on the MMD alone; that q was taken over the space's contrasts alone, where PREREG.md section 3 takes the split-half nulls into its family (DEVIATIONS.md, item 11), so the frozen rule's word on the MMD is not read in this run"
   },
   {
    "id": "38",
@@ -357,19 +357,19 @@
    "id": "39",
    "section": "Results: model performance",
    "asks": "Failure analysis of incorrectly classified cases",
-   "basis": "declared",
+   "basis": "code",
    "fact": "failure_analysis",
-   "state": "missing",
-   "evidence": "needs the owner's answer under \"failure_analysis\" in data/reporting/studies/drr-domain-gap.json"
+   "state": "not applicable",
+   "evidence": "Not applicable: the study scores no case against a clinical truth (CLAIM 38): its classifier two-sample tests score each image out of fold for its side of a contrast, its group, its pooled family or its half of a split group, and read the scores only in aggregate, as the AUC by its pure rule of ranks, the share of pairs across the two sides ranked the right way round with ties counted half (tools/domain_gap_stats.py, rank_auc), with its interval; no threshold sorts an image to a side, so no file of the study analyses an image as misclassified; the failures its design defines are PREREG.md section 5's: of the pipeline, a split-half null whose AUC interval excludes 0.5, which the study flags by its MMD instead and counts the AUC interval beside it (DEVIATIONS.md, item 8), summary.txt's calibration lines reading flexray mmd flagged none, auc interval above half 0; imagenet mmd flagged none, auc interval above half 0; physics mmd flagged none, auc interval above half 2; of the replication, the verdict not replicated: the verdict, flexray_replica against flexray_reference in the flexray space read inversion-invariant, reads not replicated, the MMD's q of 0.048 being under the bar of 0.05 and the AUC's lower bound of 0.50 at most the bar of 0.6, so the word rests on the MMD alone; that q was taken over the space's contrasts alone, where PREREG.md section 3 takes the split-half nulls into its family (DEVIATIONS.md, item 11), so the frozen rule's word on the MMD is not read in this run; of realism, a primary endpoint worded separable, of the primary endpoints' 4 worded lines read, none worded separable, 2 not in summary.txt (summary.txt record: study drr-domain-gap, commit d3fe578, code 8943-e46c-a4c5-5779)"
   },
   {
    "id": "40",
    "section": "Discussion",
    "asks": "Study limitations",
-   "basis": "declared",
+   "basis": "code",
    "fact": "limitations",
-   "state": "missing",
-   "evidence": "needs the owner's answer under \"limitations\" in data/reporting/studies/drr-domain-gap.json"
+   "state": "met",
+   "evidence": "before the run, README section 5's eight limits, to which PREREG.md section 6 points: the corpora differ in more than their realism, in anatomy, devices, eras and formats; the renders follow their own pose profiles where the real spot frames are narrow and centred; the replication's CTs are TotalSegmentator v2.0.1's, not the ENHANCE-PET volumes of FleXray's dataset; its MOOSE masks are merged in this project's own precedence; the SPINEPS masks are matched by name in a layout not recorded; flexray_drr_ct aims at the crop's centre and draws its crops uniformly; persons are files in seven groups; DeepFluoro has six specimens; after the run, what README section 6 says the recorded runs do not support, in its words: \"What the run does not support, found by the reviews of 2026-10-28 and not changed in it: DeepFluoro's 14 persons are DICOM patient ids, a key its own source record calls wrong, over six specimens and two phantoms, so its intervals and p-values, and the one-pair fluoroscopy baseline it sets with carmlspine_spots, are narrower than they should be; aasce, kub_stonex, nhanes2 and fluorogen are keyed by file over sets that hold repeat films or subjects, which the split-half nulls, split by file too, cannot catch; KID64 is negative on the paired near-duplicates of the replication pairs, where its unbiased estimate is not valid, and the silhouette of 0.01 says nothing of how the groups mix; the paired bootstrap counts each CT's twin comparisons about twice, which can move a replication pair's interval off its estimate; and the as-stored reading of FleXray's space was analysed and left out of the summary by its line budget, as designed. Each of the person rules needs a read-only look at the grid before it changes.\"; every departure from the design is in DEVIATIONS.md, dated with its reason; of this run, summary.txt: 3 groups skipped, fluxray (its files could not be listed (Error)); vindr_spinexr (nothing found under its rules); lumos (no folder lumos/bank under the data root); persons by file in fluorogen, aasce, nhanes2, csxa, kub_stonex, ieee_lateral, aariz; split-half nulls on each group of 40 persons or more, so these tested groups, by their persons in summary.txt, have none of their own: flexray_drr 26, flexray_drr_ct 26, flexray_replica 26, flexray_reference 26, flexray_spineps 26, fluxray_raw 26, fluxray_raw_reference 26, ts_drr_project 19, deepfluoro 14, the calibration lines reading flexray mmd flagged none, auc interval above half 0; imagenet mmd flagged none, auc interval above half 0; physics mmd flagged none, auc interval above half 2; the verdict, flexray_replica against flexray_reference in the flexray space read inversion-invariant, reads not replicated, the MMD's q of 0.048 being under the bar of 0.05 and the AUC's lower bound of 0.50 at most the bar of 0.6, so the word rests on the MMD alone; that q was taken over the space's contrasts alone, where PREREG.md section 3 takes the split-half nulls into its family (DEVIATIONS.md, item 11), so the frozen rule's word on the MMD is not read in this run"
   },
   {
    "id": "41",
@@ -378,16 +378,16 @@
    "basis": "declared",
    "fact": "implications",
    "state": "missing",
-   "evidence": "needs the owner's answer under \"implications\" in data/reporting/studies/drr-domain-gap.json"
+   "evidence": "needs the owner's answer under \"implications\" in data/reporting/studies/drr-domain-gap.json, whose answers are run 40859208's, not this run's"
   },
   {
    "id": "42",
    "section": "Other information",
    "asks": "Provide a reference to the full study protocol or to additional technical details",
-   "basis": "declared",
+   "basis": "code",
    "fact": "protocol",
-   "state": "missing",
-   "evidence": "needs the owner's answer under \"protocol\" in data/reporting/studies/drr-domain-gap.json"
+   "state": "met",
+   "evidence": "the full text of the protocol is docs/research/drr-domain-gap/README.md, sections 1 to 5, at commit 6658f3a, which the pre-registration PREREG.md beside it, sha256 3ca1-b6b7-aea6-0f00 as this record names it, restates in seven parts and freezes (PREREG.md, its opening and section 7); DEVIATIONS.md beside them records every departure, and README section 7 gives the commands that run the study"
   },
   {
    "id": "43",
@@ -396,7 +396,7 @@
    "basis": "declared",
    "fact": "availability",
    "state": "missing",
-   "evidence": "needs the owner's answer under \"availability\" in data/reporting/studies/drr-domain-gap.json"
+   "evidence": "needs the owner's answer under \"availability\" in data/reporting/studies/drr-domain-gap.json, whose answers are run 40859208's, not this run's"
   },
   {
    "id": "44",
@@ -405,7 +405,7 @@
    "basis": "declared",
    "fact": "funding",
    "state": "missing",
-   "evidence": "needs the owner's answer under \"funding\" in data/reporting/studies/drr-domain-gap.json"
+   "evidence": "needs the owner's answer under \"funding\" in data/reporting/studies/drr-domain-gap.json, whose answers are run 40859208's, not this run's"
   }
  ]
 }
