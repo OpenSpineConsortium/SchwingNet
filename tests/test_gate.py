@@ -43,7 +43,7 @@ FAKE_HPCWORKER = ROOT / "tests" / "fakes" / "hpcworker"
 NEW_SCRIPTS = ("gate.sh", "hpcw.sh", "box.sh", "bin/pixi", "bin/train-cpu-python", "00-setup.sbatch", "00-weights.sbatch",
                "00-carmlspine.sbatch", "v1-driver.sbatch", "experiment-driver.sbatch", "run-xray-chain.sh",
                "run-platform-fetch.sh", "sweep-driver.sbatch", "v1-version.sh", "realism.sbatch", "venv.sh",
-               "drr-gap.sbatch", "drr-seg.sbatch", "morphometry.sbatch")
+               "drr-gap.sbatch", "drr-seg.sbatch", "morphometry.sbatch", "gold3-census.sbatch")
 ENVS = ("default", "train-cpu", "train-gpu", "telemetry")
 # What bench flexray_drr_gap's word says of a mask folder that is there: the study reads too few CTs'
 # masks as none, which its summary says, so the word says only where the folder is.
@@ -2104,6 +2104,138 @@ esac
             self.assertEqual(done.returncode, 0, done.stdout)
             self.assertIn("- exit 0", done.stdout)
         self.assertEqual(len(self.submitted()), 1)
+
+    def test_census_gold3_queues_one_cpu_job_once_and_never_again_without_the_owners_word(self):
+        # the owner's count of 2026-10-29 12:26 UTC is one CPU job: no id, another id and no tool are refused
+        self.assertEqual(self.gate("census").returncode, 64)
+        refused = self.gate("census", "tiers")
+        self.assertEqual(refused.returncode, 64, refused.stdout)
+        self.assertIn("census takes gold3", refused.stdout)
+        self.assertEqual(self.gate("census", "gold3").returncode, 2)
+        (self.repo / "tools" / "gold3_census.py").write_text("", encoding="utf-8")
+        # nor is the one job spent on roots the census would read nothing from
+        empty = self.gate("census", "gold3")
+        self.assertEqual(empty.returncode, 2, empty.stdout)
+        self.assertIn("the census would read nothing from the census tier lists under the lab volume's go2432/ruleclass/tiers; "
+                      f"{self.data}/totalsegmentator_v300; ", empty.stdout)
+        self.assertEqual(self.submitted(), [])
+        self.census_inputs()
+        done = self.gate("census", "gold3")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        lines = self.submitted()
+        # the environments are not made here, and still no setup job goes with it: the job finds its own python
+        self.assertEqual(len(lines), 1, lines)
+        self.assertIn("--class batch --name census_gold3", lines[0])
+        # requeueable, the batch class's default, since a requeued job carries on after the parts it finished
+        self.assertNotIn("--no-requeue", lines[0])
+        self.assertIn("gold3-census.sbatch", lines[0])
+        # the job copies the code from the commit the gate was sent from; none here, where the copy is no repository
+        self.assertTrue(lines[0].endswith(" CENSUS_COMMIT="), lines[0])
+        self.assertFalse((self.repo / "grid" / "logs" / "CENSUS-gold3.sent").exists())
+        job = self.recorded()["census_gold3"]
+        self.live(job)
+        self.assertEqual(self.gate("census", "gold3").returncode, 75)
+        (self.fake / "queue").write_text("", encoding="utf-8")
+        # a job that ended with no report is not queued again: a second one waits for the owner's word
+        again = self.gate("census", "gold3")
+        self.assertEqual(again.returncode, 64, again.stdout)
+        self.assertIn("left no report", again.stdout)
+        report = self.repo / "grid" / "logs" / "CENSUS-gold3.md"
+        report.write_text("# census gold3: job 1 on node, commit abc1234, 2026-10-29 15:00:00 UTC\n"
+                          "- gold4: idc rows 2, admitted 1\n- exit 0 at 2026-10-30 01:00:00 UTC\n", encoding="utf-8")
+        for _ in range(2):
+            done = self.gate("census", "gold3")
+            self.assertEqual(done.returncode, 0, done.stdout)
+            self.assertIn("gold4: idc rows 2, admitted 1", done.stdout)
+        self.assertEqual(len(self.submitted()), 1)
+
+    def allow_census_rerun(self, word):
+        """The owner's word for one more census job, as a pull request commits it in grid/gate.sh."""
+        gate = self.repo / "grid" / "gate.sh"
+        text, count = re.subn(r'(?m)^CENSUS_RERUNS="[^"]*"$', f'CENSUS_RERUNS="{word}"', gate.read_text(encoding="utf-8"))
+        self.assertEqual(count, 1)
+        gate.write_text(text, encoding="utf-8")
+
+    def test_census_gold3_queues_nothing_after_a_lost_answer_until_the_owners_word(self):
+        (self.repo / "tools" / "gold3_census.py").write_text("", encoding="utf-8")
+        self.census_inputs()
+        (self.fake / "lossy").write_text("census_gold3", encoding="utf-8")
+        lost = self.gate("census", "gold3", HPCW_LOSSY=str(self.fake / "lossy"))
+        self.assertNotEqual(lost.returncode, 0, lost.stdout)
+        # the controller queued it and lost its answer: the mark stands and no job is recorded
+        self.assertEqual(len(self.submitted()), 1)
+        self.assertTrue((self.repo / "grid" / "logs" / "CENSUS-gold3.sent").exists())
+        self.assertNotIn("census_gold3", self.recorded())
+        (self.fake / "lossy").write_text("", encoding="utf-8")
+        for _ in range(2):
+            refused = self.gate("census", "gold3")
+            self.assertEqual(refused.returncode, 64, refused.stdout)
+            self.assertIn("no job id came back", refused.stdout)
+            self.assertIn("CENSUS_RERUNS=gold3:lost", refused.stdout)
+        self.assertEqual(len(self.submitted()), 1)
+        # a rerun word naming another job is not this one's
+        self.allow_census_rerun("gold3:4242")
+        self.assertEqual(self.gate("census", "gold3").returncode, 64)
+        self.allow_census_rerun("gold3:lost")
+        done = self.gate("census", "gold3")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("follows a submission whose answer was lost", done.stdout)
+        self.assertEqual(len(self.submitted()), 2)
+        self.assertFalse((self.repo / "grid" / "logs" / "CENSUS-gold3.sent").exists())
+
+    def test_census_gold3_prints_an_unfinished_part_and_reruns_only_on_the_owners_word(self):
+        (self.repo / "tools" / "gold3_census.py").write_text("", encoding="utf-8")
+        self.census_inputs()
+        self.assertEqual(self.gate("census", "gold3").returncode, 0)
+        job = self.recorded()["census_gold3"]
+        logs = self.repo / "grid" / "logs"
+        part = logs / "CENSUS-gold3.md.part"
+        part.write_text(f"# census gold3: job {job} on node, commit abc1234, 2026-10-29 15:00:00 UTC\n"
+                        "- ts142: listed 142, admitted 120\n", encoding="utf-8")
+        shown = self.gate("census", "gold3")
+        self.assertEqual(shown.returncode, 64, shown.stdout)
+        self.assertIn("CENSUS-gold3.md.part, unfinished", shown.stdout)
+        self.assertIn("ts142: listed 142, admitted 120", shown.stdout)
+        self.assertIn(f"CENSUS_RERUNS=gold3:{job}", shown.stdout)
+        self.assertEqual(len(self.submitted()), 1)
+        self.allow_census_rerun(f"gold3:{job}")
+        again = self.gate("census", "gold3")
+        self.assertEqual(again.returncode, 0, again.stdout + again.stderr)
+        self.assertEqual(len(self.submitted()), 2)
+        # the unfinished part is kept under the job it came from, and the new job starts from none
+        self.assertFalse(part.exists())
+        self.assertTrue((logs / f"CENSUS-gold3-{job}.part").exists())
+
+    def test_census_gold3_reruns_a_finished_report_only_for_the_job_the_word_names(self):
+        (self.repo / "tools" / "gold3_census.py").write_text("", encoding="utf-8")
+        self.census_inputs()
+        logs = self.repo / "grid" / "logs"
+        logs.mkdir(parents=True, exist_ok=True)
+        report = logs / "CENSUS-gold3.md"
+        report.write_text("# census gold3: job 77 on node, commit abc1234, 2026-10-29 15:00:00 UTC\n- exit 0\n",
+                          encoding="utf-8")
+        self.allow_census_rerun("gold3:76")
+        kept = self.gate("census", "gold3")
+        self.assertEqual(kept.returncode, 0, kept.stdout)
+        self.assertEqual(self.submitted(), [])
+        self.assertTrue(report.exists())
+        self.allow_census_rerun("gold3:77")
+        again = self.gate("census", "gold3")
+        self.assertEqual(again.returncode, 0, again.stdout + again.stderr)
+        self.assertIn("is job 77's", again.stdout)
+        self.assertEqual(len(self.submitted()), 1)
+        self.assertTrue((logs / "CENSUS-gold3-77.md").exists())
+
+    def census_inputs(self):
+        """What the census reads, as the lab volume and the data root hold them: the tier lists and the
+        members' roots, each empty here, so the gate finds every root and the one job is not spent on none."""
+        tiers = self.tmp / "go2432" / "ruleclass" / "tiers"
+        tiers.mkdir(parents=True, exist_ok=True)
+        for name in ("tier1.tsv", "tier2.tsv"):
+            (tiers / name).write_text("tier\n", encoding="utf-8")
+        for root in ("totalsegmentator_v300", "aws_enhance_pet_labels/raw", "aws_enhance_pet_ct/raw", "tcia_fdg_pet_ct_lesions",
+                     "versefusion/raw/VerSeFusion_data/raw"):
+            (self.data / root).mkdir(parents=True, exist_ok=True)
 
     def realism_inputs(self, *which):
         """The data root as the realism fetches leave it, each named set landed by its marker file, and
