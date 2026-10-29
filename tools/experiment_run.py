@@ -77,7 +77,7 @@ The command it names, as the panel shows it:
 {panel.request_command(record)}
 ```
 
-On the grid the gate's word `experiment {issue}` runs it as one GPU job (grid/experiment-driver.sbatch), inside the container, on the catalog version grid/v1-version.sh chooses and with the ImageNet weights, after checking these lines once more against the checkout's own blocks module:
+On the grid the gate's word `experiment {issue}` runs it as one GPU job (grid/experiment-driver.sbatch), after checking these lines once more against the checkout's own blocks module: the launched flow experiment (flows/experiment.py), held to the frozen docs/research/experiments/PREREG.md with its CLAIM 2024 and REFORMS report checked at its end and a progress page, whose one step runs, inside the container, on the catalog version grid/v1-version.sh chooses and with the ImageNet weights:
 
 ```
 {panel.driver_command(record)}

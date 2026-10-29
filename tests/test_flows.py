@@ -1086,7 +1086,7 @@ class SweepFlowTest(unittest.TestCase):
         self.assertEqual(calls.read_text(encoding="utf-8").splitlines(), ["row b"])
 
 
-STUB_FLOW_TOOL = '''"""A stand-in for tools/flow.py run, as V1Flow runs it: the run's folder held by its .lock and its
+STUB_FLOW_TOOL = '''"""A stand-in for tools/flow.py run, as V1Flow and ExperimentFlow run it: the run's folder held by its .lock and its
 RUN.json written first, an epoch line a second, the run's id and folder said before its first step,
 killed once or failing where the test says, a report of its own that is not current where the test
 says, and FINISHED.json last."""
@@ -1114,7 +1114,7 @@ def ancestor(test):
 
 def kill_the_job():
     """As Slurm ends a job: the flow's runtime first, so nothing retries, then the task."""
-    runtime = ancestor(lambda c: "v1.py --quiet " in c and " step " not in c)
+    runtime = ancestor(lambda c: ("v1.py --quiet " in c or "experiment.py --quiet " in c) and " step " not in c)
     task = ancestor(lambda c: " step train_evaluate " in c)
     for pid in (runtime, task):
         if pid:
@@ -1123,7 +1123,9 @@ def kill_the_job():
 
 
 with open(os.environ["FLOW_TEST_CALLS"], "a", encoding="utf-8") as calls:
-    calls.write(" ".join(["run", value("--epochs"), value("--seed"), Path(value("--catalog")).name]) + "\\n")
+    extra = [f"{flag} {value(flag)}" for flag in ("--hours", "--recipe") if flag in sys.argv]
+    extra += [f"--block {sys.argv[i + 1]}" for i, word in enumerate(sys.argv) if word == "--block"]
+    calls.write(" ".join(["run", value("--epochs"), value("--seed"), Path(value("--catalog")).name, *extra]) + "\\n")
 if os.environ.get("FLOW_TEST_FAULT"):
     print("flow: train exited 1; see the train log", file=sys.stderr)
     sys.exit(1)
@@ -1289,6 +1291,107 @@ class V1FlowTest(unittest.TestCase):
         self.assertIn("STOP: docs/research/v1-demo/PREREG.md changed since the freeze", out)
         self.assertEqual((said, calls), ([], []), out)
         self.assertIn("V1_RC=90 ", out)
+
+
+EXPERIMENT_PREREG = "# The test's design for requested experiments\n"
+EXPERIMENT_REQUEST = "recipe: none\nepochs: 3\nseed: 2\nhours: 1.5\nblock: optimiser=adamw\nblock: augment=blur,noise\n"
+
+
+@unittest.skipIf(MISSING, f"needs the train environment ({', '.join(MISSING)} missing)")
+class ExperimentFlowTest(unittest.TestCase):
+    """ExperimentFlow over the same stub of tools/flow.py as V1Flow's, in a temporary copy of the
+    repository's flow: the request's words reach tools/flow.py, and its bytes key the run."""
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
+        self.repo = self.tmp / "repo"
+        (self.repo / "flows").mkdir(parents=True)
+        (self.repo / "tools").mkdir()
+        for name in ("experiment.py", "flow_tool.py", "stage.py", "stage_progress.py", "stage_registry.py", "registry.txt"):
+            shutil.copy(ROOT / "flows" / name, self.repo / "flows" / name)
+        (self.repo / "tools" / "flow.py").write_text(STUB_FLOW_TOOL, encoding="utf-8")
+        (self.repo / "tools" / "report.py").write_text(STUB_REPORT, encoding="utf-8")
+        prereg = self.repo / "docs" / "research" / "experiments"
+        prereg.mkdir(parents=True)
+        (prereg / "PREREG.md").write_text(EXPERIMENT_PREREG, encoding="utf-8")
+        (prereg / "PREREG.md.sha256").write_text(f"{hashlib.sha256(EXPERIMENT_PREREG.encode()).hexdigest()}  PREREG.md\n",
+                                                 encoding="ascii")
+        shutil.copy(ROOT / "tools" / "run_code.py", self.repo / "tools" / "run_code.py")
+        for name in load_run_code().KINDS["experiment"]:
+            path = self.repo / name
+            if not path.exists():
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(f"# {name}, a stand-in\n", encoding="utf-8")
+        subprocess.run(self.git("init", "-q"), check=True, capture_output=True, timeout=60)
+        self.commit("the stub")
+        self.root, self.runs, self.work = self.tmp / "metaflow", self.tmp / "runs", self.tmp / "work"
+        self.work.mkdir()
+        self.catalog = self.tmp / "catalog-000001-abc.sqlite"
+        self.catalog.write_text("a catalog\n", encoding="utf-8")
+        self.weights = self.tmp / "resnet18.pth"
+        self.weights.write_text("weights\n", encoding="utf-8")
+        self.request = self.tmp / "experiment-250.request"
+        self.request.write_text(EXPERIMENT_REQUEST, encoding="utf-8")
+
+    def git(self, *words):
+        return ["git", "-C", str(self.repo), "-c", "user.name=flow test", "-c", "user.email=flow@test", "-c", "commit.gpgsign=false",
+                "-c", "gc.auto=0", "-c", "gc.autoDetach=false", "-c", "maintenance.auto=false", "-c", "maintenance.autoDetach=false", *words]
+
+    def commit(self, message):
+        for words in (["add", "-A"], ["commit", "-q", "-m", message]):
+            subprocess.run(self.git(*words), check=True, capture_output=True, timeout=60)
+
+    def experiment(self, n, **extra):
+        """One launch of issue 250's request over the stub, as grid/experiment-driver.sbatch gives its words:
+        (code, JSON lines, output, calls)."""
+        calls = self.tmp / f"calls-{n}"
+        calls.write_text("", encoding="utf-8")
+        env = base_env(SCHWINGNET=str(self.repo), FLOW_TEST_CALLS=str(calls), FLOW_TEST_MARKER=str(self.tmp / "killed"), **extra)
+        words = ["experiment", "--", "--issue", "250", "--request", str(self.request), "--catalog", str(self.catalog),
+                 "--out", str(self.runs), "--environment", "train-cpu", "--epochs", "3", "--seed", "2", "--hours", "1.5",
+                 "--weights", str(self.weights), "--recipe", "none", "--blocks", "optimiser=adamw augment=blur,noise"]
+        code, said, out = launch(words, self.work, env, self.root)
+        return code, said, out, calls.read_text(encoding="utf-8").splitlines()
+
+    def test_the_requests_words_reach_the_flow_tool_and_the_run_ends_with_its_report_and_page(self):
+        code, said, out, calls = self.experiment(1)
+        self.assertEqual(code, 0, out)
+        self.assertEqual((said[0]["decision"], said[-1]["successful"], said[-1]["verdict"]), ("run", True, 0), out)
+        # recipe none is no --recipe, and each block word is one --block, as tools/flow.py takes them
+        self.assertEqual(calls, ["run 3 2 catalog-000001-abc.sqlite --hours 1.5 --block optimiser=adamw --block augment=blur,noise"])
+        record = json.loads((self.runs / "r1" / "METAFLOW.json").read_text(encoding="utf-8"))
+        self.assertEqual((record["flow"], record["issue"], record["request_sha256"]),
+                         ("ExperimentFlow", 250, hashlib.sha256(EXPERIMENT_REQUEST.encode()).hexdigest()))
+        folder = self.root / "progress" / "ExperimentFlow" / said[-1]["run"].split("/")[1]
+        lines = (folder / "PROGRESS.txt").read_text(encoding="utf-8").splitlines()
+        self.assertRegex(lines[1], r"PREREG docs/research/experiments/PREREG\.md sha256 [0-9a-f]{12}$")
+        self.assertEqual(lines[2:5], ["verdict: 0", "ended: the launcher exited 0, the flow succeeded", "reports: 1 of 1 current"])
+        self.assertIn("EXPERIMENT_RC=0 ", out)
+
+    def test_a_cut_run_resumes_on_the_same_request_and_runs_anew_on_an_edited_one(self):
+        code, said, out, _ = self.experiment(1, FLOW_TEST_KILL="1")
+        self.assertEqual(code, 137, out)
+        first_run = said[-1]["run"].split("/")[1]
+        code, said, out, calls = self.experiment(2)
+        self.assertEqual(code, 0, out)
+        self.assertEqual((said[0]["decision"], said[0]["origin"]), ("resume", first_run), out)
+        (self.tmp / "killed").unlink()
+        code, said, out, _ = self.experiment(3, FLOW_TEST_KILL="1")
+        self.assertEqual(code, 137, out)
+        # the same path with other lines is another request: the key holds its bytes, so it is never carried on
+        self.request.write_text(EXPERIMENT_REQUEST.replace("seed: 2", "seed: 9"), encoding="utf-8")
+        code, said, out, _ = self.experiment(4)
+        self.assertEqual((code, said[0]["decision"], said[0]["origin"]), (0, "run", None), out)
+
+    def test_a_moved_prereg_starts_nothing(self):
+        with (self.repo / "docs" / "research" / "experiments" / "PREREG.md").open("a", encoding="utf-8") as prereg:
+            prereg.write("An edit after the freeze.\n")
+        self.commit("an edit to the PREREG after its freeze")
+        code, said, out, calls = self.experiment(1)
+        self.assertEqual(code, 90, out)
+        self.assertIn("STOP: docs/research/experiments/PREREG.md changed since the freeze", out)
+        self.assertEqual((said, calls), ([], []), out)
 
 
 # A failed stage 2 job's log under the launcher, in the shape Metaflow 2.19.39 gave it (measured

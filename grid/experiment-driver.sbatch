@@ -4,9 +4,10 @@
 #SBATCH --time=24:00:00
 # One requested combination of data and blocks: an issue labelled experiment, answered by
 # .github/workflows/experiment.yml and recorded as <issue>.request on the branch experiments, run as
-# tools/flow.py with the request's recipe, blocks, epochs, seed and hours on the catalog's qualifying
-# version, its train and evaluate steps in this job on the GPU Slurm gave it, inside the container
-# (grid/box.sh), as v1-driver.sbatch runs version 1. grid/gate.sh's word `experiment <issue>` queues it
+# the launched flow experiment (flows/experiment.py), which runs tools/flow.py with the request's
+# recipe, blocks, epochs, seed and hours on the catalog's qualifying version, its train and evaluate
+# steps in this job on the GPU Slurm gave it, inside the container (grid/box.sh), as v1-driver.sbatch
+# runs version 1. grid/gate.sh's word `experiment <issue>` queues it
 # through hpcworker's job submit as the gpu class, with REQUEST (the file the gate fetched from the branch)
 # and ISSUE in the environment, after checking the lines' shapes; this job checks the values themselves
 # against the checkout's own blocks module and recipes (tools/experiments_panel.py check --request) before
@@ -14,7 +15,8 @@
 # requeued (--no-requeue): a requeued job would start a second run beside the first. The header's 24 hours
 # are the floor: the gate asks for the request's hours with the evaluation's quarter and an hour more (--time)
 # when that is longer, since the training, the evaluation and the checks all run in this one job.
-# The report is logs/experiment-<issue>-STAGE-REPORT.md: the request, the GPU, the run directory and the W&B lines.
+# The report is logs/experiment-<issue>-STAGE-REPORT.md: the request, the GPU, the launcher's decision, the run
+# directory, the W&B lines, the run's report line, the Metaflow run and the launcher's exit.
 set -uo pipefail
 REPO=${SCHWINGNET:-$HOME/SchwingNet}
 DATA_ROOT=${DATA_ROOT:-/rs/rs_grp_oschome/go2432/data}
@@ -84,20 +86,59 @@ report "catalog: $CATALOG (split check passed); weights: $(basename "$WEIGHTS")"
 report "GPU: $(nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv,noheader 2>/dev/null | head -n 1 || echo 'nvidia-smi gave nothing')"
 said=$(bash grid/box.sh pixi run --locked -e train-gpu python -c "import torch; print('torch', torch.__version__, 'cuda available', torch.cuda.is_available())" 2>&1 | tail -n 1)
 report "in the container: $said"
-RECIPE_ARGS=()
-[ "$RECIPE" = none ] || RECIPE_ARGS=(--recipe "$RECIPE")
-BLOCK_ARGS=()
-for word in ${BLOCKS[@]+"${BLOCKS[@]}"}; do BLOCK_ARGS+=(--block "$word"); done
 out=$(mktemp "$REPO/grid/logs/experiment-$ISSUE-flow-${SLURM_JOB_ID:-$$}.XXXXXX")
-bash grid/box.sh pixi run --locked python tools/flow.py run --catalog "$CATALOG" --out "$RUNS" --mode local \
-  --environment train-gpu --epochs "$EPOCHS" --seed "$SEED" --hours "$HOURS" --weights "$WEIGHTS" \
-  ${RECIPE_ARGS[@]+"${RECIPE_ARGS[@]}"} ${BLOCK_ARGS[@]+"${BLOCK_ARGS[@]}"} 2>&1 | tee "$out"
-rc=${PIPESTATUS[0]}
+# The run is a launched flow, as every deep learning job on the grid is (the owner's rule of
+# 2026-10-29, flows/registry.txt): flows/launch.py refuses it with exit 90 unless
+# docs/research/experiments/PREREG.md is the one frozen, resumes the newest run of the same words,
+# code, request, catalog and weights that did not finish, and its ExperimentFlow runs tools/flow.py
+# in local mode with the request's recipe, epochs, seed, hours and blocks, then writes and checks
+# the run's CLAIM 2024 and REFORMS report and draws the run's progress page under the datastore's
+# progress/ folder. The launcher runs in the background and is waited on, as
+# grid/sweep-driver.sbatch's is, so job submit's TERM two minutes before the limit, or a person's
+# INT, is heard at once: a shell holds a trapped signal while a command runs in its foreground. The
+# trap passes TERM on to the launcher, which passes it to every process of its flow, closes the
+# run's page and exits 143, and the pipeline is waited on again; tee ignores both signals, so the
+# launcher's last lines reach $out.
+launcher_pid=$(mktemp) launcher_rc=$(mktemp)
+stopped="" signalled=""
+stop_launcher() {
+  local pid
+  stopped=1 signalled=1
+  pid=$(cat "$launcher_pid" 2>/dev/null)
+  [ -z "$pid" ] || kill -TERM "$pid" 2>/dev/null
+}
+trap stop_launcher TERM INT
+{
+  bash grid/box.sh pixi run --locked -e train-gpu python flows/launch.py experiment --max-workers 1 -- \
+    --issue "$ISSUE" --request "$REQUEST" --catalog "$CATALOG" --out "$RUNS" --environment train-gpu \
+    --epochs "$EPOCHS" --seed "$SEED" --hours "$HOURS" --weights "$WEIGHTS" --recipe "$RECIPE" --blocks "$blocks_text" &
+  echo "$!" > "$launcher_pid"
+  wait "$!"
+  echo "$?" > "$launcher_rc"
+} 2>&1 | (trap '' TERM INT; exec tee "$out") &
+piped=$!
+again=1
+while [ -n "$again" ]; do
+  signalled=""
+  wait "$piped"
+  again=$signalled
+done
+trap 'exit 143' TERM
+trap - INT
+rc=$(cat "$launcher_rc" 2>/dev/null)
+# No status where the launcher's own shell was killed, which only Slurm's TERM to the whole job does.
+[ -n "$rc" ] || { [ -n "$stopped" ] && rc=143 || rc=1; }
+rm -f "$launcher_pid" "$launcher_rc"
+decision=$(grep -m 1 '"decision":' "$out")
+report "launcher: ${decision:-it printed no decision line}"
 run_dir=$(sed -n 's/.*"run_dir": "\([^"]*\)".*/\1/p' "$out" | head -n 1)
 report "run directory: ${run_dir:-none was made}"
 grep -h 'W&B' "$out" | tail -n 3 | while IFS= read -r line; do report "$line"; done
+grep -h 'ExperimentFlow: report ' "$out" | tail -n 1 | while IFS= read -r line; do report "${line#*ExperimentFlow: }"; done
 [ -z "$run_dir" ] || [ ! -f "$run_dir/evaluate/results.md" ] || { echo; echo "## The test part"; cat "$run_dir/evaluate/results.md"; } >> "$REPORT"
-report "flow exited $rc"
+run=$(grep '"successful":' "$out" | tail -n 1)
+report "Metaflow: ${run:-the launcher named no run}"
+report "launcher exited $rc"
 ended_at=$(git -C "$REPO" rev-parse HEAD 2>/dev/null)
 if [ "$ended_at" != "$started_at" ]; then
   report "FAILED: the checkout moved from ${started_at:0:7} to ${ended_at:0:7} during the run, so a later step may have run the newer code while RUN.json names the older; this run is not used, and experiment $ISSUE runs again"

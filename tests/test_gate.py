@@ -1015,6 +1015,65 @@ echo "the split is not disjoint; no training step reads this version"; exit 1
         self.assertIn("- launcher exited 143\n", report)
         self.assertFalse((self.repo / "grid" / "logs" / "HOLD").exists())
 
+    def experiment_driver(self, request, popen=False):
+        env = dict(os.environ, SCHWINGNET=str(self.repo), DATA_ROOT=str(self.data), RUNS=str(self.runs), FAKE=str(self.fake),
+                   WEIGHTS=str(self.models / "resnet18-f37072fd.pth"), SLURM_JOB_ID="778", REQUEST=str(request), ISSUE="250")
+        env.pop("STORE", None)
+        command = ["bash", str(self.repo / "grid" / "experiment-driver.sbatch")]
+        if popen:
+            return subprocess.Popen(command, cwd=self.repo / "grid", env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        return subprocess.run(command, cwd=self.repo / "grid", env=env, capture_output=True, text=True, timeout=60)
+
+    def test_an_experiment_runs_its_request_as_the_launched_flow_experiment(self):
+        self.weights_ready()
+        self.carmlspine_shards()
+        self.catalog_ready(version=2)
+        self.fake_box()
+        request = self.tmp / "experiment-250.request"
+        request.write_text(self.REQUEST, encoding="utf-8")
+        done = self.experiment_driver(request)
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        boxed = self.boxed()
+        check = [i for i, line in enumerate(boxed) if "tools/experiments_panel.py check --request" in line]
+        split = [i for i, line in enumerate(boxed) if "tools/catalog.py split-check" in line]
+        flow = [i for i, line in enumerate(boxed) if "flows/launch.py" in line]
+        self.assertTrue(check and split and flow and check[0] < split[0] < flow[0], boxed)
+        # the request runs as the launched flow, held to its frozen PREREG, never tools/flow.py around it
+        self.assertIn("pixi run --locked -e train-gpu python flows/launch.py experiment --max-workers 1 -- --issue 250 "
+                      f"--request {request} --catalog {self.data}/_catalog/versions/catalog-000002-0123456789ab.sqlite ", boxed[flow[0]])
+        self.assertIn("--epochs 12 --seed 3 --hours 2.5 ", boxed[flow[0]])
+        self.assertIn("--recipe none --blocks architecture=resnet34 optimiser=adamw hold=778", boxed[flow[0]])
+        self.assertFalse([line for line in boxed if "tools/flow.py" in line], boxed)
+        self.assertIn("- launcher: it printed no decision line", done.stdout)
+        self.assertIn("- run directory: /nowhere", done.stdout)
+        self.assertIn("SN_EXPERIMENT_RC=0", done.stdout)
+        self.assertFalse((self.repo / "grid" / "logs" / "HOLD").exists())
+
+    def test_job_submits_early_term_reaches_the_experiment_launcher_at_once(self):
+        self.weights_ready()
+        self.carmlspine_shards()
+        self.catalog_ready(version=2)
+        self.fake_box()
+        (self.fake / "launch_holds").write_text("", encoding="utf-8")
+        request = self.tmp / "experiment-250.request"
+        request.write_text(self.REQUEST, encoding="utf-8")
+        driver = self.experiment_driver(request, popen=True)
+        self.addCleanup(driver.kill)
+        for _ in range(300):
+            if (self.fake / "launch_held").exists():
+                break
+            time.sleep(0.1)
+        began = time.monotonic()
+        driver.send_signal(signal.SIGTERM)
+        out, _ = driver.communicate(timeout=60)
+        self.assertLess(time.monotonic() - began, 30, "the TERM reached the launcher before its flow ended on its own")
+        self.assertEqual(driver.returncode, 143, out)
+        self.assertEqual((self.fake / "stopped").read_text(encoding="utf-8"), "TERM\n")
+        self.assertIn("SN_EXPERIMENT_RC=143", out)
+        report = (self.repo / "grid" / "logs" / "experiment-250-STAGE-REPORT.md").read_text(encoding="utf-8")
+        self.assertIn("- launcher exited 143\n", report)
+        self.assertFalse((self.repo / "grid" / "logs" / "HOLD").exists())
+
     def test_the_chooser_wants_both_parts_every_head_shard_and_a_current_split_check(self):
         self.carmlspine_shards()
         self.assertEqual(self.chosen()[0], 1)
