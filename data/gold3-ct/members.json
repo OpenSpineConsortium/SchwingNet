@@ -62,8 +62,8 @@
     "held_note": "the masks were read from the public bucket; `fetch aws_enhance_pet_labels` has not run, autoPET's CTs are on the grid as FDG-PET-CT-Lesions but no mask is matched to its CT, and Leipzig's and Careggi's CTs are not on the grid"
    },
    "repair_record": "the Claude project's files, folder enhance-pet-repair (README, SHA256SUMS, repaired/<id>.nii.gz)",
-   "persons_by_records": [865, 1478],
-   "persons": "autoPET's 979 whole studies are 865 to 900 persons; Leipzig's 379 and Careggi's 199 whole studies carry no person id, at most 578 persons; the set is 865 to 1,478 gold 3 persons",
+   "persons_by_records": [865, 1479],
+   "persons": "autoPET's 979 gold 3 studies are 865 to 900 persons; Leipzig's 380 and Careggi's 199 gold 3 studies carry no person id, at most 579 persons; the set is 865 to 1,479 gold 3 persons",
    "caveats": [
     "The four readers' check makes the masks a person's annotation, as docs/research/enhance-pet-gold-tier-3.md says; the corpus-tiers draft (pull request #420) calls them machine output and is not followed here.",
     "MOOSE was trained on all 1,683 studies with their published labels, so its rerun of the three repaired studies is not independent of them; the ribs are the independent check.",

@@ -1215,16 +1215,22 @@ def enhance_item(row, inputs, context, member):
     }
 
 
+# The tier reasons rule 3 gives: what the field holds is C2's foot and the sacrum's top, not C2 whole.
+ADMITTED_TO_COMPLETE = "C2's foot and the sacrum's top in the field (rule 3); a segmenter adds "
+KEPT_APART = ", kept apart as a machine mask that raises no tier"
+LOOK_DECIDES = "gold 3 once a person's look finds C2's foot and the sacrum's top in the field"
+
+
 def enhance_tier(klass, row, study):
-    """(tier, reason, provisional): version 1's whole rule over the masks, but for a study whose masks miss
-    a level the field test admits, gold 3 provisional while a segmenter adds it, as field_tier gives VerSe
-    and TotalSegmentator, and for a border case of the field test, silver 3 provisional."""
+    """(tier, reason, provisional): version 1's whole rule over the masks, but for a study the field test
+    admits with levels to add, gold 3 provisional while a segmenter adds them, whatever version 1 called
+    it, as field_tier gives VerSe and TotalSegmentator, and for a border case of the field test, silver 3
+    provisional."""
     tier, reason = tier_of(klass, row)
-    if tier == "silver3" and study.get("verdict") == "admitted" and study.get("complete"):
-        return "gold3", ("C2 to the sacrum in the field (rule 3); a segmenter adds " + ", ".join(study["complete"])
-                         + ", kept apart as a machine mask that raises no tier"), 1
+    if tier in ("silver3", "gold3") and study.get("verdict") == "admitted" and study.get("complete"):
+        return "gold3", ADMITTED_TO_COMPLETE + ", ".join(study["complete"]) + KEPT_APART, 1
     if tier == "silver3" and study.get("verdict") == "look":
-        return tier, reason + "; a border case of the field test (rule 3): gold 3 once a person's look finds C2 and the sacrum in the field", 1
+        return tier, reason + "; a border case of the field test (rule 3): " + LOOK_DECIDES, 1
     return tier, reason, 0
 
 
@@ -1395,13 +1401,12 @@ def field_tier(study):
     to add; silver 3, provisional, for a border case a person's look decides; silver 3 for one whose field
     holds part of the column."""
     if study["verdict"] == "admitted" and study["complete"]:
-        return "gold3", 1, ("C2 to the sacrum in the field (rule 3); a segmenter adds " + ", ".join(study["complete"])
-                            + ", kept apart as a machine mask that raises no tier")
+        return "gold3", 1, ADMITTED_TO_COMPLETE + ", ".join(study["complete"]) + KEPT_APART
     if study["verdict"] == "admitted":
-        return "gold3", 0, "C2 to the sacrum in the field, every level drawn by the release's masks (rule 3)"
+        return "gold3", 0, "C2's foot and the sacrum's top in the field, every level drawn by the release's masks (rule 3)"
     ends = " and ".join(end for end in ("head", "foot") if study[end] == "border")
     if study["verdict"] == "look":
-        return "silver3", 1, f"a border case at the {ends}: gold 3 once a person's look finds C2 and the sacrum in the field"
+        return "silver3", 1, f"a border case at the {ends}: {LOOK_DECIDES}"
     return "silver3", 0, f"part of the column in the field: the head {study['head']}, the foot {study['foot']} (rule 3)"
 
 
@@ -2479,8 +2484,8 @@ def enhance_field_differences(db, inputs):
 
 
 def tier_differences(db, inputs):
-    """Each member with rows whose tiers are not the counts members.json records: the rows and the
-    records are two readings of one release, and a difference is a bug or a record to correct."""
+    """Each member with rows whose tiers or gold 3 persons are not the counts members.json records: the rows
+    and the records are two readings of one release, and a difference is a bug or a record to correct."""
     problems = []
     for row in db.execute("SELECT * FROM member_count WHERE site = 'all' AND studies > 0"):
         member = member_of(inputs, row["member"])
@@ -2488,6 +2493,10 @@ def tier_differences(db, inputs):
         recorded = [member[tier] for tier in ("gold3", "gold4", "silver3")]
         if found != recorded:
             problems.append(f"{row['member']}: the rows give gold 3, gold 4 and silver 3 {found}, {MEMBERS} records {recorded}")
+        persons = [row["persons_low"], row["persons_high"]]
+        if persons != list(member["persons_by_records"]):
+            problems.append(f"{row['member']}: the rows give {persons[0]} to {persons[1]} gold 3 persons, {MEMBERS} records "
+                            f"{member['persons_by_records'][0]} to {member['persons_by_records'][1]}")
     return problems
 
 # ---------------------------------------------------------------- the command line

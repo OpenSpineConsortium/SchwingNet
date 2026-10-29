@@ -2,6 +2,7 @@
 Run from the SchwingNet root after `python3 tools/gold3_field.py write`, on the members file as rule 2
 left it; run again, it keeps rule 2 as the previous rule and writes the same file."""
 import json, re, sys
+from collections import Counter
 from pathlib import Path
 
 ROOT = Path(sys.argv[1] if len(sys.argv) > 1 else ".")
@@ -52,7 +53,18 @@ ep, ve, ts = m["members"]
 ep_rows = [s for s in adm["studies"] if s["member"] == "enhance_pet"]
 ep_gold = sum(1 for s in ep_rows if s["verdict"] == "admitted") - ep["gold4"]
 ep_whole = sum(1 for s in ep_rows if s["verdict"] == "admitted" and not s["complete"]) - ep["gold4"]
+AUTOPET_STUDIES, AUTOPET_PERSONS, REPAIRED = 1014, 900, {"1134", "1283", "1347"}
+facts = [json.loads(line) for line in (ROOT / "data/gold3-ct/enhance-pet/facts.jsonl").read_text().splitlines() if line.strip()]
+site_of = {r["id"]: r["site"] for r in facts if "repaired_from" not in r}
+gold_by_site = Counter(site_of[s["id"]] for s in ep_rows if s["verdict"] == "admitted" and s["id"] not in REPAIRED)
+autopet_low = gold_by_site["autoPET"] - (AUTOPET_STUDIES - AUTOPET_PERSONS)
+autopet_high = min(gold_by_site["autoPET"], AUTOPET_PERSONS)
+unkeyed = gold_by_site["Leipzig"] + gold_by_site["Careggi"]
 ep.update({
+    "persons_by_records": [autopet_low, autopet_high + unkeyed],
+    "persons": (f"autoPET's {n(gold_by_site['autoPET'])} gold 3 studies are {n(autopet_low)} to {n(autopet_high)} persons; "
+                f"Leipzig's {n(gold_by_site['Leipzig'])} and Careggi's {n(gold_by_site['Careggi'])} gold 3 studies carry no "
+                f"person id, at most {n(unkeyed)} persons; the set is {n(autopet_low)} to {n(autopet_high + unkeyed)} gold 3 persons"),
     "gold3": ep_gold, "silver3": len(ep_rows) - ep_gold - ep["gold4"],
     "tier_per_study": (f"gold 3 for the {n(ep_gold)} the field test admits (rule 3): the {n(ep_whole)} whole by their "
                        f"masks and 1379, provisional while a segmenter adds the C2 its masks do not draw; gold 4 for the "
