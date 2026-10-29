@@ -31,6 +31,7 @@ def load_tool(name):
 
 
 gold3 = load_tool("gold3_ct")
+field = load_tool("gold3_field")
 
 C1, C2, C7, T1, T6, T12, L1, L4, L5, L6, SACRUM = 1, 2, 7, 8, 13, 19, 20, 23, 24, 25, 28
 NORMAL = (*range(C1, L5 + 1), SACRUM)
@@ -154,7 +155,8 @@ def c2_at_top(sid="0033"):
 
 
 def no_c2(sid="0034"):
-    return facts_row(sid, NORMAL[2:], top=-60.0)
+    """The field begins at C3's top, as ENHANCE.PET's studies with no C2 do: the field test calls C2 out."""
+    return facts_row(sid, NORMAL[2:], top=-60.0, top_slice_mm=-60.0)
 
 
 def l5_fragment(sid="0035"):
@@ -251,7 +253,21 @@ def mini_repo(folder, facts=None):
         write_json(folder / gold3.BUCKET, bucket_for(facts))
         (folder / gold3.FACTS).write_text("".join(json.dumps(r, sort_keys=True) + "\n" for r in facts), encoding="utf-8")
         write_json(folder / gold3.FACTS_RECORD, {"tool": "synthetic", "rows": len(facts)})
+        write_admission(folder, facts)
     return folder
+
+
+def write_admission(folder, facts):
+    """The committed admission with its ENHANCE.PET studies judged afresh from the synthetic facts, by the
+    field test's rule against the committed tables. The committed admission judges the real studies, whose
+    ids the synthetic ones reuse, so the store's tiers and the field test's verdicts must read one set of
+    facts; the tables are kept, so the other members' verdicts, which members.json counts, stay as they are."""
+    admission = json.loads((ROOT / field.ADMISSION).read_text(encoding="utf-8"))
+    judged = [field.judge(field.enhance_study(row), admission["tables"]) for row in facts]
+    keys = ("member", "id", "person", "verdict", "head", "foot", "complete", "flags")
+    admission["studies"] = [{key: row[key] for key in keys} for row in judged] + [
+        study for study in admission["studies"] if study["member"] != "enhance_pet"]
+    write_json(folder / field.ADMISSION, admission)
 
 
 def run(*argv):
@@ -993,6 +1009,16 @@ class Pages(Scratch):
         self.write_pages(repo)
         (repo / gold3.QA_PAGE).unlink()
         self.assertEqual(run("--repo", repo, "check")[0], 1)
+
+    def test_check_fails_on_a_reading_cut_short(self):
+        repo = mini_repo(self.tmp / "repo")
+        self.write_pages(repo)
+        path = repo / gold3.VERSE_FACTS
+        lines = path.read_text(encoding="utf-8").splitlines(keepends=True)
+        path.write_text("".join(lines[:-1]), encoding="utf-8")
+        code, _, err = run("--repo", repo, "check")
+        self.assertEqual(code, 1)
+        self.assertIn(f"{gold3.VERSE_FACTS}: {len(lines) - 1:,} rows, not the", err)
 
     def test_with_the_facts_the_pages_carry_the_classes_and_the_check_passes(self):
         repo = mini_repo(self.tmp / "repo", synthetic_facts())

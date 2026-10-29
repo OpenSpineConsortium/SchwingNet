@@ -143,7 +143,7 @@ ts["scheme"].update({
 })
 ts["caveats"] = [
     "v3 names an L6 and no T13, so an L6 its masks draw is a candidate and a thirteenth thoracic body cannot be named; a count needs a reader from C2, SPINEPS and VERIDAH, or Hofmann's 70 reads.",
-    "286 subjects are under 18 at the scan, whose unfused S1 can read as a free body: flagged (child), never left out.",
+    "286 of the 1,924 subjects meta.csv gives an age for are under 18 at the scan (15 have none), whose unfused S1 can read as a free body: flagged (child), never left out.",
     "A subject whose masks are byte for byte another's is one scan under two ids: its row names duplicate_of and shares the first's person.",
 ]
 

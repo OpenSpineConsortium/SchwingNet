@@ -2329,12 +2329,16 @@ def data_problems(inputs):
 
 
 def field_problems(inputs):
-    """Each VerSe and TotalSegmentator facts row with the field test's verdict, and none without a row."""
+    """Each VerSe and TotalSegmentator facts row with the field test's verdict, and none without a row;
+    and a row for every study the member lists, so a reading cut short is finished before it is taken."""
     problems = []
     for member, key, rel in (("verse", "verse_facts", VERSE_FACTS), ("totalsegmentator", "ts_facts", TOTALSEG_FACTS)):
         rows, verdicts = inputs[key], field_verdicts(inputs, member)
         if rows is None:
             continue
+        listed = member_of(inputs, member)["studies_listed"]
+        if len(rows) != listed:
+            problems.append(f"{rel}: {len(rows):,} rows, not the {listed:,} studies {MEMBERS} lists for {member}")
         read = {r["id"] for r in rows if "error" not in r}
         if read != set(verdicts):
             problems.append(f"{ADMISSION}: the {member} verdicts are not the readable rows of {rel};"

@@ -33,3 +33,14 @@ The owner, 2026-10-28 22:58 UTC, answering #443's question ("the admission rule 
 - Project memory (symphony_4): findings-corpus-and-data and owner-open-steps carry the same state.
 </content>
 </invoke>
+
+## 5. Picked up on the next account (2026-10-29, from 02:10 UTC)
+
+Thread "Complete gold tier 3 full-spine CT" of symphony_4, on the owner's word of 02:06 UTC to resume each piece from its handoff.
+
+- The first container's network refused api.osf.io, osf.io, files.osf.io and s3.bonescreen.de, so VerSe's 183 unread series could not be read there; the owner set a cloud environment for the project at about 02:20 UTC, and a thread of its own ("Read the rest of VerSe's masks") reads them by step 1 above into /mnt/project-files/gold3-ct/verse-read-2026-10-29/, with the CT header check, and hands the rows back. Nothing went to the grid.
+- A dry run of steps 2 to 4 on the 191 rows already read, in a scratch copy, found two faults in tests/test_gold3_ct.py, both fixed here: mini_repo copied the committed admission, which judges the real ENHANCE.PET studies whose ids the synthetic ones reuse, so the check reported the two rules parting on 0034 (write_admission now judges the synthetic rows by the field test against the committed tables, leaving the other members' verdicts as members.json counts them); and the synthetic study with no C2 had 60 mm of field above C3, which the field test rightly calls C2 in view, where every real ENHANCE.PET study with no C2 has its field cut at the neck (no_c2 now begins its field at C3).
+- tools/gold3_ct.py check now fails when a member's facts hold fewer or more rows than the studies members.json lists, so a reading cut short is never taken (tests: test_check_fails_on_a_reading_cut_short); scripts/check.sh runs `python3 tools/gold3_field.py check` after gold3_ct.py's line.
+- members_v2.py's caveat now says what the 286 is made of: 286 of the 1,924 TotalSegmentator subjects meta.csv gives an age for are under 18 (ages 0 to 17, counted from subjects.json), and 15 have no age.
+- What the dry run showed, to be read again on the whole of VerSe: of the 191 series read, 2 are admitted (verse108 and verse236, both among the 17 the records read, with the sacrum to complete) and 3 are border cases; 56 draw C2 and 125 have the sacrum's top in view, few of them both. The other 15 of the 17 are among the 183 unread. TotalSegmentator stands at 156 admitted (149 whole by its masks, 7 to complete) and 10 border cases, 162 subjects drawing no vertebra.
+- bordercall PR 25: every suite was run again in this container (archive needs python-pptx 1.0.2 and lxml 6.1.3 beside numpy, scipy, matplotlib and nibabel; the others the pinned ~/venv-sc with nibabel and pydicom 3.0.2), with an adversarial review, before its merge.
