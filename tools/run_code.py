@@ -25,18 +25,30 @@ loads and the scripts it names and fails on a file in neither list, so a new imp
 someone made and never an accident.
 
 The kinds: `row` is one run of tools/flow.py, named by schwingnet.flow.configured_run_id; `state`
-is a sweep's state folder, tools/block_sweep.py's with the rows it starts; `sweep`, `v1`, `bank`
-and `catalog` are the Metaflow flows of flows/, named by the launcher's key
-(schwingnet.pipeline.run_key), `v1` the version 1 run of tools/flow.py as a launched flow.
+is a sweep's state folder, tools/block_sweep.py's with the rows it starts; `sweep`, `v1`, `bank`,
+`catalog`, `drr_gap` and `drr_seg` are the Metaflow flows of flows/, named by the launcher's key
+(schwingnet.pipeline.run_key), `v1` the version 1 run of tools/flow.py as a launched flow, the last
+two the DRR domain-gap study's parts and its MOOSE masks.
+
+A copy of the code that `git archive` made, as the DRR domain-gap study's prepare makes one so that
+no later step reads the checkout while the gate moves it, holds no .git; it holds COPY_RECORD
+instead, the commit on its first line and then every file the copy holds, one a line, as
+`git ls-tree -r --name-only` lists them. Where a folder holds that record and no .git, its files
+are read from the record in place of `git ls-files`, so the copy's digest is that of its commit's
+files, the one the checkout gives at that commit, and flows/launch.py reads the commit from it.
 """
 
 import argparse
 import hashlib
+import re
 import subprocess
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+# A copy's record (above): flows/launch.py's COPY_RECORD is the same name.
+COPY_RECORD = "COPY.txt"
+COMMIT = re.compile(r"[0-9a-f]{40}")
 
 ENVIRONMENT = ("pixi.toml", "pixi.lock")
 CONTRACTS = ("vendor/beethoven-qa/src/beethoven_qa/__init__.py", "vendor/beethoven-qa/src/beethoven_qa/contracts.py")
@@ -54,6 +66,15 @@ SPLIT_RULES = ("data/registry/", "data/splits/")
 # finding 4).
 PYDRV = ("grid/bin/train-cpu-python", "grid/box.sh")
 STAGE = (*ENVIRONMENT, *CONTRACTS, *SPLIT_RULES, *PYDRV, "src/schwingnet/__init__.py", "src/schwingnet/catalog.py", "tools/catalog.py")
+# The DRR domain-gap study's code (tools/domain_gap.py, docs/research/drr-domain-gap/), which its
+# parts and its MOOSE masks run: the tool, the neighbours it loads by path (tool("..."): the
+# statistics and the renderer, which loads tools/render_blocks.py by path in turn), the package
+# modules they import, the groups table it reads and the two wrappers every call goes through,
+# grid/box.sh and grid/venv.sh, which make and enter the study's environment.
+DRR_STUDY = (*ENVIRONMENT, *CONTRACTS, "src/schwingnet/__init__.py", "src/schwingnet/domain_gap.py",
+             "src/schwingnet/render_blocks.py", "src/schwingnet/segmenters.py", "tools/domain_gap.py",
+             "tools/domain_gap_stats.py", "tools/flexray_render.py", "tools/render_blocks.py", "data/domain_gap/",
+             "grid/box.sh", "grid/venv.sh")
 KINDS = {
     "row": ROW,
     "state": STATE,
@@ -61,6 +82,10 @@ KINDS = {
     "v1": (*ROW, "flows/v1.py", "flows/flow_tool.py", "flows/stage.py", "flows/stage_registry.py"),
     "bank": (*STAGE, "flows/bank.py", "grid/02-bank-ingest.sbatch", "tools/bank.py", "tools/ingest.py"),
     "catalog": (*STAGE, "flows/catalog.py", "grid/03-catalog.sbatch"),
+    "drr_gap": (*DRR_STUDY, "data/splits/test-persons.json", "grid/drr-gap.sbatch", "flows/drr_gap.py", "flows/stage.py",
+                "flows/stage_registry.py"),
+    "drr_seg": (*DRR_STUDY, "data/splits/test-persons.json", "grid/drr-seg.sbatch", "flows/drr_seg.py", "flows/stage.py",
+                "flows/stage_registry.py"),
     # The FluXray reproduction's stages (docs/research/flux-realism/PREREG.md): the flow, the tool
     # each step runs, the rules it imports and the label names the render reads.
     "realism": (*ENVIRONMENT, *CONTRACTS, "src/schwingnet/__init__.py", "src/schwingnet/realism.py", "flows/realism.py",
@@ -98,6 +123,10 @@ STAGE_PAGE_LEFT_OUT = {
     "flows/launch.py": LAUNCHES,
     "flows/stage_progress.py": "draws the run's progress page from the files the steps write; no step reads it back and no number comes from it",
 }
+# The study's parts and its masks: what the job script's driver and the flow's end run beside the work.
+DRR_LEFT_OUT = {**STAGE_LEFT_OUT, **STAGE_PAGE_LEFT_OUT}
+REPORTS_THE_STUDY = ("writes and checks the study's CLAIM and REFORMS report from the merge's record of the run, after its "
+                     "last step, at every start that gets there; it computes nothing the study's numbers come from")
 LEFT_OUT = {
     "row": ROW_LEFT_OUT,
     "state": STATE_LEFT_OUT,
@@ -105,6 +134,11 @@ LEFT_OUT = {
     "v1": {**ROW_LEFT_OUT, **STAGE_PAGE_LEFT_OUT},
     "bank": {**STAGE_LEFT_OUT, "grid/size-rule.sh": "admits the job under the size rule before the launcher starts, and no step of the flow runs it"},
     "catalog": STAGE_LEFT_OUT,
+    "drr_gap": {**DRR_LEFT_OUT, "tools/report.py": REPORTS_THE_STUDY},
+    "drr_seg": {**DRR_LEFT_OUT, "grid/run-platform-fetch.sh": "names MOOSE's model zips for the job's check of them before "
+                "the launcher starts; no step of the flow runs it, and the zips are read by their bytes",
+                "tools/report.py": "is named by flows/stage.py for a run's report, which the masks' flow never makes; the "
+                "study's report is its merge's"},
     "realism": {**STAGE_PAGE_LEFT_OUT,
                 "tools/report.py": "writes the run's CLAIM 2024 and REFORMS report from its files in the end step, after every number"},
 }
@@ -114,19 +148,48 @@ class RunCodeError(Exception):
     """What stops a digest with a reason a person reads."""
 
 
-def files(kind, root=ROOT):
-    """The tracked files a kind's digest covers, in path order; refused where a file the kind
-    names alone is not tracked, so a renamed or deleted file never silently leaves a digest."""
-    if kind not in KINDS:
-        raise RunCodeError(f"no kind {kind!r}; the kinds are {', '.join(KINDS)}")
-    names = KINDS[kind]
+def is_copy(root):
+    """Whether the folder is a copy git archive made, with its record and no .git."""
+    return (Path(root) / COPY_RECORD).is_file() and not (Path(root) / ".git").exists()
+
+
+def copied(root):
+    """A copy's record: the commit it was made at and the files it holds."""
+    record = Path(root) / COPY_RECORD
+    try:
+        lines = record.read_text(encoding="utf-8").splitlines()
+    except (OSError, UnicodeDecodeError) as error:
+        raise RunCodeError(f"{record} cannot be read ({error}), so the copy's code cannot be named") from error
+    if not lines or not COMMIT.fullmatch(lines[0]):
+        raise RunCodeError(f"{record} names no commit on its first line, so the copy's code cannot be named")
+    return lines[0], [line for line in lines[1:] if line]
+
+
+def git_tracked(root, names):
+    """The files git tracks under the names, in a checkout."""
     try:
         done = subprocess.run(["git", "-C", str(root), "ls-files", "-z", "--", *names], capture_output=True, text=True, check=False)
     except OSError as error:
         raise RunCodeError(f"git could not be run in {root}: {error}") from error
     if done.returncode != 0:
         raise RunCodeError(f"git ls-files in {root}: {done.stderr.strip()}")
-    tracked = sorted({name for name in done.stdout.split("\0") if name})
+    return [name for name in done.stdout.split("\0") if name]
+
+
+def named_by(names, path):
+    """Whether a path is one of the names, or lies under one that ends in "/", as git's pathspec reads them."""
+    return any(path == name or (name.endswith("/") and path.startswith(name)) for name in names)
+
+
+def files(kind, root=ROOT):
+    """The tracked files a kind's digest covers, in path order; refused where a file the kind
+    names alone is not tracked, so a renamed or deleted file never silently leaves a digest. In a
+    copy (is_copy) the tracked files are those its record lists."""
+    if kind not in KINDS:
+        raise RunCodeError(f"no kind {kind!r}; the kinds are {', '.join(KINDS)}")
+    names = KINDS[kind]
+    listed = [path for path in copied(root)[1] if named_by(names, path)] if is_copy(root) else git_tracked(root, names)
+    tracked = sorted(set(listed))
     missing = [name for name in names if not (name.endswith("/") or name in tracked)]
     if missing:
         raise RunCodeError(f"{kind}: {', '.join(missing)} not tracked in {root}, so its code cannot be named")
