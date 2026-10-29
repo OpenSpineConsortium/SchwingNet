@@ -3,7 +3,9 @@ docs/research/flux-realism/README.md): FluXray's samples checked against the pap
 ENHANCE.PET's labels mapped onto MOOSE's dense ids by name, the 256-pixel canvas, the two-sample
 tests reading identical sets as chance and shifted sets as separable, Benjamini-Hochberg over the
 feature spaces, the paired filter per pose group, the PNG round trip, the trainer's pairs and
-configuration, the subject split, and the endplate angle read from a tilted rectangle at 1024 and
+configuration, the subject split and the seeded draws of CTs and poses, the neighbours of the
+classifier test taken from other subjects only, the labels shuffled within the strata, the seed
+arms judged apart, the inputs refused before any GPU work, and the endplate angle read from a tilted rectangle at 1024 and
 at 256. It needs numpy and the package's checkers (beartype, icontract), so it runs in the train
 environment and skips under a plain python3."""
 
@@ -159,8 +161,9 @@ class RealismToolTest(unittest.TestCase):
 
         a, b, _, _ = self.two_sets(0.0, seed=2)
         self.assertLess(self.tool.frechet(a, a.copy()), 1e-9)
-        like = self.tool.mmd_test(a, b, 0, permutations=40)
-        apart = self.tool.mmd_test(a, b + 3.0, 0, permutations=40)
+        _, _, ga, gb = self.two_sets(0.0, seed=2)
+        like = self.tool.mmd_test(a, b, ga, gb, 0, permutations=40)
+        apart = self.tool.mmd_test(a, b + 3.0, ga, gb, 0, permutations=40)
         self.assertGreater(apart["mmd2"], like["mmd2"])
         self.assertLessEqual(apart["p"], 0.05)
         self.assertGreater(like["p"], 0.05)
@@ -180,7 +183,7 @@ class RealismToolTest(unittest.TestCase):
     def test_judge_spaces_reads_mmd_at_its_q_and_writes_each_verdict(self):
         def space(low, high, p, null_high):
             return {"a_vs_b": {"c2st": {"auc": (low + high) / 2, "low": low, "high": high, "p": 0.5}, "mmd": {"p": p}},
-                    "b_split_half": {"c2st": {"high": null_high}}}
+                    "b_split_half": {"c2st": {"low": null_high - 0.1, "high": null_high}}}
 
         spaces = {"physics": space(0.45, 0.55, 0.04, 0.56), "flexray": space(0.5, 0.58, 0.9, 0.55), "imagenet": space(0.7, 0.8, 0.001, 0.5)}
         words = self.tool.judge_spaces(spaces)
@@ -260,7 +263,7 @@ class RealismToolTest(unittest.TestCase):
         self.assertEqual(process["model"]["arch"], "flux2_klein_4b")
         self.assertEqual(self.tool.main(["lora-config", "--pairs", str(pairs), "--out", str(config_path), "--rank", "0"]), 2)
 
-    def test_the_split_is_by_subject_fixed_by_the_seed_and_evenly_spread_poses_span_the_grid(self):
+    def test_the_split_is_by_subject_and_the_subjects_and_poses_are_drawn_by_the_seed(self):
         subjects = [f"{i:04d}" for i in range(10)]
         taken, train, evaluation = self.tool.split_subjects(subjects, 0, 7)
         self.assertEqual(taken, subjects)
@@ -268,16 +271,222 @@ class RealismToolTest(unittest.TestCase):
         self.assertEqual(sorted(train + evaluation), subjects)
         self.assertEqual(self.tool.split_subjects(subjects, 0, 7), (taken, train, evaluation))
         self.assertNotEqual(self.tool.split_subjects(subjects, 0, 8)[1], train)
-        self.assertEqual(self.tool.split_subjects(subjects, 4, 7)[0], subjects[:4])
+        # four drawn by the seed, not the first four by name, and the same four whatever else landed
+        drawn = self.tool.split_subjects(subjects, 4, 7)[0]
+        self.assertEqual(drawn, self.realism.draw(subjects, 4, 7, "subject"))
+        self.assertNotEqual(sorted(drawn), subjects[:4])
+        fewer = [s for s in subjects if s not in drawn[2:]]
+        self.assertEqual(self.tool.split_subjects(fewer, 2, 7)[0], drawn[:2])
         with self.assertRaises(self.tool.Refused):
             self.tool.split_subjects(["0001"], 0, 7)
-        self.assertEqual(self.tool.spread(list(range(10)), 4), [0, 2, 5, 7])
-        self.assertEqual(self.tool.spread(list(range(3)), 0), [0, 1, 2])
-        self.assertEqual(self.tool.spread(list(range(3)), 9), [0, 1, 2])
+        self.assertEqual(self.tool.shards_of(drawn, 3), [drawn[:3], drawn[3:]])
+        poses = {"samples": [{"sample_id": f"{s}_{p}", "subject_id": s, "grid_pose": p} for s in ("0001", "0002") for p in range(9)]}
+        chosen = self.tool.drawn_samples(poses, ["0001", "0002"], 3, 7)
+        self.assertEqual([len(chosen[s]) for s in ("0001", "0002")], [3, 3])
+        self.assertEqual(chosen, self.tool.drawn_samples(poses, ["0001", "0002"], 3, 7))
+        self.assertNotEqual({r["grid_pose"] for r in chosen["0001"]}, {r["grid_pose"] for r in chosen["0002"]})
+        self.assertEqual(self.tool.drawn_samples(poses, ["0001"], 3, 7)["0001"], chosen["0001"])
+        self.assertEqual(len(self.tool.drawn_samples(poses, ["0001"], 0, 7)["0001"]), 9)
         listing = self.tmp / "only.csv"
         listing.write_text("subject_id,split\n0001,train\n0003,train\n", encoding="utf-8")
         self.assertEqual(self.tool.subject_filter(str(listing)), {"0001", "0003"})
         self.assertIsNone(self.tool.subject_filter(""))
+
+    def test_no_neighbour_is_of_the_same_subject_in_either_set(self):
+        import numpy as np
+
+        rng = np.random.default_rng(5)
+        offsets = rng.normal(scale=20.0, size=(8, 4))
+        subjects = np.array([f"s{i % 8}" for i in range(32)])
+        features = offsets[[i % 8 for i in range(32)]] + rng.normal(scale=0.1, size=(32, 4))
+        nearest = self.tool.nearest_elsewhere(features, subjects, k=5)
+        self.assertEqual(nearest.shape, (32, 5))
+        self.assertFalse(np.any(subjects[nearest] == subjects[:, None]))
+
+    def test_a_pair_of_sets_of_the_same_cts_reads_as_chance_and_not_below_it(self):
+        import numpy as np
+
+        # each CT's image in set a and in set b sit together, far from every other CT's: a neighbour
+        # of the same CT in the other set would push the AUC to 0, and left out it is chance
+        rng = np.random.default_rng(6)
+        offsets = rng.normal(scale=20.0, size=(16, 5))
+        groups = np.array([f"s{i // 3}" for i in range(48)])
+        a = offsets[[i // 3 for i in range(48)]] + rng.normal(scale=0.1, size=(48, 5))
+        b = offsets[[i // 3 for i in range(48)]] + rng.normal(scale=0.1, size=(48, 5))
+        result = self.tool.c2st(a, b, groups, groups, 0, bootstraps=30, permutations=60)
+        self.assertGreater(result["auc"], 0.3)
+        self.assertLess(result["auc"], 0.7)
+        self.assertGreater(result["p"], 0.05)
+        moved = self.tool.c2st(a, b + 40.0, groups, groups, 0, bootstraps=30, permutations=60)
+        self.assertGreater(moved["auc"], 0.9)
+        self.assertLessEqual(moved["p"], 0.05)
+
+    def test_labels_shuffle_within_a_shared_subject_and_whole_subjects_otherwise(self):
+        import numpy as np
+
+        labels = np.array([0, 0, 1, 1, 1, 0, 0, 1, 1])
+        subjects = np.array(["m", "m", "m", "m", "m", "x", "x", "y", "y"])
+        layers = self.tool.strata(labels, subjects)
+        rng = np.random.default_rng(0)
+        for _ in range(20):
+            permuted = self.tool.permuted_labels(labels, layers, rng)
+            self.assertEqual(int(permuted[:5].sum()), 3)
+            self.assertEqual(len(set(permuted[5:7])), 1)
+            self.assertEqual(len(set(permuted[7:9])), 1)
+            self.assertEqual(sorted([permuted[5], permuted[7]]), [0, 1])
+
+    def test_the_mmd_from_one_kernel_is_the_unbiased_mmd_of_the_two_sets(self):
+        import numpy as np
+
+        rng = np.random.default_rng(7)
+        a, b = rng.normal(size=(7, 3)), rng.normal(size=(5, 3)) + 0.5
+        pooled = np.concatenate([a, b])
+        squared = ((pooled[:, None, :] - pooled[None, :, :]) ** 2).sum(axis=2)
+        kernel = np.exp(-squared / 2.0)
+        labels = np.array([0] * 7 + [1] * 5)
+        kaa, kbb, kab = kernel[:7, :7], kernel[7:, 7:], kernel[:7, 7:]
+        explicit = (kaa.sum() - 7) / 42 + (kbb.sum() - 5) / 20 - 2 * kab.mean()
+        self.assertAlmostEqual(self.tool.mmd_of_kernel(kernel, labels), explicit, places=10)
+
+    def test_an_edits_name_carries_its_sample_and_arm(self):
+        self.assertEqual(self.tool.edit_name("0001_17", 1), "0001_17__a1")
+        self.assertEqual((self.tool.arm_of("0001_17__a1"), self.tool.sample_of("0001_17__a1")), (1, "0001_17"))
+        self.assertEqual((self.tool.arm_of("0001_17"), self.tool.sample_of("0001_17")), (None, "0001_17"))
+        self.assertIsNone(self.tool.arm_of("__a1"))
+        self.assertIsNone(self.tool.arm_of("0001__ax"))
+
+    def test_a_space_whose_seed_arms_disagree_is_undecided(self):
+        def entry(low, high, p):
+            return {"c2st": {"auc": (low + high) / 2, "low": low, "high": high, "p": 0.5}, "mmd": {"p": p}}
+
+        spaces = {"physics": {"a_vs_b": entry(0.45, 0.55, 0.5), "b_split_half": {"c2st": {"low": 0.44, "high": 0.56}},
+                              "arms": {"a0": entry(0.45, 0.55, 0.5), "a1": entry(0.65, 0.75, 0.5)}},
+                  "flexray": {"a_vs_b": entry(0.45, 0.55, 0.5), "b_split_half": {"c2st": {"low": 0.44, "high": 0.56}},
+                              "arms": {"a0": entry(0.45, 0.55, 0.5), "a1": entry(0.45, 0.55, 0.5)}}}
+        self.assertEqual(self.tool.judge_spaces(spaces), ["undecided", "matched"])
+        self.assertEqual(spaces["physics"]["a_vs_b"]["verdict"], "matched")
+        self.assertEqual(spaces["physics"]["arms"]["a1"]["verdict"], "separable")
+
+    def test_a_space_whose_null_tells_a_set_from_itself_is_undecided_and_says_so(self):
+        def entry(low, high, p):
+            return {"c2st": {"auc": (low + high) / 2, "low": low, "high": high, "p": 0.5}, "mmd": {"p": p}}
+
+        spaces = {"physics": {"a_vs_b": entry(0.45, 0.55, 0.5), "b_split_half": entry(0.62, 0.7, 0.5)},
+                  "flexray": {"a_vs_b": entry(0.45, 0.55, 0.5), "b_split_half": entry(0.44, 0.56, 0.5),
+                              "arms": {"a0": entry(0.45, 0.55, 0.5), "a1": entry(0.45, 0.55, 0.5)},
+                              "arm_null": entry(0.65, 0.75, 0.5)},
+                  "imagenet": {"a_vs_b": entry(0.45, 0.55, 0.5), "b_split_half": entry(0.44, 0.56, 0.5)}}
+        self.assertEqual(self.tool.judge_spaces(spaces), ["undecided", "undecided", "matched"])
+        self.assertEqual([spaces[s]["nulls_separable"] for s in spaces], [True, True, False])
+
+    def write_set(self, folder, names, rng, shift=0.0):
+        import numpy as np
+
+        folder.mkdir(parents=True, exist_ok=True)
+        for name in names:
+            image = np.clip(rng.random((64, 64), dtype=np.float32) * 0.5 + 0.25 + shift, 0, 1)
+            np.save(folder / f"{name}.npy", image.astype(np.float16))
+
+    def test_stats_reads_subjects_by_the_index_and_reports_each_arm_and_the_pairs(self):
+        import numpy as np
+
+        rng = np.random.default_rng(8)
+        samples = [f"{1000 + s}-{p}" for s in range(6) for p in range(2)]
+        render = self.tmp / "render"
+        render.mkdir()
+        (render / "manifest.jsonl").write_text("".join(json.dumps({"sample_id": s, "subject_id": f"subj{s.split('-')[0]}", "grid_pose": 0}) + "\n"
+                                                       for s in samples), encoding="utf-8")
+        self.write_set(self.tmp / "kept", [self.tool.edit_name(s, arm) for s in samples for arm in (0, 1)], rng)
+        self.write_set(self.tmp / "fluxray", samples, rng)
+        out = self.tmp / "stats"
+        self.assertEqual(self.tool.main(["stats", "--a", str(self.tmp / "kept"), "--b", str(self.tmp / "fluxray"), "--out", str(out),
+                                         "--index", str(render), "--size", "64", "--require-spaces", "physics"]), 0)
+        report = json.loads((out / "stats.json").read_text(encoding="utf-8"))
+        self.assertEqual(report["sets"]["a"], {"n": 24, "subjects": 6})
+        self.assertEqual(report["seed"], self.realism.REPLICATION.stats_seed)
+        self.assertEqual(sorted(report["spaces"]["physics"]["arms"]), ["a0", "a1"])
+        self.assertIn("arm_null", report["spaces"]["physics"])
+        self.assertEqual(report["paired"]["pairs"], 24)
+        self.assertIn(report["verdict"], self.realism.VERDICTS)
+        self.assertIn("| physics |", (out / "stats.md").read_text(encoding="utf-8"))
+        self.assertEqual(self.tool.main(["stats", "--a", str(self.tmp / "kept"), "--b", str(self.tmp / "fluxray"), "--out", str(out),
+                                         "--index", str(render), "--size", "64", "--require-spaces", "physics,imagenet"]), 2)
+        np.save(self.tmp / "fluxray" / "stray.npy", np.zeros((64, 64), dtype=np.float16))
+        self.assertEqual(self.tool.main(["stats", "--a", str(self.tmp / "kept"), "--b", str(self.tmp / "fluxray"), "--out", str(out),
+                                         "--index", str(render), "--size", "64"]), 2)
+
+    def test_keep_filters_every_shards_scores_at_once_and_links_the_kept_edits(self):
+        import numpy as np
+
+        edited = self.tmp / "zero-shot" / "edited"
+        edited.mkdir(parents=True)
+        rows = []
+        for i, flux in enumerate([0.5, 0.51, 0.49, 0.0, 0.52, 0.5]):
+            name = self.tool.edit_name(f"0001_{i}", 0)
+            np.save(edited / f"{name}.npy", np.zeros((4, 4), dtype=np.float16))
+            rows.append({"sample_id": name, "subject_id": f"000{i % 2}", "pose_id": 3, "raw_soft_dice": 0.5, "flux_soft_dice": flux})
+        scores = self.tmp / "scores"
+        self.tool.write_rows(scores / "000.csv", rows[:3], self.tool.SCORE_COLUMNS)
+        self.tool.write_rows(scores / "001.csv", rows[3:], self.tool.SCORE_COLUMNS)
+        out = self.tmp / "filter"
+        self.assertEqual(self.tool.main(["keep", "--scores", str(scores), "--edited", str(self.tmp / "zero-shot"), "--out", str(out)]), 0)
+        kept = sorted(path.stem for path in (out / "kept").iterdir())
+        self.assertEqual(len(kept), 5)
+        self.assertNotIn(self.tool.edit_name("0001_3", 0), kept)
+        self.assertEqual(len(self.tool.read_rows(out / "filter_dropped.csv")), 1)
+
+    def test_volumes_and_truth_are_found_however_deep_the_fetch_landed_them(self):
+        (self.tmp / "ct" / "imaging-data" / "images" / "CT").mkdir(parents=True)
+        (self.tmp / "ct" / "imaging-data" / "images" / "CT" / "0001.nii.gz").write_bytes(b"x")
+        (self.tmp / "truth" / "ground-truth" / "Vertebrae").mkdir(parents=True)
+        (self.tmp / "truth" / "ground-truth" / "Vertebrae" / "0001.nii.gz").write_bytes(b"x")
+        (self.tmp / "truth" / "ground-truth" / "Body-Composition").mkdir(parents=True)
+        (self.tmp / "truth" / "ground-truth" / "Body-Composition" / "0001.nii.gz").write_bytes(b"x")
+        self.assertEqual(list(self.tool.volumes_under(self.tmp / "ct")), ["0001"])
+        self.assertEqual(list(self.tool.truth_under(self.tmp / "truth")), [("Vertebrae", "0001")])
+        self.assertEqual(self.tool.eligible_subjects([{"subject_id": "0001"}, {"subject_id": "0002"}],
+                                                     self.tool.volumes_under(self.tmp / "ct"), self.tool.truth_under(self.tmp / "truth")), ["0001"])
+        (self.tmp / "ct" / "again").mkdir()
+        (self.tmp / "ct" / "again" / "0001.nii.gz").write_bytes(b"x")
+        with self.assertRaises(self.tool.Refused):
+            self.tool.volumes_under(self.tmp / "ct")
+
+    def test_inputs_refuse_a_missing_klein_and_too_few_subjects_before_any_gpu_work(self):
+        klein, bundle = self.tmp / "klein", self.tmp / "bundle"
+        klein.mkdir()
+        bundle.mkdir()
+        (bundle / "ensemble.json").write_text("{}", encoding="utf-8")
+        (self.tmp / "resnet.pth").write_bytes(b"w")
+        (self.tmp / "db").mkdir()
+        (self.tmp / "db" / "data.mdb").write_bytes(b"d")
+        samples = self.tmp / "samples.csv"
+        self.tool.write_rows(samples, [{"sample_id": "0001_0", "subject_id": "0001"}], ["sample_id", "subject_id"])
+        (self.tmp / "ct").mkdir()
+        (self.tmp / "ct" / "0001.nii.gz").write_bytes(b"c")
+        (self.tmp / "truth" / "Vertebrae").mkdir(parents=True)
+        (self.tmp / "truth" / "Vertebrae" / "0001.nii.gz").write_bytes(b"t")
+        original = self.tool.thunder_ids
+        self.tool.thunder_ids = lambda root: {"0001_0": {"subject_id": "0001", "split": "test"}}
+        self.addCleanup(setattr, self.tool, "thunder_ids", original)
+        words = ["inputs", "--samples", str(samples), "--db", str(self.tmp / "db"), "--ct", str(self.tmp / "ct"),
+                 "--truth", str(self.tmp / "truth"), "--klein", str(klein), "--bundle", str(bundle),
+                 "--imagenet", str(self.tmp / "resnet.pth"), "--out", str(self.tmp / "inputs.json"), "--no-pins"]
+        self.assertEqual(self.tool.main(words), 2)
+        (klein / "model_index.json").write_text("{}", encoding="utf-8")
+        self.assertEqual(self.tool.main(words), 2)
+        self.assertFalse((self.tmp / "inputs.json").exists())
+        plan = self.tool.PLAN
+        self.addCleanup(setattr, self.tool, "PLAN", plan)
+        original_plan = self.realism.REPLICATION
+        self.realism.REPLICATION = self.realism.ReplicationPlan(subjects=1)
+        self.addCleanup(setattr, self.realism, "REPLICATION", original_plan)
+        self.assertEqual(self.tool.main(words), 0)
+        record = json.loads((self.tmp / "inputs.json").read_text(encoding="utf-8"))
+        self.assertEqual(record["eligible"], ["0001"])
+        self.assertEqual(record["model"], "klein-9b")
+        self.assertEqual(len(record["klein_sha256"]), 64)
+        self.assertTrue(record["pins_differ"])
+        self.assertEqual(self.tool.main(words[:-1]), 2)
 
     def test_the_endplate_angle_reads_a_tilted_body_at_1024_and_at_256(self):
         import numpy as np

@@ -1,14 +1,17 @@
 """The FluXray edit as a record and the rules of its reproduction: the paper's words hold, a
 fault is said in words."""
 
+import hashlib
 import json
 import math
+from pathlib import Path
 
 import pytest
 
 from schwingnet.realism import (
     CHANCE_AUC,
     DEFAULT_BASE,
+    FLOW_STAGES,
     FLUXRAY,
     INDISTINGUISHABLE_AUC,
     LORA_TARGETS,
@@ -19,14 +22,21 @@ from schwingnet.realism import (
     POSE_Z_MM,
     PROMPT,
     PROMPT_LINES,
+    REPLICATION,
+    SPACES,
     STAGE_CLASS,
     STAGE_WHAT,
     STAGES,
     VERDICTS,
     EditRecipe,
     LoraPlan,
+    ReplicationPlan,
     angle_quantum_deg,
+    arm_verdict,
     as_record,
+    draw,
+    frozen_block_problems,
+    frozen_lines,
     keep_cutoff,
     kept,
     lora_config,
@@ -37,8 +47,11 @@ from schwingnet.realism import (
     pose_grid,
     pose_of,
     quantile,
+    rank_by_seed,
     recipe_problems,
+    replication_word,
     seed_for,
+    through_nulls,
     verdict,
     width_px,
 )
@@ -245,3 +258,105 @@ def test_the_stages_are_the_four_gpu_jobs_in_order_and_the_record_round_trips():
     record = as_record(FLUXRAY)
     assert record["prompt"] == PROMPT and record["steps"] == 4
     assert EditRecipe(**record) == FLUXRAY
+
+
+PREREG = Path(__file__).resolve().parents[2] / "docs" / "research" / "flux-realism" / "PREREG.md"
+SUBJECTS = [f"{n:04d}" for n in range(1, 301)]
+
+
+def test_a_draw_is_the_seeds_and_no_missing_subject_moves_another():
+    taken = draw(SUBJECTS, 100, REPLICATION.draw_seed, "subject")
+    assert len(taken) == len(set(taken)) == 100
+    assert taken == draw(list(reversed(SUBJECTS)), 100, REPLICATION.draw_seed, "subject")
+    assert taken != draw(SUBJECTS, 100, REPLICATION.draw_seed + 1, "subject")
+    assert taken != draw(SUBJECTS, 100, REPLICATION.draw_seed, "pose|0001")
+    gone = taken[3]
+    order = rank_by_seed([s for s in SUBJECTS if s != gone], REPLICATION.draw_seed, "subject")
+    assert order[:99] == [s for s in taken if s != gone]
+    assert draw(SUBJECTS[:7], 100, 1, "subject") == rank_by_seed(SUBJECTS[:7], 1, "subject")
+
+
+def test_a_draw_is_not_the_order_of_the_names():
+    taken = draw(SUBJECTS, 100, REPLICATION.draw_seed, "subject")
+    assert taken != sorted(taken)
+    assert len({s[:2] for s in taken}) >= 3
+
+
+@pytest.mark.parametrize(
+    "pooled, arms, word",
+    [
+        ("matched", ("matched", "matched"), "matched"),
+        ("indistinguishable", ("indistinguishable",), "indistinguishable"),
+        ("matched", ("matched", "separable"), "undecided"),
+        ("separable", ("separable", "indistinguishable"), "undecided"),
+        ("separable", (), "separable"),
+    ],
+)
+def test_a_word_the_seed_arms_disagree_on_is_undecided(pooled, arms, word):
+    assert arm_verdict(pooled, arms) == word
+
+
+@pytest.mark.parametrize(
+    "word, lows, read",
+    [
+        ("matched", (0.41, 0.47), "matched"),
+        ("indistinguishable", (0.6,), "indistinguishable"),
+        ("matched", (0.45, 0.61), "undecided"),
+        ("separable", (0.7,), "undecided"),
+        ("separable", (), "separable"),
+    ],
+)
+def test_a_null_that_tells_a_set_from_itself_leaves_its_space_undecided(word, lows, read):
+    assert through_nulls(word, lows) == read
+
+
+@pytest.mark.parametrize(
+    "kept_word, raw_word, word",
+    [
+        ("matched", "separable", "reproduced"),
+        ("indistinguishable", "separable", "reproduced"),
+        ("undecided", "separable", "undecided"),
+        ("separable", "separable", "not reproduced"),
+        ("separable", "matched", "not reproduced"),
+        ("matched", "indistinguishable", "untestable"),
+        ("undecided", "undecided", "untestable"),
+    ],
+)
+def test_the_replication_reads_the_edits_through_the_raw_renders_control(kept_word, raw_word, word):
+    assert replication_word(kept_word, raw_word) == word
+
+
+def test_the_frozen_lines_name_every_number_the_replication_runs_by_once():
+    lines = frozen_lines()
+    keys = [line.split(" = ")[0] for line in lines]
+    assert len(keys) == len(set(keys))
+    assert "recipe.model = klein-9b" in lines
+    assert f"plan.subjects = {REPLICATION.subjects}" in lines
+    assert f"plan.stats_seed = {REPLICATION.stats_seed}" in lines
+    assert f"verdict.chance_auc = {CHANCE_AUC!r}" in lines
+    assert f"spaces = {','.join(SPACES)}" in lines
+    prompt = hashlib.sha256(FLUXRAY.prompt.encode()).hexdigest()
+    assert f"recipe.prompt_sha256 = {prompt}" in lines
+    assert not any(key in ("recipe.prompt", "recipe.lora") for key in keys)
+    assert REPLICATION == ReplicationPlan()
+    assert FLOW_STAGES == ("edit", "stats") and set(FLOW_STAGES) <= set(STAGES)
+
+
+def test_a_block_that_differs_from_the_code_is_said_line_by_line():
+    lines = frozen_lines()
+    same = "intro\n```frozen\n" + "\n".join(lines) + "\n```\nafter\n"
+    assert frozen_block_problems(same) == []
+    assert frozen_block_problems("no block here") == ["PREREG.md has no ```frozen block"]
+    moved = same.replace("plan.subjects = 100", "plan.subjects = 50")
+    said = frozen_block_problems(moved)
+    assert any("runs plan.subjects = 100" in line for line in said)
+    assert any("holds plan.subjects = 50" in line for line in said)
+    swapped = "```frozen\n" + "\n".join([lines[1], lines[0], *lines[2:]]) + "\n```\n"
+    assert frozen_block_problems(swapped) == ["the block holds the code's lines in another order"]
+
+
+def test_the_frozen_prereg_holds_the_codes_lines_and_its_hash():
+    text = PREREG.read_text(encoding="utf-8")
+    assert frozen_block_problems(text) == []
+    recorded = (PREREG.parent / "PREREG.md.sha256").read_text(encoding="ascii").split()
+    assert recorded == [hashlib.sha256(PREREG.read_bytes()).hexdigest(), "PREREG.md"]
