@@ -46,7 +46,15 @@ a run that ended well in the meantime is never resumed as one that had not.
 The first line on stdout is the decision, as JSON, flushed before the flow starts, with "live"
 the id of a newest run passed over as live; after the flow's own lines a second JSON line says
 which run it was and how it ended. The exit code is the flow's own where it failed, else the end
-step's verdict (0 all well, 1 otherwise), so a job's afterok means what it meant before. A
+step's verdict (0 all well, 1 otherwise), so a job's afterok means what it meant before. The flow
+runs in a process group of its own, and a SIGTERM or SIGINT the launcher is sent while it runs,
+Slurm's at a time limit or a preemption among them, is passed on to every process of the flow;
+what has not ended STOP_GRACE_SECONDS later is killed, the beat is taken away as at any end, so
+the job Slurm queues again resumes the run at once, the page says which signal ended it, and the
+launcher exits 128 plus the signal's number, 143 for SIGTERM, as a shell reports a killed job. The
+signal is passed on before a word of it is said, and a word the launcher cannot write, its reader
+gone as a pipe's reader goes with its job, is dropped (tell), so no stop is ever cut short by its
+own message; a launcher that breaks while its flow runs kills the flow before its beat goes. A
 refusal is the line LaunchError: <words> on stderr, before any flow starts, with the exit code 64
 for words the launcher does not take, 69 for what the node lacks and 70 for a rule of
 schwingnet.pipeline the runs broke; anything else that stops it prints its traceback and exits 1.
@@ -58,7 +66,8 @@ Every deep learning flow is held to a frozen PREREG (the owner's rule of 2026-10
 names the PREREG.md of each kind that trains or runs a network, and the launcher refuses one whose
 PREREG is missing or no longer the one its PREREG.md.sha256 froze before any flow starts, with the
 Lab Recipe's exit 90 (flows/stage_registry.py), and so too a run whose part of its kind, a sweep's
-plan, the frozen PREREG does not cover. The PREREG's path and sha256 are among what the key
+plan, the frozen PREREG does not cover, by its name and, where the PREREG names them, its bytes.
+The PREREG's path and sha256 are among what the key
 reads, so a run is only ever carried on under the PREREG it started under, and every run of such a
 kind is tagged prereg:<12> beside the key. Once Metaflow has named the run, the launcher writes the
 head of its progress page (flows/stage_progress.py), <root>/progress/<Flow>/<run>/run.json, since a
@@ -79,6 +88,7 @@ import json
 import math
 import os
 import re
+import signal
 import socket
 import subprocess
 import sys
@@ -109,6 +119,15 @@ EX_USAGE = 64
 EX_UNAVAILABLE = 69
 EX_SOFTWARE = 70
 BEAT_SECONDS = 60
+# Slurm stops a job with SIGTERM, at its time limit and on a preemption, and job submit sends one
+# to the batch shell two minutes before the limit (--signal=B:TERM@120), which the bank and catalog
+# scripts exec the launcher as; a person stops a launch with SIGINT. The flow runs in a process
+# group of its own, so the launcher passes either on to every process of it, the Metaflow runtime
+# and each task with what it runs, gives them STOP_GRACE_SECONDS to end, as grid/drr-gap.sbatch gives
+# its tool, and then kills what is left, so no process of the flow outlives the launcher.
+STOP_SIGNALS = (signal.SIGTERM, signal.SIGINT)
+STOP_GRACE_SECONDS = 60
+POLL_SECONDS = 0.5
 # The word of the line every exit of the launcher ends with, each kind's in flows/registry.txt: the
 # one the bank and catalog stages' scripts end with when they run straight, and for the sweep one
 # apart from the SN_SWEEP_RC its driver prints after the launcher's. The gate's status keeps such a
@@ -116,6 +135,34 @@ BEAT_SECONDS = 60
 # (the second review of #252, finding 6). A kind the registry does not list, or a registry that
 # cannot be read, ends with LAUNCH_RC.
 NO_WORD = "LAUNCH_RC"
+
+
+def tell(text, stream=None):
+    """One line of the launcher's own, flushed, on stderr unless another stream is named. A reader
+    that has gone, as a pipe's reader killed with its job by Slurm's TERM, never stops the launcher,
+    least of all in the middle of stopping its flow: the stream is pointed at /dev/null from then on,
+    so neither this line nor Python's own flush at exit fails again. A line said by a signal's
+    handler while the main thread was writing one is dropped as well, since Python refuses that
+    second write rather than mixing the two."""
+    stream = sys.stderr if stream is None else stream
+    try:
+        print(text, file=stream, flush=True)
+    except RuntimeError:  # a reentrant write, from a signal's handler: the line is lost, not the stop
+        pass
+    except (OSError, ValueError):  # a reader gone (BrokenPipeError among them) or a stream closed
+        to_nowhere(stream)
+
+
+def to_nowhere(stream):
+    """The stream's file pointed at /dev/null, where it has one."""
+    try:
+        nowhere = os.open(os.devnull, os.O_WRONLY)
+        try:
+            os.dup2(nowhere, stream.fileno())
+        finally:
+            os.close(nowhere)
+    except (OSError, ValueError):
+        pass
 
 
 class LaunchError(Exception):
@@ -165,12 +212,12 @@ def parse(argv, flows):
     return name, options, words
 
 
-def require_prereg(name, repo, part=None):
+def require_prereg(name, repo, part=None, part_sha256=None):
     """The kind's frozen PREREG, (path, sha256), None for a stage that trains and runs no network;
-    refused with the Lab Recipe's exit 90 where it is missing or moved, or covers no such part,
-    before any flow starts."""
+    refused with the Lab Recipe's exit 90 where it is missing or moved, or covers no such part or
+    not the part's bytes, before any flow starts."""
     try:
-        return stage_registry.frozen_for(name, part, repo)
+        return stage_registry.frozen_for(name, part, part_sha256, repo)
     except stage_registry.PreregError as error:
         raise LaunchError(f"the {name} flow's runs are held to a frozen PREREG (the owner's rule of 2026-10-29), "
                           f"so none was started or resumed: {error}", stage_registry.EX_PREREG) from error
@@ -252,10 +299,11 @@ def reads_of(flow, words):
 
 
 def part_of(flow, words):
-    """The part of its kind a run of these words is, by the flow's own prereg_part, as the sweep's
-    plan is; None for a flow whose runs are all of one design."""
+    """The part of its kind a run of these words is and the sha256 of the part's bytes, by the
+    flow's own prereg_part, as the sweep's plan is; (None, None) for a flow whose runs are all of
+    one design."""
     prereg_part = getattr(flow, "prereg_part", None)
-    return prereg_part(words, Path.cwd()) if prereg_part else None
+    return prereg_part(words, Path.cwd()) if prereg_part else (None, None)
 
 
 def point_metaflow_at(root):
@@ -410,15 +458,19 @@ class Heartbeat:
             pass
 
     def beat_on(self):
+        """The beat first and the page after it, since the beat is what keeps another launch from
+        resuming a run still going, and the page's drawing, which reads every run's view, takes
+        longer; Page never raises, so a page that fails never stops the beat."""
         last = time.monotonic()
         while not self.stop.wait(1.0):
             named = self.record["run"] or self.named_run()
             if named != self.record["run"] or time.monotonic() - last >= BEAT_SECONDS:
-                if named != self.record["run"] and self.page:
-                    self.page.begin(named)
+                newly_named = named != self.record["run"]
                 self.record["run"] = named
                 self.write()
                 last = time.monotonic()
+                if newly_named and self.page:
+                    self.page.begin(named)
 
     def named_run(self):
         try:
@@ -435,22 +487,31 @@ class Heartbeat:
             os.replace(part, self.path)
         except OSError as error:
             if not self.said:
-                print(f"launch: the heartbeat {self.path} could not be written: {error}", file=sys.stderr, flush=True)
+                tell(f"launch: the heartbeat {self.path} could not be written: {error}")
             self.said = True
 
 
 class Page:
     """The run's progress page as the launcher keeps it: the head once Metaflow has named the run,
-    how the flow ended once it has; a page that cannot be written is said once, and the run goes on."""
+    how the flow ended once it has; a page that cannot be written or drawn, for whatever reason, is
+    said once, and neither the beat nor the run waits on it."""
 
     def __init__(self, root, head):
         self.root, self.head, self.run, self.said = root, head, "", False
+        self.started = stage_progress.utc_now()
 
     def begin(self, run):
+        """The head of a run Metaflow has named, started when the launcher started its flow, since
+        the launcher may name the run only as its flow ends, one that ended within the second."""
         self.run = run
-        self.write(lambda: stage_progress.write_head(self.root, dict(self.head, run=run, started=stage_progress.utc_now())))
+        self.write(lambda: stage_progress.write_head(self.root, dict(self.head, run=run, started=self.started)))
 
-    def end(self, record):
+    def end(self, record, run=""):
+        """How the flow ended, as the launcher saw it, on the page of the run it ran; a flow that
+        ended before the heartbeat's first look named its run is begun here first, so its page has
+        its head."""
+        if run and not self.run:
+            self.begin(run)
         if self.run:
             self.write(lambda: stage_progress.write_launch(self.root, self.head["flow"], self.run, record))
 
@@ -458,9 +519,9 @@ class Page:
         try:
             writing()
             stage_progress.draw(self.root, self.head["flow"], self.run)
-        except OSError as error:
+        except Exception as error:  # a page, whatever stops it, never stops the beat or the launch
             if not self.said:
-                print(f"launch: the progress page could not be written: {error}", file=sys.stderr, flush=True)
+                tell(f"launch: the progress page could not be written: {type(error).__name__}: {error}")
             self.said = True
 
 
@@ -521,13 +582,16 @@ def ended(flow_class, run_id):
             return False, None
         verdict = getattr(run["end"].task.data, "verdict", None)
     except Exception as error:  # the client's own errors have no common base worth naming
-        print(f"launch: Metaflow could not say how {flow_class}/{run_id} ended: {error}", file=sys.stderr, flush=True)
+        tell(f"launch: Metaflow could not say how {flow_class}/{run_id} ended: {error}")
         return False, None
     return True, verdict if isinstance(verdict, int) and not isinstance(verdict, bool) else None
 
 
-def exit_code(flow_code, verdict):
-    """The flow's own code where it failed (a signal as a shell gives it), else the verdict."""
+def exit_code(flow_code, verdict, stopped_by=None):
+    """The signal that stopped the launcher as a shell gives it, else the flow's own code where it
+    failed (a signal as a shell gives it), else the verdict."""
+    if stopped_by:
+        return 128 + stopped_by
     if flow_code < 0:
         return 128 - flow_code
     if flow_code != 0:
@@ -536,13 +600,118 @@ def exit_code(flow_code, verdict):
 
 
 def say(record):
-    print(json.dumps(record, sort_keys=True), flush=True)
+    tell(json.dumps(record, sort_keys=True), sys.stdout)
+
+
+def live_members(group):
+    """The processes of a process group that have not ended, from /proc, as Linux gives them; None
+    where /proc cannot be listed."""
+    try:
+        entries = [entry for entry in os.listdir("/proc") if entry.isdigit()]
+    except OSError:
+        return None
+    members = []
+    for entry in entries:
+        try:
+            fields = Path(f"/proc/{entry}/stat").read_text(encoding="ascii", errors="replace").rsplit(")", 1)[1].split()
+        except (OSError, IndexError):  # a process that ended while it was read
+            continue
+        if len(fields) > 2 and fields[2] == str(group) and fields[0] != "Z":
+            members.append(int(entry))
+    return members
+
+
+class FlowProcess:
+    """The flow's process, in a process group of its own, and the stop signal the launcher was sent
+    while it ran, passed on to the whole group (STOP_SIGNALS above)."""
+
+    def __init__(self):
+        self.process, self.stopped_by, self.deadline = None, None, None
+
+    def stop(self, signum, _frame=None):
+        """A stop signal's handler: passed on to the flow's group, which has until the deadline, and
+        only then said, since the saying may meet a reader that has gone (tell)."""
+        first = self.stopped_by is None
+        if first:
+            self.stopped_by, self.deadline = signum, time.monotonic() + STOP_GRACE_SECONDS
+        self.signal_group(signum)
+        if first:
+            tell(f"launch: {signal.Signals(signum).name}: passed on to every process of the flow, which has "
+                 f"{STOP_GRACE_SECONDS} s to end")
+
+    def signal_group(self, signum):
+        if self.process is None:
+            return
+        try:
+            os.killpg(self.process.pid, signum)
+        except (ProcessLookupError, PermissionError):  # the group has ended, or holds no process of ours
+            pass
+
+    def group_alive(self):
+        """Whether a process of the flow's group has not yet ended. A zombie has ended and waits
+        only for its parent to read it, which no one may do for a task whose runtime died, so it is
+        not counted where /proc tells it apart; elsewhere the group's answer to signal 0 decides."""
+        members = live_members(self.process.pid)
+        if members is not None:
+            return bool(members)
+        try:
+            os.killpg(self.process.pid, 0)
+        except ProcessLookupError:
+            return False
+        except PermissionError:
+            return True
+        return True
+
+    def run(self, command, cwd, env):
+        """The flow's exit code once it has ended: as before where nothing stopped the launcher,
+        and where a signal did, once every process of its group has ended or been killed at the
+        deadline."""
+        self.process = subprocess.Popen(command, cwd=cwd, env=env, start_new_session=True)
+        if self.stopped_by is not None:  # a signal that came before the flow began
+            self.signal_group(self.stopped_by)
+        code = None
+        while True:
+            if code is None:
+                try:
+                    code = self.process.wait(timeout=POLL_SECONDS)
+                except subprocess.TimeoutExpired:
+                    pass
+            else:
+                time.sleep(POLL_SECONDS)
+            if code is not None and (self.stopped_by is None or not self.group_alive()):
+                return code
+            if self.deadline is not None and time.monotonic() >= self.deadline:
+                self.signal_group(signal.SIGKILL)
+                tell(f"launch: the flow's processes did not end within {STOP_GRACE_SECONDS} s, so they were killed")
+                return code if code is not None else self.process.wait()
 
 
 def run_flow(command, root, repo):
-    """The flow, its output passing through, in the datastore root (cards, above)."""
+    """The flow, its output passing through, in the datastore root (cards, above), with a stop
+    signal the launcher is sent while it runs passed on to it (FlowProcess): (the flow's exit code,
+    the signal that stopped the launcher or None)."""
     env = dict(os.environ, SCHWINGNET=str(repo), SCHWINGNET_WORKDIR=os.getcwd())
-    return subprocess.run(command, cwd=root, env=env).returncode
+    flow = FlowProcess()
+    previous = {signum: signal.signal(signum, flow.stop) for signum in STOP_SIGNALS}
+    try:
+        code = flow.run(command, root, env)
+    except BaseException:
+        # The beat is taken away as the launcher unwinds, so a flow left running would be resumed
+        # by the next launch of its key while it still runs; nothing of it outlives a broken launcher.
+        flow.signal_group(signal.SIGKILL)
+        raise
+    finally:
+        for signum, handler in previous.items():
+            signal.signal(signum, handler)
+    return code, flow.stopped_by
+
+
+def ended_words(code_out, successful, stopped_by):
+    """How the launch ended, in the words its page shows."""
+    if stopped_by:
+        return (f"the launcher was stopped by {signal.Signals(stopped_by).name}, stopped its flow and exited {code_out}, "
+                f"the flow {'succeeded' if successful else 'did not succeed'}")
+    return f"the launcher exited {code_out}, the flow {'succeeded' if successful else 'did not succeed'}"
 
 
 def launch(argv):
@@ -554,10 +723,12 @@ def launch(argv):
     point_metaflow_at(root)
     require_metaflow()
     require_parent(root)
+    # The part a run is can be read only from the flow's own file, which imports Metaflow; it is
+    # refused there, before the datastore is touched and before git or the code digest is asked.
+    flow = flow_module(name, repo)
+    prereg = require_prereg(name, repo, *part_of(flow, words)) if prereg else prereg
     (root / ".metaflow").mkdir(parents=True, exist_ok=True)
     commit, code = commit_of(repo), code_of(repo, name)
-    flow = flow_module(name, repo)
-    prereg = require_prereg(name, repo, part_of(flow, words)) if prereg else prereg
     key = run_key(name, code, words, [*reads_of(flow, words), *prereg_reads(prereg)])
     flow_class = flows[name]["class"]
     folder = beats_folder(root, flow_class, key)
@@ -570,13 +741,13 @@ def launch(argv):
         command = flow_command(name, repo, decision, origin, options, words, run_tags(key, commit, code, prereg), commit,
                                str(run_id_file), date.today().isoformat())
         with Heartbeat(folder, key, run_id_file, page):
-            flow_code = run_flow(command, root, repo)
+            flow_code, stopped_by = run_flow(command, root, repo)
         run_id = run_id_file.read_text(encoding="utf-8").strip() if run_id_file.is_file() else ""
     successful, verdict = ended(flow_class, run_id)
-    code_out = exit_code(flow_code, verdict)
-    page.run = page.run or run_id
-    page.end({"words": f"the launcher exited {code_out}, the flow {'succeeded' if successful else 'did not succeed'}",
-              "exit": code_out, "successful": successful, "verdict": verdict, "at": stage_progress.utc_now()})
+    code_out = exit_code(flow_code, verdict, stopped_by)
+    page.end({"words": ended_words(code_out, successful, stopped_by), "exit": code_out, "successful": successful,
+              "verdict": verdict, "signal": signal.Signals(stopped_by).name if stopped_by else None,
+              "at": stage_progress.utc_now()}, run_id)
     say({"flow": name, "run": f"{flow_class}/{run_id}" if run_id else None, "successful": successful,
          "verdict": verdict})
     return code_out
@@ -584,7 +755,7 @@ def launch(argv):
 
 def refused(error):
     """A refusal in words, as the line LaunchError: <words>, whose words the gate's status withholds."""
-    print(f"LaunchError: {error}", file=sys.stderr, flush=True)
+    tell(f"LaunchError: {error}")
     return error.code
 
 
@@ -601,7 +772,7 @@ def rc_word(argv):
 
 def say_ended(argv, code):
     """The launcher's last line: its stage's word, the exit code and the time, and no value of a run."""
-    print(f"{rc_word(argv)}={code} {datetime.now():%Y-%m-%d %H:%M:%S}", flush=True)
+    tell(f"{rc_word(argv)}={code} {datetime.now():%Y-%m-%d %H:%M:%S}", sys.stdout)
 
 
 def main(argv=None):
@@ -614,7 +785,7 @@ def main(argv=None):
         code = refused(LaunchError(f"a rule of schwingnet.pipeline was broken, so no run was started or resumed: {error}",
                                    EX_SOFTWARE))
     except Exception:  # anything else ends the job as Python ends it, with its traceback, and then the line
-        traceback.print_exc()
+        tell(traceback.format_exc().rstrip())
         code = 1
     say_ended(argv, code)
     return code

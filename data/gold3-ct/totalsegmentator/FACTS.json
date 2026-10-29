@@ -1,0 +1,13 @@
+{
+ "member": "totalsegmentator",
+ "rows": 1939,
+ "unreadable": [],
+ "made_by": "bordercall holdings/fullspine_facts.py",
+ "bordercall_commit": "5bd759a6",
+ "read_on": "the thread's cloud container (project symphony_4, thread 'Complete every full-spine CT for gold tier 3'), from the public release, not the grid",
+ "source": "TotalSegmentator v3, Zenodo record 22688904, Totalsegmentator_dataset_v300.zip, each subject's vertebra, sacrum, rib, hip, skull and spinal cord masks read by byte ranges from the zip",
+ "date": "2026-10-28",
+ "ct_grid_check": "each subject's ct.nii.gz header read by byte ranges from the same zip: 1,939 of 1,939 subjects' masks have their CT's shape and affine",
+ "reader_output_sha256": "70074aa4b9022b2443729573450f74aa6c57ccc44634be2418c43b71c3ff7e58",
+ "committed_as": "one row a study, keys sorted; a study read from several files keeps one digest of their sums (tools/gold3_field.py sums_digest)"
+}

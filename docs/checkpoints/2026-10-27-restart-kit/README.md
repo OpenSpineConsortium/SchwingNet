@@ -13,6 +13,12 @@ The paste-ready texts, the new project's goal, its instructions, the repositorie
 
 The claude.ai project's shared folder does not follow the owner to a new project, so its four folders were carried to the grid on the owner's word of 2026-10-28 17:24 UTC ("push these to the grid to the new project to fine there"): gold3-ct (with thread-handoff-2026-10-28), enhance-pet-repair, drr-domain-gap-monitor and mask-free-import, 3,332 files and 1,107,335,194 bytes as they stood at 17:32 UTC, with a README and SHA256SUMS over every other file. They landed at 18:31 UTC as `/rs/rs_grp_oschome/go2432/data/project_files_2026_10_28/`, 0700, each file checked against SHA256SUMS by the gate (grid/carry/project_files_2026_10_28.txt, #444; the word `schwingnet-fetch-project_files_2026_10_28` checks them again). A new project's cloud session can also fetch them from bordercall's private branch claude/project-thread-rr7in4 at 01435c1, until the owner deletes it.
 
+## Later handoffs
+
+Threads that ran after this kit was written leave their state in their own handoff and add a memory file here, so the kit stays the one entry point.
+
+- 2026-10-28, the gold tier 3 CT dataset: docs/checkpoints/2026-10-28-gold3-ct-handoff/HANDOFF.md, memory/gold3-ct-dataset.md. It records the owner's disagreement of 17:08 UTC with 17 VerSe and no TotalSegmentator rows, with every candidate.
+
 ## How it was compacted
 
 - Kept: the owner's priority of 2026-10-27 05:48 UTC and its gate; the owner's standing rules and working style; how the repositories are checked, pushed and merged; every approved grid count with what was sent; each paused thread's pull request, branch, handoff and first step; the owner's open steps; and the findings, in memory as headlines and in FINDINGS.md in full.

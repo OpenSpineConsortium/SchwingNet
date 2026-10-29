@@ -21,7 +21,7 @@ The synthetic catalog is built by `tools/block_sweep.py synthetic` under `/rs/rs
 
 ## Its PREREG
 
-PREREG.md in this folder, frozen on 2026-10-29 by PREREG.md.sha256 before any sweep of the smoke ran, writes the design above in the Lab Recipe's seven parts, as the owner's rule of that day asks of every deep learning job on the grid (flows/README.md). It covers the plans synthetic, real and two_source; the launcher and the sweep's start refuse any other plan, the six trials among them, until a PREREG of their own is frozen. A departure goes in DEVIATIONS.md beside it. Each sweep's run checks the CLAIM 2024 and REFORMS report of every row that ran and keeps a progress page under the Metaflow datastore's progress/ folder.
+PREREG.md in this folder, frozen on 2026-10-29 by PREREG.md.sha256 before any sweep of the smoke ran, writes the design above in the Lab Recipe's seven parts, as the owner's rule of that day asks of every deep learning job on the grid (flows/README.md). It covers the plans synthetic, real and two_source by their names and the sha256 of their bytes; the gate's word, the launcher and the sweep's start refuse any other plan, the six trials among them, and any of the three made again with other bytes, until a PREREG of their own is frozen. A departure goes in DEVIATIONS.md beside it. Each sweep's run checks the CLAIM 2024 and REFORMS report of every row that ran and keeps a progress page under the Metaflow datastore's progress/ folder.
 
 ## How the argument is made
 

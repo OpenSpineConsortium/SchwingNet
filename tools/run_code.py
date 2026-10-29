@@ -61,6 +61,10 @@ KINDS = {
     "v1": (*ROW, "flows/v1.py", "flows/flow_tool.py", "flows/stage.py", "flows/stage_registry.py"),
     "bank": (*STAGE, "flows/bank.py", "grid/02-bank-ingest.sbatch", "tools/bank.py", "tools/ingest.py"),
     "catalog": (*STAGE, "flows/catalog.py", "grid/03-catalog.sbatch"),
+    # The FluXray reproduction's stages (docs/research/flux-realism/PREREG.md): the flow, the tool
+    # each step runs, the rules it imports and the label names the render reads.
+    "realism": (*ENVIRONMENT, *CONTRACTS, "src/schwingnet/__init__.py", "src/schwingnet/realism.py", "flows/realism.py",
+                "flows/stage.py", "flows/stage_registry.py", "tools/realism.py", "grid/enhance-pet-labels.json"),
 }
 
 NAMES_THE_RUN = "names the run: the files it lists are the digest, so a change to the lists changes the digest by itself"
@@ -101,6 +105,8 @@ LEFT_OUT = {
     "v1": {**ROW_LEFT_OUT, **STAGE_PAGE_LEFT_OUT},
     "bank": {**STAGE_LEFT_OUT, "grid/size-rule.sh": "admits the job under the size rule before the launcher starts, and no step of the flow runs it"},
     "catalog": STAGE_LEFT_OUT,
+    "realism": {**STAGE_PAGE_LEFT_OUT,
+                "tools/report.py": "writes the run's CLAIM 2024 and REFORMS report from its files in the end step, after every number"},
 }
 
 

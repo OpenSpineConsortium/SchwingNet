@@ -1,0 +1,13 @@
+# VerSe's masks, one copy per series: the 374 series the read of 2026-10-29 chose
+# (/mnt/project-files/gold3-ct/verse-read-2026-10-29/OUT.jsonl), as lossless int16 volumes where VerSe
+# wrote float64 (365) and as published where it wrote integers (9), with MANIFEST.csv naming each
+# published file's bytes and sha256: 387,805,416 bytes of masks against VerSe's 1,320,467,690.
+# Carried on the owner's word of 2026-10-29 12:53 UTC: "Make sure to save those masks if that is a
+# better more efficient storage format, you can put in grid".
+# `schwingnet fetch verse_masks_2026_10_29` lands it as the data root's verse_masks_2026_10_29.
+repo OpenSpineConsortium/bordercall
+branch claude/project-thread-6vy0yb
+commit 27d84df3f74b4bea6b20c8fd5a7eaa34f469e51e
+files 378
+bytes 387949238
+manifest eefe9ee39f1aba232313947ac0c866b3d4daf6ba14870f29de51049ca1daa836
