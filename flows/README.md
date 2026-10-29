@@ -34,8 +34,14 @@ Metaflow's own resume rather than by anything written around it.
   could not run or record it (any exit but 0; block_sweep says 2) raises, is retried once at once
   (`@retry(times=1)`), and is then caught (`@catch(var="fault")`), so the other rows still run
   and the verdict is 1. The verdict is 0 only when every row was recorded and did what the
-  compatibility check predicted. A kill mid-row resumes with every finished row cloned and the
-  cut row run again, which tools/flow.py carries on from its last epoch (tools/train.py --resume).
+  compatibility check predicted, and every row that ran has its CLAIM 2024 and REFORMS report
+  current (below). A kill mid-row resumes with every finished row cloned and the cut row run
+  again, which tools/flow.py carries on from its last epoch (tools/train.py --resume). Its runs
+  are held to docs/research/block-smoke/PREREG.md, which covers the plans synthetic, real and
+  two_source by their bytes; `sweep trials` is refused until the six trials have a PREREG of their
+  own, and so is a plan made again with other rows. grid/gate.sh's word `sweep <plan>` reads the
+  same Covers line in bash and refuses such a plan with 90 before it queues anything, since the
+  launcher's own refusal comes only once the job holds a GPU and its catalog is built.
 
 Every flow's end step sets an int artifact `verdict`, 0 when all went well and 1 otherwise.
 
@@ -44,9 +50,120 @@ a switch, Metaflow 2.19's conditional next (`self.next({...}, condition=...)`), 
 foreach, since Metaflow refuses a foreach over nothing. A switch's path may not lead straight to
 a join step, so a switch lands on a plain step: BankFlow's end, SweepFlow's middle and end.
 
+## Every deep learning job: a launched flow, a frozen PREREG, its report and its page
+
+The owner's rule of 2026-10-29, 02:39 UTC: every deep learning job on the grid runs on this
+block-based pipeline, under a PREREG frozen before the run, with the CLAIM 2024 and REFORMS report
+enforced and a page that shows its progress in the browser; a plain Slurm job is not enough.
+
+As of this pull request only the sweep keeps it. These words of grid/gate.sh still submit a plain
+job that trains or runs a network, each to be moved onto a flow listed in registry.txt, one pull
+request each, under a PREREG of its own:
+
+- `start` and `v1`, version 1's training and evaluation (grid/v1-driver.sbatch);
+- `experiment <issue>`, one combination of blocks from the experiments panel
+  (grid/experiment-driver.sbatch);
+- `bench <id>`, a public model's benchmark (grid/bench.sbatch), and among its ids
+  `flexray_drr_seg`, the step that makes MOOSE's masks;
+- `bench flexray_drr_gap`, the DRR domain-gap study (grid/drr-gap.sbatch);
+- `anomaly timing`, SPINEPS over the anomaly route's CTs (grid/anomaly.sbatch);
+- `latency`, the latency arms and the recorded sweep (grid/run-latency-sweep.sh);
+- `realism <edit|stats|lora|eval>`, the Flux realism stages (grid/realism.sbatch).
+
+The rule holds already, so until a word is moved it is not sent. Once they all are, the gate
+refuses any GPU job that does not start through flows/launch.py; that refusal is a later pull
+request.
+
+- `registry.txt` is the one list of the flows: per kind its class in flows/<kind>.py, the word the
+  launcher's last line ends with, the job script under grid/ that starts the launcher when Slurm
+  runs it, and its PREREG.md, a relative path under docs/research/, where git holds its freeze
+  (below), or `-`, which only the stages that train and run no network may name (bank, catalog;
+  NO_NETWORK in flows/stage_registry.py).
+  `python3 flows/stage_registry.py check`, which scripts/check.sh runs, fails on a line whose class
+  or script does not hold, whose PREREG is not the one frozen or leads out of the checkout, or
+  whose PREREG has a Covers line for a flow that names no part (no `prereg_part`).
+- A PREREG is frozen as the Lab Recipe says, `sha256sum PREREG.md > PREREG.md.sha256` in its
+  folder, both committed, and never edited again: a departure goes in DEVIATIONS.md beside it, and
+  a correction of a departure is a new dated entry below the last, never an edit of an earlier
+  one. Git holds the freeze too, since an edit with its .sha256 written again passes every check
+  of the bytes: `python3 flows/stage_registry.py frozen`, in scripts/check.sh, fails where a
+  PREREG.md or PREREG.md.sha256 under docs/research/ or docs/history/ that the base holds differs
+  at HEAD, or a DEVIATIONS.md beside a frozen PREREG no longer begins with its text there. A frozen
+  folder moved whole to docs/history/, as .claude/rules/research.md lets a settled note move, is
+  held at its new place, and moved and edited is gone. The base: in CI, whose checkout of a pull
+  request is GitHub's merge commit one commit deep, the commit it was merged onto, its first
+  parent, fetched one commit deep, so a run queued behind a merge to main, or run again, is never
+  held to a newer main; elsewhere where HEAD left origin/main, and a clone that has no origin/main,
+  or too shallow for git to tell where HEAD left it, skips the check with a line. scripts/check.sh
+  runs the default branch's own copy of the check from a scratch folder against the checkout
+  (`frozen --repo`), so a change that loosens flows/stage_registry.py is still held by the copy it
+  loosened. What is still open: a change that edits scripts/check.sh's frozen_check, or
+  .github/workflows/ci.yml, which runs it, can skip the check; its diff shows that, and the owner's
+  review of such a change is what holds it. The
+  launcher refuses a kind whose PREREG is missing or moved before it imports Metaflow, with the
+  recipe's exit 90 and the line `LaunchError: ... STOP: <PREREG> changed since the freeze`, so the
+  job does nothing. A PREREG's line `Covers: <part>, ...` names the parts of its kind it covers,
+  each by its name alone or as `<part>=<sha256>`, by its bytes too, and a flow whose runs differ
+  in design names the part a run is and the sha256 of its bytes (the sweep's `prereg_part`, its
+  plan's name and the plan file's sha256), so a run of a part no frozen PREREG covers, or of one
+  whose bytes are not those its entry names, a plan edited or made again since the freeze, is
+  refused with exit 90 too: after Metaflow is imported, since the part is read from the flow's own
+  file, which imports it, but before the datastore is touched or anything is written. The PREREG's
+  path and sha256 are in the key and on the run's tags (prereg:<12>), and start keeps them as the
+  run's artifacts prereg_path and prereg_sha256, with the part and its sha256
+  (`stage.hold_to_prereg`). A resume clones start, and `python flows/sweep.py resume` started by
+  hand skips the launcher's refusal too, so end holds the run to them again (`stage.still_held`)
+  and fails where the PREREG frozen now is another or no longer covers the part as start read it.
+  A refusal by start or end is the flow's own (`StageFault`), so it fails the run and the launcher
+  exits with the flow's 1, not 90; only the launcher's own refusal exits 90.
+- `stage.py` is what every flow's steps run for the rule: `Beat` around a step's work, its line on
+  the page, `run_watched` for a command whose line moves while it runs, `Beat(self).passed()` in a
+  step that only routes the flow, `claim_report` in end, and `finish`, the verdict and the
+  report's lines on the page. `claim_report` checks a run folder's report with tools/report.py
+  before it writes anything, since the tool's check compares the report's files with what a write
+  would render now and so always passes right after one: a current report is well; a folder with
+  none has it written then and checked, and the line says it was written at the end; a report not
+  what the folder's files give is written anew, so the folder and the page hold the current one.
+  That stale report makes the verdict 1 where the folder's work was done in this Metaflow run, its
+  FINISHED.json (or, with none, its newest file but the report's) written after Metaflow
+  registered the run (`run_began`, `done_since`); a folder done before, a row a resume cloned or
+  one tools/flow.py found finished, is only stale because tools/report.py, the study's answers or
+  the checklists changed since, which no run's key names, so it is written anew under the tool as
+  it is now and is well, and its line says so. A report that cannot be written makes the verdict 1
+  either way. An item a report counts
+  as missing is shown, never inferred; `tools/report.py check --complete` stays the gate for a
+  number that is to be published.
+- `stage_progress.py` draws the page. Each run keeps <datastore root>/progress/<Flow>/<run>/:
+  run.json, the head the launcher writes once Metaflow has named the run (its kind, key, commit,
+  code, PREREG and, for a resume, its origin, whose finished steps the page shows as cloned and
+  whose tasks still running when it was cut as cut, to be run again, never as running);
+  graph.json; one file a task under tasks/, which only that task writes; result.json from end; and
+  launch.json, how the launcher saw the flow end. Every write draws index.html, the page, which
+  reloads itself every 30 s while the run lasts; PROGRESS.txt, the same in short lines, how the
+  run ended (its verdict, the launcher's last word, the reports counted and the first six of their
+  lines, those not current first) right after its two head lines, and then each step with its
+  first eight tasks, a failed one first, so the 40 lines the gate's status keeps of a run always
+  hold its end; and
+  <datastore root>/progress/index.html, the newest runs of every flow. A run still running whose
+  files have not moved for ten minutes is silent: a job Slurm ended writes nothing more, so its own
+  page keeps the word running it last wrote, and silence is judged where the page is read instead,
+  by the page's script in the browser when it is opened, by the list of runs whenever any run
+  draws it, by the gate's status from PROGRESS.txt's time (the head then says silent, with a line
+  saying how long), and by tools/progress_page.py from the status answer's time. Nothing here
+  fails a step: a page that cannot be written is said once in the step's log.
+
+To open a page in the browser on the grid: Open OnDemand (https://ondemand.grid.wayne.edu, on the
+university's VPN), Files, then /rs/rs_grp_oschome/go2432/metaflow/progress/, the flow's folder,
+the run's folder and index.html, opened with View; not yet tried on the grid, so where the Files
+app shows the page as text, Download it and open the file in the browser. Off the grid, the gate's status word prints the
+newest four runs' PROGRESS.txt under `## flow <kind> <run>, progress (<time> UTC)`, their task and
+report lines judged as a stage report's are (a path cut, a quoting reason withheld) and every line
+masked, and `python3 tools/progress_page.py <status answer> --out page.html` draws the same page
+from that answer.
+
 ## Starting and resuming: always the launcher
 
-    python flows/launch.py {bank|catalog|sweep} [--max-workers N] [--root DIR] -- <flow parameters>
+    python flows/launch.py <kind> [--max-workers N] [--root DIR] -- <flow parameters>
 
 The launcher names a launch by a key, the first 16 hex of the sha256 of the flow, the code it
 runs, the flow's parameters as given and what the flow reads that they do not name
@@ -106,13 +223,31 @@ launcher killed with its job stops counting once it is 300 s old (LIVE_SECONDS),
 it names this very Slurm job, which Slurm queued again, and at once where it names a process on
 this host that is gone.
 
+The flow runs in a process group of its own, and a SIGTERM or SIGINT the launcher is sent while
+it runs is passed on to every process of the flow: Slurm's TERM at a time limit or a preemption,
+which reaches every process of the job, and the one job submit sends the batch shell two minutes
+before the limit (`--signal=B:TERM@120`), which reaches the launcher where the stage's script
+execs it, as bank and catalog do. Without that the TERM killed the launcher and left the flow's
+runtime and tasks running, its beat stale and its page open. What has not ended 60 s later
+(STOP_GRACE_SECONDS) is killed; the beat is taken away as at any end, so the job Slurm queues
+again resumes the run at once; launch.json says which signal ended it; and the launcher exits
+128 plus the signal, 143 for SIGTERM. The signal is passed on before the launcher says a word of
+it, and a line it cannot write, its reader gone as a pipe's tee goes with its job, is dropped and
+its stream pointed at /dev/null, so no message ever cuts a stop short; a launcher that breaks for
+any other reason while its flow runs kills the flow before its beat goes. grid/sweep-driver.sbatch
+runs the launcher in the background and waits on it, since a shell holds a trapped signal while a
+command runs in its foreground: its trap passes job submit's early TERM, or a person's INT, on to
+the launcher as TERM, tee ignores both, and the driver waits again, so the launcher stops its flow
+and closes the page inside the two minutes and the driver's report still says it exited 143.
+
 Its first line on stdout is the decision, `{"code", "decision", "flow", "key", "live", "origin",
 "root"}`, with `code` the code's digest and `live` the id of a newest run passed over as live,
 else null, and the flow's own output passes through after it, followed by `{"flow", "run":
 "Class/ID", "successful", "verdict"}`. It exits with the flow's own code where that is not 0 (128
-plus the signal where the flow was killed), else with the verdict, so a job's afterok means what
+plus the signal where the flow was killed, or where the launcher was stopped, above), else with the verdict, so a job's afterok means what
 it meant before Metaflow. A refusal comes before any flow starts, as the line `LaunchError:
-<words>` on stderr: exit 69 where Metaflow cannot be imported, the datastore's parent folder is
+<words>` on stderr: exit 90 where the kind's PREREG is missing or moved or does not cover the
+run's part (above); exit 69 where Metaflow cannot be imported, the datastore's parent folder is
 missing or the commit or the code cannot be named; exit 64 for a flow it does not know,
 a --max-workers that is no whole number from 1 to 9999 or a --commit among the words, which it
 passes itself; and exit 70 where the runs Metaflow lists break a rule of schwingnet.pipeline.

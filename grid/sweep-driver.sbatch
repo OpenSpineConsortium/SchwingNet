@@ -117,11 +117,44 @@ else
 fi
 
 out=$(mktemp "$REPO/grid/logs/sweep-flow-${SLURM_JOB_ID:-$$}.XXXXXX")
+# The launcher runs in the background and is waited on, so job submit's TERM two minutes before the
+# limit (--signal=B:TERM@120, to the batch shell alone, as grid/drr-gap.sbatch says), or a person's
+# INT, is heard at once: a shell holds a trapped signal while a command runs in its foreground, and
+# the launcher heard only Slurm's own TERM at the limit. The trap passes TERM on to the launcher,
+# which passes it to every process of its flow, closes the run's page and exits 143 (flows/launch.py),
+# and the pipeline is waited on again. tee ignores both signals, so the launcher's last lines still
+# reach $out, and it ends only once the launcher and its flow have closed their output.
+launcher_pid=$(mktemp) launcher_rc=$(mktemp)
+stopped="" signalled=""
+stop_launcher() {
+  local pid
+  stopped=1 signalled=1
+  pid=$(cat "$launcher_pid" 2>/dev/null)
+  [ -z "$pid" ] || kill -TERM "$pid" 2>/dev/null
+}
+trap stop_launcher TERM INT
 # The Metaflow datastore is the launcher's default on the grid; the plan by its absolute path, so the
 # flow's steps read it from wherever Metaflow runs them.
-bash grid/box.sh pixi run --locked -e train-gpu python flows/launch.py sweep --max-workers 1 -- \
-  --plan "$PLAN_FILE" --catalog "$CATALOG" --out "$SMOKE" --environment train-gpu ${weights[@]+"${weights[@]}"} 2>&1 | tee "$out"
-rc=${PIPESTATUS[0]}
+{
+  bash grid/box.sh pixi run --locked -e train-gpu python flows/launch.py sweep --max-workers 1 -- \
+    --plan "$PLAN_FILE" --catalog "$CATALOG" --out "$SMOKE" --environment train-gpu ${weights[@]+"${weights[@]}"} &
+  echo "$!" > "$launcher_pid"
+  wait "$!"
+  echo "$?" > "$launcher_rc"
+} 2>&1 | (trap '' TERM INT; exec tee "$out") &
+piped=$!
+again=1
+while [ -n "$again" ]; do
+  signalled=""
+  wait "$piped"
+  again=$signalled
+done
+trap 'exit 143' TERM
+trap - INT
+rc=$(cat "$launcher_rc" 2>/dev/null)
+# No status where the launcher's own shell was killed, which only Slurm's TERM to the whole job does.
+[ -n "$rc" ] || { [ -n "$stopped" ] && rc=143 || rc=1; }
+rm -f "$launcher_pid" "$launcher_rc"
 decision=$(grep -m 1 '"decision":' "$out")
 report "launcher: ${decision:-it printed no decision line}"
 if [ -f "$STATE/RESULTS.md" ]; then

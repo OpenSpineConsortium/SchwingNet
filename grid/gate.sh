@@ -195,6 +195,9 @@ SMOKE=${SMOKE:-/rs/rs_grp_oschome/go2432/smoke}
 MODELS=${MODELS:-/rs/rs_grp_oschome/go2432/models}
 # Each benchmark's results, <name>/ (grid/bench.sbatch, grid/drr-gap.sbatch), where status reads a PROGRESS.txt.
 BENCH_ROOT=${BENCH_ROOT:-/rs/rs_grp_oschome/go2432/bench}
+# The Metaflow datastore flows/launch.py starts every flow in, the one the launcher defaults to, where
+# each run keeps its progress page under progress/<Flow>/<run>/ (flows/stage_progress.py).
+FLOW_ROOT=${SCHWINGNET_METAFLOW:-/rs/rs_grp_oschome/go2432/metaflow}
 WEIGHTS=$MODELS/resnet18-f37072fd.pth
 SWEEP_BANK=${SWEEP_BANK:-$DATA_ROOT/realxray/carmlspine_sweep}
 # The anomaly route's stages write under ANOMALY_ROOT (grid/anomaly.sbatch reads the same default from
@@ -685,11 +688,13 @@ word_status() {
 status_sections() {  # every section of status whole, in the order the page shows them
   local ids run lines job name state elapsed code node probe pending
   # The space first and the sweeps' progress, the one live view of a sweep, after it, then each
-  # benchmark's, the DRR domain-gap study's while its shards run; then the sample manifest, which
+  # benchmark's, the DRR domain-gap study's while its shards run, and each launched flow's page in
+  # short lines; then the sample manifest, which
   # once came after the jobs, where the page's end cut it.
   word_space
   sweep_progress | head -n "$SWEEP_LINES_SHOWN"
   bench_progress
+  flow_progress
   samples_report
   ids=$(gate_ids | tail -n 60 | tr '\n' ',' | sed 's/,$//')
   if [ -z "$ids" ]; then
@@ -797,6 +802,56 @@ bench_progress() {  # every benchmark under BENCH_ROOT that keeps a PROGRESS.txt
     # A benchmark's folder is named by its id; any other name is no benchmark's and is passed over.
     case "$name" in ""|*[!a-z0-9_]*) continue ;; esac
     bench_progress_of "$name"
+  done
+}
+
+# Every run flows/launch.py starts keeps its progress page, and the page in short lines, PROGRESS.txt,
+# under FLOW_ROOT/progress/<Flow>/<run>/ (flows/stage_progress.py, the owner's rule of 2026-10-29).
+# Status shows the newest FLOW_RUNS_SHOWN runs' lines, each under a heading that names the run's kind
+# and id, which tools/progress_page.py reads back into the same page off the grid. The page's own
+# lines are the flow's words; a task's last line and a report's can quote a path or a value, so those
+# are judged as a stage report's lines are (report_shapes), and every line is masked. The writer puts
+# how the run ended, its verdict and its reports, right after the two head lines and shows a few tasks
+# of each step, so a whole smoke plan's run fits in FLOW_PROGRESS_LINES; the cut is only a bound.
+# The file's own word is written while the run still moves, and nothing draws a dead job's page
+# again, so status judges silence as it prints: a run the file calls running that has not moved for
+# FLOW_SILENT_SECONDS (stage_progress.SILENT_SECONDS) is shown silent, with a line saying so.
+FLOW_RUNS_SHOWN=4 FLOW_PROGRESS_LINES=40 FLOW_SILENT_SECONDS=600
+flow_shapes() {  # a flow's progress lines, its tasks' and its reports' judged as a stage report's
+  local line
+  while IFS= read -r line; do
+    case "$line" in
+      "task "*|"report: "*) printf '%s\n' "$line" | report_shapes ;;
+      *) printf '%s\n' "$line" ;;
+    esac
+  done
+}
+flow_lines() {  # flow_lines FILE: its first FLOW_PROGRESS_LINES lines, a running run judged silent by the file's age
+  local progress=$1 moved now first=""
+  moved=$(date -u -r "$progress" +%s 2>/dev/null) now=$(date -u +%s)
+  # The head is read without a pipe: grep -q ending early would fail head under pipefail.
+  IFS= read -r first < "$progress" || true
+  case "$first" in
+    "flow "*": running, started "*)
+      if [ -n "$moved" ] && [ $((now - moved)) -gt "$FLOW_SILENT_SECONDS" ]; then
+        printf '%s\n' "${first/: running, started /: silent, started }"
+        echo "silent: no file of this run has moved for $(( (now - moved) / 60 )) minutes by this status; a job Slurm ended writes nothing more, and a resume is a new run"
+        sed -n "2,$((FLOW_PROGRESS_LINES - 1))p" "$progress"
+        return
+      fi ;;
+  esac
+  head -n "$FLOW_PROGRESS_LINES" "$progress"
+}
+flow_progress() {  # the newest runs of every launched flow, each its PROGRESS.txt as status shows it
+  local progress run kind
+  ls -1t "$FLOW_ROOT"/progress/*/*/PROGRESS.txt 2>/dev/null | head -n "$FLOW_RUNS_SHOWN" | while read -r progress; do
+    [ -f "$progress" ] || continue
+    run=$(basename "$(dirname "$progress")")
+    kind=$(head -n 1 "$progress" | awk '$1 == "flow" { sub(/:$/, "", $3); print $3 }')
+    case "$run" in ""|*[!A-Za-z0-9_.-]*) continue ;; esac
+    case "$kind" in ""|*[!a-z0-9_]*) kind=unknown ;; esac
+    echo "## flow $kind $run, progress ($(date -u -r "$progress" '+%F %H:%M') UTC)"
+    flow_lines "$progress" | LC_ALL=C tr -cd '\11\12\40-\176' | flow_shapes | masked | sed 's/^/  /'
   done
 }
 
@@ -1725,6 +1780,44 @@ plan_catalog() {  # plan_catalog FILE: the plan's catalog: synthetic, v1 or with
 plan_names_weights() {  # plan_names_weights FILE: whether a row of the plan starts from an ImageNet file
   grep -q '^  *"weights": "[^"]' "$1"
 }
+# A sweep's runs are held to the frozen PREREG flows/registry.txt names for the kind sweep, which
+# covers a plan by its name and, where its Covers entry is <plan>=<sha256>, by its bytes too
+# (flows/stage_registry.py). The launcher refuses any other plan with the Lab Recipe's exit 90, but
+# only once the job holds a GPU and its catalog is built, so the word reads the same lines first and
+# refuses with 90 before anything is queued. A plan's name is its file's, as the launcher takes it.
+sweep_prereg() {  # the PREREG flows/registry.txt names for the sweep, a path under the checkout, else nothing
+  awk '$1 == "sweep" && NF == 5 { print $5; exit }' "$REPO/flows/registry.txt" 2>/dev/null
+}
+covers_entry() {  # covers_entry PREREG NAME: the entry of the PREREG's first Covers line that names the plan, else nothing
+  sed -n 's/^Covers: //p' "$1" | head -n 1 | tr ', \t' '\n\n\n' | awk -v name="$2" '$0 == name || index($0, name "=") == 1 { print; exit }'
+}
+sweep_covered() {  # sweep_covered PLAN NAME: status 0 where the sweep's frozen PREREG covers the plan, by its name and bytes; the refusal otherwise
+  local prereg entry frozen bytes want
+  prereg=$(sweep_prereg)
+  case "$prereg" in
+    ""|/*|../*|*/../*) echo "refusing: flows/registry.txt names no PREREG inside the checkout for the sweep, so no plan is covered; nothing was queued"; return 90 ;;
+  esac
+  frozen=$(awk 'NR == 1 && NF == 2 && ($2 == "PREREG.md" || $2 == "*PREREG.md") { print $1 }' "$REPO/$prereg.sha256" 2>/dev/null)
+  bytes=$(sha256sum < "$REPO/$prereg" 2>/dev/null | cut -c1-64)
+  if [ -z "$frozen" ] || [ "$frozen" != "$bytes" ]; then
+    echo "refusing: STOP: $prereg is not frozen as its PREREG.md.sha256 says (the Lab Recipe's freeze), so no sweep runs under it; nothing was queued"
+    return 90
+  fi
+  entry=$(covers_entry "$REPO/$prereg" "$2")
+  if [ -z "$entry" ]; then
+    echo "refusing: $prereg does not cover the plan $2, which waits for a PREREG of its own, frozen before it runs; nothing was queued"
+    return 90
+  fi
+  case "$entry" in
+    *=*)
+      want=${entry#*=}
+      bytes=$(sha256sum < "$1" | cut -c1-64)
+      if [ "$want" != "$bytes" ]; then
+        echo "refusing: $prereg covers $2 as the bytes of sha256 ${want:0:16}, and grid/sweeps/$2.json's are ${bytes:0:16}: a plan changed since the freeze is another design, which waits for a PREREG of its own; nothing was queued"
+        return 90
+      fi ;;
+  esac
+}
 CATALOG_DEP=""
 shard_folders() {  # the folders of the data root that hold a shard, one a line, where grid/03-catalog.sbatch lists them
   # <data root>/<folder>/shards/<shard>/MANIFEST.json, never a dot folder, which holds a shard still
@@ -1796,6 +1889,7 @@ sweep_catalog() {  # sweep_catalog CATALOG: the wait a plan's real catalog needs
 word_sweep() {
   local plan=$REPO/grid/sweeps/$id.json catalog source running setup job weights_dep="" holds opts
   [ -f "$plan" ] || { echo "refusing: $id is not a plan under grid/sweeps/ (the plans: $(sweep_plans))"; return 64; }
+  sweep_covered "$plan" "$id" || return
   running=$(live_of sweep "sweep:$id")
   [ -z "$running" ] || { echo "refusing: a sweep of $id is already queued or running (job $running); 'status' follows it"; return 75; }
   # Every refusal before any job is queued, so a refused word leaves nothing behind.

@@ -3,40 +3,40 @@
  "run_id": "40828920",
  "checklist": "REFORMS",
  "source": "Kapoor et al., REFORMS: consensus-based recommendations for machine-learning-based science, arXiv 2308.07832; the item list and the code-or-declared split of artifacts/reforms-compliance-checklist-bpzdoi",
- "study_sha256": "b5b110d8ec9683c0a1edd72b5528e3310103dc3857a2b56b4de908d880db89e9",
+ "study_sha256": "349e215dfc828f43cd0c4d1051ecda61d284165386da4d8fc3aaca9e979f0daa",
  "tally": {
-  "met": 17,
+  "met": 27,
   "declared": 0,
-  "not applicable": 1,
-  "missing": 14
+  "not applicable": 2,
+  "missing": 3
  },
  "items": [
   {
    "id": "1a",
    "section": "Study goals",
    "asks": "Population the claim is about",
-   "basis": "declared",
+   "basis": "code",
    "fact": "population",
-   "state": "missing",
-   "evidence": "needs the owner's answer under \"population\" in data/reporting/studies/drr-domain-gap.json"
+   "state": "met",
+   "evidence": "the images of the table's 23 groups in 3 families (PREREG.md section 2; data/domain_gap/groups.json, version 1, sha256 92a1-640b-70f1-b6c6 as the record names it): synthetic, flexray_drr, flexray_drr_ct, flexray_replica, flexray_reference, flexray_spineps, fluxray_raw, fluxray_raw_reference, fluxray, ts_drr_project, devcorpus, fluorogen; fluoroscopy, carmlspine_spots, deepfluoro, geneva_hip; film, vindr_spinexr, buu_lspine, aasce, nhanes2, csxa, kub_stonex, ieee_lateral, lumos, aariz; the render groups are renders of held TotalSegmentator v2.0.1 CTs, each by the recipe and engine the table names (README sections 2.2 and 2.3): flexray_drr: FleXray physical DRRs (MOOSE labels, attenuation off); flexray_drr_ct: FleXray physical DRRs from the CT alone (no masks); flexray_replica: FleXray recipe, MOOSE labels, our blocks (replica); flexray_reference: FleXray recipe, MOOSE labels, FleXray's code (reference); flexray_spineps: FleXray recipe, SPINEPS labels, our blocks (production); fluxray_raw: FluXray raw-render recipe, our blocks; fluxray_raw_reference: FluXray raw-render recipe, FleXray's primitives; every other group stands for the held set it is read from; of them, summary.txt: 3 groups skipped, fluxray (its files could not be listed (Error)); vindr_spinexr (nothing found under its rules); lumos (no folder lumos/bank under the data root), and geneva_hip read and never tested, for want of 20 decoded images or five persons (PREREG.md section 2)"
   },
   {
    "id": "1b",
    "section": "Study goals",
    "asks": "Why that population",
-   "basis": "declared",
+   "basis": "code",
    "fact": "population_rationale",
-   "state": "missing",
-   "evidence": "needs the owner's answer under \"population_rationale\" in data/reporting/studies/drr-domain-gap.json"
+   "state": "met",
+   "evidence": "the question is how far FleXray's renders are from real X-rays of both kinds, plain film and intra-operative fluoroscopy, and whether that distance passes the distance between two real corpora (PREREG.md section 1), so every held corpus of the two kinds is a group but those README section 2 and the groups table's notes leave out, each with its reason (CLAIM 8 lists them), the real-against-real pairs giving the scale; and README section 2.2 names six pairs, each meant to isolate one thing: the engine in the two worded replication pairs, one part of the recipe in three pairs of render groups on the same CTs (the labels' aiming, the attenuation randomisation and the segmenter), and the FLUX edit in fluxray_raw_reference against fluxray; the owner asked on 2026-10-25 for \"all the other Xray corpuses both plain film and fluoro\" (README, opening)"
   },
   {
    "id": "1c",
    "section": "Study goals",
    "asks": "Why machine learning",
-   "basis": "declared",
+   "basis": "code",
    "fact": "ml_rationale",
-   "state": "missing",
-   "evidence": "needs the owner's answer under \"ml_rationale\" in data/reporting/studies/drr-domain-gap.json"
+   "state": "met",
+   "evidence": "a map alone answers neither question, since t-SNE draws clusters for any two sets with a consistent difference, however small, and its distances between clusters mean nothing (README section 1), so README section 1 means every claim to be carried by a test with an interval and a calibration: a classifier two-sample test, which learns to tell the two sets apart, beside a kernel test and distances that learn nothing (PREREG.md section 3); as the design gives them, the C2ST AUC carries a person-cluster bootstrap interval and, against each family and in the replication pairs, a permutation p, the MMD a permutation p and no interval (tools/domain_gap_stats.py, mmd_test), and FD64 and its gap ratio, a primary endpoint, neither a test nor an interval (PREREG.md sections 3 and 4 give them none); the split-half nulls calibrate each group of 40 persons or more (PREREG.md section 3), so these tested groups, by their persons in summary.txt, have none of their own: flexray_drr 26, flexray_drr_ct 26, flexray_replica 26, flexray_reference 26, flexray_spineps 26, fluxray_raw 26, fluxray_raw_reference 26, ts_drr_project 19, deepfluoro 14; the owner asked on 2026-10-25 for \"other statistical tests for separation that machine learning experts would do\" (README, opening)"
   },
   {
    "id": "2a",
@@ -96,19 +96,19 @@
    "id": "3b",
    "section": "Data quality",
    "asks": "Sampling frame",
-   "basis": "declared",
+   "basis": "code",
    "fact": "sampling_frame",
-   "state": "missing",
-   "evidence": "needs the owner's answer under \"sampling_frame\" in data/reporting/studies/drr-domain-gap.json"
+   "state": "met",
+   "evidence": "each group's frame, by its source in the table (PREREG.md section 2): the held TotalSegmentator v2.0.1 CTs with masks under every segmenter its folder's groups read (README section 2.1), of which the analysis reads only those every render group on the folder kept (README section 7): flexray_drr, flexray_drr_ct, flexray_replica, flexray_reference, flexray_spineps, fluxray_raw, fluxray_raw_reference; the records of its ThunderDB as FleXray's reader lists them: fluxray; the image rows the sample index lists with no read error under its sources (grid/run-samples.sh) that its rules keep: the table's formats and globs, a least side, the table's or 256, a single plane, for a DICOM a projection modality, the table's or CR, DX, RF, XA, DF, RG, PX, OT and SC, and no exclude word in the path, the table's or the study's (src/schwingnet/domain_gap.py, GroupSpec; tools/domain_gap.py, refusal): ts_drr_project, devcorpus, fluorogen, carmlspine_spots, deepfluoro, geneva_hip, vindr_spinexr, buu_lspine, aasce, nhanes2, csxa, kub_stonex, ieee_lateral, aariz; the files seen under its folder on the data root, up to the walk's limit, that the table's formats and globs and its exclude words, the table's or the study's, keep (tools/domain_gap.py, walk_candidates): lumos; within its frame each group's images are chosen person by person in the salted order of salt schwingnet-drr-gap-v1 up to its caps, the frozen test persons left out (data/domain_gap/groups.json, version 1, sha256 92a1-640b-70f1-b6c6 as the record names it)"
   },
   {
    "id": "3c",
    "section": "Data quality",
    "asks": "Why the dataset fits the task",
-   "basis": "declared",
-   "fact": "fitness_rationale",
-   "state": "missing",
-   "evidence": "needs the owner's answer under \"fitness_rationale\" in data/reporting/studies/drr-domain-gap.json"
+   "basis": "code",
+   "fact": "fitness",
+   "state": "met",
+   "evidence": "each real group is a held corpus of plain film or of fluoroscopy (README section 2), the families of the question's two kinds (PREREG.md section 1), the fluoroscopy family holding beside one mobile C-arm's spot frames DeepFluoro's vendor fluoroscopy of cadaver pelves, six specimens plus phantoms by the table's note, and a resin hip phantom (README section 2; data/domain_gap/groups.json); each group is capped by person so that a corpus with many images of few persons cannot outweigh the others (README section 2); the render groups render the same CTs and differ only by their recipe and engine (PREREG.md section 2), and README section 2.2 names six pairs, each meant to isolate one thing; what limits the fit was listed before the run, README section 5: the corpora differ in anatomy (cervical films, a hip phantom, cephalograms, abdomen), devices, eras and formats as well as in realism, and the renders follow their own pose profiles where the real spot frames are narrow and centred on the lumbar spine; and README section 6 records what the recorded runs do not support (CLAIM 40 quotes it)"
   },
   {
    "id": "3d",
@@ -141,10 +141,10 @@
    "id": "3g",
    "section": "Data quality",
    "asks": "Representativeness",
-   "basis": "declared",
+   "basis": "code",
    "fact": "representativeness",
-   "state": "missing",
-   "evidence": "needs the owner's answer under \"representativeness\" in data/reporting/studies/drr-domain-gap.json"
+   "state": "met",
+   "evidence": "within its corpus each group is a salted draw of persons up to its cap (salt schwingnet-drr-gap-v1), chosen by no reader; the corpora are the held corpora the groups table names (PREREG.md section 2), and no file of the study says how any corpus was drawn from its population or how far it stands for one; README section 5 lists before the run how they differ in anatomy, devices, eras and formats; the render groups stand on the CTs the segmentation job covered, not the 250 planned (DEVIATIONS.md, item 1), summary.txt: render totalsegmentator_v201: 27 CTs chosen of 27 with every mask of 1228 CTs (moose 27, spineps 27); 26 kept by every group"
   },
   {
    "id": "4a",
@@ -189,7 +189,7 @@
    "basis": "declared",
    "fact": "model_rationale",
    "state": "missing",
-   "evidence": "needs the owner's answer under \"model_rationale\" in data/reporting/studies/drr-domain-gap.json"
+   "evidence": "needs the owner's answer under \"model_rationale\" in data/reporting/studies/drr-domain-gap.json, whose answers are run 40859208's, not this run's"
   },
   {
    "id": "5c",
@@ -213,28 +213,28 @@
    "id": "5e",
    "section": "Modeling",
    "asks": "Hyperparameter tuning",
-   "basis": "declared",
-   "fact": "tuning",
-   "state": "missing",
-   "evidence": "needs the owner's answer under \"tuning\" in data/reporting/studies/drr-domain-gap.json"
+   "basis": "code",
+   "fact": "no_tuning",
+   "state": "not applicable",
+   "evidence": "Not applicable: the study tunes no hyperparameter: the settings PREREG.md section 3 names, the logistic regression's scaler, PCA to 64 and C 1, the 15 neighbours, the five folds, the 1,000 bootstrap draws, the 100 and 1,000 permutations and the seed of 0, were fixed there before any number; the code's other settings, among them the rows a side FD64 is taken at, KID's subsets, PRDC's and neighbour purity's neighbours and the classifiers' iteration limits, are not in PREREG.md: they are set in the study's code (tools/domain_gap.py and tools/domain_gap_stats.py at commit d3fe578), and the study chooses none of them by a score on its data (summary.txt record: study drr-domain-gap, commit d3fe578, code 8943-e46c-a4c5-5779)"
   },
   {
    "id": "5f",
    "section": "Modeling",
    "asks": "Appropriate baselines",
-   "basis": "declared",
+   "basis": "code",
    "fact": "baselines",
-   "state": "missing",
-   "evidence": "needs the owner's answer under \"baselines\" in data/reporting/studies/drr-domain-gap.json"
+   "state": "met",
+   "evidence": "the baselines are the real-against-real contrasts, every pair of tested real groups and pooled fluoroscopy against pooled film, the median AUC and median FD64 of a family's own real pairs being what each primary word and gap ratio is read against (PREREG.md sections 3 and 4), and the split-half nulls, where every test must find nothing (README section 1; CLAIM 32 quotes them); summary.txt carries such lines in the spaces flexray, imagenet, physics; in the flexray space it reads \"real-real auc median 1.00 min 0.97 max 1.00 over 36 pairs\"; the families' own real pairs, among the tested real groups of summary.txt: fluoroscopy 1 pair, carmlspine_spots against deepfluoro; film 21 pairs; README section 6 finds that, with two real corpora themselves told apart almost perfectly, the word \"closer than two real corpora\" says nothing of realism"
   },
   {
    "id": "6a",
    "section": "Data leakage",
    "asks": "Preprocessing fit on training data only",
-   "basis": "declared",
+   "basis": "code",
    "fact": "preprocessing_fit",
-   "state": "missing",
-   "evidence": "needs the owner's answer under \"preprocessing_fit\" in data/reporting/studies/drr-domain-gap.json"
+   "state": "met",
+   "evidence": "every classifier fits its scaler and PCA inside its own pipeline on the rows it is trained on: the C2ST's in each fold on the folds that hold none of the scored rows' persons, and the classifier that calls each synthetic group on the real rows alone (tools/domain_gap_stats.py, classifier, c2st and nearest_real), so no row shapes its own score; each image is windowed by its own percentiles, so decoding fits nothing across images (README section 3); the standardised features and first 64 components that the MMD, FD64, KID64, PRDC and the structure measures read are fit on every row of the reading without its labels, so they are the same under every permutation of a test's labels (tools/domain_gap.py at commit d3fe578, space_head)"
   },
   {
    "id": "6b",
@@ -249,10 +249,10 @@
    "id": "6c",
    "section": "Data leakage",
    "asks": "Each feature legitimate",
-   "basis": "declared",
+   "basis": "code",
    "fact": "feature_legitimacy",
-   "state": "missing",
-   "evidence": "needs the owner's answer under \"feature_legitimacy\" in data/reporting/studies/drr-domain-gap.json"
+   "state": "met",
+   "evidence": "every feature is computed from one image's pixels alone, by the encoders and the physics measures (tools/domain_gap.py, stage_features), and two steps before them keep file properties from telling corpora apart (README section 3): each image is cut to its centre square, so no pad's flat border marks a corpus of non-square images, and resized to 256 alike, so the resolution step is the same for every group; each is also windowed to its own percentiles, and the primary reading is invariant to inversion, so polarity alone separates nothing in it; what still tells corpora apart besides realism, their anatomy, devices, eras and formats (JPEG re-exports, 16-bit scans, DICOM) among them, was listed before the run in README section 5"
   },
   {
    "id": "7a",
@@ -276,10 +276,10 @@
    "id": "7c",
    "section": "Metrics and uncertainty",
    "asks": "Statistical tests and their assumptions",
-   "basis": "declared",
+   "basis": "code",
    "fact": "statistical_tests",
-   "state": "missing",
-   "evidence": "needs the owner's answer under \"statistical_tests\" in data/reporting/studies/drr-domain-gap.json"
+   "state": "met",
+   "evidence": "the C2ST's 100 permutations, run against each family and in the replication pairs, and the MMD's 1,000 relabel the rows by person, every row of a person moving together, so each p holds under the null that persons are exchangeable between the two sets; where both sides hold the same persons, as two render groups on one CT folder do, the two worded replication pairs among them, the sample is paired: each person's two sides are swapped between the sets or left, so the p holds under the null that a person's two sides are exchangeable (tools/domain_gap_stats.py, twin_swaps; tools/domain_gap.py, contrast and Frame.twins), and the bootstrap draws a person with both its sides; the AUC's 95 percent interval is a person-cluster bootstrap that holds the scores of each fold's trained classifiers fixed and so leaves out the variance of fitting them, which on Gaussian clouds of one law ran about two-thirds as wide as the AUC's spread and covered 0.5 in 15 of 20 (tools/domain_gap_stats.py, auc_with_interval); DEVIATIONS.md item 8 calls it too narrow for a few dozen persons and flags a split-half null by its MMD instead, while the primary words and the replication word read its lower bound (PREREG.md section 4); Benjamini-Hochberg runs over a space's MMD p-values and over its C2ST permutation p-values (PREREG.md section 3; CLAIM 29 says which family this run's MMD q took), and no file of the study states the dependence among those p-values under which it controls the false-discovery rate; README section 6 finds DeepFluoro's persons are DICOM patient ids over six specimens and two phantoms, so its p-values and intervals are narrower than they should be, and that the paired bootstrap counts each CT's twin comparisons about twice"
   },
   {
    "id": "8a",
@@ -288,7 +288,7 @@
    "basis": "declared",
    "fact": "external_validity",
    "state": "missing",
-   "evidence": "needs the owner's answer under \"external_validity\" in data/reporting/studies/drr-domain-gap.json"
+   "evidence": "needs the owner's answer under \"external_validity\" in data/reporting/studies/drr-domain-gap.json, whose answers are run 40859208's, not this run's"
   },
   {
    "id": "8b",
@@ -297,7 +297,7 @@
    "basis": "declared",
    "fact": "non_generalization",
    "state": "missing",
-   "evidence": "needs the owner's answer under \"non_generalization\" in data/reporting/studies/drr-domain-gap.json"
+   "evidence": "needs the owner's answer under \"non_generalization\" in data/reporting/studies/drr-domain-gap.json, whose answers are run 40859208's, not this run's"
   }
  ]
 }

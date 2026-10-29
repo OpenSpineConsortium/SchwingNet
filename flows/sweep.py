@@ -18,6 +18,16 @@ carries that row on from its last epoch (tools/train.py --resume).
 Each row's card refreshes every REFRESH seconds with the last line of its train/metrics.jsonl,
 so `python flows/sweep.py card server` on the grid shows the row moving; end exports every card
 it can find into the state folder's cards/ and writes METAFLOW.json there, which names this run.
+
+The sweep trains networks, so it keeps the owner's rule of 2026-10-29 through flows/stage.py:
+start holds the run to the block smoke test's frozen PREREG (docs/research/block-smoke/PREREG.md)
+and end holds it there again, since a resume clones start; every step keeps its line on the
+run's progress page, a row's line moving with its epochs; and end checks the CLAIM 2024 and
+REFORMS report (tools/report.py) of every row that ran as the row left it: a row trained in this
+run whose report is not what its run gives, or a row whose report cannot be written, makes the
+verdict 1, whatever the row did, while a stale report of a row this run cloned or found finished
+is written anew under the report tool as it is now and is well (stage.claim_report).
+
 Where a list is empty, Metaflow 2.19's switch, a conditional next, steps past its foreach, which
 Metaflow refuses over nothing.
 """
@@ -32,10 +42,17 @@ from pathlib import Path
 from metaflow import FlowSpec, Parameter, card, catch, current, retry, step
 from metaflow.cards import Markdown, Table
 
+import stage
+
 REPO = Path(os.environ.get("SCHWINGNET") or Path(__file__).resolve().parent.parent)
 BLOCK_SWEEP = REPO / "tools" / "block_sweep.py"
+KIND = "sweep"
+RAN = "ran"
 REFRESH = 15
 LAST_HOPS = 10
+# What start keeps of the PREREG the run is held to (stage.hold_to_prereg), carried through both
+# joins so end can hold the run to it again (stage.still_held).
+PREREG_ARTIFACTS = ("prereg_path", "prereg_sha256", "prereg_part", "prereg_part_sha256")
 
 
 class SweepFault(Exception):
@@ -53,10 +70,11 @@ def from_launcher(path, folder=None):
 
 
 def file_sha256(path):
+    """The file's sha256, or None where it cannot be read."""
     try:
         return hashlib.sha256(Path(path).read_bytes()).hexdigest()
     except OSError:
-        return "unreadable"
+        return None
 
 
 def word_value(words, flag):
@@ -76,7 +94,21 @@ def key_reads(words, folder):
     file's bytes, since start makes the state folder and its lists of rows from the plan and resume
     clones start, so an edited plan is never carried on as the plan it was. Read in the launcher,
     from its folder, as start reads the same word."""
-    return [f"plan {file_sha256(from_launcher(word_value(words, '--plan'), folder))}"]
+    return [f"plan {file_sha256(from_launcher(word_value(words, '--plan'), folder)) or 'unreadable'}"]
+
+
+def plan_part(plan_file):
+    """The plan's name, grid/sweeps/<name>.json, the part of the sweep's PREREG a run of it is."""
+    return Path(plan_file).stem if plan_file else ""
+
+
+def prereg_part(words, folder):
+    """The part a run of these words is, for the launcher: the plan's name and the sha256 of its
+    bytes, which the smoke test's PREREG must cover, since a plan made again or edited since the
+    freeze is another design under the same name; the trials are another design, with no PREREG
+    yet. Read from the launcher's folder, as start reads the same word."""
+    plan_file = from_launcher(word_value(words, "--plan"), folder)
+    return plan_part(plan_file), file_sha256(plan_file)
 
 
 def weights_words(weights):
@@ -149,36 +181,41 @@ def outcome_words(entry):
     return f"Outcome: {entry.get('outcome')}{code}, {matched}."
 
 
+def row_command(flow):
+    command = [sys.executable, str(BLOCK_SWEEP), "row", "--state", flow.state, "--slug", flow.slug,
+               "--catalog", flow.catalog_file, "--environment", flow.environment]
+    command += ["--epochs", str(flow.epochs)] if flow.epochs > 0 else []
+    command += [part for word in flow.weights_words for part in ("--weights", word)]
+    return command + (["--keep-epoch-weights"] if flow.keep_epoch_weights else [])
+
+
 def run_row(flow):
-    """One row through `block_sweep.py row`, its card refreshed while it runs; a fault raises."""
+    """One row through `block_sweep.py row`, its card and its line on the progress page moved
+    with its epochs while it runs; a fault raises."""
     flow.slug = flow.input
     row_card = current.card["row"]
     row_card.append(Markdown(f"# {flow.slug}\n\n{prediction_words(flow.state, flow.slug)}"))
     progress = Markdown("Starting.")
     row_card.append(progress)
     row_card.refresh()
-    command = [sys.executable, str(BLOCK_SWEEP), "row", "--state", flow.state, "--slug", flow.slug,
-               "--catalog", flow.catalog_file, "--environment", flow.environment]
-    command += ["--epochs", str(flow.epochs)] if flow.epochs > 0 else []
-    command += [part for word in flow.weights_words for part in ("--weights", word)]
-    command += ["--keep-epoch-weights"] if flow.keep_epoch_weights else []
-    process = subprocess.Popen(command, cwd=REPO, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-    while True:
-        try:
-            out, err = process.communicate(timeout=REFRESH)
-            break
-        except subprocess.TimeoutExpired:
-            progress.update(progress_words(flow.state, flow.slug, flow.plan_epochs))
-            row_card.refresh()
-    print(out + err, end="", flush=True)
-    progress.update(progress_words(flow.state, flow.slug, flow.plan_epochs))
-    flow.entry = json_line(out, "outcome") if process.returncode == 0 else None
-    if flow.entry is None:
-        last = (err.strip().splitlines() or ["no output"])[-1]
-        row_card.append(Markdown(f"Fault: block_sweep row exited {process.returncode}: {last}"))
+
+    def epoch_line():
+        words = progress_words(flow.state, flow.slug, flow.plan_epochs)
+        progress.update(words)
         row_card.refresh()
-        raise SweepFault(f"block_sweep row {flow.slug} exited {process.returncode} with no row recorded: {last}")
-    row_card.append(Markdown(outcome_words(flow.entry)))
+        return words
+
+    with stage.Beat(flow, flow.slug) as beat:
+        code, out, err = stage.run_watched(row_command(flow), beat, epoch_line, every=REFRESH, cwd=REPO)
+        print(out + err, end="", flush=True)
+        flow.entry = json_line(out, "outcome") if code == 0 else None
+        if flow.entry is None:
+            last = (err.strip().splitlines() or ["no output"])[-1]
+            row_card.append(Markdown(f"Fault: block_sweep row exited {code}: {last}"))
+            row_card.refresh()
+            raise SweepFault(f"block_sweep row {flow.slug} exited {code} with no row recorded: {last}")
+        row_card.append(Markdown(outcome_words(flow.entry)))
+        beat.say(outcome_words(flow.entry))
 
 
 def faults_of(inputs):
@@ -252,11 +289,22 @@ def results_rows(results):
     return rows
 
 
-def verdict_of(results, faults):
-    """0 when every row was recorded and did what the check predicted, else 1."""
+def verdict_of(results, faults, reports):
+    """0 when every row was recorded and did what the check predicted, and every row that ran
+    has its report current, else 1."""
     counts = results.get("counts", {})
     clean = all(counts.get(key) == 0 for key in ("failed", "mismatched", "to_come"))
-    return 0 if clean and not faults else 1
+    return 0 if clean and not faults and all(ok for ok, _ in reports) else 1
+
+
+def row_reports(state, results, began=None):
+    """The CLAIM 2024 and REFORMS report of every row that ran, each checked in the row's own run
+    folder, where tools/flow.py wrote it after the row's last step, before anything is written
+    (stage.claim_report): stale, it fails the run where the row's work was done since the run
+    began, and is written anew and well where it was done before, a row this run cloned or found
+    finished. (well, line)."""
+    return [stage.claim_report(Path(state) / entry["slug"], began=began) for entry in results.get("rows", [])
+            if isinstance(entry, dict) and entry.get("outcome") == RAN]
 
 
 class SweepFlow(FlowSpec):
@@ -274,27 +322,32 @@ class SweepFlow(FlowSpec):
 
     @step
     def start(self):
-        """block_sweep prepare: the state folder, and the two lists of rows to run."""
-        self.plan_file, self.catalog_file = from_launcher(self.plan), from_launcher(self.catalog)
-        self.out_root, self.weights_words = from_launcher(self.out), weights_words(self.weights)
-        plan = read_json(self.plan_file) or {}
-        self.plan_epochs = self.epochs or (plan.get("epochs") if isinstance(plan.get("epochs"), int) else 0)
-        args = ["prepare", "--plan", self.plan_file, "--catalog", self.catalog_file, "--out", self.out_root]
-        args += ["--epochs", str(self.epochs)] if self.epochs > 0 else []
-        done = block_sweep(args + [part for word in self.weights_words for part in ("--weights", word)])
-        prepared = json_line(done.stdout, "state") if done.returncode == 0 else None
-        if prepared is None:
-            raise SweepFault(f"block_sweep prepare exited {done.returncode} and named no state folder")
-        self.state = prepared["state"]
-        self.first_rows, self.second_rows = list(prepared["first"]), list(prepared["second"])
-        self.faults = []
-        print(f"SweepFlow: state {self.state}, {len(self.first_rows)} rows first, {len(self.second_rows)} warm starts after",
-              flush=True)
+        """The run held to the frozen PREREG, then block_sweep prepare: the state folder, and the
+        two lists of rows to run."""
+        with stage.Beat(self, "prepare") as beat:
+            self.plan_file, self.catalog_file = from_launcher(self.plan), from_launcher(self.catalog)
+            stage.hold_to_prereg(self, KIND, plan_part(self.plan_file), file_sha256(self.plan_file))
+            self.out_root, self.weights_words = from_launcher(self.out), weights_words(self.weights)
+            plan = read_json(self.plan_file) or {}
+            self.plan_epochs = self.epochs or (plan.get("epochs") if isinstance(plan.get("epochs"), int) else 0)
+            args = ["prepare", "--plan", self.plan_file, "--catalog", self.catalog_file, "--out", self.out_root]
+            args += ["--epochs", str(self.epochs)] if self.epochs > 0 else []
+            done = block_sweep(args + [part for word in self.weights_words for part in ("--weights", word)])
+            prepared = json_line(done.stdout, "state") if done.returncode == 0 else None
+            if prepared is None:
+                raise SweepFault(f"block_sweep prepare exited {done.returncode} and named no state folder")
+            self.state = prepared["state"]
+            self.first_rows, self.second_rows = list(prepared["first"]), list(prepared["second"])
+            self.faults = []
+            said = f"state {self.state}, {len(self.first_rows)} rows first, {len(self.second_rows)} warm starts after"
+            print(f"SweepFlow: {said}", flush=True)
+            beat.say(said)
         self.first_route = "rows" if self.first_rows else "none"
         self.next({"rows": self.fan_first, "none": self.middle}, condition="first_route")
 
     @step
     def fan_first(self):
+        stage.Beat(self).passed()
         self.next(self.first, foreach="first_rows")
 
     @catch(var="fault")
@@ -308,18 +361,22 @@ class SweepFlow(FlowSpec):
 
     @step
     def join_first(self, inputs):
-        self.merge_artifacts(inputs, include=["state", "catalog_file", "weights_words", "plan_epochs", "second_rows", "faults"])
-        self.faults = self.faults + faults_of(inputs)
+        with stage.Beat(self):
+            self.merge_artifacts(inputs, include=["state", "catalog_file", "weights_words", "plan_epochs", "second_rows", "faults",
+                                                  *PREREG_ARTIFACTS])
+            self.faults = self.faults + faults_of(inputs)
         self.next(self.middle)
 
     @step
     def middle(self):
         """The warm starts come only now, since each reads a parent's train/best.pt."""
-        self.second_route = "rows" if self.second_rows else "none"
+        with stage.Beat(self):
+            self.second_route = "rows" if self.second_rows else "none"
         self.next({"rows": self.fan_second, "none": self.end}, condition="second_route")
 
     @step
     def fan_second(self):
+        stage.Beat(self).passed()
         self.next(self.second, foreach="second_rows")
 
     @catch(var="fault")
@@ -333,32 +390,47 @@ class SweepFlow(FlowSpec):
 
     @step
     def join_second(self, inputs):
-        self.merge_artifacts(inputs, include=["state", "faults"])
-        self.faults = self.faults + faults_of(inputs)
+        with stage.Beat(self):
+            self.merge_artifacts(inputs, include=["state", "faults", *PREREG_ARTIFACTS])
+            self.faults = self.faults + faults_of(inputs)
         self.next(self.end)
 
     @card(type="blank")
     @step
     def end(self):
-        """block_sweep results, the verdict, METAFLOW.json, the cards and the results card."""
-        done = block_sweep(["results", self.state])
-        results = read_json(Path(self.state) / "results.json") if done.returncode == 0 else None
-        if results is None:
-            raise SweepFault(f"block_sweep results exited {done.returncode} and left no results.json in {self.state}")
-        self.counts = results.get("counts", {})
-        self.verdict = verdict_of(results, self.faults)
-        pathspec = f"{current.flow_name}/{current.run_id}"
-        root = os.environ.get("METAFLOW_DATASTORE_SYSROOT_LOCAL") or os.getcwd()
-        record = {"flow": "SweepFlow", "run": pathspec, "root": root}
-        (Path(self.state) / "METAFLOW.json").write_text(json.dumps(record, indent=1, sort_keys=True) + "\n", encoding="utf-8")
-        export_cards(pathspec, self.state)
-        for fault in self.faults:
-            print(f"SweepFlow: FAULT in row {fault['slug']}: {fault['fault']}", flush=True)
-        print(f"SweepFlow: {json.dumps(self.counts, sort_keys=True)}, faults {len(self.faults)}, verdict {self.verdict}", flush=True)
+        """The run held to the PREREG start kept, whatever resumed it; block_sweep results, every
+        row's report checked, the verdict, METAFLOW.json, the cards, the results card and the
+        progress page's last lines."""
+        with stage.Beat(self, "results") as beat:
+            stage.still_held(self, KIND)
+            done = block_sweep(["results", self.state])
+            results = read_json(Path(self.state) / "results.json") if done.returncode == 0 else None
+            if results is None:
+                raise SweepFault(f"block_sweep results exited {done.returncode} and left no results.json in {self.state}")
+            self.counts = results.get("counts", {})
+            reports = row_reports(self.state, results, stage.run_began())
+            self.reports = [line for _, line in reports]
+            self.verdict = verdict_of(results, self.faults, reports)
+            pathspec = f"{current.flow_name}/{current.run_id}"
+            root = os.environ.get("METAFLOW_DATASTORE_SYSROOT_LOCAL") or os.getcwd()
+            record = {"flow": "SweepFlow", "run": pathspec, "root": root, "page": str(stage.page_path())}
+            (Path(self.state) / "METAFLOW.json").write_text(json.dumps(record, indent=1, sort_keys=True) + "\n", encoding="utf-8")
+            export_cards(pathspec, self.state)
+            for fault in self.faults:
+                print(f"SweepFlow: FAULT in row {fault['slug']}: {fault['fault']}", flush=True)
+            for line in self.reports:
+                print(f"SweepFlow: report {line}", flush=True)
+            said = f"{json.dumps(self.counts, sort_keys=True)}, faults {len(self.faults)}, verdict {self.verdict}"
+            print(f"SweepFlow: {said}", flush=True)
+            beat.say(said)
+            stage.finish(self.verdict, reports, "no row ran, so no row has a report to check")
         current.card.append(Markdown(f"# Smoke plan {results.get('plan')}\n\nState {self.state}; counts "
-                                     f"{json.dumps(self.counts, sort_keys=True)}; faults {len(self.faults)}; verdict {self.verdict}."))
+                                     f"{json.dumps(self.counts, sort_keys=True)}; faults {len(self.faults)}; verdict {self.verdict}. "
+                                     f"Progress page: {stage.page_path()}."))
         current.card.append(Table(results_rows(results), headers=["row", "role", "predicted", "outcome", "matched",
                                                                   "validation", "test", "W&B"]))
+        current.card.append(Markdown("## CLAIM 2024 and REFORMS reports\n\n" + "\n".join(f"- {line}" for line in self.reports)
+                                     if self.reports else "No row ran, so no row has a report to check."))
 
 
 if __name__ == "__main__":

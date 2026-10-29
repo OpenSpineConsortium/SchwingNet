@@ -1,5 +1,5 @@
 {
- "about": "TotalSegmentator v3's gold tier 3 member: declared with its count and no rows. The subject list is only on the grid, so no subject id is in any repository; the grid index job reads the list, checks its sha256 and writes the rows, which then replace the empty list below.",
+ "about": "TotalSegmentator v3's record before rule version 2: the 142 subjects the older rule counted, from a subject list that sits on the grid alone. Since 2026-10-29 the member's rows are data/gold3-ct/totalsegmentator/facts.jsonl, one per subject of the public release, and the field test (tools/gold3_field.py, data/gold3-ct/admission.json) decides which are gold 3. This file keeps the older count and its list so the two can be set side by side once a grid job reads the list.",
  "count": 142,
  "count_may_reach": 156,
  "count_basis": "v3 subjects whose release masks hold C2 to L5 and the sacrum with at least 200 voxels each and no metal (bordercall holdings/gold-tier-3.md; pull request #420's corpus-tiers draft); 14 more that the level or metal rule dropped wait for a read",
@@ -8,12 +8,8 @@
   "sha256": "2f96f917292b85416d1b803230732624a3dde0bae7c2c29f54abc4f2a30dc1b7",
   "where_recorded": "data/reproduce/sources.json, the devcorpus card's counts_file"
  },
- "why_no_rows": "the list is on the grid's HOME and is read by no job yet; nothing is sent to the grid without the owner's word and the number of jobs",
+ "superseded_by": "data/gold3-ct/totalsegmentator/facts.jsonl and data/gold3-ct/admission.json (rule version 2, 2026-10-29)",
  "waits_for": [
-  "the grid index job: read the list, check its sha256, write one row per subject with the release masks' levels",
-  "settle v2 against v3 and the duplicate ids s1406 to s1429",
-  "read the 14 subjects the rule dropped (142 against 156)",
-  "rib contact from rib_left_k and rib_right_k, and a count from C2"
- ],
- "rows": []
+  "a grid job reads the list, checks its sha256 and sets its 142 beside the subjects the field test admits"
+ ]
 }
