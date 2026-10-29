@@ -1,6 +1,6 @@
 {
  "date": "2026-10-29",
- "texts": 332,
+ "texts": 335,
  "datasets": [
   {
    "id": "dataset:aariz_cephalograms:films",
@@ -2119,8 +2119,8 @@
     "97.4 % of bodies named on a whole lateral frame and 74.8 % with one body in view"
    ],
    "anchors": [
-    "vertebra",
-    "lateral"
+    "lateral",
+    "vertebra"
    ],
    "values": [
     {
@@ -2155,8 +2155,8 @@
     "deepfluoro",
     "finds",
     "detector",
-    "trained",
     "cts",
+    "trained",
     "sacrum",
     "renders"
    ],
@@ -3744,8 +3744,8 @@
     "Living radiotherapy patients (COBRA, Elekta XVI, 145 cases)"
    ],
    "anchors": [
-    "exports",
     "elekta",
+    "exports",
     "cases"
    ],
    "values": [
@@ -4569,8 +4569,8 @@
     "coordbench",
     "pre",
     "arms",
-    "registered",
-    "pairs"
+    "pairs",
+    "registered"
    ],
    "values": [
     {
@@ -5722,6 +5722,26 @@
    "text": "| film | buu_lspine | BUU lumbar radiographs (the 3600 release) | patient number |"
   },
   {
+   "key": "8142558c614d31e5",
+   "concept": "dataset:buu_lspine:ap_films",
+   "kind": "dataset",
+   "source": "notes:docs/research/drr-domain-gap/runs/40828920/REPORT.md",
+   "line": 60,
+   "outcome": "agrees",
+   "value": "3600",
+   "text": "al spots of one mobile C-arm; the five frozen test persons are left out.\"; buu_lspine, \"The 3600 release; buu_lspine_2000 is a subset of it and is left out.\"; aasce, \"Whole-spine AP; the second copy (aasce2019_boostnet) is left out; each file its own person.\"; in the run, a group with fewer than 20 "
+  },
+  {
+   "key": "6e2ad8aa46820809",
+   "concept": "dataset:buu_lspine:ap_films",
+   "kind": "dataset",
+   "source": "notes:docs/research/drr-domain-gap/runs/40859208/REPORT.md",
+   "line": 60,
+   "outcome": "agrees",
+   "value": "3600",
+   "text": "al spots of one mobile C-arm; the five frozen test persons are left out.\"; buu_lspine, \"The 3600 release; buu_lspine_2000 is a subset of it and is left out.\"; aasce, \"Whole-spine AP; the second copy (aasce2019_boostnet) is left out; each file its own person.\"; in the run, a group with fewer than 20 "
+  },
+  {
    "key": "60132d4a068e8e67",
    "concept": "dataset:buu_lspine:ap_films",
    "kind": "dataset",
@@ -6060,6 +6080,26 @@
    "outcome": "agrees",
    "value": "3600",
    "text": "| film | buu_lspine | BUU lumbar radiographs (the 3600 release) | patient number |"
+  },
+  {
+   "key": "ab5bbe08a86a899a",
+   "concept": "dataset:buu_lspine:people",
+   "kind": "dataset",
+   "source": "notes:docs/research/drr-domain-gap/runs/40828920/REPORT.md",
+   "line": 60,
+   "outcome": "agrees",
+   "value": "3600",
+   "text": "al spots of one mobile C-arm; the five frozen test persons are left out.\"; buu_lspine, \"The 3600 release; buu_lspine_2000 is a subset of it and is left out.\"; aasce, \"Whole-spine AP; the second copy (aasce2019_boostnet) is left out; each file its own person.\"; in the run, a group with fewer than 20 "
+  },
+  {
+   "key": "d21a606773725fc7",
+   "concept": "dataset:buu_lspine:people",
+   "kind": "dataset",
+   "source": "notes:docs/research/drr-domain-gap/runs/40859208/REPORT.md",
+   "line": 60,
+   "outcome": "agrees",
+   "value": "3600",
+   "text": "al spots of one mobile C-arm; the five frozen test persons are left out.\"; buu_lspine, \"The 3600 release; buu_lspine_2000 is a subset of it and is left out.\"; aasce, \"Whole-spine AP; the second copy (aasce2019_boostnet) is left out; each file its own person.\"; in the run, a group with fewer than 20 "
   },
   {
    "key": "a428a0993dc4dc4c",
@@ -13192,14 +13232,14 @@
    "text": "| The CTs FluXray was rendered from: ENHANCE.PET 1.6k, 1,683 whole-body CTs with MOOSE labels | the public bucket enhance-pet-1-6k (the fetch rows aws_enhance_pet_ct, 177 GB, and aws_enhance_pet_labels, 2.5 GB) | CC BY 4.0 for three sites, CC BY-NC 4.0 for two; the strictest binds the set |"
   },
   {
-   "key": "f287de4aaa92f755",
+   "key": "37613201c42b8ba6",
    "concept": "dataset:scidb_enhance_pet_1_6k:studies",
    "kind": "dataset",
    "source": "notes:docs/research/gold3-ct/README.md",
    "line": 19,
    "outcome": "differs",
-   "value": "1,557",
-   "text": "| ENHANCE.PET 1.6k: autoPET, Leipzig, Careggi | scidb_enhance_pet_1_6k | 1,597, with 3 repaired masks beside them | 1,557 studies | 865 to 1,478 | the published vertebra and rib masks, read where FACTS.json's read_on says |"
+   "value": "1,558",
+   "text": "| ENHANCE.PET 1.6k: autoPET, Leipzig, Careggi | scidb_enhance_pet_1_6k | 1,597, with 3 repaired masks beside them | 1,558 studies, 1379 provisional while a segmenter adds its C2 | 865 to 1,479 | the published vertebra and rib masks, read where FACTS.json's read_on says |"
   },
   {
    "key": "beb5f7215656e278",
@@ -13562,14 +13602,14 @@
    "text": "| VerSe 19 and 20 | 374 series of 355 subjects with vertebra labels | yes | HAVE | renders in the v9 base; 10 series never downloaded | series 374, subjects 355 | CC BY-SA 4.0 | not recorded |"
   },
   {
-   "key": "17a3f17bebd52efd",
+   "key": "facd66783c31eb98",
    "concept": "dataset:verse:series",
    "kind": "dataset",
    "source": "notes:docs/research/gold3-ct/README.md",
    "line": 20,
    "outcome": "agrees",
    "value": "374",
-   "text": "| VerSe 19 and 20 | verse | 374 series | 18 series, provisional while a segmenter adds the sacrum | 18 | the release's expert masks, by the field test (rule 2) |"
+   "text": "| VerSe 19 and 20 | verse | 374 series | 21 series, provisional while a segmenter adds the sacrum | 21 | the release's expert masks, by the field test (rule 3) |"
   },
   {
    "key": "ea6832ee9d356615",
@@ -14502,14 +14542,14 @@
    "text": "| CT labelling with anomalies | VerSe (Sekuboyina 2021); VERIDAH (Moller 2026); TotalSegmentator (Wasserthal 2023) | 355 patients; 1,536 CTs; 1,204 CTs | 802 patients; 129 count-changing transitional persons | 2.3; 0.52; 0.67 | Comparable. 86 of the 110 L6 persons are VerSe's own, so beyond VerSe th"
   },
   {
-   "key": "f39e2a9c3e2f7363",
+   "key": "760adcea7b5f146b",
    "concept": "dataset:zenodo_ts_task_liver_lesions:subjects",
    "kind": "dataset",
    "source": "notes:docs/research/README.md",
    "line": 21,
    "outcome": "differs",
    "value": "865",
-   "text": "- [gold3-ct](gold3-ct/README.md): the thread \"Finish scan import and tier counts\", the owner's ask of 27 October 2026 at 22:49 UTC for all the gold tier 3 CT data as its own dataset: since 2026-10-29 admitted by the field test of rule 2 (every CT whose field shows C2 to the sacrum, tools/gold3_field"
+   "text": "- [gold3-ct](gold3-ct/README.md): the thread \"Finish scan import and tier counts\", the owner's ask of 27 October 2026 at 22:49 UTC for all the gold tier 3 CT data as its own dataset: since 2026-10-29 admitted by the field test of rule 3 (every CT whose field shows C2's foot and the sacrum's top, the"
   },
   {
    "key": "3701e674c627db72",
@@ -15620,6 +15660,26 @@
    "outcome": "open",
    "value": "3600",
    "text": "| film | buu_lspine | BUU lumbar radiographs (the 3600 release) | patient number |"
+  },
+  {
+   "key": "4e5f57f612a1c49c",
+   "concept": "figure:23",
+   "kind": "figure",
+   "source": "notes:docs/research/drr-domain-gap/runs/40828920/REPORT.md",
+   "line": 60,
+   "outcome": "open",
+   "value": "3600",
+   "text": "al spots of one mobile C-arm; the five frozen test persons are left out.\"; buu_lspine, \"The 3600 release; buu_lspine_2000 is a subset of it and is left out.\"; aasce, \"Whole-spine AP; the second copy (aasce2019_boostnet) is left out; each file its own person.\"; in the run, a group with fewer than 20 "
+  },
+  {
+   "key": "b74e3d20b28c3092",
+   "concept": "figure:23",
+   "kind": "figure",
+   "source": "notes:docs/research/drr-domain-gap/runs/40859208/REPORT.md",
+   "line": 60,
+   "outcome": "open",
+   "value": "3600",
+   "text": "al spots of one mobile C-arm; the five frozen test persons are left out.\"; buu_lspine, \"The 3600 release; buu_lspine_2000 is a subset of it and is left out.\"; aasce, \"Whole-spine AP; the second copy (aasce2019_boostnet) is left out; each file its own person.\"; in the run, a group with fewer than 20 "
   },
   {
    "key": "2bc732fafe1bc6a0",

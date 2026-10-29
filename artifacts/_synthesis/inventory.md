@@ -1885,17 +1885,17 @@ One block per artifact: the question, the summary, the key claims with their gra
 ### 44. Gold Tier 3 CT
 
 - Folder: `SchwingNet/artifacts/gold-tier-3-ct-xdgjjg`; account: gschwing; link id: XDGjjGKVcdi2xDht7a689w; page, dataset-page; date: 2026-10-28 (README: "the owner's ask of 2026-10-27 22:49 UTC, thread \"Finish scan import and tier counts\"), published on 2026-1...); confidentiality: schwingnet-other.
-- Read on 2026-10-29 by .github/workflows/synthesis.yml, new since the synthesis.
+- Read on 2026-10-29 by .github/workflows/synthesis.yml, after its page changed: The change is cosmetic wording in the template: the no-C2 label now reads \"No C2 drawn (silver 3 unless the field holds C2's foot)\" instead of \"No C2 in the field (silver 3)\", and the tile subtitle reads \"gold 3 studies\" instead of \"whole studies\". Template size went from 77,882 to 77,909 bytes. No figure moved (1,557, 1,597, 37, 1,406, 50, 28, 33, 14, 191), though the silver 3 definiti...
 - Question: Which CTs does the project count as gold tier 3, what do their masks say about anomalous spines (with Wilson intervals), how do they fare on sixteen quality checks, and what have readers confirmed?
-- Summary: A private, confidential page that presents every gold tier 3 CT as one dataset, with one row per study (member, site, tier, mask facts, two column calls kept apart, anomaly class and status). It holds 1,557 whole ENHANCE.PET studies plus 17 VerSe series (provisional until the sacrum is seen) and 142 TotalSegmentator v3 subjects declared without rows. Anomaly classes come from the release's names and the ribs, with 95 percent Wilson intervals. Sixteen quality checks run over 1,597 published masks and three repaired ones. A reader bench of 191 studies saves verdicts in the page's own store, and a SQLite store opens in the browser. The README states that nothing yet moves verdicts into the store's qa_review table, so no study is reader confirmed.
+- Summary: A private, confidential page that presents every gold tier 3 CT as one dataset, one row per study (member, site, tier, mask facts, two column calls kept apart, anomaly class and status). It holds 1,557 whole ENHANCE.PET studies plus 17 VerSe series (provisional until the sacrum is seen) and 142 TotalSegmentator v3 subjects declared without rows. Anomaly classes come from the release's names and the ribs, with 95 percent Wilson intervals. Sixteen quality checks run over 1,597 published masks and three repaired ones. A reader bench of 191 studies saves verdicts in the page's own store, and a SQLite store opens in the browser. The README states nothing yet moves verdicts into the store's qa_review table, so no study is reader confirmed.
 - Key claims:
   - (measured) 1,557 ENHANCE.PET studies are gold 3 and are whole studies; 37 lack C2 (silver 3) and 3 repaired masks stay gold 4.
-  - (measured) Of 1,557 whole ENHANCE.PET studies, 1,406 are typical by the names (T12L5), a share of about 90 percent (Wilson 88.7 to 91.7 percent).
-  - (measured) Variant classes by the masks: L6 below L5 with 12 rib pairs 50, four lumbar 28, eleven ribs 33, L6 with 13th rib 14, thirteen ribs 2, asymmetric 4 (131 in all).
+  - (measured) Of 1,557 whole ENHANCE.PET studies, 1,406 are typical by the names (T12L5), about 90 percent (Wilson 88.7 to 91.7 percent).
+  - (measured) Variant classes by the masks: L6 below L5 with 12 rib pairs 50, four lumbar 28, eleven ribs 33, L6 with 13th rib 14.
   - (measured) No anomaly is reader confirmed yet: two masks agreeing is not a read of the CT, and verdicts are not yet moved into the store.
-  - (inferred) The quality checks cannot show that an anomaly is in the patient; a lumbosacral question always needs the CT, and no check reads CT intensity or mask-to-CT match.
-  - (measured) The build reproduces the source note's table of rib findings on unusual lumbar counts cell for cell (100 controls, 39 L4-above-sacrum, 67 L6 studies).
-  - (inferred) Person counts are bounds: Leipzig and Careggi carry no person id, so persons are an upper bound.
+  - (inferred) The quality checks cannot show that an anomaly is in the patient; a lumbosacral question always needs the CT.
+  - (measured) The build reproduces the source note's table of rib findings on unusual lumbar counts cell for cell (100, 39, 67).
+  - (inferred) Person counts are bounds: Leipzig and Careggi carry no person id.
 - Numbers (16 recorded; the first 10 here):
   - 1,557 whole ENHANCE.PET gold 3 studies, n = 1,597 published studies: denominator of the class shares
   - 1,597 published ENHANCE.PET studies: mask readings the quality-check counts cover, with three repaired masks
@@ -1914,9 +1914,9 @@ One block per artifact: the question, the summary, the key claims with their gra
   - Repaired masks stay gold 4.: Their names come from a rule or a machine, which does not raise a tier.
   - Only a recorded reader verdict makes an anomaly reader confirmed; two readers counting from C2 with the rib pairs is the plan.: Quality assurance that an anomaly is true.
 - Open questions: Moving the reader verdicts into the store's qa_review table is not built. / Whether 12 studies are open: a lumbosacral question needs the CT. / TotalSegmentator v3's subject list gives no rows, so its persons are 142 to 156. / VerSe series are provisional until the sacrum is seen and have no mask views yet. / Check 1336 is left open.
-- Stale markers: Reader verdicts: none recorded in the export; the README says no study is reader confirmed until the qa_review step i... / VerSe gold 3 is "provisional until the sacrum is seen". / VerSe's series "have no mask views yet". / "A provisional patent in preparation".
+- Stale markers: Reader verdicts: none recorded in the export; no study is reader confirmed until the qa_review step is built. / VerSe gold 3 is "provisional until the sacrum is seen". / VerSe's series "have no mask views yet". / "A provisional patent in preparation". / The no-C2 label now reads "No C2 drawn (silver 3 unless the field holds C2's foot)"; the silver 3 count of 37 was tak...
 - Related: Spinal border variants (same-topic); Rib anchor audit (builds-on); Counting against two anchors (same-topic)
-- Coverage: Read the README (2,244 bytes), the page text, and the page-data line of index.html (361,836 bytes) by targeted searches since the line is too long to open whole; read the template's text and build_page.py only via the listing, not line by line. The SQLite store is not in the folder and was not re...
+- Coverage: Re-read the changed lines (6, 609, 714 of the text) and checked the rest of the earlier record against it; the figures sit in the data line of index.html, which the earlier reading searched in parts. The SQLite store is not in the folder and was not read. The 191 views images were not opened. The...
 
 ### 45. OSC Outreach Funding
 
