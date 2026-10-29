@@ -28,7 +28,9 @@ body leaves the run's record under <out>/runs/<prepare job>/ (BENCH.md and summa
 recorded run of the study holds them), the study's CLAIM and REFORMS report is written and checked
 there (tools/report.py --study drr-domain-gap, through stage.claim_report) and the verdict is 0
 only where the merge ended 0 and that report is current; prepare's and a shard's runs report their
-part's own exit and make no study report, since the study's numbers are the merge's.
+part's own exit and make no study report, since the study's numbers are the merge's. The job ends
+with the body's exit line, unless the body ended 0 and the flow did not, when the driver ends it
+with the launcher's code and says why in the part's file and, for the merge, in the report.
 """
 
 import inspect

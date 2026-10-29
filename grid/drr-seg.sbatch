@@ -16,9 +16,12 @@
 # environment and then starts flows/launch.py drr_seg (flows/drr_seg.py, DrrSegFlow), held to the
 # study's frozen PREREG.md, whose one working step runs this script again with SCHWINGNET_FLOW_STEP=1
 # for the work, the body below. The launcher resumes the newest run of the same words and code that
-# did not finish, so a job cut short and sent again carries its run on; the masks are never written
-# twice, since the choice of CTs ignores MOOSE's masks and the segment subcommand runs only the
-# models each chosen subject still lacks (flows/drr_seg.py says how).
+# did not finish, so a job cut short and sent again carries its run on; no subject's masks are
+# written again, since the choice of CTs ignores MOOSE's masks and the segment subcommand runs only
+# the models each chosen subject still lacks (flows/drr_seg.py says how, and what a cut leaves). The
+# job ends with the segmentation's exit, unless it ended 0 and the flow did not, when the job's exit
+# is the launcher's, as every launched flow's job's is; where the launcher resumed a run whose
+# finished segment step Metaflow cloned, the flow's 0 is the masks' (driver).
 #
 # The model's package goes into a throwaway virtual environment on the lab volume, made from the
 # train-gpu environment with its site packages (torch and Metaflow among them) and kept for a rerun
@@ -66,6 +69,10 @@ body() {
   local venv said rc tail_lines=12
   rm -f "$RC_FILE"
   trap 'trap "" PIPE; exit 143' TERM
+  # The frozen PREREG checked against its hash before the work, as the study's own steps check it,
+  # since the masks are the study's input and their choice of CTs is the study's.
+  ( cd docs/research/drr-domain-gap 2>/dev/null && sha256sum -c --status PREREG.md.sha256 ) \
+    || { report "STOP: PREREG.md changed since the freeze"; body_end 90; }
   venv=$(venv_ready "$SEG_PIN") || { report "FAILED: the environment for $SEG_PIN is not whole, though the driver made it"; body_end 1; }
   # The choice of CTs, made as the study makes it but before any MOOSE mask exists, to
   # render-subjects.json in this job's own folder (the plan's log stays there too, under umask 077
@@ -139,6 +146,13 @@ LAUNCHER=""
 # How long the driver waits, after passing Slurm's TERM on to the launcher, for the flow to end:
 # Slurm's warning comes two minutes before the time limit.
 STOP_GRACE=80
+keep_segment_record() {  # the record an earlier segmentation left beside the masks, kept in this job's folder, since the segment subcommand writes its own over it
+  local record=$DATA/moose/SEGMENT.json kept
+  [ -f "$record" ] || return 0
+  kept=$OUT/SEGMENT-before-job-${SLURM_JOB_ID:-none}.json
+  if ( umask 077; cp "$record" "$kept" ); then report "kept: the masks' earlier SEGMENT.json as $kept, since this run writes its own"
+  else report "NOTE: the masks' earlier SEGMENT.json could not be kept as $kept"; fi
+}
 launcher_stop() {  # the TERM passed on to the launcher, which passes it to the flow, then up to STOP_GRACE seconds for it to end
   local waited=0
   [ -n "$LAUNCHER" ] || return 0
@@ -172,8 +186,10 @@ driver() {
   esac
   venv=$(venv_for "$SEG_PIN") || { report "FAILED: the environment for $SEG_PIN could not be made"; finish 1; }
   report "environment: $SEG_PIN; weights: $DATA/moose_weights/raw; CTs: $DATA/totalsegmentator_v201; masks: $DATA/moose"
+  keep_segment_record
   # The launcher and the flow run in that environment, which carries train-gpu's Metaflow; the flow's
-  # step leaves the body's exit in RC_FILE, and the launcher's own is the flow's verdict.
+  # step leaves the body's exit in RC_FILE, and the launcher's own is the flow's verdict, or the
+  # flow's own code where it failed.
   rm -f "$RC_FILE"
   bash grid/box.sh "$venv/bin/python" flows/launch.py drr_seg --max-workers 1 -- --out "$OUT" --masks "$DATA/moose" &
   LAUNCHER=$!
@@ -181,8 +197,14 @@ driver() {
   LAUNCHER=""
   said=$(cat "$RC_FILE" 2>/dev/null)
   case "$said" in
-    ""|*[!0-9]*) report "FAILED: the launcher ended $rc and the segmentation left no exit (a refusal of the launcher's, or a fault of the flow; the job's log says which)"
-                 [ "$rc" != 0 ] || rc=1; finish "$rc" ;;
+    ""|*[!0-9]*)
+      # No exit and a flow that ended 0: the launcher resumed a run whose segment step had ended 0,
+      # which Metaflow cloned rather than ran again, since the verdict is 0 only where it ended 0.
+      [ "$rc" != 0 ] || { report "segment: the flow ended 0 and this job's segmentation left no exit: the launcher resumed a run whose finished segment step Metaflow cloned, so the masks are that run's"; finish 0; }
+      report "FAILED: the launcher ended $rc and the segmentation left no exit (a refusal of the launcher's, or a fault of the flow; the job's log says which)"
+      finish "$rc" ;;
+    0) [ "$rc" = 0 ] || report "FAILED: the segmentation ended 0, but its flow ended $rc: its end failed after the work (the job's log and the run's page say why); the masks it wrote stand"
+       finish "$rc" ;;
     *) finish "$said" ;;
   esac
 }

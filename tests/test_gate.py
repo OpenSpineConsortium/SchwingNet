@@ -2851,11 +2851,11 @@ esac
     def flow_root(self):
         return self.tmp / "go2432" / "metaflow"
 
-    def flow_run(self, run, lines, kind="sweep", flow="SweepFlow"):
+    def flow_run(self, run, lines, kind="sweep"):
         """A launched flow's progress folder with its PROGRESS.txt as flows/stage_progress.py writes it."""
-        folder = self.flow_root() / "progress" / flow / run
+        folder = self.flow_root() / "progress" / "SweepFlow" / run
         folder.mkdir(parents=True, exist_ok=True)
-        head = f"flow {flow}/{run} {kind}: running, started 2026-10-29 03:00:00 UTC, updated 2026-10-29 03:05:00 UTC"
+        head = f"flow SweepFlow/{run} {kind}: running, started 2026-10-29 03:00:00 UTC, updated 2026-10-29 03:05:00 UTC"
         (folder / "PROGRESS.txt").write_text("\n".join([head, *lines]) + "\n", encoding="utf-8")
         return folder / "PROGRESS.txt"
 
@@ -2897,23 +2897,6 @@ esac
         self.assertLess(out.index("## space on the lab volume"), out.index("## flow sweep"))
         self.assertLess(out.index("## flow sweep"), out.index("no job submitted by the gate yet"))
 
-    def test_status_keeps_each_kinds_newest_run_beside_the_drr_studys_eighteen(self):
-        # one chain of the DRR domain-gap study starts 18 runs (prepare, 16 shard tasks, the merge), all
-        # newer than the sweep that ran before it: status shows the newest run of every kind first, then
-        # the newest of the rest up to four in all, newest first, so the sweep's run is never pushed out
-        sweep = self.flow_run("1792902585286401", ["run: key 68974c7ccabf5595, commit 35a4b6f"])
-        os.utime(sweep, (1_800_000_000, 1_800_000_000))
-        for n in range(18):
-            progress = self.flow_run(f"18000000000000{n:02d}", ["task work shard: running; unit 3 of 40"], kind="drr_gap",
-                                     flow="DrrGapFlow")
-            os.utime(progress, (1_800_000_100 + n, 1_800_000_100 + n))
-        done = self.gate("status")
-        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
-        heads = [line.split(", progress")[0] for line in done.stdout.splitlines() if line.startswith("## flow ")]
-        self.assertEqual(heads, ["## flow drr_gap 1800000000000017", "## flow drr_gap 1800000000000016",
-                                 "## flow drr_gap 1800000000000015", "## flow sweep 1792902585286401"])
-        self.assertIn("  flow DrrGapFlow/1800000000000017 drr_gap: running, ", done.stdout)
-
     def test_the_status_answer_draws_the_flows_page_off_the_grid(self):
         self.flow_run("1792902585286499", ["run: key 68974c7ccabf5595, commit 35a4b6f", "step start: done", "step first: running; 1 done, 1 running of 2",
                                            "task first resnet18-64px-3d291b87: running; Last epoch: epoch 1 of 2."])
@@ -2928,16 +2911,85 @@ esac
         self.assertIn("Last epoch: epoch 1 of 2.", html)
         self.assertIn('<span class="badge running">running</span>', html)
 
+    def kind_run(self, flow, kind, run, lines, moved, state="running"):
+        """A run of any kind's progress folder, its PROGRESS.txt as flows/stage_progress.py writes it,
+        updated and last moved at MOVED, seconds since the epoch."""
+        folder = self.flow_root() / "progress" / flow / run
+        folder.mkdir(parents=True, exist_ok=True)
+        updated = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime(moved))
+        head = f"flow {flow}/{run} {kind}: {state}, started 2026-10-29 03:00:00 UTC, updated {updated} UTC"
+        (folder / "PROGRESS.txt").write_text("\n".join([head, *lines]) + "\n", encoding="utf-8")
+        os.utime(folder / "PROGRESS.txt", (moved, moved))
+        return folder / "PROGRESS.txt"
+
+    def flow_heads(self, out):
+        return [line.split(", progress")[0] for line in out.splitlines() if line.startswith("## flow ") and ", progress (" in line]
+
+    def test_status_keeps_each_kinds_newest_run_beside_the_drr_studys_eighteen(self):
+        # one chain of the DRR domain-gap study starts 18 runs (prepare, 16 shard tasks, the merge), all
+        # newer than the sweep that ran before it: status shows the newest run of every kind first, then
+        # the newest of the rest up to four in all, newest first, so the sweep's run is never pushed out
+        moved = int(time.time()) - 300
+        self.kind_run("SweepFlow", "sweep", "1792902585286401", ["run: key 68974c7ccabf5595, commit 35a4b6f"], moved - 100)
+        for n in range(18):
+            self.kind_run("DrrGapFlow", "drr_gap", f"18000000000000{n:02d}", ["task work shard: running; unit 3 of 40"], moved + n)
+        done = self.gate("status")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertEqual(self.flow_heads(done.stdout), ["## flow drr_gap 1800000000000017", "## flow drr_gap 1800000000000016",
+                                                        "## flow drr_gap 1800000000000015", "## flow sweep 1792902585286401"])
+        self.assertIn("  flow DrrGapFlow/1800000000000017 drr_gap: running, ", done.stdout)
+        self.assertNotIn("## flow kinds not shown", done.stdout)
+
+    def test_status_shows_four_flow_runs_however_many_kinds_have_run_and_names_the_rest_in_a_line_each(self):
+        # every kind that has ever run keeps its folder, so the newest run of each kind is shown only
+        # up to four in all, the kinds that moved last first; each further kind is one line, its run,
+        # its state and when it last moved, under a heading the page hands room after the job list
+        moved = int(time.time()) - 3000
+        kinds = ("bank", "catalog", "sweep", "drr_seg", "drr_gap", "v1", "latency")
+        for n, kind in enumerate(kinds):
+            flow = kind.title().replace("_", "") + "Flow"
+            for k in range(3):
+                self.kind_run(flow, kind, f"1800000000{n:02d}00{k:02d}", [f"step start: done; run {k}"] + [f"task work row{r}: done" for r in range(60)],
+                              moved + 100 * n + k, state="succeeded" if k < 2 else "running")
+        done = self.gate("status")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        out = done.stdout
+        self.assertEqual(self.flow_heads(out), ["## flow latency 1800000000060002", "## flow v1 1800000000050002",
+                                                "## flow drr_gap 1800000000040002", "## flow drr_seg 1800000000030002"])
+        section = out.split("## flow kinds not shown, for want of room among the newest 4: ", 1)[1].splitlines()[1:]
+        left = section[:next((n for n, line in enumerate(section) if not line.startswith("  ")), len(section))]
+        self.assertEqual([line.split(" (")[0] for line in left], ["  sweep 1800000000020002: running", "  catalog 1800000000010002: running",
+                                                                 "  bank 1800000000000002: running"])
+        for line in left:
+            self.assertRegex(line, r"^  .* \(\d{4}-\d\d-\d\d \d\d:\d\d UTC\)$")
+        # the job list keeps its room on the page, before the line of each kind left out
+        self.assertIn("no job submitted by the gate yet", out)
+        self.assertLess(out.index("## flow drr_seg"), out.index("## flow kinds not shown"))
+        self.assertNotIn("not shown, for want of room on the page", out)
+        # the page drawn off the grid reads the four runs' sections and ends each at the next heading
+        answer = self.tmp / "status.txt"
+        answer.write_text(out, encoding="utf-8")
+        listed = subprocess.run([sys.executable, str(ROOT / "tools" / "progress_page.py"), str(answer), "--list"],
+                                capture_output=True, text=True, timeout=60)
+        self.assertEqual(listed.returncode, 0, listed.stderr)
+        self.assertEqual([line.split(" ")[:2] for line in listed.stdout.splitlines()],
+                         [["1800000000060002", "latency"], ["1800000000050002", "v1"], ["1800000000040002", "drr_gap"],
+                          ["1800000000030002", "drr_seg"]])
+
     # flows/launch.py as the stand-in box.sh plays it for the study's two kinds: the call logged with the
-    # code it runs from and the checkout, refused where $FAKE/launch_refuse holds a word, else the job
+    # code it runs from and the checkout, refused where $FAKE/launch_refuse holds a word, a resume whose
+    # finished step Metaflow cloned where $FAKE/launch_cloned is there (exit 0, no body), else the job
     # script's body run as DrrGapFlow's or DrrSegFlow's step runs it, with the words the flow gives it,
-    # Slurm's TERM passed on, and the launcher's last line; the flows' own tests run the real ones.
+    # Slurm's TERM passed on, and the launcher's last line; after a body that ended 0, a flow whose end
+    # fails with the code $FAKE/launch_after holds, or one still in its end where $FAKE/launch_hang is
+    # there, until Slurm's TERM ends it; the flows' own tests run the real ones.
     FAKE_LAUNCHER = (
         'case "$*" in *"flows/launch.py drr_gap "*|*"flows/launch.py drr_seg "*)\n'
         '  said="$*"; said=${said#*flows/launch.py }\n'
         '  echo "$said | code=${SCHWINGNET:-} checkout=${SN_CHECKOUT:-}" >> "$FAKE/launch.log"\n'
         '  kind=${said%% *}\n'
         '  [ ! -f "$FAKE/launch_refuse" ] || { echo "launch: $(cat "$FAKE/launch_refuse")"; echo "${kind^^}_RC=90 0s"; exit 90; }\n'
+        '  [ ! -f "$FAKE/launch_cloned" ] || { echo "${kind^^}_RC=0 0s"; exit 0; }\n'
         '  part=""; prep=""; out=""; task=0; tasks=1\n'
         '  while [ $# -gt 0 ]; do case "$1" in --part) part=$2 ;; --prepare-job) prep=$2 ;; --out) out=$2 ;;'
         ' --task) task=$2 ;; --tasks) tasks=$2 ;; esac; shift; done\n'
@@ -2949,6 +3001,12 @@ esac
         '  env "${words[@]}" bash "$SCHWINGNET/grid/$script" & body=$!\n'
         '  trap \'kill -TERM "$body" 2>/dev/null\' TERM\n'
         '  while :; do wait "$body"; rc=$?; kill -0 "$body" 2>/dev/null || break; done\n'
+        '  if [ "$rc" = 0 ] && [ -f "$FAKE/launch_hang" ]; then\n'
+        '    sleep 30 > /dev/null 2>&1 & end=$!\n'
+        '    trap \'kill "$end" 2>/dev/null; echo "${kind^^}_RC=143 1s"; exit 143\' TERM\n'
+        '    echo hung > "$FAKE/launch_hung"; wait "$end"\n'
+        '  fi\n'
+        '  [ "$rc" != 0 ] || [ ! -f "$FAKE/launch_after" ] || rc=$(cat "$FAKE/launch_after")\n'
         '  echo "${kind^^}_RC=$rc 1s"; exit "$rc" ;;\n'
         'esac\n')
 
@@ -3361,9 +3419,17 @@ esac
         self.assertTrue((self.steps() / "merge.md").read_text(encoding="utf-8").splitlines()[-1].startswith("- exit 0 at "))
         self.assertTrue(all(" | hold=no " in line for line in self.boxed()), self.boxed())
         # the merge's run record, where the flow's end writes the study's CLAIM and REFORMS report: the
-        # report as BENCH.md and the summary as summary.txt, as a recorded run of the study holds them
+        # report as BENCH.md and the summary as summary.txt, as a recorded run of the study holds them,
+        # each as the gate's word prints them, every line through the masking filter and cut at 200
         record = out / "runs" / "501"
-        self.assertEqual((record / "BENCH.md").read_text(encoding="utf-8"), text)
+        printed = subprocess.run(["sed", "-r", "-f", str(self.repo / "grid" / "redact.sed")], input=text, capture_output=True,
+                                 text=True, check=True).stdout
+        bench = (record / "BENCH.md").read_text(encoding="utf-8")
+        self.assertEqual(bench, "".join(f"{line[:200]}\n" for line in printed.splitlines()))
+        self.assertIn(f"commit {commit}", text)
+        self.assertNotIn(commit, bench)
+        self.assertIn("- code: commit <hex withheld> copied to ", bench)
+        self.assertEqual(bench.splitlines()[0], lines[0])
         self.assertEqual((record / "summary.txt").read_text(encoding="utf-8").splitlines(),
                          [*self.DRR_GAP_SUMMARY, "W&B token <withheld>"])
         self.assertEqual((record / "groups.json").read_text(encoding="utf-8"), "{}\n")
@@ -3541,6 +3607,127 @@ esac
         self.assertEqual(self.study_calls("merge") + self.study_calls("shard"), [])
         self.assertFalse((self.bench_root() / "flexray_drr_gap" / "runs").exists())
 
+    def test_a_drr_gap_step_whose_flow_fails_after_its_work_ends_with_the_launchers_code(self):
+        # the work ended 0 and the flow did not (the merge's end found the study's CLAIM and REFORMS
+        # report not current, or an end failed): the job ends with the launcher's code, as every
+        # launched flow's job does, and the step's file says why beneath the work's own line; a
+        # prepare that ended so stops the shards, which claim nothing from it
+        self.drr_gap_repo()
+        self.drr_gap_inputs()
+        (self.fake / "launch_after").write_text("1", encoding="utf-8")
+        done = self.drr_gap_job("prepare")
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("SN_BENCH_RC=1", done.stdout)
+        lines = (self.steps() / "prepare.md").read_text(encoding="utf-8").splitlines()
+        self.assertTrue(lines[-3].startswith("- exit 0 at "), lines)
+        self.assertEqual(lines[-2], "- FAILED: the step's work ended 0, but its flow ended 1: its end failed after the work"
+                                    " (the job's log and the run's page say why)")
+        self.assertTrue(lines[-1].startswith("- exit 1 at "), lines)
+        (self.fake / "launch_after").unlink()
+        done = self.drr_gap_shard(0, PREPARE_JOB="501")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("nothing to claim, since prepare did not finish", done.stdout)
+        self.assertEqual(self.study_calls("shard"), [])
+        # a shard: its one line names the launcher's code and why
+        self.assertEqual(self.drr_gap_job("prepare").returncode, 0)
+        (self.fake / "launch_after").write_text("1", encoding="utf-8")
+        done = self.drr_gap_shard(0, PREPARE_JOB="501")
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertRegex((self.steps() / "shard-0.md").read_text(encoding="utf-8"),
+                         r"^- shard 0: job 600_0 on \S+, GPU NVIDIA H200, exit 1 at \S+ \S+ UTC: FAILED: the step's work ended 0,"
+                         r" but its flow ended 1: its end failed after the work \(the job's log and the run's page say why\)\n$")
+        self.assertEqual(len(self.study_calls("shard")), 1)
+        # the merge: the report the work wrote, numbers and all, then why and the launcher's code last,
+        # so the gate reads a failure and the report says the numbers stand
+        done = self.drr_gap_job("merge", job="700", PREPARE_JOB="501", SHARD_TASKS="4")
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("SN_BENCH_RC=1", done.stdout)
+        lines = (self.repo / "grid" / "logs" / "BENCH-flexray_drr_gap.md").read_text(encoding="utf-8").splitlines()
+        self.assertIn(f"  {self.DRR_GAP_SUMMARY[0]}", lines)
+        self.assertTrue(lines[-3].startswith("- exit 0 at "), lines[-4:])
+        self.assertEqual(lines[-2], "- FAILED: the step's work ended 0, but its flow ended 1: the study's CLAIM and REFORMS report under"
+                                    " runs/501/ is not current, or the flow's end failed before it was checked (the job's log and the"
+                                    " run's page say which); the numbers above stand")
+        self.assertTrue(lines[-1].startswith("- exit 1 at "), lines[-4:])
+        self.assertTrue((self.steps() / "merge.md").read_text(encoding="utf-8").splitlines()[-1].startswith("- exit 1 at "))
+
+    def test_a_drr_gap_step_whose_run_was_resumed_with_its_work_cloned_says_so(self):
+        # the launcher resumed a run of the same words whose finished step Metaflow cloned, so this
+        # job's work wrote nothing and the flow ended 0: a shard's line says so with exit 0; the merge
+        # keeps the report that run wrote where it is that run's whole report, and fails where it is
+        # not; a prepare, which cleared what it made before it began, fails and asks for a new chain
+        self.drr_gap_repo()
+        self.drr_gap_inputs()
+        self.assertEqual(self.drr_gap_job("prepare").returncode, 0)
+        (self.fake / "launch_cloned").write_text("", encoding="utf-8")
+        done = self.drr_gap_shard(0, PREPARE_JOB="501")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertRegex((self.steps() / "shard-0.md").read_text(encoding="utf-8"),
+                         r"^- shard 0: job 600_0 on \S+, GPU NVIDIA H200, exit 0 at \S+ \S+ UTC: the flow ended 0 and this job's work"
+                         r" wrote no exit line: the launcher resumed a run of these words whose finished step Metaflow cloned,"
+                         r" which did this task's units\n$")
+        self.assertEqual(self.study_calls("shard"), [])
+        (self.fake / "launch_cloned").unlink()
+        report = self.repo / "grid" / "logs" / "BENCH-flexray_drr_gap.md"
+        self.assertEqual(self.drr_gap_job("merge", job="700", PREPARE_JOB="501", SHARD_TASKS="4").returncode, 0)
+        kept = report.read_text(encoding="utf-8")
+        (self.fake / "launch_cloned").write_text("", encoding="utf-8")
+        done = self.drr_gap_job("merge", job="701", PREPARE_JOB="501", SHARD_TASKS="4")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("whose report stands, its end checking the study's report again in this job", done.stdout)
+        self.assertEqual(report.read_text(encoding="utf-8"), kept)
+        self.assertEqual(len(self.study_calls("merge")), 1)
+        report.unlink()
+        done = self.drr_gap_job("merge", job="702", PREPARE_JOB="501", SHARD_TASKS="4")
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        lines = report.read_text(encoding="utf-8").splitlines()
+        self.assertIn("- FAILED: the flow ended 0 and this job's work wrote no exit line: the launcher resumed a run of these"
+                      " words whose finished step Metaflow cloned, but the report in the checkout is not that run's whole report", lines)
+        self.assertTrue(lines[-1].startswith("- exit 1 at "), lines)
+        done = self.drr_gap_job("prepare", job="503")
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        lines = (self.steps() / "prepare.md").read_text(encoding="utf-8").splitlines()
+        self.assertIn("- FAILED: the flow ended 0 and this job's work wrote no exit line: the launcher resumed a run of these"
+                      " words whose finished step Metaflow cloned, though this prepare cleared analysis/PREPARED.json before"
+                      " it began; send the word again for a new chain", lines)
+        self.assertTrue(lines[-1].startswith("- exit 1 at "), lines)
+
+    def test_a_drr_gap_merge_cut_after_its_work_ends_143_under_its_report(self):
+        # Slurm's TERM after the merge's work ended 0 and while its flow's end checks the study's
+        # report: the driver passes it on, the launcher ends, and the report the work wrote says why
+        # beneath its exit 0 and ends with 143
+        self.drr_gap_repo()
+        self.drr_gap_inputs()
+        self.assertEqual(self.drr_gap_job("prepare").returncode, 0)
+        (self.fake / "launch_hang").write_text("", encoding="utf-8")
+        env = dict(os.environ, PATH=f"{self.fake}:{os.environ['PATH']}", SCHWINGNET=str(self.repo), DATA_ROOT=str(self.data),
+                   LAB_VOLUME=str(self.tmp), FAKE=str(self.fake), MODELS=str(self.models), STEP="merge", SLURM_JOB_ID="700",
+                   PREPARE_JOB="501", SHARD_TASKS="4")
+        for name in ("BENCH_ROOT", "INDEX", "SLURM_ARRAY_JOB_ID", "SLURM_ARRAY_TASK_ID", "SLURM_ARRAY_TASK_COUNT",
+                     "SLURM_CPUS_PER_TASK", "OMP_NUM_THREADS", "TMPDIR", "SCHWINGNET_FLOW_STEP", "SN_CHECKOUT"):
+            env.pop(name, None)
+        started = time.monotonic()
+        job = subprocess.Popen(["bash", str(self.repo / "grid" / "drr-gap.sbatch")], cwd=self.repo / "grid", env=env,
+                               stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        try:
+            for _ in range(400):
+                if (self.fake / "launch_hung").exists():
+                    break
+                time.sleep(0.05)
+            self.assertTrue((self.fake / "launch_hung").exists(), "the stand-in flow never reached its end")
+            os.kill(job.pid, signal.SIGTERM)
+            output, _ = job.communicate(timeout=20)
+        finally:
+            job.kill()
+        self.assertEqual(job.returncode, 143, output)
+        self.assertLess(time.monotonic() - started, 20)
+        self.assertIn("SN_BENCH_RC=143", output)
+        lines = (self.repo / "grid" / "logs" / "BENCH-flexray_drr_gap.md").read_text(encoding="utf-8").splitlines()
+        self.assertTrue(lines[-3].startswith("- exit 0 at "), lines[-4:])
+        self.assertEqual(lines[-2], "- TERMINATED: Slurm ended the merge (its time, or a cancel), after the step's work ended 0 and"
+                                    " before its flow's end wrote and checked the study's CLAIM and REFORMS report")
+        self.assertTrue(lines[-1].startswith("- exit 143 at "), lines[-4:])
+
     def test_bench_flexray_drr_seg_refuses_each_missing_input_then_queues_one_gpu_job(self):
         # MOOSE's masks for the study's CTs are a bench id of their own, sent before flexray_drr_gap:
         # refused, naming one input a send, until the TotalSegmentator CTs, the SPINEPS masks (the
@@ -3628,8 +3815,9 @@ esac
         # under umask 077), and the segment subcommand runs on exactly that file with the fetched zips
         # as its weights, writing under the data root's moose; the report carries the segment's one
         # summary line and not the JSON before it; a zip not there or not whole, or a plan that fails,
-        # ends the job by name before any segmenter runs
+        # ends the job by name before any segmenter runs; the body checks the frozen PREREG first
         self.git_repo()
+        self.freeze(b"# PREREG\n\nfrozen 2026-10-27, no further edits\n")
         (self.data / "totalsegmentator_v201" / "s0001").mkdir(parents=True)
         (self.data / "spineps").mkdir()
         zips = self.moose_zips()
@@ -3719,6 +3907,46 @@ esac
                       " fault of the flow; the job's log says which)\n- exit 90 at ", report)
         self.assertEqual(len([line for line in self.boxed() if "flexray_render.py segment" in line]), segments)
         (self.fake / "launch_refuse").unlink()
+        # a PREREG.md that moved: the body stops with 90 before the plan, and nothing is segmented
+        self.freeze(b"# PREREG\n\nedited\n", hashed=b"# PREREG\n\nfrozen 2026-10-27, no further edits\n")
+        plans = len([line for line in self.boxed() if "tools/domain_gap.py plan " in line])
+        done = self.drr_seg_job()
+        self.assertEqual(done.returncode, 90, done.stdout + done.stderr)
+        report = (self.repo / "grid" / "logs" / "BENCH-flexray_drr_seg.md").read_text(encoding="utf-8")
+        self.assertIn("- STOP: PREREG.md changed since the freeze\n- exit 90 at ", report)
+        self.assertEqual(len([line for line in self.boxed() if "tools/domain_gap.py plan " in line]), plans)
+        self.assertEqual(len([line for line in self.boxed() if "flexray_render.py segment" in line]), segments)
+        self.freeze(b"# PREREG\n\nfrozen 2026-10-27, no further edits\n")
+        # the record an earlier run left beside the masks is kept in this job's folder before the
+        # segment subcommand writes its own over it, the owner's alone
+        (self.data / "moose" / "SEGMENT.json").write_text('{"done": ["s0001"]}\n', encoding="utf-8")
+        done = self.drr_seg_job()
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        kept = out / "SEGMENT-before-job-778.json"
+        self.assertEqual(kept.read_text(encoding="utf-8"), '{"done": ["s0001"]}\n')
+        self.assertEqual(kept.stat().st_mode & 0o777, 0o600)
+        report = (self.repo / "grid" / "logs" / "BENCH-flexray_drr_seg.md").read_text(encoding="utf-8")
+        self.assertIn(f"- kept: the masks' earlier SEGMENT.json as {kept}, since this run writes its own\n", report)
+        # a flow whose end fails after the segmentation ended 0: the launcher's code ends the job, and
+        # the report says the masks stand
+        (self.fake / "launch_after").write_text("1", encoding="utf-8")
+        done = self.drr_seg_job()
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("SN_BENCH_RC=1", done.stdout)
+        report = (self.repo / "grid" / "logs" / "BENCH-flexray_drr_seg.md").read_text(encoding="utf-8")
+        self.assertIn("- FAILED: the segmentation ended 0, but its flow ended 1: its end failed after the work (the job's log"
+                      " and the run's page say why); the masks it wrote stand\n- exit 1 at ", report)
+        (self.fake / "launch_after").unlink()
+        # a resume whose finished segment step Metaflow cloned: no segmentation in this job, the flow's 0
+        segments = len([line for line in self.boxed() if "flexray_render.py segment" in line])
+        (self.fake / "launch_cloned").write_text("", encoding="utf-8")
+        done = self.drr_seg_job()
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        report = (self.repo / "grid" / "logs" / "BENCH-flexray_drr_seg.md").read_text(encoding="utf-8")
+        self.assertIn("- segment: the flow ended 0 and this job's segmentation left no exit: the launcher resumed a run whose"
+                      " finished segment step Metaflow cloned, so the masks are that run's\n- exit 0 at ", report)
+        self.assertEqual(len([line for line in self.boxed() if "flexray_render.py segment" in line]), segments)
+        (self.fake / "launch_cloned").unlink()
         # a zip the fetch has not landed: named with its fetch, before the environment or the plan
         (self.data / "moose_weights" / "raw" / zips[2]).unlink()
         before = len(self.boxed())

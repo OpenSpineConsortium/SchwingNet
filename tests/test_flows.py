@@ -1439,6 +1439,39 @@ exec "$FLOW_TEST_PYTHON" "$(dirname "$0")/../tools/study_body_stub.py"
 STUDY_PREREG = "# The test's study\n\nOne design for every part.\n"
 
 
+# flows/stage.py's finish as a scratch repository can cut it: the job killed once, the runtime with
+# it, as the flow's end begins to give its verdict, where FLOW_TEST_KILL says end; appended to the
+# scratch copy alone, so both launches run the same code and the second resumes the first.
+STAGE_CUT_IN_FINISH = """
+
+import functools as _functools
+import signal as _signal
+
+
+def _cut_the_job():
+    pid = os.getppid()
+    while pid > 1:
+        command = Path(f"/proc/{pid}/cmdline").read_bytes().replace(b"\\0", b" ").decode()
+        if ".py --quiet " in command and " step " not in command:
+            os.kill(pid, _signal.SIGKILL)
+            break
+        pid = int(Path(f"/proc/{pid}/stat").read_text().rsplit(")", 1)[1].split()[1])
+    os.kill(os.getpid(), _signal.SIGKILL)
+
+
+_finish_as_it_is = finish
+
+
+@_functools.wraps(_finish_as_it_is)
+def finish(*args, **kwargs):
+    marker = Path(os.environ["FLOW_TEST_MARKER"])
+    if os.environ.get("FLOW_TEST_KILL") == "end" and not marker.exists():
+        marker.write_text("", encoding="utf-8")
+        _cut_the_job()
+    return _finish_as_it_is(*args, **kwargs)
+"""
+
+
 def drr_code_paths():
     """What the study's prepare copies at its commit, as grid/drr-gap.sbatch lists it in CODE_PATHS."""
     listed = re.search(r"^CODE_PATHS=\((.*?)\)$", (GRID / "drr-gap.sbatch").read_text(encoding="utf-8"), re.M | re.S)
@@ -1654,6 +1687,24 @@ class DrrSegFlowTest(unittest.TestCase):
         self.assertEqual((code, said[0]["decision"]), (1, "run"), out)
         self.assertEqual((said[-1]["successful"], said[-1]["verdict"]), (True, 1), out)
         self.assertIn("DrrSegFlow: segment: exit 2;", out)
+
+    def test_a_job_cut_in_its_end_is_resumed_with_its_segmentation_cloned_and_ends_0(self):
+        # what grid/drr-seg.sbatch's driver reads where the body left no exit and the launcher ended
+        # 0: the next send resumes a run cut after its segment step ended 0, with that step cloned,
+        # so the body runs no more, and the end gives the cut run's segmentation's verdict
+        self.study.write("flows/stage.py", (ROOT / "flows" / "stage.py").read_text(encoding="utf-8") + STAGE_CUT_IN_FINISH)
+        self.study.commit("a finish the test cuts once")
+        code, said, out, calls = self.segment(FLOW_TEST_KILL="end")
+        self.assertNotEqual(code, 0, out)
+        self.assertEqual(said[-1]["successful"], False, out)
+        self.assertEqual(len(calls), 1, calls)
+        first = said[-1]["run"].split("/")[1]
+        code, said, out, calls = self.segment(FLOW_TEST_KILL="end")
+        self.assertEqual(code, 0, out)
+        self.assertEqual((said[0]["decision"], said[0]["origin"]), ("resume", first), out)
+        self.assertEqual((said[-1]["successful"], said[-1]["verdict"]), (True, 0), out)
+        self.assertEqual(calls, [], "the resumed run's segment step is cloned, so the body runs no more")
+        self.assertIn("DRR_SEG_RC=0 ", out)
 
 
 if __name__ == "__main__":

@@ -7,18 +7,25 @@ starts this flow through flows/launch.py:
 
     python flows/launch.py drr_seg --max-workers 1 -- --out <bench root>/flexray_drr_seg --masks <data root>/moose
 
-segment runs the job script again with SCHWINGNET_FLOW_STEP=1, its body: the study's choice of
-CTs (tools/domain_gap.py plan, rendering nothing) and MOOSE on exactly those (tools/flexray_render.py
-segment, moosez's Python entry on the fetched zips, never a download), the masks written under the
-data root's moose in moosez's own layout. The body appends its lines to the bench report the driver
-began and leaves its exit in <out>/SEGMENT_RC; the driver ends the report with it.
+segment runs the job script again with SCHWINGNET_FLOW_STEP=1, its body: the frozen PREREG checked
+against its hash, the study's choice of CTs (tools/domain_gap.py plan, rendering nothing) and MOOSE
+on exactly those (tools/flexray_render.py segment, moosez's Python entry on the fetched zips, never a
+download), the masks written under the data root's moose in moosez's own layout. The body appends
+its lines to the bench report the driver began and leaves its exit in <out>/SEGMENT_RC; the driver
+ends the report with it, or with the launcher's code where the body ended 0 and the flow did not.
+A job cut short after segment ended, in end, is resumed by the next send with segment cloned and
+not run again, so it leaves no SEGMENT_RC, and the driver takes the flow's 0, which only a segment
+that ended 0 gives, as the masks' exit.
 
-The masks are never written twice. The choice of CTs ignores MOOSE's masks, so the same inputs give
-the same choice on every start, and the segment subcommand's plan marks a subject whose every model's
-masks are already there done and runs only the models a subject still lacks, rewriting its record
-SEGMENT.json after each subject. So a job cut short and sent again, which the launcher resumes with
-start cloned and segment run again, segments only the subjects and models the cut run had not
-finished; a subject's masks that exist are left as they are.
+No mask that exists is written again. The choice of CTs ignores MOOSE's masks, so the same inputs
+give the same choice on every start, and the segment subcommand's plan marks a subject done when a
+file of every model is there, found by the region word in its name, and runs only the models a
+subject lacks, writing their files beside the others. So a job cut short and sent again, which the
+launcher resumes with start cloned and segment run again, segments no subject whose files are all
+there. A file moosez was writing when the job was cut is there by its name too, and is not written
+again: such a file fails a test of its gzip stream (gzip -t), which nothing here runs. The
+subcommand writes its own record, SEGMENT.json, beside the masks, so the driver keeps the record an
+earlier job left there in its own folder first.
 
 The flow runs no network itself and makes no study report: its masks are an input of the study,
 whose report is the merge's (flows/drr_gap.py). It is held to the study's frozen PREREG all the

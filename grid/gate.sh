@@ -804,7 +804,7 @@ bench_progress() {  # every benchmark under BENCH_ROOT that keeps a PROGRESS.txt
 
 # Every run flows/launch.py starts keeps its progress page, and the page in short lines, PROGRESS.txt,
 # under FLOW_ROOT/progress/<Flow>/<run>/ (flows/stage_progress.py, the owner's rule of 2026-10-29).
-# Status shows the newest FLOW_RUNS_SHOWN runs' lines, each under a heading that names the run's kind
+# Status shows FLOW_RUNS_SHOWN runs' lines (flow_runs_chosen says which), each under a heading naming the run's kind
 # and id, which tools/progress_page.py reads back into the same page off the grid. The page's own
 # lines are the flow's words; a task's last line and a report's can quote a path or a value, so those
 # are judged as a stage report's lines are (report_shapes), and every line is masked.
@@ -818,45 +818,70 @@ flow_shapes() {  # a flow's progress lines, its tasks' and its reports' judged a
     esac
   done
 }
-# Which runs: the newest of every kind first, then the newest of the rest up to FLOW_RUNS_SHOWN in all,
-# shown newest first, so the DRR domain-gap study's 18 runs a chain (prepare, 16 shard tasks, the merge),
-# whose own PROGRESS.txt the bench progress shows, never push another flow's run out of status.
-FLOW_HEAD='^flow [^ ]+ ([^ ]+):'
-FLOW_KIND=""
-flow_kind_of() {  # flow_kind_of PROGRESS: the kind its first line names into FLOW_KIND, or unknown, read by the shell alone with no process per run
+flow_progress() {  # the newest runs of every launched flow, each its PROGRESS.txt as status shows it
+  local progress run kind
+  flow_runs_chosen
+  printf '%s\n' ${FLOW_SHOWN[@]+"${FLOW_SHOWN[@]}"} | while read -r progress; do
+    [ -f "$progress" ] || continue
+    run=$(basename "$(dirname "$progress")")
+    kind=$(head -n 1 "$progress" | awk '$1 == "flow" { sub(/:$/, "", $3); print $3 }')
+    case "$run" in ""|*[!A-Za-z0-9_.-]*) continue ;; esac
+    case "$kind" in ""|*[!a-z0-9_]*) kind=unknown ;; esac
+    echo "## flow $kind $run, progress ($(date -u -r "$progress" '+%F %H:%M') UTC)"
+    head -n "$FLOW_PROGRESS_LINES" "$progress" | LC_ALL=C tr -cd '\11\12\40-\176' | flow_shapes | masked | sed 's/^/  /'
+  done
+  flow_kinds_left
+}
+
+# Which runs status shows: the newest run of each kind, the kinds whose newest run moved last first,
+# then the newest of the rest, FLOW_RUNS_SHOWN in all and shown newest first, so that the DRR
+# domain-gap study's 18 runs a chain (prepare, 16 shard tasks, the merge), whose own PROGRESS.txt
+# the bench progress shows, never push another kind's newest run out. A kind whose newest run has
+# no room among them is named on one line of its own under "## flow kinds not shown", which the page
+# hands room after the job list and the failed jobs' logs (grid/status-page.awk), so the flows'
+# sections stay FLOW_RUNS_SHOWN however many kinds have run. The files are read by the shell alone,
+# with no process for each run, since the progress folder keeps every run there has been.
+FLOW_HEAD='^flow [^ ]+ ([^ ]+): ([a-z]+)'
+FLOW_KIND="" FLOW_STATE="" FLOW_SHOWN=() FLOW_LEFT=()
+flow_kind_of() {  # flow_kind_of PROGRESS: the kind and the state its first line names, into FLOW_KIND and FLOW_STATE, each unknown where it names none
   local first=""
-  FLOW_KIND=unknown
+  FLOW_KIND=unknown FLOW_STATE=unknown
   read -r first 2>/dev/null < "$1"
   [[ "$first" =~ $FLOW_HEAD ]] || return 0
   case "${BASH_REMATCH[1]}" in *[!a-z0-9_]*) ;; *) FLOW_KIND=${BASH_REMATCH[1]} ;; esac
+  FLOW_STATE=${BASH_REMATCH[2]}
 }
-flow_progress() {  # the runs of the launched flows status shows, each its PROGRESS.txt as status shows it
-  local files=() kinds=() shown=() seen=" " count=0 i progress run
+flow_runs_chosen() {  # the PROGRESS.txt files status shows into FLOW_SHOWN, newest first, and a line for each kind left out into FLOW_LEFT
+  local files=() kinds=() chosen=() seen=" " count=0 i run
+  FLOW_SHOWN=() FLOW_LEFT=()
   mapfile -t files < <(ls -1t "$FLOW_ROOT"/progress/*/*/PROGRESS.txt 2>/dev/null)
   for i in ${files[@]+"${!files[@]}"}; do
-    progress=${files[$i]}
-    run=${progress%/PROGRESS.txt}; run=${run##*/}
-    [ -f "$progress" ] || continue
+    run=${files[$i]%/PROGRESS.txt}; run=${run##*/}
+    [ -f "${files[$i]}" ] || continue
     case "$run" in ""|*[!A-Za-z0-9_.-]*) continue ;; esac
-    flow_kind_of "$progress"
+    flow_kind_of "${files[$i]}"
     kinds[$i]=$FLOW_KIND
-    case "$seen" in *" ${kinds[$i]} "*) continue ;; esac
-    seen="$seen${kinds[$i]} "
-    shown[$i]=1
-    count=$((count + 1))
+    case "$seen" in *" $FLOW_KIND "*) continue ;; esac
+    seen="$seen$FLOW_KIND "
+    if [ "$count" -lt "$FLOW_RUNS_SHOWN" ]; then
+      chosen[$i]=1
+      count=$((count + 1))
+    else
+      FLOW_LEFT+=("$FLOW_KIND $run: $FLOW_STATE ($(date -u -r "${files[$i]}" '+%F %H:%M') UTC)")
+    fi
   done
   for i in ${kinds[@]+"${!kinds[@]}"}; do
     [ "$count" -lt "$FLOW_RUNS_SHOWN" ] || break
-    [ -z "${shown[$i]:-}" ] || continue
-    shown[$i]=1
+    [ -z "${chosen[$i]:-}" ] || continue
+    chosen[$i]=1
     count=$((count + 1))
   done
-  for i in ${shown[@]+"${!shown[@]}"}; do
-    progress=${files[$i]}
-    run=${progress%/PROGRESS.txt}; run=${run##*/}
-    echo "## flow ${kinds[$i]} $run, progress ($(date -u -r "$progress" '+%F %H:%M') UTC)"
-    head -n "$FLOW_PROGRESS_LINES" "$progress" | LC_ALL=C tr -cd '\11\12\40-\176' | flow_shapes | masked | sed 's/^/  /'
-  done
+  for i in ${chosen[@]+"${!chosen[@]}"}; do FLOW_SHOWN+=("${files[$i]}"); done
+}
+flow_kinds_left() {  # one line for each kind whose newest run flow_runs_chosen had no room for, its run, its state and when its file last moved
+  [ "${#FLOW_LEFT[@]}" -gt 0 ] || return 0
+  echo "## flow kinds not shown, for want of room among the newest $FLOW_RUNS_SHOWN: each kind's newest run, its state and when it last moved"
+  printf '%s\n' "${FLOW_LEFT[@]}" | masked | sed 's/^/  /'
 }
 
 word_leaks() {

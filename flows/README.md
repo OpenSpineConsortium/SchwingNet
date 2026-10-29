@@ -88,9 +88,10 @@ To open a page in the browser on the grid: Open OnDemand (https://ondemand.grid.
 university's VPN), Files, then /rs/rs_grp_oschome/go2432/metaflow/progress/, the flow's folder,
 the run's folder and index.html, opened with View; not yet tried on the grid, so where the Files
 app shows the page as text, Download it and open the file in the browser. Off the grid, the gate's status word prints the
-newest run of each kind and then the newest of the rest, four runs in all unless more kinds have
-runs, newest first, so the DRR study's 18 runs a chain never push another flow's run out; each
-run's PROGRESS.txt under `## flow <kind> <run>, progress (<time> UTC)`, their task and
+newest run of each kind, the kind that moved last first, and then the newest of the rest, four runs
+in all, newest first, so the DRR study's 18 runs a chain never push another flow's run out, and
+each further kind's newest run, its state and when it moved, one line apiece under `## flow kinds
+not shown`; each run's PROGRESS.txt under `## flow <kind> <run>, progress (<time> UTC)`, their task and
 report lines judged as a stage report's are (a path cut, a quoting reason withheld) and every line
 masked, and `python3 tools/progress_page.py <status answer> --out page.html` draws the same page
 from that answer.
@@ -207,11 +208,18 @@ has no Covers line, so neither flow names a part and the PREREG holds every run 
   logs/BENCH-flexray_drr_gap.md in the checkout, as before, its first line `# bench
   flexray_drr_gap: job N on H, commit X, ... UTC` and its last `- exit N at ...`, prints
   SN_BENCH_RC, and leaves the run's record under <out>/runs/<prepare job>/ as a recorded run of
-  the study is kept (BENCH.md, summary.txt, groups.json); the flow's end then writes and checks
-  the study's CLAIM and REFORMS report there through `stage.claim_report` with study
-  drr-domain-gap, and its verdict is 1 where that report is not current or the merge did not end
-  0. The bench report's exit line and SN_BENCH_RC stay the body's own, so a report that is not
-  current is said on the page and in DRR_GAP_RC and never makes the gate queue the 18 jobs again.
+  the study is kept (BENCH.md and summary.txt as the gate's word prints them, every line masked
+  and cut, and groups.json); the flow's end then writes and checks the study's CLAIM and REFORMS
+  report there through `stage.claim_report` with study drr-domain-gap, and its verdict is 1 where
+  that report is not current or the merge did not end 0.
+- Each part's job ends with the exit line its body wrote, unless the body ended 0 and the flow did
+  not: then the job's exit is the launcher's, as every launched flow's job's is, and the part's
+  file says why beneath the body's line, the merge's report too, whose numbers stand, so a report
+  that is not current fails the merge's job and the gate reads it as a failure. A launch that
+  resumed a run whose finished work step Metaflow cloned ends 0 with no exit line of this job's:
+  a shard says so with exit 0, the merge keeps the report where it is that run's whole one and
+  fails otherwise, and a prepare fails, asking for a new chain, since it cleared its work before
+  it began. A prepare that did not end 0 stops the shards, which claim nothing from it.
   A merge whose chain's prepare never started writes no report and starts no flow, as before, and
   one whose prepare failed composes its report from what prepare said, starting no flow either.
   Prepare's and a shard's runs report only their part's own exit and progress, and make no study
@@ -228,19 +236,28 @@ has no Covers line, so neither flow names a part and the PREREG holds every run 
   `bench flexray_drr_seg` queues one gpu job, grid/drr-seg.sbatch (4 CPUs, 50G, 12 hours), split
   out of grid/bench.sbatch, which keeps the three public benchmarks and refuses both DRR ids. Its
   driver holds the checkout, checks the CTs, SPINEPS's masks and MOOSE's zips, makes the
-  environment and starts the launcher; the flow's segment step runs the body, the study's choice
-  of CTs and MOOSE on those, which appends its lines to the report the driver began and leaves its
-  exit in <out>/SEGMENT_RC, with which the driver ends the report; the launcher's last line is
-  `DRR_SEG_RC=`. A subject's existing masks are never written again: the choice of CTs ignores
-  MOOSE's masks, so the same inputs give the same choice on every start, and the segment
-  subcommand's own plan marks a subject done when it lacks no model and runs only the models a
-  subject lacks, rewriting SEGMENT.json after each subject, so a resumed run, start cloned and
-  segment run again, segments only what the cut run had not finished.
+  environment and starts the launcher; the flow's segment step runs the body, the frozen PREREG
+  checked against its hash, then the study's choice of CTs and MOOSE on those, which appends its
+  lines to the report the driver began and leaves its exit in <out>/SEGMENT_RC, with which the
+  driver ends the report, or with the launcher's code where the body ended 0 and the flow did
+  not, the masks standing; no SEGMENT_RC and a flow that ended 0 is a resume whose segment step
+  Metaflow cloned, said and ended 0. The launcher's last line is `DRR_SEG_RC=`. No subject's
+  masks are written again: the choice of CTs ignores MOOSE's masks, so the same inputs give the
+  same choice on every start, and the segment subcommand's own plan marks a subject done when a
+  file of every model is there and runs only the models a subject lacks, so a resumed run, start
+  cloned and segment run again, segments only what the cut run had not finished. A file moosez
+  was writing when the job was cut is there by its name too and is not written again, though a
+  test of its gzip stream would fail it, which nothing runs. The subcommand rewrites SEGMENT.json
+  after each subject, so the driver first keeps the one an earlier run left as
+  <out>/SEGMENT-before-job-<job>.json.
 - Slurm's TERM: job submit asks for TERM to the batch shell alone two minutes before the limit;
   each driver waits on the launcher in the background, so its trap runs at once and passes the TERM
   on to the launcher, which passes it to the flow's processes, the body's own trap passing it to
-  the tool; the study's driver then waits up to 80 s for the part's exit line before it writes
-  its own, and MOOSE's ends with no report, as before, the run it began resumed by the next send.
+  the tool. The study's driver then waits up to 80 s for the launcher to end (the launcher gives
+  the flow's processes 60 s, the body's tool 45 of them) and ends with the part's exit line, or,
+  where the work had ended 0 and the flow's end was cut, with 143 and a line saying so beneath
+  it, or, where the work wrote none, with its own; MOOSE's ends with no report, as before, the
+  run it began resumed by the next send.
 
 ## The datastore
 

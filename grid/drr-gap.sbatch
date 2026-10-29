@@ -35,7 +35,10 @@
 # its end gives the verdict: the merge's run writes and checks the study's CLAIM and REFORMS report
 # (tools/report.py --study drr-domain-gap) from the record the body leaves under
 # <out>/runs/<prepare job>/, and its verdict is 1 where that report is not current; prepare's and a
-# shard's runs report their part's own exit and progress and make no study report. The launcher
+# shard's runs report their part's own exit and progress and make no study report. The job ends
+# with the exit line the step's work wrote, unless the work ended 0 and the flow did not: then the
+# job's exit is the launcher's, as every launched flow's job's is, with a line saying why under the
+# work's in the step's file and, for the merge, in the report (part_end). The launcher
 # resumes the newest run of the same words and code that did not finish, so a step sent again with
 # the same words carries its run on inside its own job; the flow retries nothing and the launcher
 # queues nothing, so the chain's Slurm jobs are the gate's alone. SCHWINGNET names the code inside
@@ -134,11 +137,6 @@ step_end() {  # step_end RC: the step's exit line, last in its file, then the jo
 step_exit() {  # the exit code the step's file names on its last line, or nothing where it names none
   tail -n 1 "$STEP_FILE" 2>/dev/null | sed -nr 's/^- (shard [0-9]+: .*, )?exit ([0-9]+) at .*/\2/p'
 }
-end_if_written() {  # where the step's file already ends in its exit line, the job ends with that code
-  local said
-  said=$(step_exit)
-  [ -z "$said" ] || { echo "SN_BENCH_RC=$said"; exit "$said"; }
-}
 gpu_line() {  # the first GPU nvidia-smi names, with its memory and driver, or nothing
   nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv,noheader 2>/dev/null | head -n 1
 }
@@ -168,7 +166,10 @@ study_tool() {  # study_tool VERB ARG...: the tool, for a verb that takes second
   "${TOOL_ARGV[@]}" "$@"
 }
 TOOL=""
-TOOL_GRACE=60
+# The tool's grace after TERM, kept inside the launcher's (flows/launch.py, STOP_GRACE_SECONDS, 60 s),
+# after which the launcher kills every process of the flow, the body among them: the tool's closing
+# line and the body's own exit line are written well before that.
+TOOL_GRACE=45
 study_tool_waited() {  # study_tool_waited VERB ARG...: the tool for a step's long verb, in the background and waited on
   # job submit asks Slurm for TERM to the batch shell alone two minutes before the time limit
   # (--signal=B:TERM@120, hpcworker's framework/lib/jobs.sh), which a shell running a command in the
@@ -230,23 +231,48 @@ mask_state() {  # mask_state NAME: where a segmenter's masks are, or that their 
 
 # The driver's side: the launcher, started from the copy and waited on, as the tool is.
 LAUNCHER=""
-# How long the driver waits, after passing Slurm's TERM on to the launcher, for the step's body to
-# write its own exit line: the body gives its tool TOOL_GRACE seconds, and Slurm's warning comes two
+LAUNCH_RC=""
+# How long the driver waits, after passing Slurm's TERM on to the launcher, for the launcher to end:
+# the launcher gives the flow's processes 60 s before it kills them (flows/launch.py,
+# STOP_GRACE_SECONDS), the body gives its tool TOOL_GRACE of those, and Slurm's warning comes two
 # minutes before the time limit.
 STEP_GRACE=80
-launch_part() {  # launch_part WORDS...: this step's run of the flow from the copy, waited on; then the job ends as the step's file says
-  local rc
+launch_part() {  # launch_part WORDS...: this step's run of the flow from the copy, waited on; then the job's end (part_end)
   # SCHWINGNET names the copy as the code the launcher and the flow run; the checkout is the body's SN_CHECKOUT.
   env SCHWINGNET="$CODE" SN_CHECKOUT="$REPO" bash "$CODE/grid/box.sh" "$venv/bin/python" "$CODE/flows/launch.py" drr_gap --max-workers 1 -- \
     --part "$STEP" --prepare-job "$PREPARE" --out "$OUT" "$@" &
   LAUNCHER=$!
-  wait "$LAUNCHER"; rc=$?
+  wait "$LAUNCHER"; LAUNCH_RC=$?
   LAUNCHER=""
-  end_if_written
-  # The body wrote no exit line: the launcher refused before any flow started, or the flow failed
-  # before its step ended; the launcher's last lines in the job's log say which.
-  [ "$rc" != 0 ] || rc=1
-  no_exit_line "$rc" "FAILED: the launcher ended $rc and the step's work wrote no exit line (a refusal of the launcher's, or a fault of the flow; the job's log says which)"
+  part_end
+}
+# The job's end comes from two words: the exit line the step's work wrote in its file and the
+# launcher's code, which is the flow's verdict, or the flow's own code where it failed. Where they
+# agree, or the work failed on its own, the work's line ends the job as before. Where the work ended
+# 0 and the flow did not, the job's exit is the launcher's, as for every launched flow's job, and
+# the step's file, the merge's report with it, says why beneath the work's line: for the merge, its
+# end found the study's CLAIM and REFORMS report not current, or failed before it. Where the work
+# wrote no line and the flow ended 0, the launcher resumed a run of these words whose finished step
+# Metaflow cloned rather than ran again (work_cloned); where it wrote none and the flow did not end
+# 0, the launcher refused or the flow failed before the work ended (no_exit_line).
+part_end() {
+  local said
+  said=$(step_exit)
+  case "$said" in
+    "") ;;
+    0) [ "$LAUNCH_RC" != 0 ] || { echo "SN_BENCH_RC=0"; exit 0; }
+       after_work "$LAUNCH_RC" "FAILED: the step's work ended 0, but its flow ended $LAUNCH_RC: $(flow_fault_words)" ;;
+    *) echo "SN_BENCH_RC=$said"; exit "$said" ;;
+  esac
+  [ "$LAUNCH_RC" != 0 ] || work_cloned
+  no_exit_line "$LAUNCH_RC" "FAILED: the launcher ended $LAUNCH_RC and the step's work wrote no exit line (a refusal of the launcher's, or a fault of the flow; the job's log says which)"
+}
+flow_fault_words() {  # why a flow fails after its step's work ended 0, as far as the driver can tell
+  if [ "$STEP" = merge ]; then
+    echo "the study's CLAIM and REFORMS report under runs/$PREPARE/ is not current, or the flow's end failed before it was checked (the job's log and the run's page say which); the numbers above stand"
+  else
+    echo "its end failed after the work (the job's log and the run's page say why)"
+  fi
 }
 no_exit_line() {  # no_exit_line RC WHY: the step's end where its work wrote none
   case "$STEP" in
@@ -255,14 +281,68 @@ no_exit_line() {  # no_exit_line RC WHY: the step's end where its work wrote non
     merge) report "$2"; merge_finish "$1" ;;
   esac
 }
-launcher_stop() {  # the TERM passed on to the launcher, which passes it to the flow, then up to STEP_GRACE seconds for the step's work to write its exit line
+after_work() {  # after_work RC WHY: the step's end where its work ended 0 and its flow did not, WHY and RC beneath the work's line
+  case "$STEP" in
+    prepare) report "$2"; step_end "$1" ;;
+    shard) shard_end "$1" "$2" ;;
+    merge) merge_after "$1" "$2" ;;
+  esac
+}
+merge_after() {  # merge_after RC WHY: the merge's report, whose last line is its work's exit 0, and its step file, ended with WHY and RC
+  local ended
+  ended="$(date -u '+%F %T') UTC"
+  if [[ "$(tail -n 1 "$REPORT" 2>/dev/null)" =~ ^-\ exit\ 0\  ]]; then
+    { echo "- $2"; echo "- exit $1 at $ended"; } >> "$REPORT"
+  fi
+  { echo "- $2"; echo "- exit $1 at $ended"; } >> "$STEP_FILE"
+  echo "- $2"
+  echo "SN_BENCH_RC=$1"
+  exit "$1"
+}
+work_cloned() {  # the step's end where the flow ended 0 and this job's work wrote no exit line
+  local why="the flow ended 0 and this job's work wrote no exit line: the launcher resumed a run of these words whose finished step Metaflow cloned"
+  case "$STEP" in
+    # A prepare's words name its own job, so only a run outside Slurm can resume one, and this
+    # prepare cleared what that step made before it began.
+    prepare) report "FAILED: $why, though this prepare cleared analysis/PREPARED.json before it began; send the word again for a new chain"; step_end 1 ;;
+    shard) shard_end 0 "$why, which did this task's units" ;;
+    merge)
+      if [ "$(head -n 1 "$REPORT" 2>/dev/null)" = "$(head -n 1 "$STEPS/prepare.md" 2>/dev/null)" ] \
+        && [[ "$(tail -n 1 "$REPORT" 2>/dev/null)" =~ ^-\ exit\ 0\  ]]; then
+        report "$why, whose report stands, its end checking the study's report again in this job"
+        step_end 0
+      fi
+      report "FAILED: $why, but the report in the checkout is not that run's whole report"; merge_finish 1 ;;
+  esac
+}
+launcher_stop() {  # the TERM passed on to the launcher, which passes it to the flow, then up to STEP_GRACE seconds for the launcher to end
   local waited=0
   [ -n "$LAUNCHER" ] || return 0
   kill -TERM "$LAUNCHER" 2>/dev/null
-  while [ -z "$(step_exit)" ] && [ "$waited" -lt "$STEP_GRACE" ]; do sleep 1; waited=$((waited + 1)); done
+  while kill -0 "$LAUNCHER" 2>/dev/null && [ "$waited" -lt "$STEP_GRACE" ]; do sleep 1; waited=$((waited + 1)); done
+}
+term_end() {  # term_end WHY: the step's end where Slurm's TERM came, after the launcher had its grace to end
+  local said
+  said=$(step_exit)
+  case "$said" in
+    "") term_unwritten "$1" ;;
+    0) after_work 143 "TERMINATED: $1, after the step's work ended 0 and before its flow's end $(flow_end_words)" ;;
+    *) echo "SN_BENCH_RC=$said"; exit "$said" ;;
+  esac
+}
+flow_end_words() {  # what a flow's end does that a TERM after its work cut short
+  if [ "$STEP" = merge ]; then echo "wrote and checked the study's CLAIM and REFORMS report"; else echo "gave its verdict"; fi
+}
+term_unwritten() {  # term_unwritten WHY: the TERM's line where the step's work wrote no exit line; the merge then writes no report, so the next send of the word queues the study again
+  case "$STEP" in
+    prepare) report "TERMINATED: $1"; step_end 143 ;;
+    shard) shard_end 143 "$1" ;;
+    merge) report "TERMINATED: $1, so no report is written"; step_end 143 ;;
+  esac
 }
 
 step_prepare() {
+  local gpu
   STEP_FILE=$STEPS/prepare.md
   # A prepare starts the study over: what an earlier chain's steps said, its copy's name and its
   # marker that the analysis was cut into units go first, so no later step of this chain reads them.
@@ -273,7 +353,7 @@ step_prepare() {
   rm -rf "$ANALYSIS/runlog"
   started_at=$(git -C "$REPO" rev-parse HEAD 2>/dev/null)
   echo "# bench flexray_drr_gap: job ${SLURM_JOB_ID:-none} on $(hostname), commit ${started_at:0:7}, $(date -u '+%F %T') UTC" | tee "$STEP_FILE"
-  trap 'launcher_stop; end_if_written; report "TERMINATED: Slurm ended prepare (its time, or a cancel)"; step_end 143' TERM
+  trap 'launcher_stop; term_end "Slurm ended prepare (its time, or a cancel)"' TERM
   [ -n "$started_at" ] || { report "FAILED: the checkout at $REPO names no commit"; step_end 2; }
   # The code every step runs, copied from the commit as git holds it, so the gate's fast-forward of
   # the checkout, which no HOLD stops, changes nothing a later step reads; its record names the
@@ -289,22 +369,24 @@ step_prepare() {
   report "code: commit $started_at copied to $CODE, which every step runs; no step holds the checkout"
   prereg_frozen || { report "STOP: PREREG.md changed since the freeze"; step_end 90; }
   report "PREREG.md: as frozen, sha256 $(cut -c1-16 "$CODE/docs/research/drr-domain-gap/PREREG.md.sha256")"
+  # The card is read here, on the node, as each shard reads its own, and not inside the container the
+  # flow's step runs in, whose nvidia-smi only the container's --nv brings in.
+  gpu=$(gpu_line)
+  [ -n "$gpu" ] || { report "FAILED: nvidia-smi names no GPU on $(hostname)"; step_end 4; }
+  # Any card of the gpu class (the owner's word of 2026-10-28 00:23 UTC), named so each number can be
+  # read against the card it ran on.
+  report "GPU: $gpu"
   # The launcher and the flow run in the study's environment, which carries train-gpu's Metaflow.
   study_venv || { report "FAILED: the environment for $DRR_GAP_PIN could not be made"; step_end 1; }
   PREPARE=${SLURM_JOB_ID:-none}
   launch_part
 }
 body_prepare() {
-  local gpu weights index imagenet rc
+  local weights index imagenet rc
   STEP_FILE=$STEPS/prepare.md
   trap 'trap "" PIPE; tool_stop; report "TERMINATED: Slurm ended prepare (its time, or a cancel)"; step_end 143' TERM
   code_of || { report "FAILED: analysis/CODE names no copy of the code"; step_end 2; }
   prereg_frozen || { report "STOP: PREREG.md changed since the freeze"; step_end 90; }
-  gpu=$(gpu_line)
-  [ -n "$gpu" ] || { report "FAILED: nvidia-smi names no GPU on $(hostname)"; step_end 4; }
-  # Any card of the gpu class (the owner's word of 2026-10-28 00:23 UTC), named so each number can be
-  # read against the card it ran on.
-  report "GPU: $gpu"
   # The study's inputs, each named in the report, since its numbers are read against them. The gate
   # refused the word without them (bench_inputs_missing); a miss here is a samples run or a fetch
   # that moved since, said and failed rather than run on part of the table.
@@ -352,11 +434,13 @@ shard_gpu() {  # the card's name alone, for the task's line
 step_shard() {
   STEP_FILE=$STEPS/shard-$TASK.md
   shard_gpu
-  trap 'launcher_stop; end_if_written; shard_end 143 "Slurm ended the task (its time, or a cancel)"' TERM
+  trap 'launcher_stop; term_end "Slurm ended the task (its time, or a cancel)"' TERM
   # Rule 9: a task whose input is not ready says so and exits 0, and the merge reports why; no flow
-  # starts for it, since it has nothing of the study to run.
-  if ! code_of || [ ! -f "$ANALYSIS/PREPARED.json" ] || ! prepared_here; then
-    shard_end 0 "nothing to claim, since prepare did not finish (no analysis/PREPARED.json, or no copy of the code, from this chain's prepare)"
+  # starts for it, since it has nothing of the study to run. Prepare's step file must end in exit 0
+  # too: a prepare whose work ended 0 and whose flow did not ends its job otherwise (part_end), and
+  # the merge then reports that the shards ran nothing.
+  if ! code_of || [ ! -f "$ANALYSIS/PREPARED.json" ] || ! prepared_here || ! prepare_ended_well; then
+    shard_end 0 "nothing to claim, since prepare did not finish (no analysis/PREPARED.json, no copy of the code or no exit 0, from this chain's prepare)"
   fi
   prereg_frozen || shard_end 90 "STOP: PREREG.md changed since the freeze"
   study_venv || shard_end 1 "FAILED: the environment for $DRR_GAP_PIN could not be made"
@@ -414,15 +498,29 @@ shard_lines() {  # one line per task of the array, its own or one saying it left
   done
 }
 SUMMARY_LINES=85  # what the report carries of the summary, and what tools/report.py reads of it (SUMMARY_LINES)
+# How the gate's word prints the report, the form a recorded run of the study is committed in: its
+# first PRINTED_LINES lines, printable ASCII, each line through the masking filter and cut at
+# LINE_CHARS, at most PRINTED_BYTES in all.
+PRINTED_LINES=220 LINE_CHARS=200 PRINTED_BYTES=45000
+as_printed() {  # stdin as the gate's word prints a report; a cut at PRINTED_BYTES that ends the pipe early fails nothing
+  ( set +o pipefail
+    head -n "$PRINTED_LINES" | LC_ALL=C tr -cd '\11\12\40-\176' | sed -r -f "$REDACT" | cut -c "1-$LINE_CHARS" | head -c "$PRINTED_BYTES" )
+}
+summary_as_printed() {  # the summary's lines as the report prints them, without their indent of two
+  ( set +o pipefail
+    printf '%s\n' "$SUMMARY" | head -n "$SUMMARY_LINES" | LC_ALL=C tr -cd '\11\12\40-\176' | cut -c "1-$((LINE_CHARS - 2))" )
+}
 study_record() {  # the run's record for the study's CLAIM and REFORMS report, where the flow names its folder (SN_STUDY_RECORD)
-  # As docs/research/drr-domain-gap/runs/<prepare job>/ holds a recorded run: the report as BENCH.md,
-  # the summary as summary.txt and the groups table the run read as groups.json, which tools/report.py
-  # --study reads, so the folder can be committed as it is; a report written there before is taken
-  # away, so the flow's end writes the one this run gives.
+  # As docs/research/drr-domain-gap/runs/<prepare job>/ holds a recorded run: the report as BENCH.md
+  # and the summary as summary.txt, each as the gate's word prints them (the summary indented two in
+  # the report, so cut two shorter, its lines through the filter already), and the groups table the
+  # run read as groups.json, which tools/report.py --study reads, so the folder can be committed as
+  # it is; a report written there before is taken away, so the flow's end writes the one this run gives.
   local record=${SN_STUDY_RECORD:-}
   [ -n "$record" ] || return 0
   mkdir -p "$record" && rm -f "$record/REPORT.md" "$record/claim.json" "$record/reforms.json" \
-    && cp "$REPORT" "$record/BENCH.md" && printf '%s\n' "$SUMMARY" | head -n "$SUMMARY_LINES" > "$record/summary.txt" \
+    && as_printed < "$REPORT" > "$record/BENCH.md" \
+    && summary_as_printed > "$record/summary.txt" \
     && cp "$CODE/data/domain_gap/groups.json" "$record/groups.json" \
     || echo "drr-gap: the study's record could not be written under $record, so the flow's end finds no report to write"
 }
@@ -451,7 +549,7 @@ step_merge() {
   STEP_FILE=$STEPS/merge.md
   : > "$STEP_FILE"
   # Cut short, the merge writes no report, so the next send of the word queues the study again.
-  trap 'launcher_stop; end_if_written; report "TERMINATED: Slurm ended the merge (its time, or a cancel), so no report is written"; step_end 143' TERM
+  trap 'launcher_stop; term_end "Slurm ended the merge (its time, or a cancel)"' TERM
   report "merge: job ${SLURM_JOB_ID:-none} on $(hostname)"
   if ! prepared_here; then
     # No report either: one would stand at this commit and keep the word from queueing the study
