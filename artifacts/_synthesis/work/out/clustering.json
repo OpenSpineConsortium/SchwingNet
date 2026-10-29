@@ -1474,7 +1474,8 @@
     "members": [
      "SchwingNet/counting-against-two-anchors-qkktgu",
      "SchwingNet/spinal-border-variants-fye5ef",
-     "SchwingNet/rib-anchor-audit-t7wr2h"
+     "SchwingNet/rib-anchor-audit-t7wr2h",
+     "SchwingNet/gold-tier-3-ct-xdgjjg"
     ],
     "canonical": [
      "SchwingNet/counting-against-two-anchors-qkktgu",
@@ -1953,6 +1954,14 @@
     "cluster_count": 14,
     "strengths": "Read naming and counting as one line of work from the context ladder of 13 September to the 22 September report and its figures, which the records bear out (the same six-step chain under both names), and named the counting-versus-naming fork a reader must decide; made the OR case (proposal, visual abstract, grant, IRB drafts) one cluster for the surgeon, grant and IRB readers; kept the grid and Beethoven apart; dated the undated pages by shared figures (6,073 instances, 4,327 images, 76.9% recall).",
     "weaknesses": "Marked the registration-free feasibility review superseded on a 'contradicts' relation, which is not supersession, and the build plan superseded by the handoff, which answers a different question; left the two flyers unordered although the export calls one the first and both carry one registration form, and the two Without-CT pages unordered although the summary's own text says the linking fix was 'in testing'; kept an eight-member Symphony cluster that mixes the origins with the positioning."
+   }
+  ],
+  "placed_later": [
+   {
+    "id": "SchwingNet/gold-tier-3-ct-xdgjjg",
+    "cluster": "Transitional vertebrae and border variants",
+    "date": "2026-10-29",
+    "why": "The page counts L6, four-lumbar, 11- and 13-rib and asymmetric-rib spines with names and rib calls kept apart, which is the subject of this cluster."
    }
   ]
  }

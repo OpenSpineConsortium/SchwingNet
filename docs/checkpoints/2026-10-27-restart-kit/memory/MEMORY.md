@@ -15,6 +15,7 @@ Loaded from SchwingNet docs/checkpoints/2026-10-27-restart-kit/memory/. The rese
 ## Findings (headlines; FINDINGS.md has the records)
 - [findings-naming](findings-naming.md): the exact Bayes rule's ceiling, the neighbour and identifiability studies, the junction predictor, the panoramas' preliminary 100 percent.
 - [findings-flexray-flux-drr](findings-flexray-flux-drr.md): what FleXray is and is not, how FluXray was made (CSAIL trained no realism model), the benchmark, the DRR domain-gap study's state.
+- [gold3-ct-dataset](gold3-ct-dataset.md): the gold tier 3 CT dataset, merged 2026-10-28 (SchwingNet #437, bordercall #17), its private page and bench, and the owner's open disagreement with 17 VerSe and no TotalSegmentator rows; handoff docs/checkpoints/2026-10-28-gold3-ct-handoff/HANDOFF.md.
 - [findings-corpus-and-data](findings-corpus-and-data.md): the gold and silver tiers and what is held, the corpus search, pending sources, room on the grid, fetch sizes.
 
 ## Paused, and the owner's
