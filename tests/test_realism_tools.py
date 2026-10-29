@@ -203,17 +203,34 @@ class RealismToolTest(unittest.TestCase):
         self.assertEqual(self.tool.worst(words), "separable")
         self.assertEqual(self.tool.worst([]), "undecided")
 
-    def test_soft_dice_averages_the_present_channels_and_the_background(self):
+    def test_soft_dice_is_flexrays_over_the_channels_with_truth_and_channel_0_is_the_background(self):
         import numpy as np
 
-        truth = np.zeros((2, 4, 4), dtype=bool)
-        truth[0, :2, :] = True
-        probabilities = np.zeros((2, 4, 4), dtype=np.float32)
-        # nothing claimed: the present channel scores 0, the background is claimed whole and true on 8 of 16
-        empty = self.tool.soft_dice(probabilities, truth)
-        self.assertAlmostEqual(empty, (0.0 + 2 * 8 / (16 + 8)) / 2, places=5)
-        probabilities[0] = truth[0]
+        truth = np.zeros((3, 4, 4), dtype=bool)
+        truth[1, :2, :] = True
+        probabilities = np.zeros((3, 4, 4), dtype=np.float32)
+        # nothing claimed: channel 1 scores 0 and so does the background, true on the 8 pixels no channel
+        # claims; channel 2, with no truth, is left out
+        self.assertAlmostEqual(self.tool.soft_dice(probabilities, truth), 0.0, places=5)
+        # the background claimed whole: 2 x 8 / (16 + 8) on it, 0 on channel 1
+        probabilities[0] = 1.0
+        self.assertAlmostEqual(self.tool.soft_dice(probabilities, truth), (0.0 + 2 * 8 / (16 + 8)) / 2, places=5)
+        probabilities[0], probabilities[1] = ~truth[1], truth[1]
         self.assertAlmostEqual(self.tool.soft_dice(probabilities, truth), 1.0, places=5)
+        # the truth's own channel 0 is read as what no other channel claims, whatever the render left in it
+        truth[0] = True
+        self.assertAlmostEqual(self.tool.soft_dice(probabilities, truth), 1.0, places=5)
+
+    def test_the_render_projects_hard_masks_at_flexrays_training_threshold(self):
+        import inspect
+
+        self.assertIn("seg_threshold=0.0", inspect.getsource(self.tool.render_one))
+
+    def test_a_records_subject_is_read_from_its_metadata_and_never_from_the_sample_key(self):
+        self.assertEqual(self.tool.record_subject(types.SimpleNamespace(data_id="s1", subject_id="s1", metadata={"subject": "0007"})), "0007")
+        self.assertEqual(self.tool.record_subject(types.SimpleNamespace(data_id="s1", subject_id="s1", metadata={})), "")
+        self.assertEqual(self.tool.record_subject(types.SimpleNamespace(subject_id="s1", metadata={"subject_id": 12, "subject": "x"})), "12")
+        self.assertEqual(self.tool.record_subject(types.SimpleNamespace(subject_id="s1", metadata=None)), "")
 
     def test_the_filter_works_per_pose_group_and_keeps_each_groups_best(self):
         scores = [{"sample_id": f"s{i}", "pose_id": pose, "raw_soft_dice": 0.5, "flux_soft_dice": flux}

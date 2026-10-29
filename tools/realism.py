@@ -1107,6 +1107,17 @@ def folder_digest(files):
     return hashlib.sha256(lines.encode("utf-8")).hexdigest()
 
 
+def record_subject(record):
+    """The subject a FluXray record's metadata names, by the keys FleXray's reader prefers; a record
+    naming none gives no subject, since the reader falls back to the sample key there and would make
+    every sample a subject of its own."""
+    metadata = getattr(record, "metadata", None) or {}
+    for key in ("subject_id", "subject", "subject_key"):
+        if metadata.get(key) is not None:
+            return str(metadata[key])
+    return ""
+
+
 def thunder_ids(db_root):
     """Every FluXray sample in its ThunderDB with its subject and split, by FleXray's own reader of
     each split (the reader the DRR study read FluXray through, tools/domain_gap.py)."""
@@ -1129,7 +1140,7 @@ def thunder_ids(db_root):
             raise Refused(f"the FleXray reader could not open the split {id_shape(split)} of the FluXray ThunderDB",
                           detail=f"split {split} of {db_root}")
         for record in backend.records:
-            found[record.data_id] = {"subject_id": record.subject_id or "", "split": split, "backend": backend,
+            found[record.data_id] = {"subject_id": record_subject(record), "split": split, "backend": backend,
                                      "record": record}
     return found
 
@@ -1425,7 +1436,10 @@ def render_one(volume, affine, dense, pose, recipe, targets, channels, device):
                   "x0": [0.0], "y0": [0.0], "height": recipe.render_pixels, "width": recipe.render_pixels}
     request = DRRRenderRequest(rot=torch.tensor([[float(alpha), 0.0, 0.0]]), xyz=torch.tensor([[0.0, float(y), float(z)]]),
                                intrinsics=intrinsics, isocenter=torch.tensor([volume_centre_mm(volume.shape, affine)], dtype=torch.float32),
-                               orientation="AP", n_samples=RAY_SAMPLES, orthographic=False)
+                               orientation="AP", n_samples=RAY_SAMPLES, orthographic=False,
+                               # FleXray's training projects hard masks at 0.0 (its camera runtime's
+                               # default, which the MOOSE config leaves alone); the request's own is 0.5
+                               seg_threshold=0.0)
     with torch.inference_mode():
         result = render_drr(volume=torch.from_numpy(volume)[None].to(device), label=torch.from_numpy(dense).to(device),
                             affine=torch.as_tensor(affine, dtype=torch.float32).to(device), request=request,
@@ -1590,18 +1604,20 @@ def write_edit(out, log, row, edited, png):
 
 
 def soft_dice(probabilities, truth):
-    """FluXray's filter statistic: the soft Dice averaged over the channels with any truth and over the
-    background, read as what no channel claims (the paper: empty labels ignored, background included)."""
+    """FluXray's filter statistic as FleXray's soft_dice_score computes it (square denominator, 1e-7
+    smoothing, the mean over the channels with any truth): channel 0 is the model's background
+    channel, whose truth is what no other channel claims, since the projected masks leave it empty
+    (the paper: empty labels ignored, background included)."""
     import numpy as np
 
-    channels = truth.reshape(truth.shape[0], -1).astype(np.float64)
-    present = channels.any(axis=1)
-    p = probabilities.reshape(probabilities.shape[0], -1).astype(np.float64)[present]
-    t = channels[present]
-    background_t = (~truth.any(axis=0)).reshape(1, -1).astype(np.float64)
-    background_p = (1.0 - probabilities.max(axis=0)).reshape(1, -1).astype(np.float64)
-    p, t = np.concatenate([p, background_p]), np.concatenate([t, background_t])
-    return float(np.mean(2.0 * (p * t).sum(axis=1) / ((p ** 2).sum(axis=1) + (t ** 2).sum(axis=1) + 1e-7)))
+    t = truth.reshape(truth.shape[0], -1).astype(np.float64)
+    t[0] = 1.0 - t[1:].max(axis=0)
+    p = probabilities.reshape(probabilities.shape[0], -1).astype(np.float64)
+    present = t.any(axis=1)
+    p, t = p[present], t[present]
+    smooth = 1e-7
+    scores = (2.0 * (p * t).sum(axis=1) + smooth) / np.maximum((p ** 2).sum(axis=1) + (t ** 2).sum(axis=1) + smooth, smooth)
+    return float(np.mean(scores))
 
 
 def filter_rows(scores):
@@ -1630,6 +1646,10 @@ def score_edits(args, only):
     from fxr.inference import FleXraySegmenter
 
     segmenter = FleXraySegmenter.from_pretrained(args.weights, subfolder=args.member, device=args.device)
+    label_names = list(segmenter.label_names)
+    if not label_names or label_names[0] != "background":
+        raise Refused("the segmenter's first channel is not the background, which the soft Dice reads channel 0 as",
+                      detail=f"first channel {label_names[0] if label_names else 'none'}")
     samples = manifest_rows(args.raw)
     raw_found = images_in(Path(args.raw) / "raw")
     edited_found = images_in(Path(args.edited) / "edited")
