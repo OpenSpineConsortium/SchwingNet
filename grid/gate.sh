@@ -807,7 +807,10 @@ bench_progress() {  # every benchmark under BENCH_ROOT that keeps a PROGRESS.txt
 # are judged as a stage report's lines are (report_shapes), and every line is masked. The writer puts
 # how the run ended, its verdict and its reports, right after the two head lines and shows a few tasks
 # of each step, so a whole smoke plan's run fits in FLOW_PROGRESS_LINES; the cut is only a bound.
-FLOW_RUNS_SHOWN=4 FLOW_PROGRESS_LINES=40
+# The file's own word is written while the run still moves, and nothing draws a dead job's page
+# again, so status judges silence as it prints: a run the file calls running that has not moved for
+# FLOW_SILENT_SECONDS (stage_progress.SILENT_SECONDS) is shown silent, with a line saying so.
+FLOW_RUNS_SHOWN=4 FLOW_PROGRESS_LINES=40 FLOW_SILENT_SECONDS=600
 flow_shapes() {  # a flow's progress lines, its tasks' and its reports' judged as a stage report's
   local line
   while IFS= read -r line; do
@@ -816,6 +819,22 @@ flow_shapes() {  # a flow's progress lines, its tasks' and its reports' judged a
       *) printf '%s\n' "$line" ;;
     esac
   done
+}
+flow_lines() {  # flow_lines FILE: its first FLOW_PROGRESS_LINES lines, a running run judged silent by the file's age
+  local progress=$1 moved now first=""
+  moved=$(date -u -r "$progress" +%s 2>/dev/null) now=$(date -u +%s)
+  # The head is read without a pipe: grep -q ending early would fail head under pipefail.
+  IFS= read -r first < "$progress" || true
+  case "$first" in
+    "flow "*": running, started "*)
+      if [ -n "$moved" ] && [ $((now - moved)) -gt "$FLOW_SILENT_SECONDS" ]; then
+        printf '%s\n' "${first/: running, started /: silent, started }"
+        echo "silent: no file of this run has moved for $(( (now - moved) / 60 )) minutes by this status; a job Slurm ended writes nothing more, and a resume is a new run"
+        sed -n "2,$((FLOW_PROGRESS_LINES - 1))p" "$progress"
+        return
+      fi ;;
+  esac
+  head -n "$FLOW_PROGRESS_LINES" "$progress"
 }
 flow_progress() {  # the newest runs of every launched flow, each its PROGRESS.txt as status shows it
   local progress run kind
@@ -826,7 +845,7 @@ flow_progress() {  # the newest runs of every launched flow, each its PROGRESS.t
     case "$run" in ""|*[!A-Za-z0-9_.-]*) continue ;; esac
     case "$kind" in ""|*[!a-z0-9_]*) kind=unknown ;; esac
     echo "## flow $kind $run, progress ($(date -u -r "$progress" '+%F %H:%M') UTC)"
-    head -n "$FLOW_PROGRESS_LINES" "$progress" | LC_ALL=C tr -cd '\11\12\40-\176' | flow_shapes | masked | sed 's/^/  /'
+    flow_lines "$progress" | LC_ALL=C tr -cd '\11\12\40-\176' | flow_shapes | masked | sed 's/^/  /'
   done
 }
 

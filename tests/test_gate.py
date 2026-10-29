@@ -2863,20 +2863,24 @@ esac
     def flow_root(self):
         return self.tmp / "go2432" / "metaflow"
 
-    def flow_run(self, run, lines, kind="sweep"):
-        """A launched flow's progress folder with its PROGRESS.txt as flows/stage_progress.py writes it."""
+    def flow_run(self, run, lines, kind="sweep", state="running"):
+        """A launched flow's progress folder with its PROGRESS.txt as flows/stage_progress.py writes it,
+        updated now, as a live run's is."""
         folder = self.flow_root() / "progress" / "SweepFlow" / run
         folder.mkdir(parents=True, exist_ok=True)
-        head = f"flow SweepFlow/{run} {kind}: running, started 2026-10-29 03:00:00 UTC, updated 2026-10-29 03:05:00 UTC"
+        updated = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
+        head = f"flow SweepFlow/{run} {kind}: {state}, started 2026-10-29 03:00:00 UTC, updated {updated} UTC"
         (folder / "PROGRESS.txt").write_text("\n".join([head, *lines]) + "\n", encoding="utf-8")
         return folder / "PROGRESS.txt"
 
     def test_status_shows_the_newest_launched_flows_progress_its_quotes_judged_as_a_reports(self):
         # the owner's rule of 2026-10-29: every launched flow keeps a progress page; status shows the
         # newest runs' short lines under a heading tools/progress_page.py reads back into the page
+        # each file moved within the last few minutes, so none is judged silent
+        moved = int(time.time()) - 200
         for n in range(6):
             progress = self.flow_run(f"17929025852864{n:02d}", ["run: key 68974c7ccabf5595, commit 35a4b6f"])
-            os.utime(progress, (1_800_000_000 + n, 1_800_000_000 + n))
+            os.utime(progress, (moved + n, moved + n))
         # the lines in the order flows/stage_progress.py writes them, how the run ended first; a file
         # longer than FLOW_PROGRESS_LINES, which the writer never makes, is cut there all the same
         newest = self.flow_run("1792902585286499", [
@@ -2890,10 +2894,11 @@ esac
             "step first: running; 1 done, 1 failed of 2",
             "task first resnet18-64px-3d291b87: failed; fault, why: SweepFault: block_sweep row exited 2: no frame case134_19650312.png",
             "task first resnet34-32px-b2928840: done; Outcome: ran, matched the check."] + [f"task first row{n}: done" for n in range(60)])
-        os.utime(newest, (1_800_000_100, 1_800_000_100))
+        os.utime(newest, (moved + 100, moved + 100))
         odd = self.flow_root() / "progress" / "SweepFlow" / "not a run"
         odd.mkdir(parents=True)
         (odd / "PROGRESS.txt").write_text("flow SweepFlow/x sweep: running\n", encoding="utf-8")
+        os.utime(odd / "PROGRESS.txt", (moved - 100, moved - 100))
         done = self.gate("status")
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
         out = done.stdout
@@ -2941,6 +2946,35 @@ esac
         self.assertIn("  step first: done; 25 done of 25\n", section)
         self.assertIn("  step end: waiting\n", section)
         self.assertNotIn("Doe_John", done.stdout)
+
+    def test_status_shows_a_running_run_whose_file_has_not_moved_for_ten_minutes_as_silent(self):
+        # a job Slurm killed draws nothing more, so its file still says running: status judges it by
+        # the file's age as it prints it, and says so in a line tools/progress_page.py reads back
+        long_ago = int(time.time()) - 25 * 60
+        dead = self.flow_run("1792902585286401", ["run: key 68974c7ccabf5595"] + [f"task first row{n}: done" for n in range(60)])
+        os.utime(dead, (long_ago, long_ago))
+        ended = self.flow_run("1792902585286402", ["run: key 68974c7ccabf5595", "verdict: 0"], state="succeeded")
+        os.utime(ended, (long_ago - 1, long_ago - 1))
+        live = self.flow_run("1792902585286403", ["run: key 68974c7ccabf5595"])
+        done = self.gate("status")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        out = done.stdout
+        dead_section = out.split("## flow sweep 1792902585286401, progress (", 1)[1].split("\n## ", 1)[0].splitlines()[1:]
+        self.assertRegex(dead_section[0], r"^  flow SweepFlow/1792902585286401 sweep: silent, started ")
+        self.assertRegex(dead_section[1], r"^  silent: no file of this run has moved for 2[56] minutes by this status; ")
+        self.assertEqual(dead_section[2], "  run: key 68974c7ccabf5595")
+        self.assertEqual(len(dead_section), 40, "the line status adds keeps the run inside the lines it shows")
+        self.assertIn("  flow SweepFlow/1792902585286402 sweep: succeeded, started ", out)
+        self.assertIn("  flow SweepFlow/1792902585286403 sweep: running, started ", out)
+        self.assertEqual(out.count("  silent: "), 1, out)
+        answer, page = self.tmp / "status.txt", self.tmp / "page.html"
+        answer.write_text(out, encoding="utf-8")
+        drawn = subprocess.run([sys.executable, str(ROOT / "tools" / "progress_page.py"), str(answer), "--run", "1792902585286401",
+                                "--out", str(page)], capture_output=True, text=True, timeout=60)
+        self.assertEqual(drawn.returncode, 0, drawn.stderr)
+        html = page.read_text(encoding="utf-8")
+        self.assertIn('<span class="badge silent">silent</span>', html)
+        self.assertIn('<p class="silent">no file of this run has moved for ', html)
 
     def test_the_status_answer_draws_the_flows_page_off_the_grid(self):
         self.flow_run("1792902585286499", ["run: key 68974c7ccabf5595, commit 35a4b6f", "step start: done", "step first: running; 1 done, 1 running of 2",

@@ -135,7 +135,8 @@ request.
   number that is to be published.
 - `stage_progress.py` draws the page. Each run keeps <datastore root>/progress/<Flow>/<run>/:
   run.json, the head the launcher writes once Metaflow has named the run (its kind, key, commit,
-  code, PREREG and, for a resume, its origin, whose finished steps the page shows as cloned);
+  code, PREREG and, for a resume, its origin, whose finished steps the page shows as cloned and
+  whose tasks still running when it was cut as cut, to be run again, never as running);
   graph.json; one file a task under tasks/, which only that task writes; result.json from end; and
   launch.json, how the launcher saw the flow end. Every write draws index.html, the page, which
   reloads itself every 30 s while the run lasts; PROGRESS.txt, the same in short lines, how the
@@ -143,9 +144,13 @@ request.
   lines, those not current first) right after its two head lines, and then each step with its
   first eight tasks, a failed one first, so the 40 lines the gate's status keeps of a run always
   hold its end; and
-  <datastore root>/progress/index.html, the newest runs of every flow. A run whose files have not
-  moved for ten minutes is shown silent. Nothing here fails a step: a page that cannot be written
-  is said once in the step's log.
+  <datastore root>/progress/index.html, the newest runs of every flow. A run still running whose
+  files have not moved for ten minutes is silent: a job Slurm ended writes nothing more, so its own
+  page keeps the word running it last wrote, and silence is judged where the page is read instead,
+  by the page's script in the browser when it is opened, by the list of runs whenever any run
+  draws it, by the gate's status from PROGRESS.txt's time (the head then says silent, with a line
+  saying how long), and by tools/progress_page.py from the status answer's time. Nothing here
+  fails a step: a page that cannot be written is said once in the step's log.
 
 To open a page in the browser on the grid: Open OnDemand (https://ondemand.grid.wayne.edu, on the
 university's VPN), Files, then /rs/rs_grp_oschome/go2432/metaflow/progress/, the flow's folder,

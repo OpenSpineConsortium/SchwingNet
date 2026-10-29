@@ -932,16 +932,52 @@ class ProgressPageTest(unittest.TestCase):
         view = a_run(self.root)
         later = progress.parse_time(view["updated"]) + progress.SILENT_SECONDS + 1
         self.assertEqual(progress.view_of_folder(self.root, "SweepFlow", "1792902585286456", now=later)["state"], "silent")
+        self.assertEqual(progress.judged("running", view["updated"], later - 2), "running")
+        self.assertEqual(progress.judged("failed", view["updated"], later), "failed", "only a run still running falls silent")
+        self.assertEqual(progress.judged("running", "not a time", later), "running", "a time that cannot be read judges nothing")
         progress.write_launch(self.root, "SweepFlow", "1792902585286456", {"words": "the launcher exited 137, the flow did not succeed"})
         self.assertEqual(progress.draw(self.root, "SweepFlow", "1792902585286456")["state"], "failed")
+
+    def test_a_dead_runs_page_is_judged_silent_where_it_is_read_not_where_it_was_written(self):
+        # a job Slurm killed draws nothing more, so the word its page last wrote stays running: the
+        # page on the grid carries the time its files last moved for its script to judge when it is
+        # opened, and the list of runs judges every run whenever any run draws it
+        a_run(self.root, run="1")
+        folder = self.root / "progress" / "SweepFlow" / "1"
+        old = time.time() - progress.SILENT_SECONDS - 60
+        for path in folder.rglob("*.json"):
+            os.utime(path, (old, old))
+        view = progress.draw(self.root, "SweepFlow", "1")
+        self.assertEqual(view["state"], "silent", "drawn again now, its files long still")
+        # the view as the run last drew it while it still moved
+        progress.write_json(folder / "view.json", dict(view, state="running"))
+        a_run(self.root, run="2")
+        overview = (self.root / "progress" / "index.html").read_text(encoding="utf-8")
+        row = overview.split('href="SweepFlow/1/index.html"', 1)[1].split("</tr>", 1)[0]
+        self.assertIn('<span class="badge silent">silent</span>', row)
+        row = overview.split('href="SweepFlow/2/index.html"', 1)[1].split("</tr>", 1)[0]
+        self.assertRegex(row, r'<span class="badge running" data-updated="\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ">running</span>')
+        self.assertIn(progress.SILENCE_SCRIPT, overview)
+        page = (self.root / "progress" / "SweepFlow" / "2" / "index.html").read_text(encoding="utf-8")
+        self.assertRegex(page, r'<h1>SweepFlow 2 <span class="badge running" data-updated="[^"]+">running</span></h1>')
+        self.assertIn("Date.now() - moved > 600 * 1000", page)
+        self.assertIn('<meta http-equiv="refresh" content="30">', page)
 
     def test_a_resumed_run_shows_the_steps_it_cloned_from_its_origin(self):
         a_run(self.root, run="1")
         progress.write_head(self.root, {"flow": "SweepFlow", "run": "2", "kind": "sweep", "origin": "1", "started": progress.utc_now()})
-        # before any task of the resume has run, its page shows the origin's steps in the origin's order
+        # before any task of the resume has run, its page shows the origin's steps in the origin's
+        # order, the row the origin was running when it was cut as cut, to be run again, not running
         view = progress.draw(self.root, "SweepFlow", "2")
         self.assertEqual([(step["name"], step["state"]) for step in view["steps"]],
-                         [("start", "cloned"), ("fan_first", "cloned"), ("first", "running"), ("join_first", "waiting"), ("end", "waiting")])
+                         [("start", "cloned"), ("fan_first", "cloned"), ("first", "cut"), ("join_first", "waiting"), ("end", "waiting")])
+        first = next(step for step in view["steps"] if step["name"] == "first")
+        self.assertEqual((first["counts"]["cloned"], first["counts"]["cut"], first["counts"]["running"]), (2, 1, 0))
+        lines = progress.text_lines(view)
+        self.assertIn("step first: cut; 2 cloned, 1 cut of 3", lines)
+        self.assertIn("task first resnet50-96px-6133c32a: cut; Last epoch: epoch 1 of 2, train loss 0.25.", lines)
+        back = progress.view_of_lines(lines)
+        self.assertEqual(next(step for step in back["steps"] if step["name"] == "first")["counts"]["cut"], 1)
         progress.write_task(self.root, "SweepFlow", "2", {"step": "first", "task": "9", "label": "resnet50-96px-6133c32a", "state": "running",
                                                          "lines": []})
         view = progress.draw(self.root, "SweepFlow", "2")
@@ -969,6 +1005,8 @@ class ProgressPageTest(unittest.TestCase):
         task("1", "join_first", 6, None, "running")
         task("2", "first", 9, "c", "done")
         task("2", "join_first", 10, None, "running")
+        # a row its origin failed, as @catch records a row's fault, is cloned as the failure it was
+        self.assertEqual(progress.task_state({"step": "first", "state": "failed", "cloned": True}), "failed")
         steps = {step["name"]: step for step in progress.draw(self.root, "SweepFlow", "2")["steps"]}
         self.assertEqual((steps["first"]["state"], steps["first"]["total"]), ("done", 3))
         self.assertEqual((steps["first"]["counts"]["done"], steps["first"]["counts"]["cloned"]), (1, 2))
@@ -1040,6 +1078,9 @@ class OffTheGridPageTest(unittest.TestCase):
         self.assertIn("resnet50-96px-6133c32a", page)
         self.assertIn("its section of 2026-10-29 03:05 UTC", page)
         self.assertNotIn("4242", page)
+        # a picture of the answer: it neither reloads nor judges again when opened
+        self.assertNotIn("http-equiv", page)
+        self.assertNotIn("<script>", page)
         listed = subprocess.run([sys.executable, str(ROOT / "tools" / "progress_page.py"), str(status), "--list"],
                                 capture_output=True, text=True, timeout=60)
         self.assertRegex(listed.stdout, r"^1792902585286456 sweep \(2026-10-29 03:05 UTC\), \d+ lines\n$")
@@ -1047,6 +1088,28 @@ class OffTheGridPageTest(unittest.TestCase):
                                  capture_output=True, text=True, timeout=60)
         self.assertEqual(missing.returncode, 1)
         self.assertIn("no flow's progress of run 9", missing.stderr)
+
+    def test_a_run_running_by_its_lines_whose_files_had_not_moved_when_status_ran_is_drawn_silent(self):
+        answer = self.status_answer()
+        updated = re.search(r"updated (\d{4}-\d\d-\d\d) (\d\d:\d\d:\d\d) UTC", answer)
+        moved = progress.parse_time(f"{updated[1]}T{updated[2]}Z")
+
+        def drawn(seconds_after):
+            ran = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime(moved + seconds_after))
+            status, out = self.tmp / "status.txt", self.tmp / "page.html"
+            status.write_text(f"schwingnet status at commit 35a4b6f on warrior {ran} UTC\n" + answer, encoding="utf-8")
+            done = subprocess.run([sys.executable, str(ROOT / "tools" / "progress_page.py"), str(status), "--out", str(out)],
+                                  capture_output=True, text=True, timeout=60)
+            self.assertEqual(done.returncode, 0, done.stderr)
+            return out.read_text(encoding="utf-8")
+
+        self.assertIn('<span class="badge running">running</span>', drawn(60))
+        self.assertIn('<span class="badge silent">silent</span>', drawn(progress.SILENT_SECONDS + 60))
+        # status's own line, where it judged the run silent from the file's age, is shown with the badge
+        view = progress.view_of_lines(["flow SweepFlow/1 sweep: silent, started 2026-10-29 03:00:00 UTC, updated 2026-10-29 03:05:00 UTC",
+                                       "silent: no file of this run has moved for 25 minutes by this status"])
+        self.assertEqual((view["state"], view["silence"], view["notes"]), ("silent", "no file of this run has moved for 25 minutes by this status", []))
+        self.assertIn('<p class="silent">no file of this run has moved for 25 minutes by this status</p>', progress.page_html(view, "x", live=False))
 
 
 if __name__ == "__main__":
