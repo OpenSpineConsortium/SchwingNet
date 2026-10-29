@@ -20,7 +20,7 @@ so `python flows/sweep.py card server` on the grid shows the row moving; end exp
 it can find into the state folder's cards/ and writes METAFLOW.json there, which names this run.
 
 The sweep trains networks, so it keeps the owner's rule of 2026-10-29 through flows/stage.py:
-start holds the run to the block smoke test's frozen PREREG (docs/research/block-smoke-test/),
+start holds the run to the block smoke test's frozen PREREG (docs/research/block-smoke/PREREG.md),
 every step keeps its line on the run's progress page, a row's line moving with its epochs, and
 end checks the CLAIM 2024 and REFORMS report (tools/report.py) of every row that ran: a row whose
 report cannot be written or is not current makes the verdict 1, whatever the row did.
@@ -147,19 +147,7 @@ def prediction_words(state, slug):
 
 def progress_words(state, slug, epochs):
     """The row's last epoch line, as its card shows it while it trains."""
-    try:
-        lines = (Path(state) / slug / "train" / "metrics.jsonl").read_text(encoding="utf-8").splitlines()
-        line = json.loads(lines[-1]) if lines else None
-    except (OSError, ValueError):
-        line = None
-    if not isinstance(line, dict):
-        return "No epoch written yet."
-    words = [f"epoch {line.get('epoch')}" + (f" of {epochs - 1}" if epochs else "")]
-    for key in ("train_loss", "validation_accuracy", "validation_balanced_accuracy", "seconds"):
-        value = line.get(key)
-        if isinstance(value, (int, float)) and not isinstance(value, bool):
-            words.append(f"{key.replace('_', ' ')} {value:.4g}")
-    return "Last epoch: " + ", ".join(words) + "."
+    return stage.epoch_words(Path(state) / slug / "train" / "metrics.jsonl", epochs)
 
 
 def outcome_words(entry):

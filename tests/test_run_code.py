@@ -28,7 +28,7 @@ ROOT = Path(__file__).resolve().parent.parent
 # stages run each tool of their steps through it, so their code starts there too (issue #252, the
 # second review's finding 4).
 PYDRV = tuple(re.findall(r"^export PYDRV=\$REPO/(\S+)$", (ROOT / "grid" / "gate.sh").read_text(encoding="utf-8"), re.M))
-ENTRIES = {"row": ("tools/flow.py",), "state": ("tools/block_sweep.py",), "sweep": ("flows/sweep.py",),
+ENTRIES = {"row": ("tools/flow.py",), "state": ("tools/block_sweep.py",), "sweep": ("flows/sweep.py",), "v1": ("flows/v1.py",),
            "bank": ("flows/bank.py", *PYDRV), "catalog": ("flows/catalog.py", *PYDRV)}
 SCRIPT_WORD = re.compile(r"(?<![\w.-])((?:tools|grid|flows)/[\w.-]+\.(?:py|sh|sbatch|awk))(?![\w/-])")
 # A script that finds its neighbours from where it lies, as grid/bin/train-cpu-python does:
@@ -251,6 +251,10 @@ class ListsTest(unittest.TestCase):
         kinds = self.code.KINDS
         self.assertLessEqual(set(kinds["row"]), set(kinds["state"]))
         self.assertLessEqual(set(kinds["state"]), set(kinds["sweep"]))
+
+    def test_the_version_1_flow_holds_the_run_it_starts(self):
+        """A change to anything tools/flow.py runs names a new v1 flow run, as it names a new run."""
+        self.assertLessEqual(set(self.code.KINDS["row"]), set(self.code.KINDS["v1"]))
 
     def test_the_command_line_prints_the_digest_and_the_files(self):
         said = subprocess.run([sys.executable, str(ROOT / "tools" / "run_code.py"), "digest", "row"], capture_output=True, text=True, check=False)

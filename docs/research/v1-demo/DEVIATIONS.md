@@ -1,0 +1,10 @@
+# Deviations from the version 1 pre-registration
+
+Source: the thread "Require Metaflow for every grid DL job", 2026-10-29. Each entry is dated and says what departs from PREREG.md beside it, or from the plan it restates (docs/research/retraining-plan.md, version 2), and why. PREREG.md is never edited; this file only grows.
+
+## 2026-10-29, at the freeze: where the run as built departs from the plan
+
+1. The trainer. The plan's section 3.4 keeps the record's trainers (spinesurg-ct-nnunet's train_level_classifier.py, realxray_train.py, head_mixed_length.py), called by path. The run trains with this repository's tools/train.py, the level stage of section 3.4 written here under beethoven-qa's definition of done (docs/research/v1-demo/README.md, "The workflow"). Why: the run's every number is stamped from its own record, which the record's scripts do not write.
+2. The checkpoint's choice. The plan's section 4 says the validation witness frames choose the checkpoint. tools/train.py chooses it on the whole validation part, never on the witness frames alone, which are a small subset of it, and never on epoch 0. Why: 24 frames choose with far less certainty than the whole part, and both are validation, so neither reads a test person.
+3. One job, not one per step. The plan's section 3.5 has every step submit one sbatch. grid/v1-driver.sbatch runs the train and evaluate steps in one GPU job, tools/flow.py in local mode, under flows/launch.py's flow. Why: flow.py's slurm mode would submit each step with sbatch, which the container the job runs in does not hold (grid/v1-driver.sbatch); the steps are still recorded one by one in RUN.json.
+4. No detector. The plan's section 1, item 2, names one detector, one encoder and one head. Version 1 trains the level stage alone over the truth boxes, and every result row says "over truth boxes" (tools/train.py; docs/research/v1-demo/README.md). Why: the plan's stage order allows the level stage first, and no detector is built yet (docs/research/training-review.md, section 2).

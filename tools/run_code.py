@@ -25,9 +25,9 @@ loads and the scripts it names and fails on a file in neither list, so a new imp
 someone made and never an accident.
 
 The kinds: `row` is one run of tools/flow.py, named by schwingnet.flow.configured_run_id; `state`
-is a sweep's state folder, tools/block_sweep.py's with the rows it starts; `sweep`, `bank` and
-`catalog` are the Metaflow flows of flows/, named by the launcher's key
-(schwingnet.pipeline.run_key).
+is a sweep's state folder, tools/block_sweep.py's with the rows it starts; `sweep`, `v1`, `bank`
+and `catalog` are the Metaflow flows of flows/, named by the launcher's key
+(schwingnet.pipeline.run_key), `v1` the version 1 run of tools/flow.py as a launched flow.
 """
 
 import argparse
@@ -58,6 +58,7 @@ KINDS = {
     "row": ROW,
     "state": STATE,
     "sweep": (*STATE, "flows/sweep.py", "flows/stage.py", "flows/stage_registry.py"),
+    "v1": (*ROW, "flows/v1.py", "flows/stage.py", "flows/stage_registry.py"),
     "bank": (*STAGE, "flows/bank.py", "grid/02-bank-ingest.sbatch", "tools/bank.py", "tools/ingest.py"),
     "catalog": (*STAGE, "flows/catalog.py", "grid/03-catalog.sbatch"),
 }
@@ -97,6 +98,7 @@ LEFT_OUT = {
     "row": ROW_LEFT_OUT,
     "state": STATE_LEFT_OUT,
     "sweep": {**STATE_LEFT_OUT, **STAGE_PAGE_LEFT_OUT},
+    "v1": {**ROW_LEFT_OUT, **STAGE_PAGE_LEFT_OUT},
     "bank": {**STAGE_LEFT_OUT, "grid/size-rule.sh": "admits the job under the size rule before the launcher starts, and no step of the flow runs it"},
     "catalog": STAGE_LEFT_OUT,
 }

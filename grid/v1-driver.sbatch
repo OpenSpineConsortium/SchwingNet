@@ -63,14 +63,25 @@ report "GPU: $(nvidia-smi --query-gpu=name,memory.total,driver_version --format=
 said=$(bash grid/box.sh pixi run --locked -e train-gpu python -c "import torch; print('torch', torch.__version__, 'cuda available', torch.cuda.is_available())" 2>&1 | tail -n 1)
 report "in the container: $said"
 out=$(mktemp "$REPO/grid/logs/v1-flow-${SLURM_JOB_ID:-$$}.XXXXXX")
-bash grid/box.sh pixi run --locked python tools/flow.py run --catalog "$CATALOG" --out "$RUNS" --mode local \
-  --environment train-gpu --epochs "$EPOCHS" --seed "$SEED" --weights "$WEIGHTS" 2>&1 | tee "$out"
+# The run is a launched flow, as every deep learning job on the grid is (the owner's rule of
+# 2026-10-29, flows/registry.txt): flows/launch.py refuses it with exit 90 unless
+# docs/research/v1-demo/PREREG.md is the one frozen, resumes the newest run of the same words, code,
+# catalog and weights that did not finish, and its V1Flow runs tools/flow.py in local mode, then
+# writes and checks the run's CLAIM 2024 and REFORMS report and draws the run's progress page under
+# the datastore's progress/ folder.
+bash grid/box.sh pixi run --locked -e train-gpu python flows/launch.py v1 --max-workers 1 -- \
+  --catalog "$CATALOG" --out "$RUNS" --environment train-gpu --epochs "$EPOCHS" --seed "$SEED" --weights "$WEIGHTS" 2>&1 | tee "$out"
 rc=${PIPESTATUS[0]}
+decision=$(grep -m 1 '"decision":' "$out")
+report "launcher: ${decision:-it printed no decision line}"
 run_dir=$(sed -n 's/.*"run_dir": "\([^"]*\)".*/\1/p' "$out" | head -n 1)
 report "run directory: ${run_dir:-none was made}"
 grep -h 'W&B' "$out" | tail -n 3 | while IFS= read -r line; do report "$line"; done
+grep -h 'V1Flow: report ' "$out" | tail -n 1 | while IFS= read -r line; do report "${line#*V1Flow: }"; done
 [ -z "$run_dir" ] || [ ! -f "$run_dir/evaluate/results.md" ] || { echo; echo "## The test part"; cat "$run_dir/evaluate/results.md"; } >> "$REPORT"
-report "flow exited $rc"
+run=$(grep '"successful":' "$out" | tail -n 1)
+report "Metaflow: ${run:-the launcher named no run}"
+report "launcher exited $rc"
 ended_at=$(git -C "$REPO" rev-parse HEAD 2>/dev/null)
 if [ "$ended_at" != "$started_at" ]; then
   report "FAILED: the checkout moved from ${started_at:0:7} to ${ended_at:0:7} during the run, so a later step may have run the newer code while RUN.json names the older; this run is not used, and v1 runs again"

@@ -39,6 +39,16 @@ Metaflow's own resume rather than by anything written around it.
   again, which tools/flow.py carries on from its last epoch (tools/train.py --resume). Its runs
   are held to docs/research/block-smoke/PREREG.md, which covers the plans synthetic, real and
   two_source; `sweep trials` is refused until the six trials have a PREREG of their own.
+- `v1.py`, V1Flow: the version 1 run on real frames (issue #53), which grid/v1-driver.sbatch
+  starts through the launcher once it has chosen the catalog version and checked its split again.
+  start holds the run to docs/research/v1-demo/PREREG.md, a step `train_evaluate` runs
+  `tools/flow.py run` whole in local mode, its card and its line on the page moving with the
+  trainer's train/metrics.jsonl, and end writes and checks the run's CLAIM 2024 and REFORMS report
+  in its folder and writes METAFLOW.json there. A step that fails is retried once at once
+  (`@retry(times=1)`); a kill mid-training resumes the step, which tools/flow.py carries on from
+  its last epoch. The key reads the catalog's and the ImageNet file's bytes, as tools/flow.py
+  names the run. The verdict is 0 only where tools/flow.py finished the run (FINISHED.json) and
+  its report is current.
 
 Every flow's end step sets an int artifact `verdict`, 0 when all went well and 1 otherwise.
 

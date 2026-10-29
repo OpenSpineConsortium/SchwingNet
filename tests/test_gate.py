@@ -935,10 +935,15 @@ echo "the split is not disjoint; no training step reads this version"; exit 1
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
         boxed = self.boxed()
         check = [i for i, line in enumerate(boxed) if "tools/catalog.py split-check" in line]
-        flow = [i for i, line in enumerate(boxed) if "flow.py" in line]
+        flow = [i for i, line in enumerate(boxed) if "flows/launch.py" in line]
         self.assertTrue(check and flow and check[0] < flow[0], boxed)
         self.assertIn(f"split-check {self.data}/_catalog --version 2 hold=777 ", boxed[check[0]])
+        # the run is the launched flow v1, held to its frozen PREREG, never tools/flow.py around it
+        self.assertIn("pixi run --locked -e train-gpu python flows/launch.py v1 --max-workers 1 -- ", boxed[flow[0]])
         self.assertIn(f"--catalog {self.data}/_catalog/versions/catalog-000002-0123456789ab.sqlite ", boxed[flow[0]])
+        self.assertFalse([line for line in boxed if "tools/flow.py" in line], boxed)
+        self.assertIn("- launcher: it printed no decision line", done.stdout)
+        self.assertIn("- run directory: /nowhere", done.stdout)
         self.assertIn("CURRENT names catalog-000003-0123456789ab.sqlite; the run takes catalog-000002-0123456789ab.sqlite", done.stdout)
         # the split check fails on the chosen file: the run says so and never starts the flow
         (self.fake / "box.log").unlink()
@@ -946,7 +951,7 @@ echo "the split is not disjoint; no training step reads this version"; exit 1
         done = self.driver()
         self.assertEqual(done.returncode, 1)
         self.assertIn("FAILED: the split check of version 2 failed; no run reads it", done.stdout)
-        self.assertFalse([line for line in self.boxed() if "flow.py" in line])
+        self.assertFalse([line for line in self.boxed() if "launch.py" in line or "flow.py" in line])
         # no version holds the test part: the run says so and starts nothing
         (self.fake / "split_fails").unlink()
         (self.data / "_catalog" / "VERSIONS.jsonl").write_text("", encoding="utf-8")
