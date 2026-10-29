@@ -14,6 +14,7 @@ import importlib.util
 import io
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -474,16 +475,64 @@ class ProgressPageTest(unittest.TestCase):
     def test_the_end_step_and_the_launcher_close_the_page_with_the_verdict_and_the_report(self):
         a_run(self.root)
         progress.write_result(self.root, "SweepFlow", "1792902585286456",
-                              {"verdict": 1, "lines": ["resnet18-64px-3d291b87: NOT CURRENT, why: REPORT.md not what the run gives"]})
+                              {"verdict": 1, "lines": ["resnet18-64px-3d291b87: NOT CURRENT, why: REPORT.md not what the run gives",
+                                                       "resnet34-32px-b2928840: current as the run wrote it"],
+                               "reports": 2, "not_current": 1})
         progress.write_launch(self.root, "SweepFlow", "1792902585286456", {"words": "the launcher exited 1, the flow succeeded"})
         view = progress.draw(self.root, "SweepFlow", "1792902585286456")
         self.assertEqual((view["state"], view["verdict"]), ("failed", 1))
         lines = progress.text_lines(view)
-        self.assertEqual(lines[-3:], ["report: resnet18-64px-3d291b87: NOT CURRENT, why: REPORT.md not what the run gives",
-                                      "verdict: 1", "ended: the launcher exited 1, the flow succeeded"])
+        # how the run ended comes right after the head, before any step
+        self.assertEqual(lines[2:7], ["verdict: 1", "ended: the launcher exited 1, the flow succeeded",
+                                      "reports: 1 of 2 current, 1 not current or not written",
+                                      "report: resnet18-64px-3d291b87: NOT CURRENT, why: REPORT.md not what the run gives",
+                                      "report: resnet34-32px-b2928840: current as the run wrote it"])
+        self.assertEqual(lines[7], "step start: done")
         page = (self.root / "progress" / "SweepFlow" / "1792902585286456" / "index.html").read_text(encoding="utf-8")
         self.assertNotIn("http-equiv", page)
         self.assertIn("1, not all well", page)
+        self.assertIn("<p>1 of 2 current, 1 not current or not written</p>", page)
+
+    def test_a_whole_plans_run_fits_the_lines_the_gates_status_keeps_with_its_end_first(self):
+        # a smoke plan of 27 rows, 25 first and 2 warm starts, with one report not current: the
+        # status keeps the first FLOW_PROGRESS_LINES of the file, which once cut the verdict away
+        kept = int(re.search(r"FLOW_PROGRESS_LINES=(\d+)", (ROOT / "grid" / "gate.sh").read_text(encoding="utf-8")).group(1))
+        flow, run = "SweepFlow", "1"
+        progress.write_head(self.root, {"flow": flow, "run": run, "kind": "sweep", "key": "0" * 16, "started": progress.utc_now()})
+        progress.write_graph(self.root, flow, run, ["start", "fan_first", "first", "join_first", "middle", "fan_second", "second",
+                                                    "join_second", "end"])
+
+        def task(step, number, label, lines, state="done"):
+            progress.write_task(self.root, flow, run, {"step": step, "task": str(number), "label": label, "state": state, "lines": lines})
+
+        task("start", 1, "prepare", ["state x, 25 rows first, 2 warm starts after"])
+        for number, step in ((2, "fan_first"), (50, "join_first"), (51, "middle"), (52, "fan_second"), (70, "join_second")):
+            task(step, number, None, [])
+        for n in range(25):
+            task("first", 10 + n, f"row{n:02d}", ["Outcome: ran, matched the check."], "failed" if n == 24 else "done")
+        for n in range(2):
+            task("second", 60 + n, f"warm{n}", ["Outcome: ran, matched the check."])
+        task("end", 71, "results", ["{...}, faults 1, verdict 1"])
+        reports = [f"row{n:02d}: current as the run wrote it" for n in range(23)] + ["warm0: current", "warm1: current"]
+        progress.write_result(self.root, flow, run, {"verdict": 1, "lines": ["row03: NOT CURRENT as the run wrote it, so written anew; why: x",
+                                                                            *reports], "reports": 26, "not_current": 1})
+        progress.write_launch(self.root, flow, run, {"words": "the launcher exited 1, the flow succeeded"})
+        progress.draw(self.root, flow, run)
+        lines = (self.root / "progress" / flow / run / "PROGRESS.txt").read_text(encoding="utf-8").splitlines()
+        self.assertLessEqual(len(lines), kept, lines)
+        self.assertEqual(lines[2:6], ["verdict: 1", "ended: the launcher exited 1, the flow succeeded",
+                                      "reports: 25 of 26 current, 1 not current or not written",
+                                      "report: row03: NOT CURRENT as the run wrote it, so written anew; why: x"])
+        self.assertIn(f"({26 - progress.REPORTS_SHOWN} more report lines; the page on the grid lists them)", lines)
+        # a step's failed task comes first among the few shown, and the rest are counted
+        first = lines.index("step first: failed; 24 done, 1 failed of 25")
+        self.assertEqual(lines[first + 1], "task first row24: failed; Outcome: ran, matched the check.")
+        self.assertEqual(lines[first + 1 + progress.TASKS_SHOWN], f"({25 - progress.TASKS_SHOWN} more tasks of first; the page on the grid lists them)")
+        self.assertIn("task end results: done; {...}, faults 1, verdict 1", lines)
+        # the page on the grid lists every row and every report
+        page = (self.root / "progress" / flow / run / "index.html").read_text(encoding="utf-8")
+        self.assertIn("row22: current as the run wrote it", page)
+        self.assertIn("<td>row13</td>", page)
 
     def test_a_run_whose_files_stopped_moving_is_shown_silent_and_a_failed_launch_failed(self):
         view = a_run(self.root)

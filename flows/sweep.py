@@ -420,7 +420,7 @@ class SweepFlow(FlowSpec):
             said = f"{json.dumps(self.counts, sort_keys=True)}, faults {len(self.faults)}, verdict {self.verdict}"
             print(f"SweepFlow: {said}", flush=True)
             beat.say(said)
-            stage.finish(self.verdict, self.reports or ["no row ran, so no row has a report to check"])
+            stage.finish(self.verdict, reports, "no row ran, so no row has a report to check")
         current.card.append(Markdown(f"# Smoke plan {results.get('plan')}\n\nState {self.state}; counts "
                                      f"{json.dumps(self.counts, sort_keys=True)}; faults {len(self.faults)}; verdict {self.verdict}. "
                                      f"Progress page: {stage.page_path()}."))

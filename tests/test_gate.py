@@ -11,6 +11,7 @@ scancel and df on PATH answer for Slurm; nothing reaches a scheduler. Standard l
 required check runs it."""
 
 import hashlib
+import importlib.util
 import io
 import json
 import os
@@ -26,6 +27,17 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 GRID = ROOT / "grid"
+
+
+def load_module(path, name):
+    """A module of the repository by its file, as the flows' own progress writer is loaded to lay out
+    what status reads."""
+    spec = importlib.util.spec_from_file_location(name, path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 FAKE_HPCWORKER = ROOT / "tests" / "fakes" / "hpcworker"
 NEW_SCRIPTS = ("gate.sh", "hpcw.sh", "box.sh", "bin/pixi", "bin/train-cpu-python", "00-setup.sbatch", "00-weights.sbatch",
                "00-carmlspine.sbatch", "v1-driver.sbatch", "experiment-driver.sbatch", "run-xray-chain.sh",
@@ -2865,15 +2877,19 @@ esac
         for n in range(6):
             progress = self.flow_run(f"17929025852864{n:02d}", ["run: key 68974c7ccabf5595, commit 35a4b6f"])
             os.utime(progress, (1_800_000_000 + n, 1_800_000_000 + n))
+        # the lines in the order flows/stage_progress.py writes them, how the run ended first; a file
+        # longer than FLOW_PROGRESS_LINES, which the writer never makes, is cut there all the same
         newest = self.flow_run("1792902585286499", [
             "run: key 68974c7ccabf5595, commit 35a4b6f, code 0123456789ab, PREREG docs/research/block-smoke/PREREG.md sha256 5779e79a2a7c",
+            "verdict: 1",
+            "ended: the launcher exited 1, the flow succeeded",
+            "reports: 0 of 1 current, 1 not current or not written",
+            "report: resnet34-32px-b2928840: NOT CURRENT, why: REPORT.md not what the run gives for Doe_John/IM0007.dcm",
             "step start: done",
             f"task start prepare: done; state {self.smoke}/real/1a2b3c4d-5e6f7a8b, 20 rows first, 2 warm starts after",
             "step first: running; 1 done, 1 failed of 2",
             "task first resnet18-64px-3d291b87: failed; fault, why: SweepFault: block_sweep row exited 2: no frame case134_19650312.png",
-            "task first resnet34-32px-b2928840: done; Outcome: ran, matched the check.",
-            "report: resnet34-32px-b2928840: NOT CURRENT, why: REPORT.md not what the run gives for Doe_John/IM0007.dcm",
-            "verdict: 1"] + [f"task first row{n}: done" for n in range(60)])
+            "task first resnet34-32px-b2928840: done; Outcome: ran, matched the check."] + [f"task first row{n}: done" for n in range(60)])
         os.utime(newest, (1_800_000_100, 1_800_000_100))
         odd = self.flow_root() / "progress" / "SweepFlow" / "not a run"
         odd.mkdir(parents=True)
@@ -2889,13 +2905,42 @@ esac
         self.assertIn("  task start prepare: done; state <path>, 20 rows first, 2 warm starts after\n", out)
         self.assertIn("  task first resnet18-64px-3d291b87: failed; fault, why: <reason withheld: it can quote a value; the whole report stays on the grid>\n", out)
         self.assertIn("  report: resnet34-32px-b2928840: NOT CURRENT, why: <reason withheld", out)
-        # the first FLOW_PROGRESS_LINES lines of the file, 40, its head among them
-        self.assertIn("  task first row30: done\n", out)
-        self.assertNotIn("row31", out)
+        self.assertIn("  verdict: 1\n  ended: the launcher exited 1, the flow succeeded\n  reports: 0 of 1 current, 1 not current or not written\n", out)
+        # at most the first FLOW_PROGRESS_LINES lines of the file, 40, its head among them
+        self.assertIn("  task first row28: done\n", out)
+        self.assertNotIn("row29", out)
         for value in ("case134", "19650312", "Doe_John", "not a run"):
             self.assertNotIn(value, out)
         self.assertLess(out.index("## space on the lab volume"), out.index("## flow sweep"))
         self.assertLess(out.index("## flow sweep"), out.index("no job submitted by the gate yet"))
+
+    def test_status_shows_how_a_whole_plans_run_ended_as_the_flows_own_writer_lays_it_out(self):
+        # a smoke plan of 27 rows drawn by flows/stage_progress.py itself: the verdict, how the
+        # launcher saw the flow end and the report not current all come inside the lines status keeps
+        progress = load_module(ROOT / "flows" / "stage_progress.py", "stage_progress_for_the_gate")
+        flow, run = "SweepFlow", "1792902585286456"
+        progress.write_head(self.flow_root(), {"flow": flow, "run": run, "kind": "sweep", "key": "0" * 16, "started": progress.utc_now()})
+        progress.write_graph(self.flow_root(), flow, run, ["start", "fan_first", "first", "join_first", "middle", "fan_second", "second",
+                                                         "join_second", "end"])
+        rows = [("first", f"row{n:02d}") for n in range(25)] + [("second", "warm0"), ("second", "warm1")]
+        for number, (step, label) in enumerate(rows, 10):
+            progress.write_task(self.flow_root(), flow, run, {"step": step, "task": str(number), "label": label, "state": "done",
+                                                            "lines": ["Outcome: ran, matched the check."]})
+        progress.write_result(self.flow_root(), flow, run, {
+            "verdict": 1, "reports": 27, "not_current": 1,
+            "lines": ["row03: NOT CURRENT as the run wrote it, so written anew; why: claim.json not what the run gives for Doe_John"]
+                     + [f"{label}: current as the run wrote it" for _, label in rows if label != "row03"]})
+        progress.write_launch(self.flow_root(), flow, run, {"words": "the launcher exited 1, the flow succeeded"})
+        progress.draw(self.flow_root(), flow, run)
+        done = self.gate("status")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        section = done.stdout.split(f"## flow sweep {run}, progress (", 1)[1].split("\n## ", 1)[0]
+        self.assertIn("\n  verdict: 1\n  ended: the launcher exited 1, the flow succeeded\n"
+                      "  reports: 26 of 27 current, 1 not current or not written\n"
+                      "  report: row03: NOT CURRENT as the run wrote it, so written anew; why: <reason withheld", section)
+        self.assertIn("  step first: done; 25 done of 25\n", section)
+        self.assertIn("  step end: waiting\n", section)
+        self.assertNotIn("Doe_John", done.stdout)
 
     def test_the_status_answer_draws_the_flows_page_off_the_grid(self):
         self.flow_run("1792902585286499", ["run: key 68974c7ccabf5595, commit 35a4b6f", "step start: done", "step first: running; 1 done, 1 running of 2",

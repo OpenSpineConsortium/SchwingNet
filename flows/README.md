@@ -99,7 +99,11 @@ enforced and a page that shows its progress in the browser; a plain Slurm job is
   code, PREREG and, for a resume, its origin, whose finished steps the page shows as cloned);
   graph.json; one file a task under tasks/, which only that task writes; result.json from end; and
   launch.json, how the launcher saw the flow end. Every write draws index.html, the page, which
-  reloads itself every 30 s while the run lasts; PROGRESS.txt, the same in short lines; and
+  reloads itself every 30 s while the run lasts; PROGRESS.txt, the same in short lines, how the
+  run ended (its verdict, the launcher's last word, the reports counted and the first six of their
+  lines, those not current first) right after its two head lines, and then each step with its
+  first eight tasks, a failed one first, so the 40 lines the gate's status keeps of a run always
+  hold its end; and
   <datastore root>/progress/index.html, the newest runs of every flow. A run whose files have not
   moved for ten minutes is shown silent. Nothing here fails a step: a page that cannot be written
   is said once in the step's log.

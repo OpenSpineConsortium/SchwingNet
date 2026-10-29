@@ -7,11 +7,14 @@ Usage:
 On the grid each run flows/launch.py starts keeps its page, index.html, beside its files under
 <datastore root>/progress/<Flow>/<run>/, which Open OnDemand's Files app opens in a browser
 (flows/stage_progress.py). Off the grid the gate's status word prints each newest run's page in
-short lines, under the heading `## flow <kind> <run>, progress (<time> UTC)`, its task and report
-lines judged as a stage report's are and every line masked (grid/gate.sh, flow_progress). This
+short lines, under the heading `## flow <kind> <run>, progress (<time> UTC)`: its head, how it
+ended (the verdict, the launcher's last word, the reports counted and the first of their lines)
+and its steps, each with its first few tasks, its task and report lines judged as a stage
+report's are and every line masked (grid/gate.sh, flow_progress). This
 reads that answer, a file holding the status word's output as the grid's job log gives it, and
 draws the same page from the section of the run named, or of the first run the answer shows,
-which is the newest: the page the grid draws, less what status withheld. --list prints the runs
+which is the newest: the page the grid draws, less what status withheld and the tasks and
+report lines the short lines leave to the page on the grid. --list prints the runs
 the answer holds. Nothing is fetched and nothing leaves the machine; the page is a file to open or
 to publish. Standard library only.
 """

@@ -5,9 +5,11 @@ the run's head (its kind, key, commit, code, PREREG and, for a resume, the run i
 the launcher writes once Metaflow has named the run, since a resumed run clones start and never runs
 it; graph.json, the flow's steps in order, written by the first task that finds none; one file a
 task under tasks/, <step>-<task>.json, which only that task writes, with its state, its times and
-its last line; result.json, the end step's verdict and report lines; and launch.json, how the
-launcher saw the flow end. From them every write draws three files: view.json, what the page says;
-index.html, the page; and PROGRESS.txt, the same in short lines for the gate's status. A file is
+its last line; result.json, the end step's verdict, report lines and how many of the reports are
+current; and launch.json, how the launcher saw the flow end. From them every write draws three
+files: view.json, what the page says; index.html, the page; and PROGRESS.txt, the same in short
+lines for the gate's status, how the run ended right after its head and each step's tasks cut
+short, so the gate's cut of the file never loses the verdict. A file is
 written whole and renamed into place, so a reader never meets half of one, and no two tasks write
 the same file, so two that draw the page at once each draw it from whole files and the later wins.
 <root>/progress/index.html lists the newest runs of every flow.
@@ -34,7 +36,12 @@ FOLDER = "progress"
 REFRESH = 30
 SILENT_SECONDS = 600
 RUNS_LISTED = 100
-TASKS_SHOWN = 40
+# The short lines put a run's end first, after its two head lines (outcome_lines), and show at most
+# REPORTS_SHOWN report lines and TASKS_SHOWN tasks of a step, so a run of a whole smoke plan, 27
+# rows, fits in the 40 lines the gate's status keeps of each run (grid/gate.sh, FLOW_PROGRESS_LINES);
+# the page on the grid lists every one.
+REPORTS_SHOWN = 6
+TASKS_SHOWN = 8
 LINES_KEPT = 6
 STATES = ("waiting", "running", "done", "failed", "cloned")
 
@@ -212,6 +219,14 @@ def parse_time(words):
         return 0.0
 
 
+def report_summary(result):
+    """The reports the end step checked, counted, as finish records them; None where it counted none."""
+    total, failing = (result or {}).get("reports"), (result or {}).get("not_current")
+    if not all(isinstance(n, int) and not isinstance(n, bool) for n in (total, failing)) or total <= 0:
+        return None
+    return f"{total - failing} of {total} current" + (f", {failing} not current or not written" if failing else "")
+
+
 def view_of_folder(root, flow, run, now=None):
     """What the page of one run says, from its files."""
     folder = run_folder(root, flow, run)
@@ -224,7 +239,7 @@ def view_of_folder(root, flow, run, now=None):
     view.update(flow=flow, run=str(run), updated=updated, steps=steps,
                 state=run_state(result, launch, steps, updated, now if now is not None else time.time()),
                 verdict=(result or {}).get("verdict"), report=[str(line) for line in (result or {}).get("lines") or []],
-                ended=(launch or {}).get("words"))
+                report_summary=report_summary(result), ended=(launch or {}).get("words"))
     return view
 
 
@@ -252,11 +267,15 @@ def step_line(step):
     return f"step {step['name']}: {step['state']}; {parts} of {total}"
 
 
+# The order a step's tasks are shown in: a failed one first, then those still running or waiting,
+# then those done, so the tasks a reader needs are inside TASKS_SHOWN.
+TASK_ORDER = {"failed": 0, "running": 1, "waiting": 2, "done": 3, "cloned": 3}
+
+
 def task_lines(step):
     if step["total"] <= 1 and not (step["tasks"] and step["tasks"][0]["line"]):
         return []
-    shown = [task for task in step["tasks"] if task["state"] != "done" and task["state"] != "cloned"] + \
-            [task for task in step["tasks"] if task["state"] in ("done", "cloned")]
+    shown = sorted(step["tasks"], key=lambda task: TASK_ORDER.get(task["state"], 2))
     lines = []
     for task in shown[:TASKS_SHOWN]:
         lines.append(f"task {step['name']} {task['label']}: {task['state']}" + (f"; {task['line']}" if task["line"] else ""))
@@ -265,16 +284,25 @@ def task_lines(step):
     return lines
 
 
+def outcome_lines(view):
+    """How the run ended, right after its head, so no cut of the short lines loses it: the verdict,
+    how the launcher saw the flow end, the reports counted, and at most REPORTS_SHOWN of their
+    lines, those not current first, as the end step orders them (flows/stage.py, finish)."""
+    lines = [f"verdict: {view['verdict']}"] if view.get("verdict") in (0, 1) else []
+    lines += [f"ended: {view['ended']}"] if view.get("ended") else []
+    lines += [f"reports: {view['report_summary']}"] if view.get("report_summary") else []
+    lines += [f"report: {line}" for line in view["report"][:REPORTS_SHOWN]]
+    if len(view["report"]) > REPORTS_SHOWN:
+        lines.append(f"({len(view['report']) - REPORTS_SHOWN} more report lines; the page on the grid lists them)")
+    return lines
+
+
 def text_lines(view):
-    lines = head_lines(view)
+    """The page in short lines: the head, how the run ended, then every step with its tasks."""
+    lines = head_lines(view) + outcome_lines(view)
     for step in view["steps"]:
         lines.append(step_line(step))
         lines += task_lines(step)
-    lines += [f"report: {line}" for line in view["report"]]
-    if view.get("verdict") in (0, 1):
-        lines.append(f"verdict: {view['verdict']}")
-    if view.get("ended"):
-        lines.append(f"ended: {view['ended']}")
     return lines
 
 
@@ -301,7 +329,7 @@ def counts_of(words):
 def view_of_lines(lines):
     """What a page says, read back from the short lines, as the gate's status prints them; a line
     that is none of them is kept as a note, so nothing the status said is lost."""
-    view = {"steps": [], "report": [], "notes": [], "verdict": None, "ended": None}
+    view = {"steps": [], "report": [], "report_summary": None, "notes": [], "verdict": None, "ended": None}
     for line in (line.strip() for line in lines):
         match = HEAD.fullmatch(line)
         if match:
@@ -315,6 +343,8 @@ def view_of_lines(lines):
         elif TASK.fullmatch(line) and view["steps"]:
             task = TASK.fullmatch(line)
             view["steps"][-1]["tasks"].append({"label": task["label"], "state": task["state"], "line": task["line"] or ""})
+        elif line.startswith("reports: "):
+            view["report_summary"] = line[len("reports: "):]
         elif line.startswith("report: "):
             view["report"].append(line[len("report: "):])
         elif line.startswith("verdict: ") and line[len("verdict: "):] in ("0", "1"):
@@ -398,6 +428,7 @@ def page_html(view, source):
     facts = view.get("facts") or head_lines(view)[1][len("run: "):]
     steps = "".join(step_item(step) for step in view["steps"]) or "<li class=\"waiting\">No step has written yet.</li>"
     report = "".join(f"<li>{esc(line)}</li>" for line in view["report"])
+    summary = f"<p>{esc(view['report_summary'])}</p>" if view.get("report_summary") else ""
     notes = "".join(f"<li>{esc(line)}</li>" for line in view.get("notes") or [])
     verdict = {0: "0, all well", 1: "1, not all well"}.get(view.get("verdict"), "not yet")
     return f"""<!doctype html>
@@ -408,7 +439,7 @@ def page_html(view, source):
 <p class="muted">{esc(view.get('kind') or '')} &middot; started {esc(shown_time(view.get('started')))} &middot; updated {esc(shown_time(view.get('updated')))}</p>
 <p class="facts">{esc(facts)}</p>
 <h2>Steps</h2><ol class="steps">{steps}</ol>
-<h2>CLAIM 2024 and REFORMS report</h2>{f'<ul class="plain">{report}</ul>' if report else '<p class="muted">Not written yet: the end step writes it.</p>'}
+<h2>CLAIM 2024 and REFORMS report</h2>{summary}{f'<ul class="plain">{report}</ul>' if report else '<p class="muted">Not written yet: the end step writes it.</p>'}
 <h2>Verdict</h2><p>{esc(verdict)}{(' &middot; ' + esc(view['ended'])) if view.get('ended') else ''}</p>
 {f'<h2>Other lines</h2><ul class="plain">{notes}</ul>' if notes else ''}
 <p class="muted">{esc(source)}</p>

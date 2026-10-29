@@ -27,7 +27,7 @@ steps run:
   ends well with a stale report. Items no file of the run answers are counted as missing and
   shown, never inferred; `check --complete`, which fails while any is missing, stays the gate for
   numbers that are to be published (tools/report.py).
-- finish, in end: the verdict and the report's lines on the page.
+- finish, in end: the verdict and the reports on the page, those not current first.
 
 Nothing here ever fails a step for its page: a page that cannot be written is said once on the
 step's log and the work goes on.
@@ -215,11 +215,16 @@ def report_written_now(folder, name, study=None):
     return True, f"{name}: current, written at the end since the run left none; {tally_words(folder)}"
 
 
-def finish(verdict, lines):
-    """The run's verdict and its report's lines on the page, from end."""
+def finish(verdict, reports, none_words=None):
+    """The run's verdict and its reports on the page, from end: reports as claim_report gives them,
+    (current, line), with those not current first, since the gate's status shows only the first
+    few lines, and how many are current; none_words the line where no report was checked."""
     root, flow, run = datastore_root(), current.flow_name, current.run_id
+    failing = [line for ok, line in reports if not ok]
+    lines = failing + [line for ok, line in reports if ok] or ([none_words] if none_words else [])
+    result = {"verdict": verdict, "lines": lines, "reports": len(reports), "not_current": len(failing), "ended": progress.utc_now()}
     try:
-        progress.write_result(root, flow, run, {"verdict": verdict, "lines": list(lines), "ended": progress.utc_now()})
+        progress.write_result(root, flow, run, result)
         progress.draw(root, flow, run)
     except OSError as error:
         print(f"{flow}: the progress page could not be written ({error})", file=sys.stderr, flush=True)

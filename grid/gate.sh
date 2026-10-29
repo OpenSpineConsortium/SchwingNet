@@ -804,7 +804,9 @@ bench_progress() {  # every benchmark under BENCH_ROOT that keeps a PROGRESS.txt
 # Status shows the newest FLOW_RUNS_SHOWN runs' lines, each under a heading that names the run's kind
 # and id, which tools/progress_page.py reads back into the same page off the grid. The page's own
 # lines are the flow's words; a task's last line and a report's can quote a path or a value, so those
-# are judged as a stage report's lines are (report_shapes), and every line is masked.
+# are judged as a stage report's lines are (report_shapes), and every line is masked. The writer puts
+# how the run ended, its verdict and its reports, right after the two head lines and shows a few tasks
+# of each step, so a whole smoke plan's run fits in FLOW_PROGRESS_LINES; the cut is only a bound.
 FLOW_RUNS_SHOWN=4 FLOW_PROGRESS_LINES=40
 flow_shapes() {  # a flow's progress lines, its tasks' and its reports' judged as a stage report's
   local line

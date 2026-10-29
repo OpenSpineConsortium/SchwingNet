@@ -909,7 +909,9 @@ class SweepFlowTest(unittest.TestCase):
                       "REFORMS: 20 met, 3 declared, 2 not applicable, 4 missing", lines)
         self.assertIn("report: b: current, written at the end since the run left none; CLAIM 2024: 20 met, 3 declared, "
                       "2 not applicable, 4 missing; REFORMS: 20 met, 3 declared, 2 not applicable, 4 missing", lines)
-        self.assertEqual(lines[-2:], ["verdict: 0", "ended: the launcher exited 0, the flow succeeded"])
+        # how the run ended comes right after the head, so the gate's status, which keeps a run's first
+        # lines, always shows it
+        self.assertEqual(lines[2:5], ["verdict: 0", "ended: the launcher exited 0, the flow succeeded", "reports: 3 of 3 current"])
         self.assertIn("SweepFlow", (folder / "index.html").read_text(encoding="utf-8"))
         self.assertIn(f'href="SweepFlow/{folder.name}/index.html"', (self.root / "progress" / "index.html").read_text(encoding="utf-8"))
         read = subprocess.run([sys.executable, "-c", (
@@ -929,9 +931,11 @@ class SweepFlowTest(unittest.TestCase):
         self.assertEqual((said[-1]["successful"], said[-1]["verdict"]), (True, 1), out)
         _, lines = self.progress_of(said)
         folder = self.out / "reported" / "state" / "b"
-        self.assertIn(f"report: b: NOT CURRENT as the run wrote it, so written anew; why: {folder}: REPORT.md, claim.json, "
-                      f"reforms.json not what the run gives; run python3 tools/report.py write --run {folder}", lines)
-        self.assertIn("verdict: 1", lines)
+        # the report not current is the first report line, right after the verdict and the count
+        self.assertEqual(lines[2:6], ["verdict: 1", "ended: the launcher exited 1, the flow succeeded",
+                                      "reports: 1 of 2 current, 1 not current or not written",
+                                      f"report: b: NOT CURRENT as the run wrote it, so written anew; why: {folder}: REPORT.md, "
+                                      f"claim.json, reforms.json not what the run gives; run python3 tools/report.py write --run {folder}"])
         self.assertRegex(lines[0], r" sweep: failed, started ")
         reports = (self.tmp / "calls-reported-1.reports").read_text(encoding="utf-8").splitlines()
         self.assertEqual([call for call in reports if call.endswith(" b")], ["row write b", "end check b", "end write b"])
