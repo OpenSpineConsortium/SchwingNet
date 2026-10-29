@@ -46,12 +46,14 @@ Metaflow's own resume rather than by anything written around it.
   starts through the launcher once it has chosen the catalog version and checked its split again.
   start holds the run to docs/research/v1-demo/PREREG.md, a step `train_evaluate` runs
   `tools/flow.py run` whole in local mode, its card and its line on the page moving with the
-  trainer's train/metrics.jsonl, and end writes and checks the run's CLAIM 2024 and REFORMS report
-  in its folder and writes METAFLOW.json there. A step that fails is retried once at once
-  (`@retry(times=1)`); a kill mid-training resumes the step, which tools/flow.py carries on from
-  its last epoch. The key reads the catalog's and the ImageNet file's bytes, as tools/flow.py
+  trainer's train/metrics.jsonl, and end holds the run to that PREREG again (stage.still_held),
+  writes and checks the run's CLAIM 2024 and REFORMS report in its folder, strict for work done
+  since the Metaflow run began, and writes METAFLOW.json there. A step that fails is retried once
+  at once (`@retry(times=1)`); a kill mid-training resumes the step, which tools/flow.py carries on
+  from its last epoch. The key reads the catalog's and the ImageNet file's bytes, as tools/flow.py
   names the run. The verdict is 0 only where tools/flow.py finished the run (FINISHED.json) and
-  its report is current.
+  its report is current. The driver runs the launcher in the background, as the sweep's does, so
+  job submit's TERM two minutes before the limit reaches it at once and it closes the run's page.
 - `realism.py`, RealismFlow: the FluXray reproduction (docs/research/flux-realism/PREREG.md), one
   run per stage on the owner's count of 2026-10-29 (two GPU jobs, edit and then stats; grid word
   `realism <stage>`, grid/realism.sbatch). start holds the run to the PREREG and to its frozen block,

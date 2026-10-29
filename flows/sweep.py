@@ -158,7 +158,19 @@ def prediction_words(state, slug):
 
 def progress_words(state, slug, epochs):
     """The row's last epoch line, as its card shows it while it trains."""
-    return stage.epoch_words(Path(state) / slug / "train" / "metrics.jsonl", epochs)
+    try:
+        lines = (Path(state) / slug / "train" / "metrics.jsonl").read_text(encoding="utf-8").splitlines()
+        line = json.loads(lines[-1]) if lines else None
+    except (OSError, ValueError):
+        line = None
+    if not isinstance(line, dict):
+        return "No epoch written yet."
+    words = [f"epoch {line.get('epoch')}" + (f" of {epochs - 1}" if epochs else "")]
+    for key in ("train_loss", "validation_accuracy", "validation_balanced_accuracy", "seconds"):
+        value = line.get(key)
+        if isinstance(value, (int, float)) and not isinstance(value, bool):
+            words.append(f"{key.replace('_', ' ')} {value:.4g}")
+    return "Last epoch: " + ", ".join(words) + "."
 
 
 def outcome_words(entry):

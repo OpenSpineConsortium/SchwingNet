@@ -69,9 +69,40 @@ out=$(mktemp "$REPO/grid/logs/v1-flow-${SLURM_JOB_ID:-$$}.XXXXXX")
 # catalog and weights that did not finish, and its V1Flow runs tools/flow.py in local mode, then
 # writes and checks the run's CLAIM 2024 and REFORMS report and draws the run's progress page under
 # the datastore's progress/ folder.
-bash grid/box.sh pixi run --locked -e train-gpu python flows/launch.py v1 --max-workers 1 -- \
-  --catalog "$CATALOG" --out "$RUNS" --environment train-gpu --epochs "$EPOCHS" --seed "$SEED" --weights "$WEIGHTS" 2>&1 | tee "$out"
-rc=${PIPESTATUS[0]}
+# The launcher runs in the background and is waited on, as grid/sweep-driver.sbatch's is, so job
+# submit's TERM two minutes before the limit, or a person's INT, is heard at once: a shell holds a
+# trapped signal while a command runs in its foreground. The trap passes TERM on to the launcher,
+# which passes it to every process of its flow, closes the run's page and exits 143, and the
+# pipeline is waited on again; tee ignores both signals, so the launcher's last lines reach $out.
+launcher_pid=$(mktemp) launcher_rc=$(mktemp)
+stopped="" signalled=""
+stop_launcher() {
+  local pid
+  stopped=1 signalled=1
+  pid=$(cat "$launcher_pid" 2>/dev/null)
+  [ -z "$pid" ] || kill -TERM "$pid" 2>/dev/null
+}
+trap stop_launcher TERM INT
+{
+  bash grid/box.sh pixi run --locked -e train-gpu python flows/launch.py v1 --max-workers 1 -- \
+    --catalog "$CATALOG" --out "$RUNS" --environment train-gpu --epochs "$EPOCHS" --seed "$SEED" --weights "$WEIGHTS" &
+  echo "$!" > "$launcher_pid"
+  wait "$!"
+  echo "$?" > "$launcher_rc"
+} 2>&1 | (trap '' TERM INT; exec tee "$out") &
+piped=$!
+again=1
+while [ -n "$again" ]; do
+  signalled=""
+  wait "$piped"
+  again=$signalled
+done
+trap 'exit 143' TERM
+trap - INT
+rc=$(cat "$launcher_rc" 2>/dev/null)
+# No status where the launcher's own shell was killed, which only Slurm's TERM to the whole job does.
+[ -n "$rc" ] || { [ -n "$stopped" ] && rc=143 || rc=1; }
+rm -f "$launcher_pid" "$launcher_rc"
 decision=$(grep -m 1 '"decision":' "$out")
 report "launcher: ${decision:-it printed no decision line}"
 run_dir=$(sed -n 's/.*"run_dir": "\([^"]*\)".*/\1/p' "$out" | head -n 1)

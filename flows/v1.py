@@ -7,19 +7,20 @@ catalog, weights and PREREG that did not finish, the catalog's and the weights' 
 key_reads below.
 
 The work is tools/flow.py run's, in local mode with the train-gpu environment: one step,
-train_evaluate, runs it whole, its train and evaluate steps one after the other, by the helpers
-ExperimentFlow shares (flows/flow_tool.py). tools/flow.py names
-the run's folder by its code, catalog and configuration and carries a run cut short on from where
+train_evaluate, runs it whole, its train and evaluate steps one after the other, by the shared
+helpers of flows/flow_tool.py. tools/flow.py names the run's folder by its code, catalog and
+configuration and carries a run cut short on from where
 it stopped (the last epoch's train/last.pt, or only what came after an evaluation that ended), so
 the step retried once at once (@retry), or run again by a resume, loses at most the epoch in
 progress.
 
 The run trains a network, so it keeps the owner's rule through flows/stage.py: start holds the run
 to the frozen PREREG of docs/research/v1-demo/; the step's line on the run's progress page and its
-card move with the trainer's train/metrics.jsonl every REFRESH seconds; end writes and checks the
-run's CLAIM 2024 and REFORMS report in its folder (tools/report.py), and the verdict is 0 only where
-tools/flow.py finished the run and its report is current. end writes METAFLOW.json into the run's
-folder, which names this Metaflow run and its page.
+card move with the trainer's train/metrics.jsonl every REFRESH seconds; end holds the run to that
+PREREG again (stage.still_held, since a resume clones start), writes and checks the run's CLAIM 2024
+and REFORMS report in its folder (tools/report.py), strict for work done since this Metaflow run
+began, and the verdict is 0 only where tools/flow.py finished the run and its report is current.
+end writes METAFLOW.json into the run's folder, which names this Metaflow run and its page.
 """
 
 import json
@@ -97,19 +98,20 @@ class V1Flow(FlowSpec):
     def end(self):
         """The run's report written and checked, the verdict, METAFLOW.json and the page's last lines."""
         with stage.Beat(self, "report") as beat:
+            stage.still_held(self, KIND)
             folder = Path(self.run_dir)
             finished = (folder / FINISHED_MARK).is_file()
-            report_ok, report = stage.claim_report(folder)
+            report_ok, report = stage.claim_report(folder, began=stage.run_began())
             self.report = report
             self.verdict = verdict_of(finished, report_ok)
             pathspec = f"{current.flow_name}/{current.run_id}"
             record = {"flow": "V1Flow", "run": pathspec, "root": stage.datastore_root(), "page": str(stage.page_path())}
             (folder / "METAFLOW.json").write_text(json.dumps(record, indent=1, sort_keys=True) + "\n", encoding="utf-8")
-            lines = [report] + ([] if finished else [f"{folder.name}: no {FINISHED_MARK}, so tools/flow.py did not finish the run"])
+            unfinished = [] if finished else [(False, f"{folder.name}: no {FINISHED_MARK}, so tools/flow.py did not finish the run")]
             print(f"V1Flow: report {report}", flush=True)
             print(f"V1Flow: run {self.run_id}, verdict {self.verdict}", flush=True)
             beat.say(f"verdict {self.verdict}")
-            stage.finish(self.verdict, lines)
+            stage.finish(self.verdict, unfinished + [(report_ok, report)])
         current.card.append(Markdown(f"# Version 1, run {self.run_id}\n\nFolder {self.run_dir}; verdict {self.verdict}. "
                                      f"Report: {report}. Progress page: {stage.page_path()}."))
 

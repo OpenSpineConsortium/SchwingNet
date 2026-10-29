@@ -1086,9 +1086,10 @@ class SweepFlowTest(unittest.TestCase):
         self.assertEqual(calls.read_text(encoding="utf-8").splitlines(), ["row b"])
 
 
-STUB_FLOW_TOOL = '''"""A stand-in for tools/flow.py run, as V1Flow runs it: the run's folder held by its .lock, an epoch
-line a second, the run's id and folder said before its first step, killed once or failing where
-the test says, and FINISHED.json last."""
+STUB_FLOW_TOOL = '''"""A stand-in for tools/flow.py run, as V1Flow runs it: the run's folder held by its .lock and its
+RUN.json written first, an epoch line a second, the run's id and folder said before its first step,
+killed once or failing where the test says, a report of its own that is not current where the test
+says, and FINISHED.json last."""
 import json
 import os
 import signal
@@ -1129,6 +1130,7 @@ if os.environ.get("FLOW_TEST_FAULT"):
 run_dir = Path(value("--out")) / "r1"
 (run_dir / "train").mkdir(parents=True, exist_ok=True)
 (run_dir / ".lock").write_text(f"pid {os.getpid()} on testhost, since now\\n", encoding="utf-8")
+(run_dir / "RUN.json").write_text(json.dumps({"run_id": "r1", "epochs": value("--epochs")}), encoding="utf-8")
 print(json.dumps({"run_id": "r1", "run_dir": str(run_dir), "mode": "local"}), flush=True)
 marker = Path(os.environ["FLOW_TEST_MARKER"])
 with (run_dir / "train" / "metrics.jsonl").open("a", encoding="utf-8") as metrics:
@@ -1140,6 +1142,8 @@ with (run_dir / "train" / "metrics.jsonl").open("a", encoding="utf-8") as metric
             kill_the_job()
         time.sleep(float(os.environ.get("FLOW_TEST_EPOCH_SECONDS", "0")))
 (run_dir / "evaluate").mkdir(exist_ok=True)
+if os.environ.get("FLOW_TEST_STALE"):
+    (run_dir / "claim.json").write_text("a report the run left stale\\n", encoding="utf-8")
 if not os.environ.get("FLOW_TEST_UNFINISHED"):
     (run_dir / "FINISHED.json").write_text(json.dumps({"run_id": "r1"}), encoding="utf-8")
 '''
@@ -1209,7 +1213,7 @@ class V1FlowTest(unittest.TestCase):
         self.assertEqual((said[-1]["successful"], said[-1]["verdict"]), (True, 0), out)
         self.assertEqual(calls, ["run 3 1 catalog-000001-abc.sqlite"])
         reports = (self.tmp / "calls-1.reports").read_text(encoding="utf-8").split()
-        self.assertEqual(reports, ["write", "r1", "check", "r1"])
+        self.assertEqual(reports, ["end", "write", "r1", "end", "check", "r1"])
         page = str(self.root / "progress" / "V1Flow" / said[-1]["run"].split("/")[1] / "index.html")
         record = json.loads((self.runs / "r1" / "METAFLOW.json").read_text(encoding="utf-8"))
         self.assertEqual(record, {"flow": "V1Flow", "run": said[-1]["run"], "root": str(self.root), "page": page})
@@ -1217,9 +1221,9 @@ class V1FlowTest(unittest.TestCase):
         self.assertRegex(lines[0], rf"^flow V1Flow/{folder.name} v1: succeeded, started ")
         self.assertRegex(lines[1], r"PREREG docs/research/v1-demo/PREREG\.md sha256 [0-9a-f]{12}$")
         self.assertIn("task train_evaluate train and evaluate: done; run r1, folder " + str(self.runs / "r1"), lines)
-        self.assertIn("report: r1: current; CLAIM 2024: 20 met, 3 declared, 2 not applicable, 4 missing; "
-                      "REFORMS: 20 met, 3 declared, 2 not applicable, 4 missing", lines)
-        self.assertEqual(lines[-2:], ["verdict: 0", "ended: the launcher exited 0, the flow succeeded"])
+        self.assertIn("report: r1: current, written at the end since the run left none; CLAIM 2024: 20 met, 3 declared, "
+                      "2 not applicable, 4 missing; REFORMS: 20 met, 3 declared, 2 not applicable, 4 missing", lines)
+        self.assertEqual(lines[2:5], ["verdict: 0", "ended: the launcher exited 0, the flow succeeded", "reports: 1 of 1 current"])
         self.assertIn('"run_dir": "' + str(self.runs / "r1") + '"', out)
 
     def test_the_step_line_moves_with_the_trainers_epochs_while_it_trains(self):
@@ -1240,7 +1244,8 @@ class V1FlowTest(unittest.TestCase):
         code, said, out, _ = self.v1(1, FLOW_TEST_STALE="r1")
         self.assertEqual((code, said[-1]["successful"], said[-1]["verdict"]), (1, True, 1), out)
         _, lines = self.progress_of(said)
-        self.assertIn("report: r1: NOT CURRENT, why: r1: REPORT.md not what the run gives", lines)
+        self.assertTrue([line for line in lines if line.startswith("report: r1: NOT CURRENT as the run wrote it, so written anew; why: ")
+                         and "REPORT.md, claim.json, reforms.json not what the run gives" in line], lines)
         self.assertRegex(lines[0], r" v1: failed, started ")
         shutil.rmtree(self.runs)
         code, said, out, _ = self.v1(2, FLOW_TEST_UNFINISHED="1")

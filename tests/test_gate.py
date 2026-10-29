@@ -928,10 +928,19 @@ echo "the split is not disjoint; no training step reads this version"; exit 1
 
     def fake_box(self):
         """box.sh as a fake: it logs what it was asked, fails a split check while $FAKE/split_fails is
-        there, and says where the hold was when it was asked."""
+        there, and says where the hold was when it was asked; asked for the launcher while
+        $FAKE/launch_holds is there, it runs until a TERM comes, says it came in $FAKE/stopped and
+        ends as the launcher ends then, with 143."""
         (self.repo / "grid" / "box.sh").write_text(
             '#!/bin/bash\necho "$* hold=$(cat "$SCHWINGNET/grid/logs/HOLD" 2>/dev/null)" >> "$FAKE/box.log"\n'
             'if [[ "$*" == *split-check* ]] && [ -f "$FAKE/split_fails" ]; then exit 1; fi\n'
+            'if [[ "$*" == *flows/launch.py* ]] && [ -f "$FAKE/launch_holds" ]; then\n'
+            '  sleep 60 & flow=$!\n'
+            '  trap \'kill "$flow"; echo TERM >> "$FAKE/stopped"; '
+            'echo "{\\"flow\\": \\"v1\\", \\"run\\": \\"V1Flow/12\\", \\"successful\\": false, \\"verdict\\": null}"; exit 143\' TERM\n'
+            '  touch "$FAKE/launch_held"\n'
+            '  wait "$flow"\n'
+            'fi\n'
             'echo \'{"run_dir": "/nowhere"}\'\n', encoding="utf-8")
 
     def boxed(self):
@@ -973,6 +982,37 @@ echo "the split is not disjoint; no training step reads this version"; exit 1
         self.assertEqual(done.returncode, 1)
         self.assertIn("no catalog version to run on: no catalog version holds both of the C-ArmLSpine parts", done.stdout)
         self.assertEqual(self.boxed(), [])
+        self.assertFalse((self.repo / "grid" / "logs" / "HOLD").exists())
+
+    def test_job_submits_early_term_reaches_the_v1_launcher_at_once_and_the_report_says_how_it_ended(self):
+        # As the sweep driver's: job submit's TERM two minutes before the limit goes to the batch
+        # shell alone, and a launcher run in the shell's foreground would hear only Slurm's own TERM
+        # at the limit, with no time left to close the run's page.
+        self.weights_ready()
+        self.carmlspine_shards()
+        self.catalog_ready(version=2)
+        self.fake_box()
+        (self.fake / "launch_holds").write_text("", encoding="utf-8")
+        env = dict(os.environ, SCHWINGNET=str(self.repo), DATA_ROOT=str(self.data), RUNS=str(self.runs), FAKE=str(self.fake),
+                   WEIGHTS=str(self.models / "resnet18-f37072fd.pth"), SLURM_JOB_ID="777")
+        env.pop("STORE", None)
+        driver = subprocess.Popen(["bash", str(self.repo / "grid" / "v1-driver.sbatch")], cwd=self.repo / "grid", env=env,
+                                  stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        self.addCleanup(driver.kill)
+        for _ in range(300):
+            if (self.fake / "launch_held").exists():
+                break
+            time.sleep(0.1)
+        began = time.monotonic()
+        driver.send_signal(signal.SIGTERM)
+        out, _ = driver.communicate(timeout=60)
+        self.assertLess(time.monotonic() - began, 30, "the TERM reached the launcher before its flow ended on its own")
+        self.assertEqual(driver.returncode, 143, out)
+        self.assertEqual((self.fake / "stopped").read_text(encoding="utf-8"), "TERM\n")
+        self.assertIn("SN_V1_RC=143", out)
+        report = (self.repo / "grid" / "logs" / "v1-driver-STAGE-REPORT.md").read_text(encoding="utf-8")
+        self.assertIn('- Metaflow: {"flow": "v1", "run": "V1Flow/12", "successful": false', report)
+        self.assertIn("- launcher exited 143\n", report)
         self.assertFalse((self.repo / "grid" / "logs" / "HOLD").exists())
 
     def test_the_chooser_wants_both_parts_every_head_shard_and_a_current_split_check(self):

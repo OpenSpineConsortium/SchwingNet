@@ -1,10 +1,8 @@
-"""What a launched flow does to run tools/flow.py run whole, shared by V1Flow and ExperimentFlow.
-
-Both flows run one tools/flow.py run, in local mode, in one step, and differ only in the words they
-give it and what their start and end do around it: V1Flow the version 1 run (flows/v1.py),
-ExperimentFlow one requested combination of data and blocks (flows/experiment.py). This module is
-a plain one, no flow in it, so neither flow imports the other, and a change here names a new run
-of both (tools/run_code.py lists it in each kind).
+"""What a launched flow does to run tools/flow.py run whole: V1Flow's (flows/v1.py), and the
+experiment word's flow's once it is moved, since both run one tools/flow.py run, in local mode, in
+one step, and differ only in the words they give it and what their start and end do around it.
+This module is a plain one, no flow in it, so no flow imports another, and a change here names a
+new run of every kind that lists it (tools/run_code.py).
 
 - Paths: a path parameter is read from the folder the launcher was started in (SCHWINGNET_WORKDIR),
   since the flow's steps run in the datastore root; word_value reads a flag's value from the
@@ -15,11 +13,17 @@ of both (tools/run_code.py lists it in each kind).
   says its folder on stdout only once it ends here. A run that exits other than 0, or says no
   folder, raises the flow's own fault, so the step's @retry tries it once more and tools/flow.py
   carries the run on from where the first try stopped.
+
+The epoch line and the watched run are kept here rather than in flows/stage.py, which every launched
+kind lists in its code (tools/run_code.py): a change there would name a new run of the sweep, the
+DRR study and the FluXray stages too, and the launcher would no longer carry one of theirs cut short
+on.
 """
 
 import hashlib
 import json
 import os
+import subprocess
 import sys
 from pathlib import Path
 
@@ -96,6 +100,39 @@ def held_folder(out, pid):
     return None
 
 
+def epoch_words(metrics_file, epochs=0):
+    """The last line of a trainer's train/metrics.jsonl, as the card and the page show it while it
+    trains: the epoch of how many, the loss, the validation accuracy and the seconds."""
+    try:
+        lines = Path(metrics_file).read_text(encoding="utf-8").splitlines()
+        line = json.loads(lines[-1]) if lines else None
+    except (OSError, ValueError):
+        line = None
+    if not isinstance(line, dict):
+        return "No epoch written yet."
+    words = [f"epoch {line.get('epoch')}" + (f" of {epochs - 1}" if epochs else "")]
+    for key in ("train_loss", "validation_accuracy", "validation_balanced_accuracy", "seconds"):
+        value = line.get(key)
+        if isinstance(value, (int, float)) and not isinstance(value, bool):
+            words.append(f"{key.replace('_', ' ')} {value:.4g}")
+    return "Last epoch: " + ", ".join(words) + "."
+
+
+def run_watched(command, beat, line_of, every, started, **popen):
+    """stage.run_watched, with started told the process once it runs, so line_of can find the
+    folder that process holds: (exit code, stdout, stderr)."""
+    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, **popen)
+    started(process)
+    while True:
+        try:
+            out, err = process.communicate(timeout=every)
+            break
+        except subprocess.TimeoutExpired:
+            beat.tick(line_of)
+    beat.tick(line_of)
+    return process.returncode, out, err
+
+
 def run_words(folder, epochs):
     """Where the run stands, from its folder: the last epoch while it trains, then the evaluation."""
     if folder is None:
@@ -104,7 +141,7 @@ def run_words(folder, epochs):
         return f"Finished: {folder.name}."
     if (folder / "evaluate").is_dir():
         return f"Evaluating {folder.name} on the test part."
-    return f"Training {folder.name}. " + stage.epoch_words(folder / "train" / "metrics.jsonl", epochs + 1)
+    return f"Training {folder.name}. " + epoch_words(folder / "train" / "metrics.jsonl", epochs + 1)
 
 
 def run_flow_tool(flow, command, out_root, epochs, title, fault):
@@ -124,8 +161,7 @@ def run_flow_tool(flow, command, out_root, epochs, title, fault):
         return words
 
     with stage.Beat(flow, "train and evaluate") as beat:
-        code, out, err = stage.run_watched(command, beat, line_of, every=REFRESH,
-                                           started=lambda running: process.update(pid=running.pid), cwd=REPO)
+        code, out, err = run_watched(command, beat, line_of, REFRESH, lambda running: process.update(pid=running.pid), cwd=REPO)
         print(out + err, end="", flush=True)
         said = json_line(out, "run_dir")
         if code != 0 or said is None:

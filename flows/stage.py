@@ -173,15 +173,12 @@ class Beat:
         self.said = True
 
 
-def run_watched(command, beat, line_of, every=BEAT_SECONDS, started=None, **popen):
+def run_watched(command, beat, line_of, every=BEAT_SECONDS, **popen):
     """A command run to its end with its output kept, the beat told line_of() every few seconds
     while it runs and once at its end, so the page moves with the work and shows it alive however
-    long it says nothing new (Beat.tick); line_of may move the step's card too, and started, where
-    given, is told the process once it runs, so line_of can find what that process writes. (exit
-    code, stdout, stderr)."""
+    long it says nothing new (Beat.tick); line_of may move the step's card too. (exit code,
+    stdout, stderr)."""
     process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, **popen)
-    if started:
-        started(process)
     while True:
         try:
             out, err = process.communicate(timeout=every)
@@ -190,24 +187,6 @@ def run_watched(command, beat, line_of, every=BEAT_SECONDS, started=None, **pope
             beat.tick(line_of)
     beat.tick(line_of)
     return process.returncode, out, err
-
-
-def epoch_words(metrics_file, epochs=0):
-    """The last line of a trainer's train/metrics.jsonl, as a card and the page show it while it
-    trains: the epoch of how many, the loss, the validation accuracy and the seconds."""
-    try:
-        lines = Path(metrics_file).read_text(encoding="utf-8").splitlines()
-        line = json.loads(lines[-1]) if lines else None
-    except (OSError, ValueError):
-        line = None
-    if not isinstance(line, dict):
-        return "No epoch written yet."
-    words = [f"epoch {line.get('epoch')}" + (f" of {epochs - 1}" if epochs else "")]
-    for key in ("train_loss", "validation_accuracy", "validation_balanced_accuracy", "seconds"):
-        value = line.get(key)
-        if isinstance(value, (int, float)) and not isinstance(value, bool):
-            words.append(f"{key.replace('_', ' ')} {value:.4g}")
-    return "Last epoch: " + ", ".join(words) + "."
 
 
 def tally_words(folder):
