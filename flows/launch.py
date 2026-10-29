@@ -1,7 +1,9 @@
 """Start or resume one of the pipeline's Metaflow flows: the one way a flow starts on the grid.
 
 Usage:
-    python flows/launch.py {bank|catalog|sweep} [--max-workers N] [--root DIR] -- <flow parameters>
+    python flows/launch.py <kind> [--max-workers N] [--root DIR] -- <flow parameters>
+
+The kinds are the flows flows/registry.txt lists, bank, catalog and sweep among them.
 
 The grid ends jobs from outside, a Slurm time limit or a preemption killing the whole job, and
 the gate word that queued it queues it again. Metaflow carries a run that did not finish on with
@@ -48,9 +50,19 @@ step's verdict (0 all well, 1 otherwise), so a job's afterok means what it meant
 refusal is the line LaunchError: <words> on stderr, before any flow starts, with the exit code 64
 for words the launcher does not take, 69 for what the node lacks and 70 for a rule of
 schwingnet.pipeline the runs broke; anything else that stops it prints its traceback and exits 1.
-Whatever the end, the last line on stdout is the flow's word in RC_WORDS with the exit code and
-the time, as XR_CATALOG_RC=0 2026-10-25 12:00:00: the gate's status keeps that line and
+Whatever the end, the last line on stdout is the kind's word in flows/registry.txt with the exit
+code and the time, as XR_CATALOG_RC=0 2026-10-25 12:00:00: the gate's status keeps that line and
 withholds the words of every other, so a job's log shows how the launcher ended wherever it ended.
+
+Every deep learning flow is held to a frozen PREREG (the owner's rule of 2026-10-29): the registry
+names the PREREG.md of each kind that trains or runs a network, and the launcher refuses one whose
+PREREG is missing or no longer the one its PREREG.md.sha256 froze before any flow starts, with the
+Lab Recipe's exit 90 (flows/stage_registry.py), and so too a run whose part of its kind, a sweep's
+plan, the frozen PREREG does not cover. The PREREG's path and sha256 are among what the key
+reads, so a run is only ever carried on under the PREREG it started under, and every run of such a
+kind is tagged prereg:<12> beside the key. Once Metaflow has named the run, the launcher writes the
+head of its progress page (flows/stage_progress.py), <root>/progress/<Flow>/<run>/run.json, since a
+resumed run clones start and never runs it, and when the flow ends it writes how it ended there.
 
 The datastore is local, on the lab volume: --root, else $SCHWINGNET_METAFLOW, else
 /rs/rs_grp_oschome/go2432/metaflow. The flow runs with that folder as its working directory:
@@ -81,10 +93,13 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT / "vendor" / "beethoven-qa" / "src"))
 
+sys.path.insert(0, str(ROOT / "flows"))
+
+import stage_progress  # noqa: E402
+import stage_registry  # noqa: E402
 from beethoven_qa.contracts import ViolationError  # noqa: E402
 from schwingnet.pipeline import RESUME, Beat, RunState, decide, marked_live, run_key  # noqa: E402
 
-FLOWS = {"bank": "BankFlow", "catalog": "CatalogFlow", "sweep": "SweepFlow"}
 DEFAULT_ROOT = "/rs/rs_grp_oschome/go2432/metaflow"
 NO_METAFLOW = (
     "Metaflow is not in this python; the train-cpu and train-gpu environments carry it, "
@@ -94,13 +109,13 @@ EX_USAGE = 64
 EX_UNAVAILABLE = 69
 EX_SOFTWARE = 70
 BEAT_SECONDS = 60
-# The word of the line every exit of the launcher ends with: the one the bank and catalog stages'
-# scripts end with when they run straight, and for the sweep one apart from the SN_SWEEP_RC its
-# driver prints after the launcher's. The gate's status keeps such a line and withholds every other
-# the launcher prints, so a job shows how it ended wherever it ended (the second review of #252,
-# finding 6).
-RC_WORDS = {"bank": "XR_BANK_RC", "catalog": "XR_CATALOG_RC", "sweep": "SWEEP_RC"}
-USAGE = "usage: python flows/launch.py {bank|catalog|sweep} [--max-workers N] [--root DIR] -- <flow parameters>"
+# The word of the line every exit of the launcher ends with, each kind's in flows/registry.txt: the
+# one the bank and catalog stages' scripts end with when they run straight, and for the sweep one
+# apart from the SN_SWEEP_RC its driver prints after the launcher's. The gate's status keeps such a
+# line and withholds every other the launcher prints, so a job shows how it ended wherever it ended
+# (the second review of #252, finding 6). A kind the registry does not list, or a registry that
+# cannot be read, ends with LAUNCH_RC.
+NO_WORD = "LAUNCH_RC"
 
 
 class LaunchError(Exception):
@@ -111,21 +126,33 @@ class LaunchError(Exception):
         self.code = code
 
 
-def parse(argv):
+def usage(flows):
+    return f"usage: python flows/launch.py {{{'|'.join(flows)}}} [--max-workers N] [--root DIR] -- <flow parameters>"
+
+
+def flows_listed(repo):
+    """The flows the checkout's registry lists, by kind (flows/registry.txt)."""
+    try:
+        return stage_registry.entries(repo)
+    except stage_registry.RegistryError as error:
+        raise LaunchError(f"the registry of flows cannot be read: {error}", EX_UNAVAILABLE) from error
+
+
+def parse(argv, flows):
     """The flow's name, the launcher's own options and the flow's words after the --."""
     if "--" in argv:
         cut = argv.index("--")
         own, words = argv[:cut], argv[cut + 1:]
     else:
         own, words = argv, []
-    if not own or own[0] not in FLOWS:
-        raise LaunchError(USAGE, EX_USAGE)
+    if not own or own[0] not in flows:
+        raise LaunchError(usage(flows), EX_USAGE)
     name, options = own[0], {"max_workers": 1, "root": None}
     rest = own[1:]
     while rest:
         flag = rest.pop(0)
         if flag not in ("--max-workers", "--root") or not rest:
-            raise LaunchError(USAGE, EX_USAGE)
+            raise LaunchError(usage(flows), EX_USAGE)
         value = rest.pop(0)
         if flag == "--root":
             options["root"] = value
@@ -136,6 +163,22 @@ def parse(argv):
     if any(word == "--commit" or word.startswith("--commit=") for word in words):
         raise LaunchError("the launcher passes --commit itself, the checkout's own; leave it out", EX_USAGE)
     return name, options, words
+
+
+def require_prereg(name, repo, part=None):
+    """The kind's frozen PREREG, (path, sha256), None for a stage that trains and runs no network;
+    refused with the Lab Recipe's exit 90 where it is missing or moved, or covers no such part,
+    before any flow starts."""
+    try:
+        return stage_registry.frozen_for(name, part, repo)
+    except stage_registry.PreregError as error:
+        raise LaunchError(f"the {name} flow's runs are held to a frozen PREREG (the owner's rule of 2026-10-29), "
+                          f"so none was started or resumed: {error}", stage_registry.EX_PREREG) from error
+
+
+def prereg_reads(prereg):
+    """What the key reads of the PREREG: its path and its bytes' sha256."""
+    return [f"prereg {prereg[0]} {prereg[1]}"] if prereg else []
 
 
 def names_a_date(words):
@@ -189,16 +232,30 @@ def code_of(repo, name):
         raise LaunchError(f"the code the {name} flow runs cannot be named: {error}", EX_UNAVAILABLE) from error
 
 
-def reads_of(name, repo, words):
-    """What the flow reads that its words do not name, for the key, listed by the flow's own file
-    in the checkout (its key_reads), so the launcher lists them exactly as the flow will: bank's
-    recipes and raw copies, the sweep's plan; nothing for a flow with no key_reads. Loaded once
-    Metaflow is set up, since those files import it."""
+def flow_module(name, repo):
+    """The flow's own file in the checkout, loaded once Metaflow is set up, since those files
+    import it."""
+    if str(repo / "flows") not in sys.path:
+        sys.path.insert(0, str(repo / "flows"))
     spec = importlib.util.spec_from_file_location(f"schwingnet_{name}_flow", repo / "flows" / f"{name}.py")
     flow = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(flow)
+    return flow
+
+
+def reads_of(flow, words):
+    """What the flow reads that its words do not name, for the key, listed by the flow's own
+    key_reads, so the launcher lists them exactly as the flow will: bank's recipes and raw copies,
+    the sweep's plan; nothing for a flow with no key_reads."""
     key_reads = getattr(flow, "key_reads", None)
     return key_reads(words, Path.cwd()) if key_reads else []
+
+
+def part_of(flow, words):
+    """The part of its kind a run of these words is, by the flow's own prereg_part, as the sweep's
+    plan is; None for a flow whose runs are all of one design."""
+    prereg_part = getattr(flow, "prereg_part", None)
+    return prereg_part(words, Path.cwd()) if prereg_part else None
 
 
 def point_metaflow_at(root):
@@ -329,8 +386,9 @@ class Heartbeat:
     every BEAT_SECONDS, and taken away when the flow ends. A write that fails is said once and
     tried again at the next beat."""
 
-    def __init__(self, folder, key, run_id_file):
+    def __init__(self, folder, key, run_id_file, page=None):
         host, pid, job = this_launcher()
+        self.page = page
         self.path = folder / f"{re.sub(r'[^A-Za-z0-9._-]', '_', host)}-{pid}.json"
         self.run_id_file = run_id_file
         self.record = {"key": key, "run": "", "host": host, "pid": pid, "slurm_job": job, "beat": 0.0}
@@ -356,6 +414,8 @@ class Heartbeat:
         while not self.stop.wait(1.0):
             named = self.record["run"] or self.named_run()
             if named != self.record["run"] or time.monotonic() - last >= BEAT_SECONDS:
+                if named != self.record["run"] and self.page:
+                    self.page.begin(named)
                 self.record["run"] = named
                 self.write()
                 last = time.monotonic()
@@ -379,6 +439,38 @@ class Heartbeat:
             self.said = True
 
 
+class Page:
+    """The run's progress page as the launcher keeps it: the head once Metaflow has named the run,
+    how the flow ended once it has; a page that cannot be written is said once, and the run goes on."""
+
+    def __init__(self, root, head):
+        self.root, self.head, self.run, self.said = root, head, "", False
+
+    def begin(self, run):
+        self.run = run
+        self.write(lambda: stage_progress.write_head(self.root, dict(self.head, run=run, started=stage_progress.utc_now())))
+
+    def end(self, record):
+        if self.run:
+            self.write(lambda: stage_progress.write_launch(self.root, self.head["flow"], self.run, record))
+
+    def write(self, writing):
+        try:
+            writing()
+            stage_progress.draw(self.root, self.head["flow"], self.run)
+        except OSError as error:
+            if not self.said:
+                print(f"launch: the progress page could not be written: {error}", file=sys.stderr, flush=True)
+            self.said = True
+
+
+def page_head(name, flow_class, key, commit, code, prereg, decision, origin):
+    host, _, job = this_launcher()
+    return {"flow": flow_class, "kind": name, "key": key, "commit": commit[:7], "code": code[:12],
+            "prereg": prereg[0] if prereg else None, "prereg_sha256": prereg[1] if prereg else None,
+            "origin": origin if decision == RESUME else None, "decision": decision, "host": host, "slurm_job": job}
+
+
 def decision_of(flow_class, key, folder):
     """Run anew or resume, and the runs that says it, newest first. The runs are listed before the
     beats are read, so a run listed was made after its launcher's beat was written; and the newest
@@ -395,10 +487,12 @@ def decision_of(flow_class, key, folder):
     return runs, decision, origin
 
 
-def run_tags(key, commit, code):
+def run_tags(key, commit, code, prereg=None):
     """What every run is tagged with: the key that finds it, the commit of the checkout that
-    launched it and the code's digest, as Metaflow's UI and client filter runs by."""
-    return [word for tag in (f"key:{key}", f"commit:{commit[:7]}", f"code:{code[:12]}") for word in ("--tag", tag)]
+    launched it, the code's digest and, for a deep learning flow, its PREREG's, as Metaflow's UI
+    and client filter runs by."""
+    tags = [f"key:{key}", f"commit:{commit[:7]}", f"code:{code[:12]}", *([f"prereg:{prereg[1][:12]}"] if prereg else [])]
+    return [word for tag in tags for word in ("--tag", tag)]
 
 
 def flow_command(name, repo, decision, origin, options, words, tags, commit, run_id_file, today):
@@ -452,31 +546,40 @@ def run_flow(command, root, repo):
 
 
 def launch(argv):
-    name, options, words = parse(argv)
+    repo = repository()
+    flows = flows_listed(repo)
+    name, options, words = parse(argv, flows)
+    prereg = require_prereg(name, repo)
     root = datastore_root(options["root"])
     point_metaflow_at(root)
     require_metaflow()
     require_parent(root)
     (root / ".metaflow").mkdir(parents=True, exist_ok=True)
-    repo = repository()
     commit, code = commit_of(repo), code_of(repo, name)
-    key = run_key(name, code, words, reads_of(name, repo, words))
-    flow_class = FLOWS[name]
+    flow = flow_module(name, repo)
+    prereg = require_prereg(name, repo, part_of(flow, words)) if prereg else prereg
+    key = run_key(name, code, words, [*reads_of(flow, words), *prereg_reads(prereg)])
+    flow_class = flows[name]["class"]
     folder = beats_folder(root, flow_class, key)
     runs, decision, origin = decision_of(flow_class, key, folder)
     live = runs[0].run_id if runs and runs[0].live and not runs[0].successful else None
     say({"code": code, "decision": decision, "flow": name, "key": key, "live": live, "origin": origin, "root": str(root)})
+    page = Page(root, page_head(name, flow_class, key, commit, code, prereg, decision, origin))
     with tempfile.TemporaryDirectory(prefix="launch-") as scratch:
         run_id_file = Path(scratch) / "run-id"
-        command = flow_command(name, repo, decision, origin, options, words, run_tags(key, commit, code), commit,
+        command = flow_command(name, repo, decision, origin, options, words, run_tags(key, commit, code, prereg), commit,
                                str(run_id_file), date.today().isoformat())
-        with Heartbeat(folder, key, run_id_file):
+        with Heartbeat(folder, key, run_id_file, page):
             flow_code = run_flow(command, root, repo)
         run_id = run_id_file.read_text(encoding="utf-8").strip() if run_id_file.is_file() else ""
     successful, verdict = ended(flow_class, run_id)
+    code_out = exit_code(flow_code, verdict)
+    page.run = page.run or run_id
+    page.end({"words": f"the launcher exited {code_out}, the flow {'succeeded' if successful else 'did not succeed'}",
+              "exit": code_out, "successful": successful, "verdict": verdict, "at": stage_progress.utc_now()})
     say({"flow": name, "run": f"{flow_class}/{run_id}" if run_id else None, "successful": successful,
          "verdict": verdict})
-    return exit_code(flow_code, verdict)
+    return code_out
 
 
 def refused(error):
@@ -485,10 +588,20 @@ def refused(error):
     return error.code
 
 
+def rc_word(argv):
+    """The word of the launcher's last line for the kind asked, LAUNCH_RC where the registry lists
+    no such kind or cannot be read."""
+    try:
+        listed = stage_registry.entries(repository())
+    except stage_registry.RegistryError:
+        return NO_WORD
+    kind = argv[0] if argv else ""
+    return listed[kind]["word"] if kind in listed else NO_WORD
+
+
 def say_ended(argv, code):
     """The launcher's last line: its stage's word, the exit code and the time, and no value of a run."""
-    word = RC_WORDS.get(argv[0] if argv else "", "LAUNCH_RC")
-    print(f"{word}={code} {datetime.now():%Y-%m-%d %H:%M:%S}", flush=True)
+    print(f"{rc_word(argv)}={code} {datetime.now():%Y-%m-%d %H:%M:%S}", flush=True)
 
 
 def main(argv=None):

@@ -118,6 +118,12 @@ python3 tools/experiments_panel.py check
 # (python3 tools/report.py write-recorded), fails here.
 python3 tools/report.py check-recorded
 
+# Every deep learning job on the grid runs on a flow flows/launch.py starts, under a frozen PREREG
+# (the owner's rule of 2026-10-29): flows/registry.txt lists the flows, and flows/stage_registry.py,
+# standard library, fails here on a line whose flow class, job script or PREREG does not hold, a
+# PREREG edited since its PREREG.md.sha256 froze it among them.
+python3 flows/stage_registry.py check
+
 # The textbook's storage panel (docs/textbook/figures/22/, chapter 22) is drawn by tools/storage_panel.py from
 # the committed snapshot of spine-datasets' feed, standard library: a snapshot refreshed without the page built
 # again, or a page edited by hand, fails here.
