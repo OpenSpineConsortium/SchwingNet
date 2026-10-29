@@ -467,15 +467,16 @@ class RealismFlow(FlowSpec):
     @card(type="blank")
     @step
     def end(self):
-        """RECORD.json and SUMMARY.md, the CLAIM 2024 and REFORMS report written and checked, the
-        verdict in ENDED.json, which the report never reads, and for an edit that ended well the
-        pointer the stats stage reads it through."""
+        """The run held to the PREREG start kept, whatever resumed it; RECORD.json and SUMMARY.md, the
+        CLAIM 2024 and REFORMS report written and checked, the verdict in ENDED.json, which the report
+        never reads, and for an edit that ended well the pointer the stats stage reads it through."""
         with self.beat("the record and the report") as beat:
+            stage.still_held(self, KIND)
             self.ended, self.short = self.ended_in(), self.shortfalls()
             lines = self.summary_lines() + [f"- short of the draw: {', '.join(self.short)}"] * bool(self.short)
             Path(self.path("SUMMARY.md")).write_text("\n".join(lines) + "\n", encoding="utf-8")
             write_json(self.path("RECORD.json"), self.record())
-            ok, self.report_line = stage.claim_report(self.folder, study=STUDY)
+            ok, self.report_line = stage.claim_report(self.folder, study=STUDY, began=stage.run_began())
             self.verdict = 0 if ok and not self.short else 1
             ended = {"folder": self.folder, "run": self.ended["run"], "started_run": self.where["run"], "key": self.key,
                      "started": self.started, "ended": self.ended["ended"], "verdict": self.verdict, "report": self.report_line}
@@ -488,8 +489,8 @@ class RealismFlow(FlowSpec):
             for line in [*lines, f"report: {self.report_line}", f"verdict {self.verdict}"]:
                 if line.strip():
                     print(f"RealismFlow: {line.removeprefix('- ')}", flush=True)
-            beat.say(f"verdict {self.verdict}; report {self.report_line}")
-            stage.finish(self.verdict, [*lines[:6], f"report: {self.report_line}", f"folder: {self.folder}"])
+            beat.say(f"verdict {self.verdict}; report {self.report_line}" + (f"; short of the draw: {', '.join(self.short)}" if self.short else ""))
+            stage.finish(self.verdict, [(ok, self.report_line)])
         current.card.append(Markdown(f"# Realism {self.which}, run {current.run_id}\n\nFolder {self.folder}; verdict "
                                      f"{self.verdict}; report {self.report_line}; progress page {stage.page_path()}.\n\n"
                                      + "\n".join(lines)))

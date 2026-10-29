@@ -257,7 +257,7 @@ class RealismFlowTest(unittest.TestCase):
         self.assertIn("renders 48 of 400", corrupt["evidence"])
         _, lines = self.progress(said)
         self.assertIn("verdict: 0", lines)
-        self.assertTrue(any(line.startswith("report: ") and ": current; CLAIM 2024: " in line for line in lines), lines)
+        self.assertTrue(any(line.startswith("report: ") and ": current" in line and "; CLAIM 2024: " in line for line in lines), lines)
 
         code, said, out, calls = self.run_stage("stats", 1)
         self.assertEqual(code, 0, out)
@@ -334,7 +334,7 @@ class RealismFlowTest(unittest.TestCase):
         self.assertFalse((self.out / "edit.json").exists())
         ended = self.last("edit")
         self.assertEqual(ended["verdict"], 1)
-        self.assertIn("NOT CURRENT", ended["report"])
+        self.assertRegex(ended["report"], r": NOT (CURRENT|WRITTEN)")
         code, said, out, calls = self.run_stage("stats", 1)
         self.assertNotEqual(code, 0, out)
         self.assertIn("send realism edit first", out)

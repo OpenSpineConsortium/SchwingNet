@@ -28,7 +28,8 @@ these standards: a study that trains no network is reported from its recorded fo
 docs/research/<study>/runs/<prepare job>/, which holds BENCH.md, the bench report as the grid's
 gate printed it, and summary.txt, whose first lines are the record lines the study writes. Its code
 answers read those record lines, the summary's own lines and the groups table whose digest the
-record names; its owner's answers come from data/reporting/studies/<study>.json; an item a
+record names, the frozen pre-registration where the record names the one the study's design
+answers restate, and the README's record of what each run does not support; its owner's answers come from data/reporting/studies/<study>.json; an item a
 training run answers by code is answered for the study's encoders and two-sample tests, or is not
 applicable, with the reason quoted, where the study's design leaves out what it asks about.
 """
@@ -511,27 +512,46 @@ LICENCES = ROOT / "data" / "licences.json"
 STUDY_FILES = ("BENCH.md", "summary.txt")
 SUMMARY_LINES = 85  # what the bench report carries of a summary (tools/domain_gap.py, RECORD_LINES + LINE_BUDGET)
 
-# How the DRR domain-gap study answers each item a training run answers by code, and the two it
-# hands to the owner: ("code", fact) is read from the recorded folder by STUDY_FACTS, ("declared",
-# fact) is the owner's sentence in the study's answers file. Every other item is declared under its
-# checklist fact, as for a training run.
+# How the DRR domain-gap study answers each item: ("code", fact) is read from the recorded folder,
+# the groups table it names and the frozen design by STUDY_FACTS, ("declared", fact) is the owner's
+# sentence in the study's answers file. The owner's ask of 2026-10-29 at 03:35 UTC, "why would I
+# answer these question instead of having a real meta flow run generate them?", moved to code every
+# item the study's own files answer; what is left for the owner is what no file of the study says,
+# the paper's title, abstract and background, the study's design in the checklist's terms (whether
+# it is retrospective, which no file of the study says), how the real corpora were acquired (the
+# files record the render groups' recipe and no real corpus's protocol), why the study's classifiers
+# are the ones it uses, the data's de-identification, the demographic and clinical characteristics
+# of the cases, which the study does not record, so that whether the item applies is the owner's to
+# say, the implications, what will be made available, the funding, and how far the findings reach
+# beyond the groups read. Every item not listed takes the checklist's basis, as for a training run.
 DRR_GAP_ITEMS = {
     "claim": {
-        "7": ("code", "sources"), "9": ("code", "transforms"), "10": ("code", "subsets"),
-        "12": ("code", "missing_data"), "19": ("code", "partitions"), "20": ("code", "disjoint"),
+        "4": ("code", "aims"), "5": ("declared", "study_design"), "6": ("code", "goal"),
+        "7": ("code", "sources"), "8": ("code", "inclusion"), "9": ("code", "transforms"), "10": ("code", "subsets"),
+        "12": ("code", "missing_data"), "13": ("declared", "acquisition"),
+        "14": ("code", "no_reference_standard"), "15": ("code", "no_reference_standard"),
+        "16": ("code", "no_annotation"), "17": ("code", "no_annotation"), "18": ("code", "no_raters"),
+        "19": ("code", "partitions"), "20": ("code", "disjoint"), "21": ("code", "intended_size"),
         "22": ("code", "instruments"), "23": ("code", "software"), "24": ("code", "initialization"),
         "25": ("code", "training"), "26": ("code", "no_model_selection"), "27": ("code", "ensembling"),
-        "28": ("code", "metrics"), "29": ("code", "uncertainty"), "32": ("code", "internal_evaluation"),
-        "33": ("code", "no_external_model"), "35": ("code", "exclusions"), "36": ("declared", "characteristics"),
-        "37": ("code", "endpoints"), "38": ("code", "no_diagnosis"), "39": ("declared", "failure_analysis"),
+        "28": ("code", "metrics"), "29": ("code", "uncertainty"), "30": ("code", "robustness"),
+        "31": ("code", "explainability"), "32": ("code", "internal_evaluation"),
+        "33": ("code", "no_external_model"), "34": ("code", "no_trial"), "35": ("code", "exclusions"),
+        "36": ("declared", "characteristics"), "37": ("code", "endpoints"), "38": ("code", "no_diagnosis"),
+        "39": ("code", "failure_analysis"), "40": ("code", "limitations"), "42": ("code", "protocol"),
     },
     "reforms": {
+        "1a": ("code", "population"), "1b": ("code", "population_rationale"), "1c": ("code", "ml_rationale"),
         "2a": ("code", "sources"), "2b": ("code", "code_state"), "2c": ("code", "compute"),
         "2d": ("code", "reproduce"), "2e": ("code", "reproduce"), "3a": ("code", "sources_per_group"),
+        "3b": ("code", "sampling_frame"), "3c": ("code", "fitness"),
         "3d": ("code", "outcome"), "3e": ("code", "sample_size"), "3f": ("code", "missing_data"),
+        "3g": ("code", "representativeness"),
         "4a": ("code", "exclusions"), "4b": ("code", "undecoded"), "4c": ("code", "transforms"),
-        "5a": ("code", "models_trained"), "5c": ("code", "partitions"), "5d": ("code", "no_model_selection"),
-        "6b": ("code", "disjoint"), "7a": ("code", "metrics"), "7b": ("code", "uncertainty"),
+        "5a": ("code", "models_trained"), "5b": ("declared", "model_rationale"), "5c": ("code", "partitions"),
+        "5d": ("code", "no_model_selection"), "5e": ("code", "no_tuning"), "5f": ("code", "baselines"),
+        "6a": ("code", "preprocessing_fit"), "6b": ("code", "disjoint"), "6c": ("code", "feature_legitimacy"),
+        "7a": ("code", "metrics"), "7b": ("code", "uncertainty"), "7c": ("code", "statistical_tests"),
     },
 }
 
@@ -557,6 +577,9 @@ STUDIES = {
         "runs": ROOT / "docs" / "research" / "drr-domain-gap" / "runs",
         "groups": ROOT / "data" / "domain_gap" / "groups.json",
         "prereg": ROOT / "docs" / "research" / "drr-domain-gap" / "PREREG.md",
+        # The pre-registration the design answers restate, by the first 16 hex of its sha256: the
+        # file frozen on 2026-10-27, which both recorded runs read.
+        "design": "3ca1-b6b7-aea6-0f00",
         "items": DRR_GAP_ITEMS,
         # The pre-registered primary endpoints (README section 4): FleXray's physical render, the
         # same from the CT alone and FluXray, each against pooled fluoroscopy and pooled film in
@@ -564,6 +587,12 @@ STUDIES = {
         "primary_space": "flexray",
         "endpoints": ("flexray_drr", "flexray_drr_ct", "fluxray"),
         "families": ("fluoroscopy", "film"),
+        # The pair whose word is the study's verdict (tools/domain_gap.py, REPLICATION_PAIRS[0]).
+        "verdict_pair": ("flexray_replica", "flexray_reference"),
+        # The spaces and readings the design reads (PREREG.md section 3), as the summary names them.
+        "readings": ("flexray", "flexray_as_stored", "imagenet", "physics"),
+        # Where each recorded run's review writes what the run does not support (section 6).
+        "readme": ROOT / "docs" / "research" / "drr-domain-gap" / "README.md",
     },
     "flux-realism": {
         "answers": ROOT / "data" / "reporting" / "studies" / "flux-realism.json",
@@ -620,7 +649,7 @@ BASELINE = re.compile(r" (?:calibration split-half auc median |real-real auc med
 # (tools/domain_gap.py, calibration_summary); a flagged group's contrasts in the space are not read
 # (docs/research/drr-domain-gap/DEVIATIONS.md, item 8).
 CALIBRATION = re.compile(r" calibration split-half auc median \S+ range \S+ to \S+ over [0-9]+, mmd flagged (?P<count>[0-9]+),"
-                         r" auc interval above half [0-9]+(?P<nulls_in_family>, nulls in the mmd q family)?")
+                         r" auc interval above half (?P<above>[0-9]+)(?P<nulls_in_family>, nulls in the mmd q family)?")
 FLAGGED = " calibration flagged "
 # The measures a contrast line can carry, each by the words that show it.
 MEASURES = (
@@ -1096,18 +1125,25 @@ def study_exclusions(run):
     return met("summary.txt, found/chosen/decoded/persons of each group: " + "; ".join(f"{g['id']} {group_counts(g)}" for g in ordered_groups(run)))
 
 
+def calibration_of(space):
+    """The space's first calibration line in its form, or None."""
+    return next((m for m in map(CALIBRATION.fullmatch, space.get("lines", [])) if m), None)
+
+
 def flagged_of(space):
     """The groups the space's calibration lines flag, and the count its first line gives, or None
     where the space has no calibration line in its form."""
-    lines = space.get("lines", [])
-    head = next((m for m in map(CALIBRATION.fullmatch, lines) if m), None)
-    names = [name for line in lines if line.startswith(FLAGGED) for name in line[len(FLAGGED):].split()]
+    head = calibration_of(space)
+    names = [name for line in space.get("lines", []) if line.startswith(FLAGGED) for name in line[len(FLAGGED):].split()]
     return names, int(head["count"]) if head else None
 
 
 def endpoint_lines(run):
     """The primary endpoints' lines in the primary space, the endpoints summary.txt lacks, and those
-    not read because the space's split-half null of the group was flagged."""
+    not read because a split-half null of a group on one of their sides was flagged in the space:
+    the endpoint's own group, or a tested real group of the family it is read against, which the
+    pooled family takes in (DEVIATIONS.md, item 8: every contrast the group is a side of in that
+    space is not read)."""
     config, groups = run["config"], run["body"]["groups"]
     space = config["primary_space"]
     lines = run["body"]["spaces"].get(space, {}).get("lines", [])
@@ -1117,8 +1153,9 @@ def endpoint_lines(run):
         for family in config["families"]:
             line = next((line.strip() for line in lines if line.startswith(f" {group} vs {family} auc ")), "")
             skipped = (groups.get(group) or {}).get("reason")
-            if line and group in flagged:
-                unread.append(f"{group} vs {family}: the split-half null of {group} in {space} found a difference, so its contrasts are not read (DEVIATIONS.md, item 8)")
+            sides = [name for name in flagged if name == group or (tested(groups.get(name) or {}) and groups[name].get("family") == family)]
+            if line and sides:
+                unread.append(f"{group} vs {family}: the split-half null of {', '.join(sides)} in {space} found a difference, so its contrasts are not read (DEVIATIONS.md, item 8)")
                 continue
             (found if line else absent).append(line or f"{group} vs {family}" + (f" (group skipped, {skipped})" if skipped else ""))
     return found, absent, unread
@@ -1141,7 +1178,7 @@ def study_endpoints(run):
     text += f"; not read: {'; '.join(unread)}" if unread else ""
     text += f"; not in summary.txt: {', '.join(absent)}" if absent else ""
     verdicts = run["body"]["verdicts"]
-    return met(text + (f"; the replication verdict: {'; '.join(verdicts)}" if verdicts else ""))
+    return met(text + (f"; the replication verdict: {'; '.join(verdicts)}" if verdicts else "") + f"; read here, {verdict_said(run)}")
 
 
 @recorded("study")
@@ -1260,6 +1297,625 @@ def study_models_trained(run):
     return met(f"no network is trained; the models fit are the two-sample classifiers, logistic regression and 15 nearest neighbours, in each fold of every contrast, every contrast kept in results.json on the grid and {len(contrast_lines(run))} of them in summary.txt's lines; units {units['done']} of {units['total']} done, {units['failed']} failed (summary.txt record)")
 
 
+# The study's design answers restate its frozen pre-registration, which never changes once frozen
+# (PREREG.md, section 7), so each holds only for a run whose record names that pre-registration by
+# the digest the study's config gives and whose file is still it; any other run has them missing.
+
+
+def design_gap(run):
+    """Why the design answers do not hold for this run, or empty where they do."""
+    named, design = run["record"]["study"]["prereg"], run["config"]["design"]
+    if named == "none":
+        return "needs the frozen pre-registration the run read: the record names none (PREREG none)"
+    gap = prereg_gap(run)
+    if gap:
+        return gap
+    if undashed(named) != undashed(design):
+        return f"the record names PREREG {named}, and these answers restate PREREG.md {design}, so they are not this run's design"
+    return ""
+
+
+def frozen(fact):
+    """A study fact that restates the frozen design: missing, saying why, unless the run read it."""
+
+    @recorded("study")
+    def answer(run):
+        gap = design_gap(run)
+        return missing(gap) if gap else fact(run)
+
+    answer.__doc__ = fact.__doc__
+    return answer
+
+
+def needs_table(fact):
+    """A study fact that reads the groups table: missing, with the table's note, where it is not read."""
+
+    def answer(run):
+        return missing(run["table_note"]) if run["table"] is None else fact(run)
+
+    answer.__doc__ = fact.__doc__
+    return answer
+
+
+def by_family(table):
+    """The table's group ids under each family, in the table's order."""
+    families = {}
+    for group in table["groups"]:
+        families.setdefault(group.get("family"), []).append(group["id"])
+    return families
+
+
+def skipped_groups(run):
+    return [f"{g['id']} ({g['reason']})" for g in run["body"]["groups"].values() if g.get("reason") is not None]
+
+
+def skips_said(run):
+    """The summary's skipped groups as one clause, or that none was skipped."""
+    skipped = skipped_groups(run)
+    return f"{counted(len(skipped), 'group')} skipped, {'; '.join(skipped)}" if skipped else "no group skipped"
+
+
+def tested(group):
+    """Whether a summary group was read with the 20 decoded images and five persons a test takes
+    (PREREG.md section 2)."""
+    return group.get("reason") is None and group.get("decoded") is not None and int(group["decoded"]) >= 20 and int(group["persons"]) >= 5
+
+
+def untested_groups(run):
+    """The groups read and never tested, for want of images or persons."""
+    return [g["id"] for g in ordered_groups(run) if g.get("reason") is None and not tested(g)]
+
+
+def groups_without_null(run):
+    """The tested groups of fewer than 40 persons, with their persons: none has a split-half null
+    (PREREG.md section 3)."""
+    return [f"{g['id']} {g['persons']}" for g in ordered_groups(run) if tested(g) and int(g["persons"]) < 40]
+
+
+def without_null_said(run):
+    without = groups_without_null(run)
+    return f"so these tested groups, by their persons in summary.txt, have none of their own: {', '.join(without)}" if without else "and every tested group has 40 persons or more (summary.txt)"
+
+
+def real_pairs(run, family):
+    """The pairs of tested real groups of one family, the family's own real pairs."""
+    ids = [g["id"] for g in ordered_groups(run) if g.get("family") == family and tested(g)]
+    pairs = [f"{a} against {b}" for i, a in enumerate(ids) for b in ids[i + 1:]]
+    listed = f", {'; '.join(pairs)}" if 0 < len(pairs) <= 3 else ""
+    return f"{family} {counted(len(pairs), 'pair')}{listed}"
+
+
+def calibration_said(run):
+    """Each space's split-half nulls as its calibration lines give them: the nulls its MMD flags, by
+    name, and the AUC intervals above one half, which flag nothing (DEVIATIONS.md, item 8); a count
+    its names do not match is said as it stands."""
+    parts = []
+    for key, space in run["body"]["spaces"].items():
+        head = calibration_of(space)
+        if head is None:
+            continue
+        names, count = flagged_of(space)
+        flagged = (", ".join(names) or "none") if count == len(names) else f"{count}, its lines naming {len(names)}"
+        parts.append(f"{key} mmd flagged {flagged}, auc interval above half {head['above']}")
+    return "; ".join(parts) or "no space carries a calibration line"
+
+
+VERDICT_LINE = re.compile(r"replication (?P<a>\S+) vs (?P<b>\S+) in (?P<space>\S+) \(invariant\): (?P<word>replicated|not replicated) \(")
+NO_VERDICT = re.compile(r"replication (?P<a>\S+) vs (?P<b>\S+): no verdict, (?P<reason>.*)")
+PAIR_NUMBERS = re.compile(r" auc \S+ \[(?P<lo>[0-9.]+), [0-9.]+\].* mmd p \S+ q (?P<q>[0-9.]+)")
+
+
+def verdict_of(run):
+    """The verdict pair's line in summary.txt, read in its form, or why there is none: the pair's
+    own reason where its line says it has no word."""
+    a, b = run["config"]["verdict_pair"]
+    space = run["config"]["primary_space"]
+    lines = run["body"]["verdicts"]
+    verdict = next((m for m in map(VERDICT_LINE.match, lines) if m and (m["a"], m["b"], m["space"]) == (a, b, space)), None)
+    if verdict is not None:
+        return verdict, None
+    none = next((m for m in map(NO_VERDICT.fullmatch, lines) if m and (m["a"], m["b"]) == (a, b)), None)
+    if none is not None:
+        return None, f"the verdict pair, {a} against {b}, has no word, summary.txt giving its reason: {none['reason']}"
+    return None, f"the verdict: summary.txt holds no line of the verdict pair, {a} against {b} in the {space} space, in its form"
+
+
+def q_family(run, space):
+    """Which family the space's MMD q was taken over, by its calibration line: frozen where the
+    split-half nulls are in it (PREREG.md section 3), alone where the contrasts alone are, unread
+    where the space has no calibration line in its form."""
+    head = calibration_of(run["body"]["spaces"].get(space, {}))
+    return "unread" if head is None else "frozen" if head["nulls_in_family"] else "alone"
+
+
+def family_caveat(family):
+    """What a word read on the MMD's q can say where the q's family is not the frozen one."""
+    if family == "alone":
+        return ("; that q was taken over the space's contrasts alone, where PREREG.md section 3 takes the split-half nulls into its family (DEVIATIONS.md, item 11),"
+                " so the frozen rule's word on the MMD is not read in this run")
+    if family == "unread":
+        return "; the space holds no calibration line in its form, so which family that q was taken over, and so whether the frozen rule's word on the MMD is read in this run, is not told"
+    return ""
+
+
+def bar_side(printed, bar, tells_above):
+    """Which side of its bar a printed number lies: told, the pair told apart by it; passed; or at,
+    where it equals the bar to the digits the summary prints, so that the word, worked out on the
+    unrounded number (src/schwingnet/domain_gap.py, replication_word), may lie on either side."""
+    value = float(printed)
+    if abs(value - bar) < 1e-9:
+        return "at"
+    return "told" if (value > bar) == tells_above else "passed"
+
+
+def verdict_said(run):
+    """The study's verdict, the verdict pair's word, and which of the replication's two bars the
+    pair's line passes or fails, in PREREG.md section 5's words where the word stands under the
+    frozen rule; or why summary.txt does not tell. The MMD's bar is read under the frozen rule only
+    where the q's family is the frozen one (DEVIATIONS.md, item 11), and a number printed at its bar
+    places nothing; a word the classifier decides stands under either family."""
+    verdict, why = verdict_of(run)
+    if verdict is None:
+        return why
+    a, b, space = verdict["a"], verdict["b"], verdict["space"]
+    pair = f"the verdict, {a} against {b} in the {space} space read inversion-invariant,"
+    unread = pair_not_read(run, a, b, space)
+    if unread:
+        return f"{pair} reads {verdict['word']}, but {unread}"
+    line = next((line for line in run["body"]["spaces"].get(space, {}).get("lines", []) if line.startswith(f" replication {a} vs {b} ")), "")
+    numbers = PAIR_NUMBERS.search(line)
+    if numbers is None:
+        return f"{pair} reads {verdict['word']}, and its space holds no line of the pair with its AUC interval and MMD q, so which bars it passed or failed is not read here"
+    lo, q, family = numbers["lo"], numbers["q"], q_family(run, space)
+    auc, mmd = bar_side(lo, 0.6, True), bar_side(q, 0.05, False)
+    if verdict["word"] == "replicated":
+        return f"{pair} reads replicated, the AUC's lower bound of {lo} at most the bar of 0.6 and the MMD's q of {q} at least 0.05" + family_caveat(family)
+    if auc == "told":
+        return failure_in_design_words(pair, [f"the classifier told them apart (AUC lower bound {lo})"] + [f"the MMD told them apart (q {q})"] * (mmd == "told" and family == "frozen"), beside_the_classifier(q, mmd, family))
+    if mmd == "told" and family == "frozen":
+        rests = f", the AUC's lower bound of {lo} being at most the bar of 0.6, so the word rests on the MMD alone" if auc == "passed" else f", the AUC's lower bound printed as {lo}, the bar of 0.6 to the digits the summary prints, so whether the classifier told them apart too is not read here"
+        return failure_in_design_words(pair, [f"the MMD told them apart (q {q})"], rests)
+    if mmd == "told":
+        rests = f"the AUC's lower bound of {lo} at most the bar of 0.6, so the word rests on the MMD alone" if auc == "passed" else f"the AUC's lower bound printed as {lo}, the bar of 0.6 to the digits the summary prints, so which bar the word rests on is not read here"
+        return f"{pair} reads not replicated, the MMD's q of {q} being under the bar of 0.05 and {rests}" + family_caveat(family)
+    if {auc, mmd} == {"at", "passed"}:
+        return failed_at_its_bar(pair, lo, q, auc == "at", family)
+    at = " and at least one of them at its bar to the digits the summary prints" if "at" in (auc, mmd) else ""
+    return f"{pair} reads not replicated on an AUC lower bound of {lo} and an MMD q of {q}{at}, which as printed do not show which bar it failed"
+
+
+def pair_not_read(run, a, b, space):
+    """Why the verdict pair's contrast is not read, or None: a split-half null of either side flagged
+    in the space, every contrast that group is a side of being then not read (DEVIATIONS.md, item 8),
+    or a calibration line whose count of flagged nulls its names do not match, which leaves it untold."""
+    names, count = flagged_of(run["body"]["spaces"].get(space, {}))
+    if count is not None and count != len(names):
+        return f"the {space} space's calibration line counts {counted(count, 'flagged split-half null')} and names {len(names)}, so whether the pair's contrast is read cannot be told"
+    sides = [name for name in (a, b) if name in names]
+    if sides:
+        nulls, their = ("split-half null", "its") if len(sides) == 1 else ("split-half nulls", "their")
+        return f"the {nulls} of {' and '.join(sides)} in {space} found a difference, so {their} contrasts are not read (DEVIATIONS.md, item 8), the verdict pair's among them"
+    return None
+
+
+def failed_at_its_bar(pair, lo, q, by_the_classifier, family):
+    """A not-replicated word where one bar is passed and the other printed at it: the number at its
+    bar is the one that failed, unrounded, since the word is replicated exactly when both bars pass
+    (src/schwingnet/domain_gap.py, replication_word)."""
+    shows = "the word showing the unrounded number on the failing side, since the other bar is passed (src/schwingnet/domain_gap.py, replication_word)"
+    if by_the_classifier:
+        return failure_in_design_words(pair, [f"the classifier told them apart (AUC lower bound printed as {lo}, the bar of 0.6, {shows})"], beside_the_classifier(q, "passed", family))
+    alone = f"the AUC's lower bound of {lo} at most the bar of 0.6, so the word rests on the MMD alone"
+    if family == "frozen":
+        return failure_in_design_words(pair, [f"the MMD told them apart (q printed as {q}, the bar of 0.05, {shows})"], f", {alone}")
+    return f"{pair} reads not replicated, the MMD's q printed as {q}, the bar of 0.05, {shows}, and {alone}" + family_caveat(family)
+
+
+def failure_in_design_words(pair, failed, tail):
+    """A not-replicated verdict in PREREG.md section 5's sentence, with the bars it failed."""
+    return (f"{pair} reads not replicated, and in PREREG.md section 5's words this project's blocks did not reproduce FleXray's own renders of its recipe: {' and '.join(failed)}{tail};"
+            " every comparison read through the blocks is then a comparison of this project's renders, not FleXray's")
+
+
+def beside_the_classifier(q, mmd, family):
+    """What the MMD says beside a classifier that told the pair apart, which decides the word alone."""
+    if family != "frozen":
+        return f", which decides the word whichever family the MMD's q is taken over (DEVIATIONS.md, item 11); the MMD's q is {q}" + family_caveat(family)
+    if mmd == "passed":
+        return f", the MMD's q of {q} being at least 0.05, so the word rests on the classifier alone"
+    if mmd == "at":
+        return f", the MMD's q printed as {q}, the bar of 0.05 to the digits the summary prints, so whether the MMD told them apart too is not read here"
+    return ""
+
+
+# The words a contrast line ends with where the design words it (PREREG.md section 4); a line of a
+# family with no real pair to read against carries none.
+WORDS = (" indistinguishable", " closer than two real corpora", " separable")
+
+
+def endpoints_said(run):
+    """The primary endpoints worded separable, PREREG.md section 5's failure of realism, where the
+    endpoints are read."""
+    state, why = study_endpoints(run)
+    if state != "met":
+        return f"the primary endpoints are not read here ({why})"
+    found, absent, unread = endpoint_lines(run)
+    worded = [line for line in found if line.endswith(WORDS)]
+    separable = [line.split(" auc ")[0] for line in worded if line.endswith(" separable")]
+    text = f"of the primary endpoints' {counted(len(worded), 'worded line')} read, " + (f"{len(separable)} worded separable, {', '.join(separable)}" if separable else "none worded separable")
+    unworded = len(found) - len(worded)
+    return (text + (f", {unworded} printed with no word" if unworded else "")
+            + (f", {len(unread)} not read" if unread else "") + (f", {len(absent)} not in summary.txt" if absent else ""))
+
+
+def section_six_parts(run):
+    """README section 6 in its parts, the first and then each ### part, up to and including the part
+    that records this run's folder; None where none records it."""
+    path = Path(run["config"]["readme"])
+    if not path.is_file():
+        return None
+    text = path.read_text(encoding="utf-8")
+    start, end = text.find("\n## 6."), text.find("\n## 7.")
+    if start < 0:
+        return None
+    parts = text[start:end if end > start else len(text)].split("\n### ")
+    at = next((i for i, part in enumerate(parts) if f"runs/{run['dir'].name}/" in part), None)
+    return None if at is None else parts[:at + 1]
+
+
+def limit_paragraphs(part):
+    """A part's paragraphs that say what a run does not support, each on one line."""
+    paragraphs = [" ".join(p.split()) for p in part.split("\n\n")]
+    return [p for p in paragraphs if p.startswith("What the ") and "does not support" in p]
+
+
+def speaks_for(run):
+    """What README section 6 says for this run: its own part whole, its own limits paragraphs, and
+    the earlier parts' limits paragraphs where its own say that they hold for it, as the second
+    run's does of the first's; None where section 6 records no part for this run."""
+    parts = section_six_parts(run)
+    if parts is None:
+        return None
+    own = parts[-1]
+    limits = limit_paragraphs(own)
+    carried = [p for part in parts[:-1] for p in limit_paragraphs(part)] if any(" holds for " in p for p in limits) else []
+    return {"own": " ".join(own.split()), "limits": limits, "carried": carried}
+
+
+def recorded_limits(run):
+    """What README section 6 says this run does not support: its own part's paragraphs, after the
+    earlier parts' that its own say still hold, quoted whole; an empty list where its own part says
+    nothing of it, whatever an earlier part says, and None where section 6 records no part for it."""
+    said = speaks_for(run)
+    if said is None:
+        return None
+    return said["carried"] + said["limits"] if said["limits"] else []
+
+
+def section_six_says(run, words):
+    """Whether README section 6 says these words for this run: in its own part, or in an earlier
+    part's limits that its own say hold for it."""
+    said = speaks_for(run)
+    return said is not None and any(words in text for text in [said["own"], *said["carried"]])
+
+
+def answers_it(fact, run):
+    """Whether another fact answers its item for this run, so a pointer to it points at an answer."""
+    return fact(run)[0] != "missing"
+
+
+@frozen
+def study_aims(run):
+    """CLAIM 4: the question and the hypotheses, as the pre-registration fixed them."""
+    return met("the question, PREREG.md section 1: how far FleXray's synthetic DRRs are from real X-rays, plain film and intra-operative fluoroscopy, whether that distance is larger than the distance between two real corpora, and whether this project's rendering of FleXray's recipe reproduces FleXray's own;"
+               " the hypotheses and their bars, its section 4: the primary endpoints, in the flexray space read inversion-invariant, the logistic C2ST AUC of flexray_drr, of flexray_drr_ct and of fluxray where fetched against pooled fluoroscopy and against pooled film, each with its interval, and FD64 of each against each family divided by the median FD64 between that family's own real corpora, the gap ratio, 1 meaning as far as two real corpora are from each other;"
+               " the words beside each primary number, indistinguishable where the AUC's lower bound is at most 0.6, closer than two real corpora where it is below the median AUC of the family's real pairs and separable otherwise;"
+               " and the replication, replicated for each of the two worded pairs, flexray_replica against flexray_reference and fluxray_raw against fluxray_raw_reference, where the logistic AUC's lower bound is at most 0.6 and the MMD's q at least 0.05, and not replicated otherwise, the first pair's word in that space and reading being the study's verdict")
+
+
+@frozen
+def study_goal(run):
+    """CLAIM 6: a measurement under pre-registered hypotheses, not a model."""
+    return met("a measurement under pre-registered hypotheses: the primary endpoints and the replication verdict of PREREG.md section 4, every other number read as description (its section 6); the study trains no network and builds no model for use")
+
+
+def noted_out(table):
+    """What the groups table's notes say is left out, each note quoted whole."""
+    noted = [f"{g['id']}, \"{g['note']}\"" for g in table["groups"] if "left out" in (g.get("note") or "")]
+    return f"; and what the table's notes say is left out: {'; '.join(noted)}" if noted else ""
+
+
+@frozen
+@needs_table
+def study_inclusion(run):
+    """CLAIM 8: who is in, who is out, and why."""
+    table = run["table"]
+    if not run["body"]["groups"]:
+        return no_group_lines()
+    frames = "; ".join(f"for a group read from {source}, {frame}" for source, frame in FRAMES.items())
+    return met(f"in: the {len(table['groups'])} groups of the table ({run['table_note']}), a group's images being, by its source, {frames}; each group at most its cap of images chosen person by person, with the five frozen test persons of data/splits/test-persons.json left out of every group;"
+               " out before the run, each with its reason in README section 2, the corpora PREREG.md section 2 names: fluoro_video_clips, fluorocap, carmlspine_sweeps, spinesac, mendeley_5jdfdgp762, COBRA, ljubljana_2d3d_gs, the undecodable videos and the archives never unpacked"
+               + noted_out(table)
+               + f"; in the run, a group with fewer than 20 decoded images is left out and one with fewer than five persons is plotted and never tested; summary.txt: {skips_said(run)}"
+               + "".join(f"; {line}" for line in run["body"]["renders"]))
+
+
+@recorded("study")
+def study_no_reference_standard(run):
+    """CLAIM 14, 15: the label is the group, known by construction."""
+    return not_applicable(run, "the study has no reference standard: the one label its tests read is which group or pooled family an image belongs to, known for every image by construction from the groups table, and no image is scored against a clinical truth")
+
+
+@recorded("study")
+def study_no_annotation(run):
+    """CLAIM 16, 17: no reference-standard annotation; the one labelling is a segmenter's."""
+    return not_applicable(run, "the study makes no reference-standard annotation and no person reads an image: the label every test reads is the image's group or pooled family, which the groups table sets, or, in a split-half null, its half of one group split by person;"
+                               " the only labels made for the study are moosez's segmentations of the render CTs, made in the segment job, which the render recipes read to weight and drop crops, to aim the isocentre and, where the attenuation randomisation is on, to draw each structure's attenuation factor, and which the study's own code reads to choose the CTs, and no test reads them (README section 2.1; src/schwingnet/render_blocks.py, reads_labels)")
+
+
+@recorded("study")
+def study_no_raters(run):
+    """CLAIM 18: no rater reads an image."""
+    return not_applicable(run, "the study has no rater, so no inter- or intrarater variability: no person reads an image, and the words beside the numbers are computed from them by src/schwingnet/domain_gap.py and printed by the summary, so no reader chooses them")
+
+
+@frozen
+@needs_table
+def study_intended_size(run):
+    """CLAIM 21: the caps the design fixed, in place of a target."""
+    table = run["table"]
+    caps, per_person = numbers_of(table["groups"], "cap"), numbers_of(table["groups"], "per_person")
+    renders = "; ".join(run["body"]["renders"])
+    return met(f"the design fixes caps, not a target: each group at most its cap of images ({', '.join(map(str, reversed(caps)))}) and at most {per_person[0] if per_person else '?'} to {per_person[-1] if per_person else '?'} a person by group, 300 images from each testable real group in a pooled family, at most 600 a group in the maps, and a group tested only with at least 20 decoded images and five persons (PREREG.md sections 2 and 3; {run['table_note']});"
+               " the render groups were planned on 250 CTs and stand on the CTs the segmentation job covered (DEVIATIONS.md, item 1)"
+               + (f", summary.txt: {renders}" if renders else "")
+               + "; no file of the study records a power calculation for any size, and the bar of 0.6 is by the design's own account neither a published value nor a power calculation's (PREREG.md section 4)")
+
+
+def spaces_said(run):
+    """The spaces summary.txt names: those that ran with their size, those not run with why."""
+    spaces = run["body"]["spaces"]
+    ran = [f"{key} dim {s['dim']}" for key, s in spaces.items() if s.get("dim")]
+    not_run = [f"{key} not run ({s['reason']})" for key, s in spaces.items() if s.get("reason") is not None]
+    return ran, not_run
+
+
+# Why a space has no features, the reasons tools/domain_gap.py's reading_heads gives where it makes
+# neither of the space's readings (unavailable, or no features file); a space that ran and whose
+# inversion-invariant head alone is invalid ("every image has the same features", space_head) still
+# has its as-stored reading made.
+NO_FEATURES = ("no features", "no FleXray bundle (ensemble.json)", "no ImageNet ResNet-18 file")
+
+
+def given_up_said(run):
+    """The design's spaces and readings summary.txt does not name: a reading of a space that had no
+    features was never made (tools/domain_gap.py, reading_heads), and the rest its line budget gave up."""
+    spaces = run["body"]["spaces"]
+    absent = [key for key in run["config"]["readings"] if key not in spaces]
+    never = [key for key in absent if key.endswith("_as_stored") and spaces.get(key[:-len("_as_stored")], {}).get("reason") in NO_FEATURES]
+    given_up = [key for key in absent if key not in never]
+    text = ""
+    if given_up:
+        text += (f", and of the design's spaces and readings it does not name {', '.join(given_up)}, which its 80-line budget gave up, the summary giving up whole sections from the highest rank down"
+                 " (tools/domain_gap.py, RANK and fit_lines; README section 6), so what results.json on the grid holds of them is not read here")
+    if never:
+        text += f", and {', '.join(never)} {'was' if len(never) == 1 else 'were'} never made, since the space it reads had no features (tools/domain_gap.py, reading_heads)"
+    return text
+
+
+@frozen
+def study_robustness(run):
+    """CLAIM 30: the one view the verdict is read in, and every other view as description."""
+    ran, not_run = spaces_said(run)
+    if not ran:
+        return missing("needs a feature space that ran: summary.txt names none" + (f" ({'; '.join(not_run)})" if not_run else ""))
+    both = any("without nulls" in line for line in run["body"]["verdicts"])
+    return met("the primary words and the study's verdict are read in one view, FleXray's space read inversion-invariant (PREREG.md section 4); as secondary description (its section 6) the design reads every contrast again in the imagenet and physics spaces and in FleXray's space as stored, by two classifiers, logistic regression and 15 nearest neighbours, beside the MMD, FD64 and KID64, with PRDC only for each synthetic group against each pooled family and for the replication pairs (tools/domain_gap.py, contrast, family_unit and replication_unit),"
+               f" and runs a split-half null on each group of 40 persons or more (its section 3), {without_null_said(run)}; PREREG.md plans no analysis of how a word moves with the bar of 0.6 or with the seed, every draw being from one seed;"
+               f" summary.txt carries {'; '.join(ran + not_run)}{given_up_said(run)}; {verdict_said(run)}"
+               + ("; and the verdict lines print each worded pair's MMD q with the split-half nulls in its family and without them (DEVIATIONS.md, item 11)" if both else ""))
+
+
+# The descriptive lines a space's summary can carry (tools/domain_gap.py, real_summary,
+# nearest_summary, centre_summary and the contrast lines), each by the words that show it.
+DESCRIPTION_LINES = (
+    ("PRDC", lambda line: bool(MEASURES[-1][1].search(line))),
+    ("the silhouette", lambda line: line.startswith(" silhouette ")),
+    ("the nearest real corpora", lambda line: line.startswith(" nearest real")),
+    ("the t-SNE map's group centres", lambda line: line.startswith(" tsne centres")),
+)
+
+
+def in_words(items):
+    """Items as a list in English: a, b and c."""
+    return " and ".join(items) if len(items) < 3 else ", ".join(items[:-1]) + " and " + items[-1]
+
+
+def description_printed(run):
+    """Which of the descriptive measures summary.txt prints, in DESCRIPTION_LINES' order."""
+    lines = [line for space in run["body"]["spaces"].values() for line in space.get("lines", [])]
+    return [name for name, shows in DESCRIPTION_LINES if any(map(shows, lines))]
+
+
+@frozen
+def study_explainability(run):
+    """CLAIM 31: what the study shows of how the groups differ, and which of it this record prints."""
+    printed = description_printed(run)
+    said = (f" of these summary.txt prints {in_words(printed)}, and the rest are on the grid and not in this record"
+            if printed else " of these summary.txt prints none, so all are on the grid and none in this record")
+    return met("no per-image explanation, no saliency or attribution map, is made; what the study shows of how the groups differ is description (PREREG.md sections 3 and 6): the maps, PCA, t-SNE, UMAP and LDA, each but LDA with its trustworthiness; the silhouette, each group's neighbour purity and its neighbours' share in each family; the nearest real corpus that a classifier of the real corpora alone calls each synthetic group; and PRDC; and the physics space's features are named measures, the intensity histogram, the radial power spectrum's shape, the gradient histogram, the noise, the local contrast, the shares near black and white and the share of strong edges (README section 3);"
+               + said)
+
+
+@frozen
+def study_no_trial(run):
+    """CLAIM 34: no clinical trial; the design is registered in the project."""
+    return not_applicable(run, f"the study is no clinical trial and is in no trial registry; its design is registered inside the project as PREREG.md {run['record']['study']['prereg']}, frozen on 2026-10-27 before any number of the study was read (its section 7), the pre-registration this record names")
+
+
+@frozen
+def study_failure_analysis(run):
+    """CLAIM 39: no case is scored against a clinical truth; the failures the design defines."""
+    return not_applicable(run, "the study scores no case against a clinical truth (CLAIM 38): its classifier two-sample tests score each image out of fold for its side of a contrast, its group, its pooled family or its half of a split group, and read the scores only in aggregate, as the AUC by its pure rule of ranks, the share of pairs across the two sides ranked the right way round with ties counted half (tools/domain_gap_stats.py, rank_auc), with its interval; no threshold sorts an image to a side, so no file of the study analyses an image as misclassified;"
+                        " the failures its design defines are PREREG.md section 5's: of the pipeline, a split-half null whose AUC interval excludes 0.5, which the study flags by its MMD instead and counts the AUC interval beside it (DEVIATIONS.md, item 8), summary.txt's calibration lines reading "
+                        + calibration_said(run) + f"; of the replication, the verdict not replicated: {verdict_said(run)}; of realism, a primary endpoint worded separable, {endpoints_said(run)}")
+
+
+@frozen
+def study_limitations(run):
+    """CLAIM 40: the limits listed before the run, those its review found after it, and this run's own."""
+    groups = run["body"]["groups"]
+    if not groups:
+        return no_group_lines()
+    found = recorded_limits(run)
+    if not found:
+        why = "section 6 records no part for it" if found is None else "its part says nothing of what the run does not support"
+        return missing(f"needs README section 6's record of this run (runs/{run['dir'].name}/), where a run's review writes what it does not support: {why}")
+    by_file = [g["id"] for g in groups.values() if g.get("by_file")]
+    quoted = " ".join(f'"{paragraph}"' for paragraph in found)
+    return met("before the run, README section 5's eight limits, to which PREREG.md section 6 points: the corpora differ in more than their realism, in anatomy, devices, eras and formats; the renders follow their own pose profiles where the real spot frames are narrow and centred; the replication's CTs are TotalSegmentator v2.0.1's, not the ENHANCE-PET volumes of FleXray's dataset; its MOOSE masks are merged in this project's own precedence; the SPINEPS masks are matched by name in a layout not recorded; flexray_drr_ct aims at the crop's centre and draws its crops uniformly; persons are files in seven groups; DeepFluoro has six specimens;"
+               f" after the run, what README section 6 says the recorded runs do not support, in its words: {quoted};"
+               f" every departure from the design is in DEVIATIONS.md, dated with its reason; of this run, summary.txt: {skips_said(run)}"
+               + (f"; persons by file in {', '.join(by_file)}" if by_file else "")
+               + f"; split-half nulls on each group of 40 persons or more, {without_null_said(run)}, the calibration lines reading {calibration_said(run)}; {verdict_said(run)}")
+
+
+@frozen
+def study_protocol(run):
+    """CLAIM 42: where the full protocol is."""
+    return met(f"the full text of the protocol is docs/research/drr-domain-gap/README.md, sections 1 to 5, at commit 6658f3a, which the pre-registration PREREG.md beside it, sha256 {run['record']['study']['prereg']} as this record names it, restates in seven parts and freezes (PREREG.md, its opening and section 7); DEVIATIONS.md beside them records every departure, and README section 7 gives the commands that run the study")
+
+
+@frozen
+@needs_table
+def study_population(run):
+    """REFORMS 1a: the groups the claims are about."""
+    table = run["table"]
+    families = by_family(table)
+    listed = "; ".join(f"{family}, {', '.join(ids)}" for family, ids in families.items())
+    rendered = [f"{g['id']}: {g.get('label')}" for g in table["groups"] if g.get("source") == "render"]
+    untested = untested_groups(run)
+    groups = run["body"]["groups"]
+    read = (f"; of them, summary.txt: {skips_said(run)}" + (f", and {', '.join(untested)} read and never tested, for want of 20 decoded images or five persons (PREREG.md section 2)" if untested else "")) if groups else "; summary.txt holds no group line, so which of them were read is not told here"
+    return met(f"the images of the table's {len(table['groups'])} groups in {len(families)} families (PREREG.md section 2; {run['table_note']}): {listed};"
+               f" the render groups are renders of held TotalSegmentator v2.0.1 CTs, each by the recipe and engine the table names (README sections 2.2 and 2.3): {'; '.join(rendered) or 'none'}; every other group stands for the held set it is read from{read}")
+
+
+def edit_alone(run):
+    """What README section 6 finds of the FLUX-edit pair, where it finds it for this run."""
+    return "; README section 6 finds that the FLUX-edit pair measures the edit together with what else differs between its two sides, not the edit alone" if section_six_says(run, "not the edit alone") else ""
+
+
+@frozen
+def study_population_rationale(run):
+    """REFORMS 1b: why every held corpus of both kinds but those left out."""
+    listed = " (CLAIM 8 lists them)" if answers_it(study_inclusion, run) else ""
+    return met("the question is how far FleXray's renders are from real X-rays of both kinds, plain film and intra-operative fluoroscopy, and whether that distance passes the distance between two real corpora (PREREG.md section 1), so every held corpus of the two kinds is a group but those README section 2 and the groups table's notes leave out, each with its reason" + listed + ", the real-against-real pairs giving the scale;"
+               " and README section 2.2 names six pairs, each meant to isolate one thing: the engine in the two worded replication pairs, one part of the recipe in three pairs of render groups on the same CTs (the labels' aiming, the attenuation randomisation and the segmenter), and the FLUX edit in fluxray_raw_reference against fluxray"
+               + edit_alone(run) + ";"
+               " the owner asked on 2026-10-25 for \"all the other Xray corpuses both plain film and fluoro\" (README, opening)")
+
+
+@frozen
+def study_ml_rationale(run):
+    """REFORMS 1c: why a classifier, beside tests that train nothing, and what each claim carries."""
+    return met("a map alone answers neither question, since t-SNE draws clusters for any two sets with a consistent difference, however small, and its distances between clusters mean nothing (README section 1), so README section 1 means every claim to be carried by a test with an interval and a calibration: a classifier two-sample test, which learns to tell the two sets apart, beside a kernel test and distances that learn nothing (PREREG.md section 3);"
+               " as the design gives them, the C2ST AUC carries a person-cluster bootstrap interval and, against each family and in the replication pairs, a permutation p, the MMD a permutation p and no interval (tools/domain_gap_stats.py, mmd_test), and FD64 and its gap ratio, a primary endpoint, neither a test nor an interval (PREREG.md sections 3 and 4 give them none);"
+               f" the split-half nulls calibrate each group of 40 persons or more (PREREG.md section 3), {without_null_said(run)};"
+               " the owner asked on 2026-10-25 for \"other statistical tests for separation that machine learning experts would do\" (README, opening)")
+
+
+# What a group of each source is drawn from (tools/domain_gap.py, the listing of a group's files).
+FRAMES = {
+    "index": "the image rows the sample index lists with no read error under its sources (grid/run-samples.sh) that its rules keep: the table's formats and globs, a least side, the table's or 256, a single plane, for a DICOM a projection modality, the table's or CR, DX, RF, XA, DF, RG, PX, OT and SC, and no exclude word in the path, the table's or the study's (src/schwingnet/domain_gap.py, GroupSpec; tools/domain_gap.py, refusal)",
+    "walk": "the files seen under its folder on the data root, up to the walk's limit, that the table's formats and globs and its exclude words, the table's or the study's, keep (tools/domain_gap.py, walk_candidates)",
+    "thunderdb": "the records of its ThunderDB as FleXray's reader lists them",
+    "render": "the held TotalSegmentator v2.0.1 CTs with masks under every segmenter its folder's groups read (README section 2.1), of which the analysis reads only those every render group on the folder kept (README section 7)",
+}
+
+
+@frozen
+@needs_table
+def study_sampling_frame(run):
+    """REFORMS 3b: what each group was drawn from."""
+    by_source = {}
+    for group in run["table"]["groups"]:
+        by_source.setdefault(group.get("source"), []).append(group["id"])
+    frames = [f"{FRAMES.get(source, f'its source {source}, which the report has no words for')}: {', '.join(ids)}" for source, ids in by_source.items()]
+    return met("each group's frame, by its source in the table (PREREG.md section 2): " + "; ".join(frames)
+               + f"; within its frame each group's images are chosen person by person in the salted order of salt {run['table'].get('salt')} up to its caps, the frozen test persons left out ({run['table_note']})")
+
+
+@frozen
+def study_fitness(run):
+    """REFORMS 3c: why the groups fit the question, and what limits the fit."""
+    later = " and README section 6 records what the recorded runs do not support (CLAIM 40 quotes it)" if answers_it(study_limitations, run) else ""
+    edit = edit_alone(run)
+    return met("each real group is a held corpus of plain film or of fluoroscopy (README section 2), the families of the question's two kinds (PREREG.md section 1), the fluoroscopy family holding beside one mobile C-arm's spot frames DeepFluoro's vendor fluoroscopy of cadaver pelves, six specimens plus phantoms by the table's note, and a resin hip phantom (README section 2; data/domain_gap/groups.json); each group is capped by person so that a corpus with many images of few persons cannot outweigh the others (README section 2);"
+               " the render groups render the same CTs and differ only by their recipe and engine (PREREG.md section 2), and README section 2.2 names six pairs, each meant to isolate one thing" + edit + ";"
+               " what limits the fit was listed before the run, README section 5: the corpora differ in anatomy (cervical films, a hip phantom, cephalograms, abdomen), devices, eras and formats as well as in realism, and the renders follow their own pose profiles where the real spot frames are narrow and centred on the lumbar spine;" + later)
+
+
+@frozen
+@needs_table
+def study_representativeness(run):
+    """REFORMS 3g: how each group was drawn, and what no file says of the corpora."""
+    renders = "; ".join(run["body"]["renders"])
+    return met(f"within its corpus each group is a salted draw of persons up to its cap (salt {run['table'].get('salt')}), chosen by no reader; the corpora are the held corpora the groups table names (PREREG.md section 2), and no file of the study says how any corpus was drawn from its population or how far it stands for one; README section 5 lists before the run how they differ in anatomy, devices, eras and formats;"
+               " the render groups stand on the CTs the segmentation job covered, not the 250 planned (DEVIATIONS.md, item 1)" + (f", summary.txt: {renders}" if renders else ""))
+
+
+@frozen
+def study_no_tuning(run):
+    """REFORMS 5e: nothing is tuned."""
+    commit = run["record"]["study"]["commit"]
+    return not_applicable(run, "the study tunes no hyperparameter: the settings PREREG.md section 3 names, the logistic regression's scaler, PCA to 64 and C 1, the 15 neighbours, the five folds, the 1,000 bootstrap draws, the 100 and 1,000 permutations and the seed of 0, were fixed there before any number;"
+                               f" the code's other settings, among them the rows a side FD64 is taken at, KID's subsets, PRDC's and neighbour purity's neighbours and the classifiers' iteration limits, are not in PREREG.md: they are set in the study's code (tools/domain_gap.py and tools/domain_gap_stats.py at commit {commit}), and the study chooses none of them by a score on its data")
+
+
+@frozen
+def study_baselines(run):
+    """REFORMS 5f: the real-real scale and the split-half nulls."""
+    spaces = [key for key, space in run["body"]["spaces"].items() if any(BASELINE.match(line) for line in space["lines"])]
+    primary = run["config"]["primary_space"]
+    scale = next((line.strip() for line in run["body"]["spaces"].get(primary, {}).get("lines", []) if line.startswith(" real-real auc median ")), "")
+    quoted = "; CLAIM 32 quotes them" if answers_it(study_internal_evaluation, run) else ""
+    text = ("the baselines are the real-against-real contrasts, every pair of tested real groups and pooled fluoroscopy against pooled film, the median AUC and median FD64 of a family's own real pairs being what each primary word and gap ratio is read against (PREREG.md sections 3 and 4), and the split-half nulls, where every test must find nothing (README section 1" + quoted + ");"
+            + (f" summary.txt carries such lines in the spaces {', '.join(spaces)}" if spaces else " summary.txt carries no such line"))
+    if scale:
+        text += f"; in the {primary} space it reads \"{scale}\""
+    if run["body"]["groups"]:
+        text += f"; the families' own real pairs, among the tested real groups of summary.txt: {real_pairs(run, 'fluoroscopy')}; {real_pairs(run, 'film')}"
+    if section_six_says(run, "says nothing of realism"):
+        text += "; README section 6 finds that, with two real corpora themselves told apart almost perfectly, the word \"closer than two real corpora\" says nothing of realism"
+    return met(text)
+
+
+@recorded("study")
+def study_preprocessing_fit(run):
+    """REFORMS 6a: what is fit on which rows."""
+    return met("every classifier fits its scaler and PCA inside its own pipeline on the rows it is trained on: the C2ST's in each fold on the folds that hold none of the scored rows' persons, and the classifier that calls each synthetic group on the real rows alone (tools/domain_gap_stats.py, classifier, c2st and nearest_real), so no row shapes its own score; each image is windowed by its own percentiles, so decoding fits nothing across images (README section 3);"
+               f" the standardised features and first 64 components that the MMD, FD64, KID64, PRDC and the structure measures read are fit on every row of the reading without its labels, so they are the same under every permutation of a test's labels ({at_commit(run)}, space_head)")
+
+
+@frozen
+def study_feature_legitimacy(run):
+    """REFORMS 6c: what keeps some of a corpus's file properties from telling it apart, and what not."""
+    return met("every feature is computed from one image's pixels alone, by the encoders and the physics measures (tools/domain_gap.py, stage_features), and two steps before them keep file properties from telling corpora apart (README section 3): each image is cut to its centre square, so no pad's flat border marks a corpus of non-square images, and resized to 256 alike, so the resolution step is the same for every group;"
+               " each is also windowed to its own percentiles, and the primary reading is invariant to inversion, so polarity alone separates nothing in it; what still tells corpora apart besides realism, their anatomy, devices, eras and formats (JPEG re-exports, 16-bit scans, DICOM) among them, was listed before the run in README section 5")
+
+
+@frozen
+def study_statistical_tests(run):
+    """REFORMS 7c: the tests and what each assumes."""
+    family = "; CLAIM 29 says which family this run's MMD q took" if answers_it(study_uncertainty, run) else ""
+    persons = "; README section 6 finds DeepFluoro's persons are DICOM patient ids over six specimens and two phantoms, so its p-values and intervals are narrower than they should be, and that the paired bootstrap counts each CT's twin comparisons about twice" if section_six_says(run, "counts each CT's twin comparisons about twice") else ""
+    return met("the C2ST's 100 permutations, run against each family and in the replication pairs, and the MMD's 1,000 relabel the rows by person, every row of a person moving together, so each p holds under the null that persons are exchangeable between the two sets;"
+               " where both sides hold the same persons, as two render groups on one CT folder do, the two worded replication pairs among them, the sample is paired: each person's two sides are swapped between the sets or left, so the p holds under the null that a person's two sides are exchangeable (tools/domain_gap_stats.py, twin_swaps; tools/domain_gap.py, contrast and Frame.twins), and the bootstrap draws a person with both its sides;"
+               " the AUC's 95 percent interval is a person-cluster bootstrap that holds the scores of each fold's trained classifiers fixed and so leaves out the variance of fitting them, which on Gaussian clouds of one law ran about two-thirds as wide as the AUC's spread and covered 0.5 in 15 of 20 (tools/domain_gap_stats.py, auc_with_interval); DEVIATIONS.md item 8 calls it too narrow for a few dozen persons and flags a split-half null by its MMD instead, while the primary words and the replication word read its lower bound (PREREG.md section 4);"
+               f" Benjamini-Hochberg runs over a space's MMD p-values and over its C2ST permutation p-values (PREREG.md section 3{family}), and no file of the study states the dependence among those p-values under which it controls the false-discovery rate{persons}")
+
+
 STUDY_FACTS = {
     "sources": study_sources,
     "transforms": study_transforms,
@@ -1288,6 +1944,30 @@ STUDY_FACTS = {
     "sample_size": study_sample_size,
     "undecoded": study_undecoded,
     "models_trained": study_models_trained,
+    "aims": study_aims,
+    "goal": study_goal,
+    "inclusion": study_inclusion,
+    "no_reference_standard": study_no_reference_standard,
+    "no_annotation": study_no_annotation,
+    "no_raters": study_no_raters,
+    "intended_size": study_intended_size,
+    "robustness": study_robustness,
+    "explainability": study_explainability,
+    "no_trial": study_no_trial,
+    "failure_analysis": study_failure_analysis,
+    "limitations": study_limitations,
+    "protocol": study_protocol,
+    "population": study_population,
+    "population_rationale": study_population_rationale,
+    "ml_rationale": study_ml_rationale,
+    "sampling_frame": study_sampling_frame,
+    "fitness": study_fitness,
+    "representativeness": study_representativeness,
+    "no_tuning": study_no_tuning,
+    "baselines": study_baselines,
+    "preprocessing_fit": study_preprocessing_fit,
+    "feature_legitimacy": study_feature_legitimacy,
+    "statistical_tests": study_statistical_tests,
 }
 
 
@@ -1302,16 +1982,17 @@ def study_declared_facts(study):
     return {study_basis(key, item, study)[1] for key in lists for item in lists[key]["items"] if study_basis(key, item, study)[0] == "declared"}
 
 
-def study_answered(key, checklist, run, answers):
+def study_answered(key, checklist, run, answers, where=None):
     config = STUDIES[run["name"]]
     facts = config.get("facts", STUDY_FACTS)
+    where = where or shown(config["answers"])
     rows = []
     for item in checklist["items"]:
         basis, fact = study_basis(key, item, run["name"])
         if basis == "code":
             state, evidence = facts[fact](run) if fact in facts else missing(f"needs a study fact \"{fact}\" in the study's facts: none answers it yet")
         else:
-            state, evidence = declared(fact, answers, shown(config["answers"]))
+            state, evidence = declared(fact, answers, where)
         rows.append({"id": item["id"], "section": item["section"], "asks": item["asks"], "basis": basis, "fact": fact, "state": state, "evidence": evidence})
     return rows
 
@@ -1364,13 +2045,13 @@ def study_markdown(run, claim_rows, reforms_rows):
     lines = [
         f"# Report of study {run['name']}, run {run['dir'].name}",
         "",
-        f"Written by `python3 tools/report.py write --study {run['name']}` from this folder's summary.txt and BENCH.md, the groups table the record names and {answers}; do not edit by hand. The study trains no network: an item about a trained model is answered for the encoders and two-sample tests it reads, or is not applicable, with the reason, where the study's design leaves out what the item asks about.",
+        f"Written by `python3 tools/report.py write --study {run['name']}` from this folder's summary.txt and BENCH.md, the groups table the record names, the frozen pre-registration the record names with the README sections and DEVIATIONS.md items it cites, and {answers}; do not edit by hand. The study trains no network: an item about a trained model is answered for the encoders and two-sample tests it reads, or is not applicable, with the reason, where the study's design leaves out what the item asks about.",
         "",
         *bench_lines(run),
         "",
         f"Complete: **{'yes' if not missing_rows else 'no'}**" + (f"; missing {len(missing_rows)}: {', '.join(missing_rows)}." if missing_rows else "."),
         "",
-        f"A met item quotes the record line, summary line or table that shows it; a declared one is the owner's sentence in {answers}, which the code checks is there but cannot judge; a missing one is work to do before the numbers are published (`python3 tools/report.py check --study {run['name']} --run <folder> --complete`).",
+        f"A met item quotes the record line, summary line or table that shows it, or restates by section the frozen pre-registration the record names and the study's README; a declared one is the owner's sentence in {answers}, which the code checks is there but cannot judge; a missing one is work to do before the numbers are published (`python3 tools/report.py check --study {run['name']} --run <folder> --complete`).",
         "",
         *study_licence_section(run),
         "",
@@ -1415,14 +2096,29 @@ def study_run(name, run_dir):
         raise ReportError(str(error)) from error
 
 
+def answers_for(path, run):
+    """The owner's answers that hold for this run, and where the report says they are: every field
+    where the file names no run, and none where its _run names another, since an abstract written
+    from one run's numbers is not another run's."""
+    if not path.is_file():
+        raise ReportError(f"{shown(path)}: the study's answers file is not there")
+    for_run = json.loads(path.read_text(encoding="utf-8")).get("_run")
+    if for_run is not None and not (isinstance(for_run, str) and for_run):
+        raise ReportError(f"{shown(path)}: _run names a run folder and must be a string that is not empty, not {for_run!r}")
+    if for_run in (None, run["dir"].resolve().name):
+        return study_answers(path), shown(path)
+    return {}, f"{shown(path)}, whose answers are run {for_run}'s, not this run's"
+
+
 def render_study(name, run_dir):
     """The three files of a recorded study run's report, from its folder and the study's answers."""
     config = STUDIES[name]
     run = study_run(name, run_dir)
+    run.setdefault("config", config)
     answers_path = Path(config["answers"])
-    lists, answers = checklists(), study_answers(answers_path)
-    claim_rows = study_answered("claim", lists["claim"], run, answers)
-    reforms_rows = study_answered("reforms", lists["reforms"], run, answers)
+    lists, (answers, where) = checklists(), answers_for(answers_path, run)
+    claim_rows = study_answered("claim", lists["claim"], run, answers, where)
+    reforms_rows = study_answered("reforms", lists["reforms"], run, answers, where)
     answers_sha = hashlib.sha256(answers_path.read_bytes()).hexdigest()
 
     def document(checklist, rows):

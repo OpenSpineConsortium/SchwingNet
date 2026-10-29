@@ -2,14 +2,14 @@
 
 The 69 inventoried artifacts sorted into topics by three independent readings (by the question answered, by the stage of the work, by the reader and the decision) and settled by a fourth reader into one clustering, on 2026-10-22, for the Artifact Textbook (issue #120). Each artifact has one primary home and may be a secondary member elsewhere. Within a cluster the canonical artifacts are the ones to read first; a superseded artifact is replaced by a later or fuller one on the same question, with what the older one alone still holds noted where the readers found it; a duplicate is a near-copy. The part says where the cluster goes in the book: schwingnet for the spine work, symphony-beethoven for the material to be kept in a separable part, outreach-and-governance for pages with no method or data.
 
-14 clusters; every artifact placed; unplaced: none.
+14 clusters; every artifact placed; unplaced: none; 1 placed later (Placed later, below).
 
 ## Summary
 
 | # | Cluster | Part | Primary members | Canonical | Superseded | Duplicates |
 |---|---|---|---|---|---|---|
 | 1 | Level naming and counting | schwingnet | 9 | 5 | 2 | 0 |
-| 2 | Transitional vertebrae and border variants | schwingnet | 3 | 3 | 0 | 0 |
+| 2 | Transitional vertebrae and border variants | schwingnet | 4 | 3 | 0 | 0 |
 | 3 | Datasets, holdings and licences | schwingnet | 5 | 4 | 1 | 0 |
 | 4 | FluoroCap: the corpus, its pipeline and its audits | schwingnet | 6 | 4 | 1 | 0 |
 | 5 | Verification benches, overnight audits and OR readiness | schwingnet | 5 | 5 | 0 | 0 |
@@ -54,6 +54,7 @@ For a reader deciding how an extra or missing vertebra (L6, T13, a lumbar rib, a
 
 Primary members, by date:
 
+- [Gold Tier 3 CT](../gold-tier-3-ct-xdgjjg/), 2026-10-28, `SchwingNet/gold-tier-3-ct-xdgjjg` (placed on 2026-10-29)
 - [Counting Against Two Anchors](../counting-against-two-anchors-qkktgu/), undated, `SchwingNet/counting-against-two-anchors-qkktgu` (canonical)
 - [Spinal Border Variants](../spinal-border-variants-fye5ef/), undated, `SchwingNet/spinal-border-variants-fye5ef` (canonical)
 - [Rib Anchor Audit](../rib-anchor-audit-t7wr2h/), undated, `SchwingNet/rib-anchor-audit-t7wr2h` (canonical)
@@ -252,6 +253,12 @@ Superseded:
 - `celebrate-life-flyer-noutom` is superseded by `celebrate-life-scoliosis-night-julcos`: The export's own summary calls noutom 'the first Celebrate Life flyer'. Both flyers carry the same Saturday October 24 at the Detroit City Fieldhouse, the same registration form ([the registration form's link]), the same event page and the same two contacts, so they are one registration and one night; the later flyer re-targets it from kids in treatment for cancer and blood disorders at a 6:45 PM kickoff beside Trunk or Treat to kids with scoliosis from 5:00 to 7:00 PM beside Turf or Treat, with the watch party and the facility rules added.
 
 Secondary members: `aidas-seed-grant-proposal`, `spine-program-student-onboarding`
+
+## Placed later
+
+Artifacts new since the clustering, each placed by its reader in a run of .github/workflows/synthesis.yml in the cluster whose description it fits best, with the reader's reason; none is canonical, superseded or a duplicate until a person rules so in clustering.json.
+
+- [Gold Tier 3 CT](../gold-tier-3-ct-xdgjjg/), `SchwingNet/gold-tier-3-ct-xdgjjg`, in Transitional vertebrae and border variants, on 2026-10-29: The page counts L6, four-lumbar, 11- and 13-rib and asymmetric-rib spines with names and rib calls kept apart, which is the subject of this cluster.
 
 ## How the clustering was settled
 
