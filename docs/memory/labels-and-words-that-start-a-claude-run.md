@@ -1,0 +1,9 @@
+Which labels and words on an issue start a Claude run in this repository, read from the workflows' own conditions on 2026-10-29, so a session that files or links issues puts the plan marker in before the label epic and never puts todo, blocker, a worker's label or the words "@claude" on an issue without the owner's word, since no Claude run starts without it (docs/project.md, Out of scope).
+
+# Labels and words that start a Claude run
+
+- epic: .github/workflows/coordinator.yml runs its route on the label and plans the epic with Claude unless the issue's body holds `<!-- team:plan -->` (tools/sdlc_protocol/team.py, route), so an epic a session makes carries the marker in the body it is created with, or gets it before the label; the label blocked on an issue whose body says "Epic: #" starts the settle, and closing such an issue the integration.
+- todo, blocker and worker:<name>: .github/workflows/workers.yml starts on them where the issue is not claimed and deals the open work to every worker registered in .github/symphony/workers/ with "runs": "actions", on the repository's Claude token; none is registered here today, so the run deals nothing, but the labels stay the owner's and the coordinator's to put on.
+- "@claude" in an issue's title or body, in a comment or in a review by an owner, member or collaborator: .github/workflows/claude.yml answers it on the repository's Claude token; a session's text on GitHub never carries the words.
+- goal starts nothing; .github/workflows/experiment.yml and figure.yml answer only the issues their forms make (tools/experiment_run.py and tools/figure_run.py skip a plain issue). spine-datasets runs the same coordinator with the same marker; spine-program has no coordinator; symphony-start's adopt.yml needs the label adopt.
+- Read for the epics, goals and links of docs/research/organization-map.md, where the marker went in before every label epic and the label todo was put on nothing.

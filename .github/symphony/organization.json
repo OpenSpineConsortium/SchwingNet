@@ -1,0 +1,1112 @@
+{
+ "about": "How the organization's repositories depend on each other and touch: the interfaces (a vendored library, a reusable workflow, a GitHub App, a runner, data handed on) and the systems outside GitHub they reach. The control panel's Organization tab draws this file beside what it reads live from GitHub (the repositories, their open issues, the cross-repository blocked-by links of the open repository). Written 2026-10-29 from each repository's README, workflows, VENDORED record and the memory of this repository; docs/research/organization-map.md says how it was made and how to keep it. A repository's visibility is GitHub's word for it: public, internal (the enterprise's members) or private.",
+ "owner": "OpenSpineConsortium",
+ "written": "2026-10-29",
+ "edge_reads": "from depends on to: the repository named first takes, calls, reads, runs on or is served by the one named second",
+ "kinds": {
+  "vendors": "carries a pinned copy of",
+  "made-from": "was made from the template",
+  "sync": "opens the pull requests that bring each release into",
+  "app": "acts through the GitHub App whose key it holds",
+  "runs-on": "runs its grid jobs through",
+  "gate": "proves its code with",
+  "reads": "reads the record of",
+  "data": "takes its data or records from",
+  "tasks": "has open tasks blocked by issues of",
+  "imports": "imports a library from",
+  "calls": "calls the service of",
+  "releases-through": "releases through",
+  "serves": "is the service or the tool of",
+  "pairs-with": "is the other half of",
+  "hub": "is documented and planned from",
+  "measures": "measures",
+  "tests": "holds the checks of",
+  "drives": "drives through GitHub's API as the signed-in person",
+  "publishes": "publishes to"
+ },
+ "groups": {
+  "spine": "The spine science: SchwingNet and the repositories it reads and feeds",
+  "symphony": "Symphony: the claim protocol, its template, Apps, front door, plugin, extension, benchmarks and site",
+  "beethoven": "Beethoven: a Claude Code worker on a university cluster, its clients, services and engine",
+  "people": "Students and the owner's drive",
+  "tools": "Account tools",
+  "systems": "Outside GitHub"
+ },
+ "nodes": [
+  {
+   "name": "SchwingNet",
+   "group": "spine",
+   "visibility": "internal",
+   "role": "The next SchwingNet as a workflow that grows: vertebral level naming on fluoroscopy, built through Symphony's claim protocol; the shared plane of every account's Project."
+  },
+  {
+   "name": "bordercall",
+   "group": "spine",
+   "visibility": "private",
+   "role": "Name a vertebral border from the shape of the bone, with no count from C2; run over the census's SPINEPS masks on the grid from SchwingNet's gate word."
+  },
+  {
+   "name": "spine-program",
+   "group": "spine",
+   "visibility": "internal",
+   "role": "The root working context: thirteen numbered project folders (the reported SchwingNet, the transitional truth, CTSpinoPelvic1K, the toolkit, the census, the plain films, the renders, the QI, the data platform, students, the site and PACS demo, AIDaS), each self-contained, worked by the claim protocol; the record material is on the grid."
+  },
+  {
+   "name": "spine-datasets",
+   "group": "spine",
+   "visibility": "private",
+   "role": "The unheld datasets obtained with collaborators: one record and one issue per set, the request letters, the storage plan on its branch storage-feed, the tracks for paired data, synthesis, workflow and growth."
+  },
+  {
+   "name": "spine-detector",
+   "group": "spine",
+   "visibility": "private",
+   "role": "The multi-source spine radiograph corpus and the vertebra corner detector: the X-ray counterpart of CTSpinoPelvic1K."
+  },
+  {
+   "name": "CTSpinoPelvic1K",
+   "group": "spine",
+   "visibility": "public",
+   "role": "Spine, pelvis, ribs and femora in one frame, annotated for lumbosacral transitional anatomy: the release's build pipeline, quality control and paper."
+  },
+  {
+   "name": "OpenSpineToolkit",
+   "group": "spine",
+   "visibility": "public",
+   "role": "Tested geometry primitives and spinopelvic measurements for CTSpinoPelvic1K masks."
+  },
+  {
+   "name": "spinopelvic-seg",
+   "group": "spine",
+   "visibility": "public",
+   "role": "nnU-Net v2 training and inference code for the CTSpinoPelvic1K segmentation checkpoints."
+  },
+  {
+   "name": "FleXray",
+   "group": "spine",
+   "visibility": "public",
+   "role": "A fork read for the audit the owner's brief of 2026-10-25 asks for first (SchwingNet#391) and for the DRR renderer the domain-gap study replicates."
+  },
+  {
+   "name": "FLUX-REALISM",
+   "group": "spine",
+   "visibility": "public",
+   "role": "A fork read for the FluXray reproduction (zero-shot FLUX.2 over MOOSE DRRs)."
+  },
+  {
+   "name": "PlotNeuralNet",
+   "group": "spine",
+   "visibility": "public",
+   "role": "A fork of the LaTeX network-diagram template the brief names for the regenerated network figure."
+  },
+  {
+   "name": "symphony-protocol",
+   "group": "symphony",
+   "visibility": "public",
+   "role": "The claim protocol as one Python package with no dependencies: the labels, the claim, the board, the coordinator, the registry of workers, the protocol check, the clerk, the push guard and the merge gate; its ecosystem.json names every consumer and the modules each takes; the lessons and notebooks live here."
+  },
+  {
+   "name": "symphony-template",
+   "group": "symphony",
+   "visibility": "internal",
+   "role": "The template a Claude project is made from, kept as files: instructions, memory, board, and the workflows and hooks that run the protocol; the grid key route, the token pool, the drive and papers workflows, the research programmes of Symphony itself."
+  },
+  {
+   "name": "symphony-app",
+   "group": "symphony",
+   "visibility": "private",
+   "role": "The backend of the GitHub App SymphonyBoard (and the setup App): installation tokens that start a new copy's first workflows, auto-merge and settings runs, the sign-in Worker the control panel uses, the metrics collector and the panel's own checks."
+  },
+  {
+   "name": "symphony-start",
+   "group": "symphony",
+   "visibility": "public",
+   "role": "The front door: one form adopts the template into a new or existing repository; the Apps' privacy statement lives here."
+  },
+  {
+   "name": "symphony-marketplace",
+   "group": "symphony",
+   "visibility": "public",
+   "role": "The Claude Code plugin marketplace with one plugin, symphony: the skills, /board and the hooks for a repository not made from the template."
+  },
+  {
+   "name": "symphony-extension",
+   "group": "symphony",
+   "visibility": "internal",
+   "role": "Symphony for Chrome: the buttons on github.com that create or migrate a repository through the Apps' install link and the front door's form."
+  },
+  {
+   "name": "symphony-protocol-canary",
+   "group": "symphony",
+   "visibility": "internal",
+   "role": "The repository the protocol's release workflow runs each release against before it is published."
+  },
+  {
+   "name": "test",
+   "group": "symphony",
+   "visibility": "internal",
+   "role": "A copy of the template kept for trying the front door and the workflows."
+  },
+  {
+   "name": "coordbench",
+   "group": "symphony",
+   "visibility": "public",
+   "role": "The playground and benchmark comparing ways of coordinating Claude Code agents on CooperBench's task pairs, the claim protocol's merge gate among them."
+  },
+  {
+   "name": "flowbench",
+   "group": "symphony",
+   "visibility": "public",
+   "role": "The workflow as a plug-in, measured on SWE-bench Verified: one agent alone, a script of phases, or the claim protocol; its running notes stay in symphony-template."
+  },
+  {
+   "name": "openspineconsortium.github.io",
+   "group": "symphony",
+   "visibility": "public",
+   "role": "The public site, built by tools/build_site.py from the sibling repositories' texts: the lab page, Symphony and Beethoven, the control panel that drives any Symphony repository as the signed-in person, and the cost page."
+  },
+  {
+   "name": "beethoven",
+   "group": "beethoven",
+   "visibility": "private",
+   "role": "The project hub: no product code, but the hand-off state, the build plan and ledger, the shared-code design, the project's memory and the map of the Beethoven repositories and where they touch."
+  },
+  {
+   "name": "hpcworker",
+   "group": "beethoven",
+   "visibility": "private",
+   "role": "Your own Claude Code as a batch job on a university cluster: the server half of Beethoven, the runner chain that serves GitHub Actions jobs labelled grid as Slurm jobs, the ssh gate, the deployment profiles composed from beethoven-sites."
+  },
+  {
+   "name": "beethoven-extension",
+   "group": "beethoven",
+   "visibility": "private",
+   "role": "The browser extension over Open OnDemand that starts the worker and hands it to claude.ai: the client half."
+  },
+  {
+   "name": "beethoven-vscode",
+   "group": "beethoven",
+   "visibility": "private",
+   "role": "Beethoven for VS Code: the wizard, the grid CLI, the access service's keys and the licence tooling."
+  },
+  {
+   "name": "beethoven-desktop",
+   "group": "beethoven",
+   "visibility": "private",
+   "role": "The desktop edition."
+  },
+  {
+   "name": "beethoven-base",
+   "group": "beethoven",
+   "visibility": "private",
+   "role": "The shared parsers and rules of the three editions, a pure TypeScript library each edition pulls at a commit and checks against its ORIGIN record."
+  },
+  {
+   "name": "beethoven-sites",
+   "group": "beethoven",
+   "visibility": "private",
+   "role": "The university site and lab modules: every value that belongs to one cluster or one lab's deployment, from which hpcworker composes each profile."
+  },
+  {
+   "name": "beethoven-access",
+   "group": "beethoven",
+   "visibility": "internal",
+   "role": "The access, licence and report service: one Cloudflare Worker the extension, the VS Code edition and hpcworker reach over HTTP."
+  },
+  {
+   "name": "beethoven-qa",
+   "group": "beethoven",
+   "visibility": "private",
+   "role": "How code for the engine is written and proven: the definition of done, the contract decorators, the CrossHair/Z3 gate, the code standards and the repository kit consuming repositories carry as a pinned copy."
+  },
+  {
+   "name": "beethoven-agents",
+   "group": "beethoven",
+   "visibility": "private",
+   "role": "The nested agentic framework of the engine: the Apptainer image, the guard, the accounts and the orchestration of masters, satellites and headless steps as Slurm jobs; qa <- agents <- research."
+  },
+  {
+   "name": "beethoven-research",
+   "group": "beethoven",
+   "visibility": "private",
+   "role": "The research pipeline of the engine: REFORMS, CLAIM, the studies; the split check the measurement in SchwingNet uses."
+  },
+  {
+   "name": "chrome-store-release-kit",
+   "group": "beethoven",
+   "visibility": "internal",
+   "role": "The reusable release workflow and store upload every extension repository of the owner's calls at main."
+  },
+  {
+   "name": "Student_Projects",
+   "group": "people",
+   "visibility": "public",
+   "role": "Student research projects on the open datasets: onboarding, templates, tools, the demo study and the ideas list; the projects themselves are in Projects, cloned inside it."
+  },
+  {
+   "name": "Projects",
+   "group": "people",
+   "visibility": "private",
+   "role": "Student project proposals and work, one folder per project, reviewed by pull request."
+  },
+  {
+   "name": "Onedrive",
+   "group": "people",
+   "visibility": "private",
+   "role": "The owner's OneDrive organized into projects and notebooks, its catalog on the branch drive-catalog, read through Microsoft Graph under the owner's sign-in."
+  },
+  {
+   "name": "claude-swap-cloud",
+   "group": "tools",
+   "visibility": "private",
+   "role": "cswap, the multi-account switcher for Claude Code with the cloud added, on PyPI as claude-swap-cloud; it writes the session checkpoint block of the Symphony repositories' CLAUDE.md and feeds the token pool's usage."
+  },
+  {
+   "name": "claude-swap-privacy",
+   "group": "tools",
+   "visibility": "public",
+   "role": "The public privacy statement of cswap."
+  },
+  {
+   "name": "the WSU grid",
+   "group": "systems",
+   "kind": "system",
+   "role": "Wayne State's cluster: the corpora under /rs/rs_grp_oschome/go2432/data/, the Slurm jobs, hpcworker's runner chain; nothing of its data is ever copied into a repository."
+  },
+  {
+   "name": "claude.ai",
+   "group": "systems",
+   "kind": "system",
+   "role": "The Claude accounts: Projects and threads on the repositories, the front door artifact, the Claude workflows on subscription tokens, Remote Control on the owner's computer."
+  },
+  {
+   "name": "Cloudflare",
+   "group": "systems",
+   "kind": "system",
+   "role": "The Workers: the panel's sign-in service (symphony-app) and Beethoven's access service (beethoven-access)."
+  },
+  {
+   "name": "Chrome Web Store",
+   "group": "systems",
+   "kind": "system",
+   "role": "Where the extensions are published through the release kit."
+  },
+  {
+   "name": "Microsoft 365",
+   "group": "systems",
+   "kind": "system",
+   "role": "The owner's Wayne State OneDrive and Outlook, read through Microsoft Graph under the owner's sign-in: the drive catalog and sync, the Word revisions, the request letters."
+  },
+  {
+   "name": "Weights and Biases",
+   "group": "systems",
+   "kind": "system",
+   "role": "Where every training run's evaluation is visible, online from the grid or pushed offline by the flow."
+  },
+  {
+   "name": "the dataset hosts",
+   "group": "systems",
+   "kind": "system",
+   "role": "PhysioNet, Hugging Face, Kaggle, Redivis, Zenodo, Elsevier and the rest: reached from the grid with the keys the template's key route carries, every fetch held to the size rule."
+  },
+  {
+   "name": "PyPI",
+   "group": "systems",
+   "kind": "system",
+   "role": "Where claude-swap-cloud is published."
+  }
+ ],
+ "edges": [
+  {
+   "from": "SchwingNet",
+   "to": "symphony-protocol",
+   "kind": "vendors",
+   "what": "tools/sdlc_protocol at 0.7.0, held to tools/VENDORED by scripts/check.sh; protocol.yml brings each release as a pull request",
+   "by": "tools/VENDORED, .github/workflows/protocol.yml"
+  },
+  {
+   "from": "SchwingNet",
+   "to": "symphony-template",
+   "kind": "made-from",
+   "what": "made from the template; sync.yml offers the template's library, board, tidy, metrics, token and drive sync workflows",
+   "by": ".github/workflows/template-init.yml, sync.yml"
+  },
+  {
+   "from": "SchwingNet",
+   "to": "symphony-app",
+   "kind": "app",
+   "what": "SymphonyBoard's token arms auto-merge, applies the settings, mints Claude tokens on a runner and the automerge that starts main's workflows",
+   "by": "automerge.yml, settings.yml, token.yml (SDLC_APP_PRIVATE_KEY)"
+  },
+  {
+   "from": "SchwingNet",
+   "to": "hpcworker",
+   "kind": "runs-on",
+   "what": "grid.yml runs one command on a compute node through the runner chain (runs-on self-hosted, grid); grid-gate.yml starts, reads or stops the chain over the ssh gate",
+   "by": ".github/workflows/grid.yml, grid-gate.yml; docs/setup/grid.md"
+  },
+  {
+   "from": "SchwingNet",
+   "to": "beethoven-qa",
+   "kind": "gate",
+   "what": "the contracts gate and the code standards every pull request passes; a pinned copy under vendor/beethoven-qa once 6.0.0 is tagged (#5)",
+   "by": ".github/workflows/gate.yml, standards.yml"
+  },
+  {
+   "from": "SchwingNet",
+   "to": "beethoven-research",
+   "kind": "gate",
+   "what": "the split check the measurement uses",
+   "by": "docs/project.md, Repositories"
+  },
+  {
+   "from": "SchwingNet",
+   "to": "spine-program",
+   "kind": "reads",
+   "what": "01_carm_level_detection's STATUS.md numbers, MODEL_CARD.md and the cine demo plan; 02's transitional truth and frozen G3 split; 07's manuscript rows; a change lands there as a patch in the claim's pull request",
+   "by": "docs/project.md, Repositories"
+  },
+  {
+   "from": "SchwingNet",
+   "to": "spine-datasets",
+   "kind": "data",
+   "what": "the unheld datasets are obtained there; the storage panel reads PLAN.json on its branch storage-feed and dispatches only through storage.yml",
+   "by": "docs/project.md; tools/storage_panel.py"
+  },
+  {
+   "from": "SchwingNet",
+   "to": "spine-datasets",
+   "kind": "tasks",
+   "what": "57 Obtain tasks under #310 are blocked by the spine-datasets issue that obtains the same set (2026-10-29)",
+   "by": "GitHub's blocked-by on #315 to #383"
+  },
+  {
+   "from": "SchwingNet",
+   "to": "spine-program",
+   "kind": "tasks",
+   "what": "#336, #345 and #363 wait on the data_mining requests V14, V11 and V21; #60 (COBRA) on E4.1's export of the unseen projections (2026-10-29)",
+   "by": "GitHub's blocked-by"
+  },
+  {
+   "from": "SchwingNet",
+   "to": "symphony-template",
+   "kind": "tasks",
+   "what": "#261 waits on the template's own fix of the test that races git's maintenance (symphony-template#455)",
+   "by": "GitHub's blocked-by"
+  },
+  {
+   "from": "SchwingNet",
+   "to": "bordercall",
+   "kind": "vendors",
+   "what": "the copy under grid/bordercall/ held to its VENDORED record by check.sh; the gate word bordercall runs it on the grid",
+   "by": "grid/bordercall/VENDORED, grid/gate.sh"
+  },
+  {
+   "from": "SchwingNet",
+   "to": "FleXray",
+   "kind": "reads",
+   "what": "the audit the brief asks for first, and the renderer the domain-gap study replicates",
+   "by": "#391; docs/research/drr-domain-gap/README.md"
+  },
+  {
+   "from": "SchwingNet",
+   "to": "FLUX-REALISM",
+   "kind": "reads",
+   "what": "the FluXray reproduction's source",
+   "by": "docs/research/flux-realism/PREREG.md"
+  },
+  {
+   "from": "SchwingNet",
+   "to": "PlotNeuralNet",
+   "kind": "reads",
+   "what": "the network diagram's template",
+   "by": "#391"
+  },
+  {
+   "from": "SchwingNet",
+   "to": "the WSU grid",
+   "kind": "runs-on",
+   "what": "every fetch, bank, catalog, sweep and training is a Slurm job there; the corpora never leave it",
+   "by": "grid/README.md, grid/gate.sh"
+  },
+  {
+   "from": "SchwingNet",
+   "to": "claude.ai",
+   "kind": "calls",
+   "what": "the Projects and threads of every account; the front door artifact reads main and the board through the viewer's own GitHub connector; the coordinator, workers, synthesis reads and research loop run on CLAUDE_CODE_OAUTH_TOKEN",
+   "by": "tools/front_door.html; .github/workflows/coordinator.yml, workers.yml, synthesis.yml, research.yml"
+  },
+  {
+   "from": "SchwingNet",
+   "to": "Weights and Biases",
+   "kind": "publishes",
+   "what": "every run's evaluation, online where the grid's key is found, offline pushed by the flow otherwise",
+   "by": "docs/memory/evaluation-and-wandb.md"
+  },
+  {
+   "from": "SchwingNet",
+   "to": "Microsoft 365",
+   "kind": "calls",
+   "what": "the drive organizer and drive sync, the papers workflow, the request letters from the owner's Outlook",
+   "by": ".github/workflows/drive-organize.yml, drive-sync.yml, papers.yml"
+  },
+  {
+   "from": "bordercall",
+   "to": "the WSU grid",
+   "kind": "runs-on",
+   "what": "two CPU jobs over the census's SPINEPS masks, sent from SchwingNet's gate word on the owner's count",
+   "by": "SchwingNet docs/memory/bordercall-on-the-grid.md"
+  },
+  {
+   "from": "spine-program",
+   "to": "symphony-protocol",
+   "kind": "vendors",
+   "what": "tools/sdlc_protocol at 0.7.0; protocol.yml brings each release as a pull request from symphony-protocol/sync",
+   "by": "tools/VENDORED, .github/workflows/protocol.yml"
+  },
+  {
+   "from": "spine-program",
+   "to": "symphony-app",
+   "kind": "app",
+   "what": "the required check runs with the App's token",
+   "by": ".github/workflows/required-check.yml"
+  },
+  {
+   "from": "spine-program",
+   "to": "SchwingNet",
+   "kind": "tasks",
+   "what": "E6.2 (#156), the level model as a tool of the RAG-LLM, waits on SchwingNet#473 (2026-10-29)",
+   "by": "GitHub's blocked-by"
+  },
+  {
+   "from": "spine-program",
+   "to": "CTSpinoPelvic1K",
+   "kind": "reads",
+   "what": "the record copied at 7ddfe38 (ctsp:), folder 03; a change lands as a patch in the claim's pull request",
+   "by": "CLAUDE.md, Prefixes and markers"
+  },
+  {
+   "from": "spine-program",
+   "to": "OpenSpineToolkit",
+   "kind": "reads",
+   "what": "the record copied at cb43197 (ostk:), folder 04",
+   "by": "CLAUDE.md"
+  },
+  {
+   "from": "spine-program",
+   "to": "spinopelvic-seg",
+   "kind": "reads",
+   "what": "the segmentation checkpoints' code, folders 03 and 05",
+   "by": "CLAUDE.md, the map"
+  },
+  {
+   "from": "spine-program",
+   "to": "spine-detector",
+   "kind": "reads",
+   "what": "the plain-film corner detector and corpus, folder 07 (xr:)",
+   "by": "CLAUDE.md"
+  },
+  {
+   "from": "spine-program",
+   "to": "the WSU grid",
+   "kind": "data",
+   "what": "the record material of every folder (results, figures, manuscripts, regulatory) under /rs/rs_grp_oschome/shared/spine-program/archive/, the folders in the tree symlinks to it",
+   "by": "ARCHIVE.md"
+  },
+  {
+   "from": "spine-program",
+   "to": "Microsoft 365",
+   "kind": "calls",
+   "what": "drive sync of the Word documents",
+   "by": ".github/workflows/drive-sync.yml"
+  },
+  {
+   "from": "spine-datasets",
+   "to": "symphony-protocol",
+   "kind": "vendors",
+   "what": "tools/sdlc_protocol at 0.6.1",
+   "by": "tools/VENDORED"
+  },
+  {
+   "from": "spine-datasets",
+   "to": "symphony-template",
+   "kind": "made-from",
+   "what": "made from the template",
+   "by": ".github/workflows/template-init.yml, sync.yml"
+  },
+  {
+   "from": "spine-datasets",
+   "to": "symphony-app",
+   "kind": "app",
+   "what": "settings, tokens and the storage requests through the App",
+   "by": ".github/workflows/settings.yml, token.yml, storage.yml"
+  },
+  {
+   "from": "spine-datasets",
+   "to": "hpcworker",
+   "kind": "runs-on",
+   "what": "grid.yml and grid-gate.yml as in SchwingNet; the census and the pipeline run there",
+   "by": ".github/workflows/grid.yml, census.yml, pipeline.yml"
+  },
+  {
+   "from": "spine-datasets",
+   "to": "spine-program",
+   "kind": "tasks",
+   "what": "#260 (CAMS-Knee) waits on the licence request V13 (spine-program#198) (2026-10-29)",
+   "by": "GitHub's blocked-by"
+  },
+  {
+   "from": "spine-datasets",
+   "to": "the WSU grid",
+   "kind": "data",
+   "what": "the sets land under the data root, each fetch held to the size rule; the storage plan on the branch storage-feed",
+   "by": "docs/memory/the-size-rule.md, the-storage-panel.md"
+  },
+  {
+   "from": "spine-datasets",
+   "to": "Microsoft 365",
+   "kind": "calls",
+   "what": "the request letters go from the owner's Outlook on the owner's word; drive sync",
+   "by": ".github/workflows/drive-sync.yml; docs/project.md"
+  },
+  {
+   "from": "spine-datasets",
+   "to": "the dataset hosts",
+   "kind": "data",
+   "what": "every request, form and download, with the keys the template's key route carries to the grid",
+   "by": ".github/workflows/grid-accounts.yml"
+  },
+  {
+   "from": "symphony-template",
+   "to": "symphony-protocol",
+   "kind": "vendors",
+   "what": "tools/sdlc_protocol at 0.7.0, every module, through the shims tools/board.py, check_protocol.py, team.py, workers.py and guard_push.py; the lessons and notebooks are read there",
+   "by": "tools/VENDORED; symphony-protocol ecosystem.json"
+  },
+  {
+   "from": "symphony-protocol",
+   "to": "symphony-template",
+   "kind": "sync",
+   "what": "its sync workflow opens the pull request symphony-protocol/sync with each published release's copy, with the App's token",
+   "by": "symphony-protocol .github/workflows/sync.yml"
+  },
+  {
+   "from": "symphony-protocol",
+   "to": "symphony-protocol-canary",
+   "kind": "tests",
+   "what": "each release runs against the canary repository before it is published",
+   "by": "symphony-protocol .github/workflows/canary.yml"
+  },
+  {
+   "from": "symphony-protocol",
+   "to": "symphony-app",
+   "kind": "app",
+   "what": "the sync's pull requests in every consumer are opened with the App's token",
+   "by": "symphony-protocol sync.yml (SDLC_APP_PRIVATE_KEY)"
+  },
+  {
+   "from": "symphony-template",
+   "to": "symphony-app",
+   "kind": "app",
+   "what": "settings.yml applies a copy's GitHub side with the App's token; template-init's first commit starts the checks and the board with it; the Token page mints and seals tokens",
+   "by": ".github/workflows/settings.yml, template-init.yml, token.yml"
+  },
+  {
+   "from": "symphony-template",
+   "to": "hpcworker",
+   "kind": "runs-on",
+   "what": "grid.yml, grid-gate.yml, grid-accounts.yml (the key route) and artifacts-grid.yml run through the runner chain",
+   "by": ".github/workflows/grid.yml, grid-accounts.yml, artifacts-grid.yml"
+  },
+  {
+   "from": "symphony-template",
+   "to": "beethoven-qa",
+   "kind": "gate",
+   "what": "a repository made from the template carries beethoven-qa 6.0.0 or later beside Symphony; check.sh runs the copy's vendor-check under pixi",
+   "by": "docs/setup/beethoven-qa.md"
+  },
+  {
+   "from": "symphony-template",
+   "to": "claude-swap-cloud",
+   "kind": "imports",
+   "what": "cswap checkpoint write rewrites the block at the end of CLAUDE.md; cswap via tokens.py usage feeds the token pool",
+   "by": "CLAUDE.md; docs/memory/the-token-pool.md"
+  },
+  {
+   "from": "symphony-template",
+   "to": "Onedrive",
+   "kind": "data",
+   "what": "the drive organizer's catalog, proposals and moves live on that repository's branch drive-catalog",
+   "by": "Onedrive README.md; .github/workflows/drive-organize.yml"
+  },
+  {
+   "from": "symphony-template",
+   "to": "claude.ai",
+   "kind": "calls",
+   "what": "the Projects, the artifacts exported into artifacts/, the Claude workflows on the token pool",
+   "by": ".github/workflows/claude.yml, coordinator.yml, workers.yml, pool.yml"
+  },
+  {
+   "from": "symphony-template",
+   "to": "Microsoft 365",
+   "kind": "calls",
+   "what": "the drive organizer and sync, the papers and digest workflows",
+   "by": ".github/workflows/drive-organize.yml, drive-sync.yml, papers.yml, digest.yml"
+  },
+  {
+   "from": "symphony-template",
+   "to": "the dataset hosts",
+   "kind": "data",
+   "what": "the key route carries the Elsevier, Hugging Face, Kaggle, PhysioNet, Redivis and Zenodo credentials to the grid for the fetches",
+   "by": ".github/workflows/grid-accounts.yml"
+  },
+  {
+   "from": "symphony-template",
+   "to": "the WSU grid",
+   "kind": "runs-on",
+   "what": "the grid words, the literature fetches, the artifacts kept under ~/claude-artifacts",
+   "by": ".github/workflows/grid.yml, artifacts-grid.yml"
+  },
+  {
+   "from": "symphony-start",
+   "to": "symphony-template",
+   "kind": "reads",
+   "what": "the adoption run checks out the template and copies its files into the adopted repository",
+   "by": ".github/workflows/adopt-run.yml"
+  },
+  {
+   "from": "symphony-start",
+   "to": "symphony-app",
+   "kind": "app",
+   "what": "both Apps' keys: SymphonyBoard mints the tokens and Symphony Setup applies the settings for the one run",
+   "by": ".github/workflows/adopt-run.yml (SDLC_APP_PRIVATE_KEY, SDLC_SETUP_APP_PRIVATE_KEY)"
+  },
+  {
+   "from": "symphony-marketplace",
+   "to": "symphony-protocol",
+   "kind": "vendors",
+   "what": "the push guard in the plugin's PreToolUse hook (plugins/sdlc/vendor, guard.py)",
+   "by": "symphony-protocol ecosystem.json"
+  },
+  {
+   "from": "symphony-marketplace",
+   "to": "symphony-template",
+   "kind": "reads",
+   "what": "the plugin carries the template's skills, /board and hooks, so they arrive by a plugin update",
+   "by": "symphony-marketplace README.md"
+  },
+  {
+   "from": "symphony-app",
+   "to": "symphony-protocol",
+   "kind": "vendors",
+   "what": "claims.py and protocol_check.py under app/vendor, the protocol check posted as the check run sdlc/protocol",
+   "by": "symphony-protocol ecosystem.json"
+  },
+  {
+   "from": "symphony-app",
+   "to": "Cloudflare",
+   "kind": "publishes",
+   "what": "the stateless sign-in Worker the control panel signs in through, deployed and health-checked",
+   "by": ".github/workflows/deploy-signin.yml, signin-health.yml"
+  },
+  {
+   "from": "symphony-app",
+   "to": "openspineconsortium.github.io",
+   "kind": "tests",
+   "what": "the control panel's Playwright checks and mutants under signin/panel-checks/e2e2 run against the site's script",
+   "by": "signin/panel-checks/README.md"
+  },
+  {
+   "from": "openspineconsortium.github.io",
+   "to": "symphony-app",
+   "kind": "calls",
+   "what": "Sign in with GitHub goes through the sign-in Worker; the required check runs with the App's token",
+   "by": "assets/js/symphony-panel.js (SIGNIN_SERVICE); .github/workflows/required-check.yml"
+  },
+  {
+   "from": "openspineconsortium.github.io",
+   "to": "symphony-template",
+   "kind": "drives",
+   "what": "the control panel drives any Symphony repository as the signed-in person; its Grid tab reads accounts.json from symphony-template's branch; the Symphony pages are built from the template's texts",
+   "by": "assets/js/symphony-panel.js (GRID_HOME); tools/build_site.py"
+  },
+  {
+   "from": "openspineconsortium.github.io",
+   "to": "symphony-start",
+   "kind": "reads",
+   "what": "the Apps' privacy statement rendered at /symphony/apps-privacy.html",
+   "by": "tools/build_site.py (SYMPHONY_START_REPO)"
+  },
+  {
+   "from": "openspineconsortium.github.io",
+   "to": "beethoven",
+   "kind": "reads",
+   "what": "the Beethoven pages and the licence text, built from the sibling checkouts",
+   "by": "tools/build_site.py (BEETHOVEN_REPO, BEETHOVEN_VSCODE_REPO)"
+  },
+  {
+   "from": "openspineconsortium.github.io",
+   "to": "beethoven-vscode",
+   "kind": "reads",
+   "what": "the VS Code edition's texts for its pages",
+   "by": "tools/build_site.py (BEETHOVEN_VSCODE_REPO)"
+  },
+  {
+   "from": "openspineconsortium.github.io",
+   "to": "symphony-extension",
+   "kind": "reads",
+   "what": "the extension's texts for its pages",
+   "by": "tools/build_site.py"
+  },
+  {
+   "from": "symphony-extension",
+   "to": "chrome-store-release-kit",
+   "kind": "releases-through",
+   "what": "release.yml calls the kit's reusable workflow at main",
+   "by": ".github/workflows/release.yml"
+  },
+  {
+   "from": "symphony-extension",
+   "to": "symphony-start",
+   "kind": "calls",
+   "what": "Migrate carries the repository through GitHub's install link to the front door's form",
+   "by": "symphony-template CLAUDE.md, Durable decisions"
+  },
+  {
+   "from": "symphony-extension",
+   "to": "Chrome Web Store",
+   "kind": "publishes",
+   "what": "the store upload, on the five CWS secrets",
+   "by": ".github/workflows/release.yml"
+  },
+  {
+   "from": "symphony-protocol-canary",
+   "to": "symphony-protocol",
+   "kind": "vendors",
+   "what": "tools/sdlc_protocol at 0.5.1",
+   "by": "tools/VENDORED"
+  },
+  {
+   "from": "symphony-protocol-canary",
+   "to": "symphony-template",
+   "kind": "made-from",
+   "what": "made from the template",
+   "by": ".github/workflows/template-init.yml"
+  },
+  {
+   "from": "test",
+   "to": "symphony-protocol",
+   "kind": "vendors",
+   "what": "tools/sdlc_protocol at 0.5.1",
+   "by": "tools/VENDORED"
+  },
+  {
+   "from": "test",
+   "to": "symphony-template",
+   "kind": "made-from",
+   "what": "made from the template",
+   "by": ".github/workflows/template-init.yml, sync.yml"
+  },
+  {
+   "from": "test",
+   "to": "hpcworker",
+   "kind": "runs-on",
+   "what": "grid.yml and grid-gate.yml",
+   "by": ".github/workflows/grid.yml"
+  },
+  {
+   "from": "coordbench",
+   "to": "symphony-protocol",
+   "kind": "vendors",
+   "what": "the sdlc arm's merge gate and the bare-git world under coordbench/vendor",
+   "by": "symphony-protocol ecosystem.json"
+  },
+  {
+   "from": "coordbench",
+   "to": "symphony-app",
+   "kind": "app",
+   "what": "the bench and the settings run with the App's token; the runs draw on the Claude account pool",
+   "by": ".github/workflows/bench.yml, settings.yml, pool.yml"
+  },
+  {
+   "from": "coordbench",
+   "to": "claude.ai",
+   "kind": "calls",
+   "what": "the agents under test are Claude Code on the pool's accounts, in the environment bench",
+   "by": ".github/workflows/bench.yml"
+  },
+  {
+   "from": "flowbench",
+   "to": "symphony-template",
+   "kind": "measures",
+   "what": "the claim protocol's flow as one arm on SWE-bench Verified; the programme's notes stay in symphony-template at docs/research/flowbench/README.md",
+   "by": "flowbench README.md"
+  },
+  {
+   "from": "beethoven-extension",
+   "to": "hpcworker",
+   "kind": "pairs-with",
+   "what": "the client half starts the server half's job on the cluster through Open OnDemand and hands it to claude.ai",
+   "by": "beethoven-extension README.md, hpcworker README.md"
+  },
+  {
+   "from": "beethoven-extension",
+   "to": "beethoven-base",
+   "kind": "imports",
+   "what": "the browser export of the shared library, pulled at a commit and checked against ORIGIN",
+   "by": "beethoven-base README.md (interface/INTERFACE.json)"
+  },
+  {
+   "from": "beethoven-extension",
+   "to": "beethoven-access",
+   "kind": "calls",
+   "what": "POST /access_check",
+   "by": "beethoven-access README.md"
+  },
+  {
+   "from": "beethoven-extension",
+   "to": "chrome-store-release-kit",
+   "kind": "releases-through",
+   "what": "release.yml calls the kit's reusable workflow at main",
+   "by": ".github/workflows/release.yml"
+  },
+  {
+   "from": "beethoven-extension",
+   "to": "Chrome Web Store",
+   "kind": "publishes",
+   "what": "the store upload, on the five CWS secrets",
+   "by": ".github/workflows/release.yml"
+  },
+  {
+   "from": "beethoven-vscode",
+   "to": "beethoven-base",
+   "kind": "imports",
+   "what": "the vscode export of the shared library",
+   "by": "beethoven-base README.md"
+  },
+  {
+   "from": "beethoven-vscode",
+   "to": "beethoven-access",
+   "kind": "calls",
+   "what": "keys from POST /trial, the revocation list, error reports, publish.sh's revoke",
+   "by": "beethoven-access README.md"
+  },
+  {
+   "from": "beethoven-vscode",
+   "to": "hpcworker",
+   "kind": "pairs-with",
+   "what": "the grid CLI starts the same worker on the cluster",
+   "by": "beethoven-vscode description"
+  },
+  {
+   "from": "beethoven-desktop",
+   "to": "beethoven-base",
+   "kind": "imports",
+   "what": "the desktop export of the shared library",
+   "by": "beethoven-base README.md"
+  },
+  {
+   "from": "hpcworker",
+   "to": "beethoven-sites",
+   "kind": "imports",
+   "what": "composes each deployment's profile from the product, site and lab layers",
+   "by": "beethoven-sites README.md"
+  },
+  {
+   "from": "hpcworker",
+   "to": "beethoven-access",
+   "kind": "calls",
+   "what": "tools/grid_access.sh",
+   "by": "beethoven-access README.md"
+  },
+  {
+   "from": "hpcworker",
+   "to": "symphony-app",
+   "kind": "app",
+   "what": "the required check runs with the App's token",
+   "by": ".github/workflows/required-check.yml"
+  },
+  {
+   "from": "hpcworker",
+   "to": "the WSU grid",
+   "kind": "runs-on",
+   "what": "the runner chain serves Actions jobs labelled grid as Slurm jobs; grid_runner.sh --gate-setup sets up the ssh gate",
+   "by": "SchwingNet docs/setup/grid.md"
+  },
+  {
+   "from": "hpcworker",
+   "to": "claude.ai",
+   "kind": "calls",
+   "what": "the worker is handed to claude.ai as a Remote Control session",
+   "by": "hpcworker README.md"
+  },
+  {
+   "from": "beethoven-access",
+   "to": "Cloudflare",
+   "kind": "publishes",
+   "what": "the Worker deployed under two names, beethoven-access and ashley-service",
+   "by": ".github/workflows/deploy.yml"
+  },
+  {
+   "from": "beethoven-agents",
+   "to": "beethoven-qa",
+   "kind": "vendors",
+   "what": "a pinned copy under vendor/beethoven-qa; qa <- agents <- research",
+   "by": "beethoven-agents README.md"
+  },
+  {
+   "from": "beethoven-research",
+   "to": "beethoven-qa",
+   "kind": "vendors",
+   "what": "a pinned copy under vendor/beethoven-qa",
+   "by": "beethoven-research README.md"
+  },
+  {
+   "from": "beethoven-research",
+   "to": "beethoven-agents",
+   "kind": "runs-on",
+   "what": "a study runs inside beethoven-agents' image and orchestration",
+   "by": "beethoven-research README.md"
+  },
+  {
+   "from": "beethoven-agents",
+   "to": "the WSU grid",
+   "kind": "runs-on",
+   "what": "masters, satellites and headless steps as Slurm jobs in the Apptainer image",
+   "by": "beethoven-agents README.md"
+  },
+  {
+   "from": "beethoven-qa",
+   "to": "symphony-app",
+   "kind": "app",
+   "what": "automerge with the App's token, so a merge starts main's workflows; the rulesets and standards runs",
+   "by": ".github/workflows/automerge.yml, rulesets.yml"
+  },
+  {
+   "from": "beethoven-agents",
+   "to": "symphony-app",
+   "kind": "app",
+   "what": "automerge with the App's token",
+   "by": ".github/workflows/automerge.yml"
+  },
+  {
+   "from": "beethoven-research",
+   "to": "symphony-app",
+   "kind": "app",
+   "what": "automerge with the App's token",
+   "by": ".github/workflows/automerge.yml"
+  },
+  {
+   "from": "beethoven",
+   "to": "beethoven-extension",
+   "kind": "hub",
+   "what": "the hand-off state, build plan, ledger, shared-code design and map of where the repositories touch",
+   "by": "beethoven README.md"
+  },
+  {
+   "from": "beethoven",
+   "to": "hpcworker",
+   "kind": "hub",
+   "what": "the same hub for the server half",
+   "by": "beethoven README.md"
+  },
+  {
+   "from": "beethoven",
+   "to": "beethoven-vscode",
+   "kind": "hub",
+   "what": "the same hub for the VS Code edition",
+   "by": "beethoven README.md"
+  },
+  {
+   "from": "beethoven",
+   "to": "beethoven-desktop",
+   "kind": "hub",
+   "what": "the same hub for the desktop edition",
+   "by": "beethoven README.md"
+  },
+  {
+   "from": "chrome-store-release-kit",
+   "to": "Chrome Web Store",
+   "kind": "publishes",
+   "what": "the store upload step every extension repository calls",
+   "by": ".github/workflows/release-kit.yml"
+  },
+  {
+   "from": "claude-swap-cloud",
+   "to": "PyPI",
+   "kind": "publishes",
+   "what": "claude-swap-cloud, built without its source",
+   "by": "README.md, .github/workflows/publish.yml"
+  },
+  {
+   "from": "claude-swap-cloud",
+   "to": "Chrome Web Store",
+   "kind": "publishes",
+   "what": "its own copy of the release kit uploads the extension's code",
+   "by": ".github/workflows/release-kit.yml, release.yml"
+  },
+  {
+   "from": "claude-swap-cloud",
+   "to": "claude-swap-privacy",
+   "kind": "reads",
+   "what": "the public privacy statement the store listing links",
+   "by": "claude-swap-privacy README.md"
+  },
+  {
+   "from": "claude-swap-cloud",
+   "to": "claude.ai",
+   "kind": "calls",
+   "what": "switches accounts, moves Projects, threads and cloud sessions between them",
+   "by": "README.md"
+  },
+  {
+   "from": "Projects",
+   "to": "Student_Projects",
+   "kind": "pairs-with",
+   "what": "the private projects are cloned inside the public repository as projects/, whose tools and onboarding they use",
+   "by": "Student_Projects README.md"
+  },
+  {
+   "from": "Student_Projects",
+   "to": "the WSU grid",
+   "kind": "runs-on",
+   "what": "the onboarding sets up the grid connection, the environment and the dataset on the grid as jobs",
+   "by": "Student_Projects README.md"
+  },
+  {
+   "from": "Student_Projects",
+   "to": "CTSpinoPelvic1K",
+   "kind": "data",
+   "what": "student projects on the consortium's open datasets",
+   "by": "Student_Projects README.md"
+  },
+  {
+   "from": "Onedrive",
+   "to": "Microsoft 365",
+   "kind": "data",
+   "what": "the drive read through Microsoft Graph under the owner's sign-in, sealed into the repository's secret by the control panel's Folders tab",
+   "by": ".github/workflows/drive-catalog.yml; README.md"
+  },
+  {
+   "from": "CTSpinoPelvic1K",
+   "to": "OpenSpineToolkit",
+   "kind": "imports",
+   "what": "the toolkit's measurements and label schemes for the release's masks",
+   "by": "OpenSpineToolkit description"
+  },
+  {
+   "from": "spinopelvic-seg",
+   "to": "CTSpinoPelvic1K",
+   "kind": "data",
+   "what": "trains and evaluates the segmentation checkpoints on the release",
+   "by": "spinopelvic-seg description"
+  },
+  {
+   "from": "spine-detector",
+   "to": "CTSpinoPelvic1K",
+   "kind": "pairs-with",
+   "what": "the X-ray counterpart of the CT release",
+   "by": "spine-detector description"
+  }
+ ]
+}
