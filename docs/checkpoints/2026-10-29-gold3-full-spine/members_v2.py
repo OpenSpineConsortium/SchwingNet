@@ -86,7 +86,7 @@ ve.update({
     "name": "VerSe 19 and 20",
     "rows": "data/gold3-ct/verse/facts.jsonl",
     "rows_made_by": ("bordercall holdings/fullspine_facts.py from the release's expert masks (OSF, MICCAI nodes 923ap and "
-                     "b2wxj), in the thread's container on 2026-10-28; FACTS.json beside the rows records where, the "
+                     "b2wxj), in the cloud containers of two threads on 2026-10-28 and 29; FACTS.json beside the rows records where, the "
                      "commit and the check of every mask's grid against its CT's header; series.json maps each series "
                      "to its patient; data/gold3-ct/verse.json keeps the 17 series the records read"),
     "studies_listed": 374, "gold3": t["gold3"], "gold4": 0, "silver3": t["silver3"],
@@ -110,7 +110,8 @@ ve["caveats"] = [
     "VerSe's labellers leave a vertebra fused to the sacrum (Castellvi III or IV) undrawn, so a missing L5 is flagged (no_l5), never read as four lumbar.",
     "Five of the 17 series the records read are anomaly holdout persons and two fold 3 persons of the SPINEPS to FleXray route (data/splits/anomaly-holdout.json): carried, flagged, never trained on.",
     "has_T13 in older records is wrong (18 against 6 by the masks).",
-    "Where a series is in both releases, verse20's mask is read and verse19's is set beside it (other_release).",
+    "Where a series is in both releases, verse20's mask is read and verse19's is set beside it (other_release): 99 series, every one with the same grid and the same levels in both.",
+    "series.json, from VerSeFusion's demographics, marks 319 series as in VerSe 20, but the release's node b2wxj publishes 313 masks: verse112, verse139, verse141, verse151, verse251 and verse257 have no VerSe 20 mask and are read from verse19.",
 ]
 
 t = tiers("totalsegmentator")

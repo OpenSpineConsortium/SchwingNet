@@ -1,0 +1,13 @@
+{
+ "member": "verse",
+ "rows": 374,
+ "unreadable": [],
+ "made_by": "bordercall holdings/fullspine_facts.py",
+ "bordercall_commit": "4a6cd725fce2b21ae9e353a7f7451640192b9abb",
+ "read_on": "the cloud containers of two threads of the project symphony_4, from the public release, not the grid: 191 series in 'Complete every full-spine CT for gold tier 3' (2026-10-28 and 29), 183 in 'Read the rest of VerSe's masks' (2026-10-29), where 12 of the 191 read again came out byte for byte",
+ "source": "VerSe 19 and 20, OSF MICCAI nodes 923ap and b2wxj, every series' expert vertebra mask (473 _seg files: 160 verse19, 313 verse20); verse20's where a series is in both releases, verse19's set beside it",
+ "date": "2026-10-29",
+ "ct_grid_check": "every CT's NIfTI header read by a ranged read of its first 16 KB (474 headers, no error): 473 of 473 mask files have their CT's shape and affine, and 473 of 473 again with each mask held to its own release's CT",
+ "reader_output_sha256": "7278e12b820bab9b7458a631564ec7ca67fd792734aaf6de1203b3f549d94437",
+ "committed_as": "one row a study, keys sorted; a study read from several files keeps one digest of their sums (tools/gold3_field.py sums_digest)"
+}

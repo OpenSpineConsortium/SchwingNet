@@ -1,11 +1,17 @@
 {
- "about": "The gold tier 3 CT dataset's members: whole spines, C2 to the sacrum in one CT study, with a person's annotation (the owner's tiers of 2026-10-27; a machine mask never raises a tier). tools/gold3_ct.py reads this file, builds the dataset's index from it and the files it names, and holds it to its shape. Confidential, like the rest of SchwingNet: nothing here goes to a public place.",
+ "about": "The gold tier 3 CT dataset's members: CT studies whose field holds the whole spine, C2 to the sacrum, with a person's annotation (the owner's tiers of 2026-10-27; a machine mask never raises a tier), admitted by the field test of rule version 2 (whole_rule; data/gold3-ct/admission.json). tools/gold3_ct.py reads this file, builds the dataset's index from it and the files it names, and holds it to its shape. Confidential, like the rest of SchwingNet: nothing here goes to a public place.",
  "asked": "the owner, 2026-10-27 22:49 UTC: \"i want all the gold tier 3 CT data as its own dataset, with a indexable database, an artefact, and anything i need to use it in the workflow, including anomaly statistics, and quality assurance they are true anomalies\"",
  "tiers": "gold = C2 to the sacrum in one study; silver = partial. 1 = a real CT and X-ray pair with a person's annotation, 2 = the pair without, 3 = one modality with a person's annotation, 4 = one modality without. Machine masks never raise a tier.",
  "whole_rule": {
-  "version": 1,
-  "rule": "C2 and the sacrum each hold at least 200 voxels; every level from C2 to T12 is labelled; no space wider than 20 mm lies between consecutive labels above T12. A lumbar label missing or extra never drops a spine (the owner, 2026-10-27 17:10 UTC); an absent L5 is the common case and is reported as a variant, and any other lumbar gap is whole and listed for a look.",
-  "source": "bordercall holdings/count_enhance_pet.py (MIN_VOXELS, UNLABELLED_GAP_MM, LUMBAR_SPACE_FROM, class_of), the rule of the TotalSegmentator count before it"
+  "version": 2,
+  "rule": "A CT is admitted when its field holds C2 and the top of the sacrum, whatever its masks hold. A level is drawn at 200 voxels or more. C2 or the sacrum drawn is in view; one not drawn is placed from the nearest drawn level by tables measured on the members' own whole spines (the 5th and 95th percentiles), with 20 mm of S1 asked below the sacrum's top. A study at neither end clearly in or out is a border case, silver 3 until a person's look. A level the release does not draw is completed by a segmenter, kept as a machine mask of its own and never raising a tier. ENHANCE.PET's verdicts match version 1's tiers study for study.",
+  "asked": "the owner, 2026-10-28 22:58 UTC (#443's question): \"if the full spune is in view in the volume, and just missing a mask or two, that should just be completed using a segmentation software of choice ... i dont think i should leave out any spines that have ct volumes with the full spine in view\"",
+  "source": "tools/gold3_field.py (the rule, its thresholds and checks); docs/research/gold3-ct/ADMISSION.md (every count); docs/research/gold3-ct/README.md section 2 (why)",
+  "previous": {
+   "version": 1,
+   "rule": "C2 and the sacrum each hold at least 200 voxels; every level from C2 to T12 is labelled; no space wider than 20 mm lies between consecutive labels above T12. A lumbar label missing or extra never drops a spine (the owner, 2026-10-27 17:10 UTC); an absent L5 is the common case and is reported as a variant, and any other lumbar gap is whole and listed for a look.",
+   "source": "bordercall holdings/count_enhance_pet.py (MIN_VOXELS, UNLABELLED_GAP_MM, LUMBAR_SPACE_FROM, class_of), the rule of the TotalSegmentator count before it"
+  }
  },
  "person_key": {
   "rule": "<member>:<native id>, one spelling: enhance_pet:0001, verse:verse547 (data/splits/anomaly-holdout.json's spelling), totalsegmentator:<sid>. The split part is data/splits/rule.json's hash of that literal string, as tools/catalog.py computes it, so the spelling decides the part.",
@@ -45,8 +51,9 @@
    },
    "grid": {
     "root": "$DATA_ROOT/aws_enhance_pet_labels/raw",
-    "held": false,
-    "note": "the existing word `fetch aws_enhance_pet_labels` lands the whole ground-truth prefix on the owner's word; held says whether it has, set by the grid session once the vertebra and rib masks hash to SHA256SUMS (docs/checkpoints/2026-10-28-gold3-ct-grid/HANDOFF.md), and FACTS.json says where the facts were read and read again. autoPET's CTs are held as FDG-PET-CT-Lesions (/rs/rs_grp_oschome/go2432/data/tcia_fdg_pet_ct_lesions) but no mask has been matched to its CT yet (shape and affine, the scanner columns breaking ties); Leipzig's and Careggi's CTs are not held."
+    "held": "not_held",
+    "note": "the existing word `fetch aws_enhance_pet_labels` lands the whole ground-truth prefix on the owner's word; held says whether it has, set by the grid session once the vertebra and rib masks hash to SHA256SUMS (docs/checkpoints/2026-10-28-gold3-ct-grid/HANDOFF.md), and FACTS.json says where the facts were read and read again. autoPET's CTs are held as FDG-PET-CT-Lesions (/rs/rs_grp_oschome/go2432/data/tcia_fdg_pet_ct_lesions) but no mask has been matched to its CT yet (shape and affine, the scanner columns breaking ties); Leipzig's and Careggi's CTs are not held.",
+    "held_note": "the masks were read from the public bucket; `fetch aws_enhance_pet_labels` has not run, autoPET's CTs are on the grid as FDG-PET-CT-Lesions but no mask is matched to its CT, and Leipzig's and Careggi's CTs are not on the grid"
    },
    "repair_record": "the Claude project's files, folder enhance-pet-repair (README, SHA256SUMS, repaired/<id>.nii.gz)",
    "persons_by_records": [865, 1478],
@@ -55,18 +62,19 @@
     "The four readers' check makes the masks a person's annotation, as docs/research/enhance-pet-gold-tier-3.md says; the corpus-tiers draft (pull request #420) calls them machine output and is not followed here.",
     "MOOSE was trained on all 1,683 studies with their published labels, so its rerun of the three repaired studies is not independent of them; the ribs are the independent check.",
     "86 UC Davis studies are in Science Data Bank and not in the bucket; they are not members."
-   ]
+   ],
+   "access": "public bucket"
   },
   {
    "member": "verse",
    "source": "verse",
    "name": "VerSe 19 and 20",
-   "rows": "data/gold3-ct/verse.json",
-   "studies_listed": 17,
-   "gold3": 17,
+   "rows": "data/gold3-ct/verse/facts.jsonl",
+   "studies_listed": 374,
+   "gold3": 18,
    "gold4": 0,
-   "silver3": 0,
-   "tier_per_study": "gold 3, provisional until the sacrum is confirmed in each field on the grid: VerSe labels no sacrum, and the junction in the field is a labeller's geometry",
+   "silver3": 356,
+   "tier_per_study": "by the field test (rule 2): gold 3 for the 18 series admitted, every one provisional while a segmenter adds the sacrum VerSe never draws; silver 3 for the 356 others, 10 of them border cases a person's look may admit",
    "scheme": {
     "vertebrae": "C1-C7 = 1-7, T1-T12 = 8-19, L1-L5 = 20-24, L6 = 25, T13 = 28; no sacrum label",
     "ribs": "none",
@@ -80,35 +88,43 @@
     "as_one": "CC BY-SA 4.0 by data/licences.json (share-alike); another record says CC BY 4.0, unsettled"
    },
    "grid": {
-    "root": "${HOME}/VerSeFusion/data/raw",
-    "other_copy": "/rs/rs_grp_oschome/go2432/data/versefusion/raw/VerSeFusion_data/raw",
-    "canonical": "unsettled: the HOME copy and the data root's versefusion copy are both recorded (data/reproduce/sources.json, verse19_20 and versefusion locations)",
-    "held": true,
-    "pattern": "${HOME}/VerSeFusion/data/raw/**/*{id}*.nii.gz"
+    "root": "/rs/rs_grp_oschome/go2432/data/versefusion/raw/VerSeFusion_data/raw",
+    "other_copies": [
+     "${HOME}/VerSeFusion/data/raw"
+    ],
+    "canonical": "the data root's VerSeFusion copy, by the definition of held; the grid home's copy is another copy",
+    "held": "unchecked",
+    "held_note": "364 of 374 series are on the grid by the source records; the 10 VerSe'20 series never downloaded (grid/README.md) are not held",
+    "pattern": "/rs/rs_grp_oschome/go2432/data/versefusion/raw/VerSeFusion_data/raw/**/*{id}*.nii.gz"
    },
-   "persons_by_records": [17, 17],
-   "persons": "17 series of 17 distinct persons",
+   "persons_by_records": [18, 18],
+   "persons": "374 series of 355 patients; the 18 admitted series are 18 patients",
    "caveats": [
-    "The sacrum of each of the 17 must be confirmed on the grid before any of them counts as whole for good.",
-    "Five are anomaly holdout persons and two are fold 3 persons of the SPINEPS to FleXray route (data/splits/anomaly-holdout.json): carried, flagged, never trained on.",
-    "has_T13 in older records is wrong (18 against 6 by the masks)."
-   ]
+    "VerSe draws no sacrum: every admitted series is gold 3 provisional until a segmenter's sacrum is added and the field test's placement is confirmed by it.",
+    "VerSe's labellers leave a vertebra fused to the sacrum (Castellvi III or IV) undrawn, so a missing L5 is flagged (no_l5), never read as four lumbar.",
+    "Five of the 17 series the records read are anomaly holdout persons and two fold 3 persons of the SPINEPS to FleXray route (data/splits/anomaly-holdout.json): carried, flagged, never trained on.",
+    "has_T13 in older records is wrong (18 against 6 by the masks).",
+    "Where a series is in both releases, verse20's mask is read and verse19's is set beside it (other_release): 99 series, every one with the same grid and the same levels in both.",
+    "series.json, from VerSeFusion's demographics, marks 319 series as in VerSe 20, but the release's node b2wxj publishes 313 masks: verse112, verse139, verse141, verse151, verse251 and verse257 have no VerSe 20 mask and are read from verse19."
+   ],
+   "rows_made_by": "bordercall holdings/fullspine_facts.py from the release's expert masks (OSF, MICCAI nodes 923ap and b2wxj), in the cloud containers of two threads on 2026-10-28 and 29; FACTS.json beside the rows records where, the commit and the check of every mask's grid against its CT's header; series.json maps each series to its patient; data/gold3-ct/verse.json keeps the 17 series the records read",
+   "access": "public release (OSF), on the grid as VerSeFusion's copy"
   },
   {
    "member": "totalsegmentator",
    "source": "totalsegmentator",
    "name": "TotalSegmentator v3",
-   "rows": "data/gold3-ct/totalsegmentator.json",
-   "studies_listed": 0,
-   "gold3": 142,
+   "rows": "data/gold3-ct/totalsegmentator/facts.jsonl",
+   "studies_listed": 1939,
+   "gold3": 156,
    "gold4": 0,
-   "silver3": 0,
-   "tier_per_study": "gold 3 by the records, flagged: the release masks are model output refined by hand, which the owner's rule counts as a person's annotation; 142, perhaps 156 once the 14 the level or metal rule dropped are read",
+   "silver3": 1621,
+   "tier_per_study": "by the field test (rule 2): gold 3 for the 156 subjects admitted, 7 of them provisional while a segmenter adds a level; silver 3 for the 1,621 others with part of the column, 10 of them border cases; 162 subjects draw no vertebra and have no row. The release's masks are model output refined by hand, counted as a person's annotation and flagged",
    "scheme": {
-    "vertebrae": "the release's named files, C1 to L5 and the sacrum; it cannot express L6 or T13",
+    "vertebrae": "the release's named files, vertebrae_C1 to vertebrae_L6 and sacrum.nii.gz (v3 ships an L6 file for every subject and no separate S1, which the sacrum holds); no T13",
     "ribs": "24 named rib files, rib_left_1 to rib_right_12",
     "canonical": "by name",
-    "expresses_l6": false,
+    "expresses_l6": true,
     "expresses_t13": false,
     "expresses_ribs": true
    },
@@ -118,17 +134,37 @@
    },
    "grid": {
     "root": "/rs/rs_grp_oschome/go2432/data/totalsegmentator_v300",
-    "other_copy": "${HOME}/data/TotalSegmentator_v3",
-    "canonical": "unsettled: the data root's totalsegmentator_v300 and the HOME copy are both recorded (data/reproduce/sources.json, totalsegmentator_v300)",
-    "held": true,
+    "other_copies": [
+     "${HOME}/data/TotalSegmentator_v3"
+    ],
+    "canonical": "the data root's totalsegmentator_v300, by the definition of held; the grid home's copy is another copy",
+    "held": "unchecked",
     "pattern": "<root>/{id}/ct.nii.gz with <root>/{id}/segmentations/*.nii.gz"
    },
-   "persons_by_records": [142, 156],
-   "persons": "142 to 156",
+   "persons_by_records": [156, 156],
+   "persons": "1,939 subject folders, one person each by release id; the 156 admitted are 156 person keys once byte-identical duplicates share one",
    "caveats": [
-    "No rows until the grid index job reads the subject list (${HOME}/model_night/ts_clean_subjects.txt) and checks its sha256.",
-    "The scheme says typical as far as it can: an L6 or a T13 cannot be named, so no anomaly class is read from the names."
-   ]
+    "v3 names an L6 and no T13, so an L6 its masks draw is a candidate and a thirteenth thoracic body cannot be named; a count needs a reader from C2, SPINEPS and VERIDAH, or Hofmann's 70 reads.",
+    "286 of the 1,924 subjects meta.csv gives an age for are under 18 at the scan (15 have none), whose unfused S1 can read as a free body: flagged (child), never left out.",
+    "A subject whose masks are byte for byte another's is one scan under two ids: its row names duplicate_of and shares the first's person."
+   ],
+   "rows_made_by": "bordercall holdings/fullspine_facts.py from the release's masks (Zenodo record 22688904, Totalsegmentator_dataset_v300.zip, read by byte ranges), in the thread's container on 2026-10-28; FACTS.json beside the rows records where, the commit and the check of every subject's masks against its CT's header; subjects.json carries meta.csv's age, institute and split",
+   "access": "public release (Zenodo), on the grid as totalsegmentator_v300"
   }
- ]
+ ],
+ "held": {
+  "definition": "A study is held when its CT and its masks are on the grid under the member's canonical root on the data root (grid.root) and every one of those files hashes to the sha256 this repository records for it. A copy anywhere else (a grid home, the Claude project's files, a public bucket, a thread's container) is a copy, readable but not held; a file whose bytes differ from the record is not held. A member's grid.held is checked (with the date and the job), unchecked or not_held; never true until a grid check has compared the sums.",
+  "why": "Rows name files by sha256, so a study used for truth or training must be the file its facts were read from; a copy outside the data root may move or be cleaned away. data/sources/<source>.json's reach held (on the grid now) says the same at a source's level; this is it at a study's.",
+  "said": "the owner asked for one definition of held on 2026-10-28 (#443's question, answered at 22:58 UTC)"
+ },
+ "completion": {
+  "rule": "The levels from C2 to the sacrum an admitted study's release does not draw (admission.json, complete) are drawn by SPINEPS from the masks the census already holds on the grid, never re-run and never TotalSegmentator (the owner's science rule), kept as a machine arm of their own beside the release's masks, recorded by segmenter, version and sha256, never pooled with the release's masks and never raising a tier.",
+  "state": "waits for one CPU grid job and the owner's word and count; nothing sent"
+ },
+ "auto_anatomist": {
+  "spines": "VerSe, TotalSegmentator and ENHANCE.PET (the owner, 2026-10-28 23:03 UTC: \"i meant verse+totalsegmentator+PET\")",
+  "label": "a mask per vertebral level, named by level; no member carries measurements",
+  "recipe": "non-commercial",
+  "why": "data/recipes/non-commercial.json allows open, share-alike and non-commercial with no owner review, so it takes all three whole (TotalSegmentator open, VerSe share-alike, ENHANCE.PET non-commercial as one); recommended on the owner's behalf for him to overrule. A commercial network would take TotalSegmentator alone, with ENHANCE.PET's Leipzig and Careggi only after a per-site split and every class first confirmed by the owner, and VerSe only under commercial-share-alike after counsel; loosening a class is the owner's alone."
+ }
 }
