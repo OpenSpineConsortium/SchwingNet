@@ -49,7 +49,7 @@ Source: the thread "Build the auto-anatomist on raw CT", 29 October 2026, checkp
 
 Learning using privileged information (Vapnik and Vashist, Neural Networks 2009; Lopez-Paz, Bottou, Schoelkopf and Vapnik, ICLR 2016, generalized distillation); modality dropout for a channel that vanishes at test time (Havaei et al., HeMIS, MICCAI 2016); differentiable morphology (Franchi, Fehri and Yao, Pattern Recognition 2020); vertebra labelling with a chain prior (Glocker et al., MICCAI 2012 and 2013; Sekuboyina et al., Btrfly Net, MICCAI 2018, on 2-D sagittal and coronal projections; Payer et al., Medical Image Analysis 2019, SpatialConfiguration-Net); heatmap landmark regression read by soft-argmax (Nibali et al., 2018); landmark uncertainty and its calibration (Thaler et al., MELBA 2021; Schobs, Swift and Lu, IEEE TMI 2023, quantile binning); temperature scaling (Guo et al., ICML 2017); heteroscedastic likelihoods (Kendall and Gal, NeurIPS 2017); conformal prediction (Angelopoulos and Bates, 2021); successive halving and Hyperband (Jamieson and Talwalkar, 2016; Li et al., JMLR 2018); a REINFORCE controller over architecture choices (Zoph and Le, ICLR 2017). The four sweeps that ran (CT pre-processing, mask degradation and privileged information, landmark and heatmap post-processing, vertebra labelling) are in prior-art.md beside this list, sixty entries over fifty-one papers, each one agent's reading of one source, every record resolved and the open texts' figures checked since; the sweeps for hyper-parameter search and reinforcement learning did not run.
 
-## 6. State at 2026-10-29 23:10 UTC, written at the owner's word
+## 7. State at 2026-10-29 23:10 UTC, written at the owner's word
 
 The owner asked at 23:05 UTC for what there is to be written now. This is where section 4 stands on
 the branch claude/project-thread-f0dity (PR #483), with bordercall's PR #40 at 7d5fecb:
@@ -78,3 +78,30 @@ the branch claude/project-thread-f0dity (PR #483), with bordercall's PR #40 at 7
   Covers line per plan; docs/research/autoanatomist-search/README.md; the memory file; the
   adversarial review in the PR bodies. No grid job has been sent; each waits for the owner's word
   and count.
+
+## 8. Final state at 2026-10-29 23:20 UTC, the branch left for another account
+
+The owner asked at 23:13 UTC for every thread to push what it has with a handoff. This branch,
+claude/project-thread-f0dity on SchwingNet (PR #483), holds everything above and, since section 7:
+main (#470, the gold tier 3 completion) merged in, the vendor tool keeping both copies with the
+holdings and their tests in the engine copy; and the symbolic gate's third run read: 1 of 34
+conditions confirmed, 31 not confirmed within the bound, and two faults, both fixed and held by a
+test (math.isfinite raises on an int beyond float's range, so the number checks answer an int
+without asking it; summary_lines handed last_rewards a trials mapping with a key that was no
+string). The gate has not been run again since that fix; the next account runs it first
+(`PYTHONPATH=vendor/beethoven-qa/src:src python -m beethoven_qa gate --root . --module
+schwingnet.autoanatomist_search`, about twelve minutes) and `bash scripts/check.sh`.
+
+bordercall's branch claude/project-thread-f0dity (PR #40) is at 7d5fecb: the architecture block
+and the probe, with no test of its own yet.
+
+What the next account does, in this order:
+
+1. The two gates above; then bordercall's tests (tests/test_autoanatomist_probe.py and the blocks
+   test extended) and its README's words, pushed to PR #40; then `python3
+   tools/bordercall_vendor.py copy <clone> search` here and a commit, so the search copy carries
+   them.
+2. flows/autoanatomist.py and the rest of section 7's list, the PREREG frozen last.
+3. The adversarial review written into both PR bodies, then "finished; ready to mark" on each.
+4. Tell the pipeline thread the first gate word, `autoanatomist probe_smoke`, class batch, once it
+   exists; the job still waits for the owner's word and count. No grid job has been sent.
