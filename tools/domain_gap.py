@@ -4,27 +4,46 @@ The owner's ask of 2026-10-25 (SchwingNet #391, the FleXray audit; the thread "C
 DRRs to real X-ray corpora"): plot FleXray's synthetic DRRs alongside the held X-ray corpora, plain
 film and fluoroscopy, in t-SNE and other dimension-reduction maps, and run the statistical tests
 for separation a machine-learning reviewer would expect. docs/research/drr-domain-gap/README.md is
-the pre-registered design; this tool is its one job, run by grid/bench.sbatch as the bench id
-flexray_drr_gap, in the job's own environment (flexray, nanodrr, scikit-learn and umap-learn over
+the pre-registered design, frozen as PREREG.md beside it; this tool is its job, run by
+grid/drr-gap.sbatch as the bench id flexray_drr_gap in three steps, in the job's own environment (flexray, nanodrr, scikit-learn and umap-learn over
 train-gpu's torch), once the owner gives the word and the count.
 
     python tools/domain_gap.py run --groups data/domain_gap/groups.json --data-root <data root> \\
         --index <samples.sqlite> --weights <FleXray bundle dir> --imagenet <resnet18 file> \\
         --out <dir> [--device cuda] [--workers 4] [--wandb auto|off] [--frozen <test-persons.json>] \\
-        [--spineps <data root>/spineps] [--moose <data root>/moose]
+        [--spineps <data root>/spineps] [--moose <data root>/moose] [--skip-masks spineps|moose ...]
     python tools/domain_gap.py plan --groups ... --data-root ... --out <dir> [the same flags less
         --weights and --imagenet]
     python tools/domain_gap.py summary --out <dir>
+    python tools/domain_gap.py prepare <the flags of run>
+    python tools/domain_gap.py shard --out <dir> [--task N --tasks T] [--workers W] [--device cuda]
+    python tools/domain_gap.py merge --out <dir> --groups data/domain_gap/groups.json [--wandb auto|off]
+    python tools/domain_gap.py progress --out <dir>
+    python tools/domain_gap.py runlog --out <dir>
+
+`run` does the whole study in one process. On the grid it runs as three steps instead (the owner's
+word of 2026-10-27, grid/drr-gap.sbatch): `prepare` makes every stage up to the analysis and each
+reading's head, and writes the list of units under <out>/analysis; `shard`, one task of a Slurm
+array, claims units from that list one at a time by creating a file only it can create, runs them
+in a pool of W processes and writes each one's result, taking over a claim whose holder has been
+silent for STALE_SECONDS; and `merge` assembles results.json, the figures and the summary from the
+units' results exactly as `run` does, refusing in words while a unit is open or failed. `progress`
+prints <out>/PROGRESS.txt, the safe lines every step rewrites as it goes.
 
 Stages, each written under --out and skipped when its output is there for the same inputs: the
 renders (tools/flexray_render.py from held TotalSegmentator CTs, each render group a recipe of
 named blocks, schwingnet.render_blocks, through this project's code or FleXray's own; the groups
 on one CT folder render the same CTs, chosen once in the salted order among the CTs that have
-masks under every segmenter those groups name, SPINEPS's existing masks under --spineps and
-MOOSE's under --moose, so the six render groups, flexray_drr, flexray_replica, flexray_reference,
-flexray_spineps, fluxray_raw and fluxray_raw_reference, differ only by their recipe and engine,
-and the replication test reads each recipe through our blocks against the same recipe through
-FleXray's code), the plan (which files of which groups,
+masks under every segmenter those groups name whose masks are read, SPINEPS's existing masks
+under --spineps and MOOSE's under --moose, so the seven render groups, flexray_drr,
+flexray_drr_ct, flexray_replica, flexray_reference, flexray_spineps, fluxray_raw and
+fluxray_raw_reference, differ only by their recipe and engine, and the replication test reads each
+recipe through our blocks against the same recipe through FleXray's code; a DRR's pixels are a
+projection of the CT alone, so the groups on segmenter none, flexray_drr_ct and the two FluXray
+raw groups, read no mask and render wherever the CTs are, while a group whose segmenter's masks
+are not read, no folder of them, one that holds too few CTs' masks to test a group or one
+--skip-masks names, is skipped with that reason and the others render, the owner's word of
+2026-10-27), the plan (which files of which groups,
 data/domain_gap/groups.json, chosen by person in a
 salted order, frozen test persons left out), the images (each decoded, MONOCHROME1 inverted,
 windowed to its 0.5-99.5 percentiles, cut to the centre square of 0.9 of its shorter side and
@@ -47,8 +66,10 @@ with masks under every segmenter named but the ones the segment job makes (MADE_
 `run` among those with masks under every one, which is the same set once the segment job has done
 them all and a smaller one, said in the plan and the summary, where it has not.
 
-What leaves the grid is summary.txt, at most 80 lines of numbers and group names that the bench
-report carries; results.json, the figures and the plan, which names files, stay in --out (umask 077)
+What leaves the grid is summary.txt, five record lines and at most 80 lines of numbers and group
+names that the bench report carries, and the run log, lines of times, steps, nodes, cards, counts
+and unit names, at most RUNLOG_REPORT of them in the bench report and RUNLOG_TAIL in PROGRESS.txt,
+which the status word shows; results.json, the figures and the plan, which names files, stay in --out (umask 077)
 and the figures and the map coordinates go to W&B where the grid's key is found. tools/ never goes
 on sys.path, since tools/profile.py would shadow the standard library's profile, which torch
 imports.
@@ -64,10 +85,13 @@ import math
 import multiprocessing
 import os
 import re
+import signal
 import sqlite3
 import sys
+import threading
 import time
 import traceback
+import zipfile
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 
@@ -98,19 +122,26 @@ PERMUTATIONS_MMD = 1000
 BOOTSTRAP = 1000
 SPACES = ("flexray", "imagenet", "physics")
 PRIMARY_SPACE = "flexray"
-FOCUS_GROUPS = ("flexray_drr", "fluxray")  # FleXray's own groups, read in most detail
+# The primary endpoints, read in most detail: FleXray's physical render, the same render from the
+# CT alone with no mask read (added on 2026-10-27, before any number was seen, on the owner's word
+# that the comparison with real X-rays should run without segmentation), and FluXray.
+FOCUS_GROUPS = ("flexray_drr", "flexray_drr_ct", "fluxray")
 # The replication test's pairs, in the order the summary reads them: FleXray's MOOSE recipe through
 # this project's render blocks against the same recipe through FleXray's own code, the study's
 # verdict; FluXray's raw-render recipe (the paper's 90 fixed poses) through our blocks against the
-# same through FleXray's primitives; the physical render against the recipe, which isolates the
-# attenuation randomisation; the production labels (SPINEPS) against the replication's (MOOSE),
+# same through FleXray's primitives; the physical render from the CT alone against the physical
+# render on MOOSE's labels, which isolates what the labels' aiming does (the crops weighted by the
+# structures they hold and the isocentre on a structure, the attenuation off in both; the crops,
+# isocentres and poses are not shared, since the draws differ); the physical render against the
+# recipe, which isolates the attenuation randomisation; the production labels (SPINEPS) against
+# the replication's (MOOSE),
 # which shares the CTs and the seeds with it while the crops, isocentres and poses follow the
 # labels, since FleXray's recipe draws them from the label volume before the pose (so the pair
 # reads the segmenter with everything the labels decide); and the raw renders against the
 # FLUX-edited FluXray, which isolates the edit with the pose recipe held the same.
 REPLICATION_PAIRS = (("flexray_replica", "flexray_reference"), ("fluxray_raw", "fluxray_raw_reference"),
-                     ("flexray_drr", "flexray_replica"), ("flexray_spineps", "flexray_replica"),
-                     ("fluxray_raw_reference", "fluxray"))
+                     ("flexray_drr_ct", "flexray_drr"), ("flexray_drr", "flexray_replica"),
+                     ("flexray_spineps", "flexray_replica"), ("fluxray_raw_reference", "fluxray"))
 # The pairs that get the pre-registered word: one recipe through two engines.
 REPLICATION_WORDED = REPLICATION_PAIRS[:2]
 # The groups that exist for the replication tests alone: their contrasts with the real corpora
@@ -120,8 +151,21 @@ REPLICATION_ONLY = ("flexray_replica", "flexray_reference", "fluxray_raw", "flux
 # for the CTs this study chooses, reading the choice from render-subjects.json: the plan subcommand
 # that writes it for that job chooses without them, since none exists before the job has run.
 MADE_SEGMENTERS = ("moose",)
+# The segmenters whose masks a render group can read, each from --spineps and --moose or the data
+# root's folder of its name; --skip-masks leaves one out for a run by hand.
+MASK_SEGMENTERS = ("spineps", "moose")
+LEFT_OUT = "left out by --skip-masks"
+# A folder that is there and holds fewer CTs' masks than a group needs persons to be tested, as a
+# segment job that stopped on one of its first CTs leaves one, is read as no masks at all:
+# required, it would leave every group on the folder fewer persons than any test takes, the
+# groups that read no mask among them, so leaving it out can lose no test. A folder of more is
+# read and holds every render group on the folder to the CTs it covers, so a segment job cut short
+# a little later can still leave too few once groups pass CTs over: the study word goes only after
+# the segment job's report has been read.
+NO_MASKS = "no CT here has them"
 RENDER_SUBJECTS = "render-subjects.json"
-LINE_BUDGET = 80        # lines of summary.txt, what the bench report carries off the grid
+LINE_BUDGET = 80        # lines of summary.txt's findings, what the bench report carries off the grid
+RECORD_LINES = 5        # the run's record above them (record_lines), so summary.txt holds at most 85
 THUNDER = "thunderdb://"
 
 
@@ -160,9 +204,19 @@ def sha256_of(path):
 def write_json(path, data):
     """Write a JSON file whole: to a neighbour first, then renamed, so a cut job leaves none half."""
     path = Path(path)
-    part = path.with_name(path.name + ".part")
+    part = own_part(path)
     part.write_text(json.dumps(data, indent=1, sort_keys=True) + "\n", encoding="utf-8")
     os.replace(part, path)
+
+
+def own_part(path):
+    """The neighbour a file is written to before it is renamed into place, named by this host,
+    process and thread, so two writers of one file, an array's tasks on nodes that share the folder
+    or two threads of one process, never write one neighbour."""
+    import socket
+
+    path = Path(path)
+    return path.with_name(f"{path.name}.{socket.gethostname()}.{os.getpid()}.{threading.get_ident()}.part")
 
 
 def read_json(path):
@@ -216,27 +270,49 @@ def index_rows(index, sources):
         return connection.execute(query, sorted(names)).fetchall()
 
 
-def keep_index_row(group, row):
-    """Whether an index row is an image of the group: its format, its modality, a single plane,
-    its size, its path's globs and words."""
+REFUSALS = ("format", "planes", "modality", "size", "path")
+
+
+def refusal(group, row):
+    """Why an index row is not an image of the group, the first of REFUSALS it fails (its format,
+    a single plane, its modality, its size, its path's globs and words), or None where it is one."""
     path, relative, form, width, height, depth, modality, _, _ = row
-    formats = group.formats or DEFAULT_FORMATS
-    if form not in formats or (depth or 1) > 1:
-        return False
-    if form == "dicom":
-        allowed = group.modalities or PROJECTION_MODALITIES
-        if (modality or "").upper() not in allowed:
-            return False
+    if form not in (group.formats or DEFAULT_FORMATS):
+        return "format"
+    if (depth or 1) > 1:
+        return "planes"
+    if form == "dicom" and (modality or "").upper() not in (group.modalities or PROJECTION_MODALITIES):
+        return "modality"
     if group.min_side and width and height and min(width, height) < group.min_side:
-        return False
-    return matches(relative, group.globs) and not excluded(relative, group.exclude_words)
+        return "size"
+    if not matches(relative, group.globs) or excluded(relative, group.exclude_words):
+        return "path"
+    return None
+
+
+def keep_index_row(group, row):
+    """Whether an index row is an image of the group (refusal)."""
+    return refusal(group, row) is None
 
 
 def index_candidates(group, index):
-    """(file, relative path, patient id, study uid) of every index row the group keeps."""
+    """(file, relative path, patient id, study uid) of every index row the group keeps; where it
+    keeps none, how many rows each rule refused, or that the index listed none under the group's
+    sources, so the report says what left the group empty without naming a file (VinDr-SpineXR's
+    DICOMs gave none in the first sharded run, which could not say which). The message names the
+    rules that refused any row, and the summary keeps it whole (group_line)."""
     if not index or not Path(index).is_file():
         raise StageError("no sample index (samples.sqlite) to read")
-    rows = [r for r in index_rows(index, group.index_sources) if keep_index_row(group, r)]
+    listed = index_rows(index, group.index_sources)
+    rows = [r for r in listed if keep_index_row(group, r)]
+    if listed and not rows:
+        counts = {reason: 0 for reason in REFUSALS}
+        for r in listed:
+            counts[refusal(group, r)] += 1
+        raise StageError(f"{len(listed)} index rows, none kept: "
+                         + ", ".join(f"{reason} {count}" for reason, count in counts.items() if count))
+    if not listed:
+        raise StageError("the index lists no image row under its sources")
     return [(r[0], r[1], r[7] or "", r[8] or "") for r in rows]
 
 
@@ -272,20 +348,38 @@ def thunder_root(group, data_root):
 
 
 _THUNDER = {}
+_THUNDER_DB = {}
+
+
+def thunder_db(root):
+    """FleXray's read-only opener of a FluXray ThunderDB, once a process. LMDB forbids opening one
+    environment twice in one process, and py-lmdb 2.0 and later refuse the second open with
+    lmdb.Error, which kept FluXray out of the first sharded run (DEVIATIONS.md item 10); so the
+    split list and every split's reader share this one open database, as FleXray's own smoke load
+    does (fxr.datasets.packaging), each decoding worker opening its own."""
+    key = str(root)
+    if key not in _THUNDER_DB:
+        from fxr.datasets._thunderdb import open_thunderdb
+
+        _THUNDER_DB[key] = open_thunderdb(root)
+    return _THUNDER_DB[key]
 
 
 def thunder_backend(root, split):
-    """FleXray's own reader of a split of a FluXray ThunderDB, opened once a process."""
+    """FleXray's own reader of a split of a FluXray ThunderDB, made once a process over the shared
+    open database, which it borrows and never closes."""
     key = (str(root), split)
     if key not in _THUNDER:
         from fxr.datasets.storage import SplitThunderDBStorageBackend
 
+        db = thunder_db(root)
         backend = None
         for grouping in ("subject", "sample"):
             try:
                 backend = SplitThunderDBStorageBackend(
-                    str(root), dataset_name="FluXray", modality="xray", split=split, label_key=None,
-                    affine_key=None, spacing_key=None, subject_grouping=grouping, lazy_payload_refs=True)
+                    db, dataset_name="FluXray", modality="xray", split=split, label_key=None,
+                    affine_key=None, spacing_key=None, subject_grouping=grouping, lazy_payload_refs=True,
+                    owns_database=False)
                 break
             except (KeyError, ValueError, TypeError):
                 continue
@@ -296,10 +390,7 @@ def thunder_backend(root, split):
 
 
 def thunder_splits(root):
-    from fxr.datasets._thunderdb import open_thunderdb
-
-    with open_thunderdb(root) as db:
-        return sorted(db["_splits"].keys())
+    return sorted(thunder_db(root)["_splits"].keys())
 
 
 def thunder_candidates(group, data_root):
@@ -390,7 +481,7 @@ def plan_group(group, args, salt, frozen, renders):
         return row
     except Exception as error:  # one group's broken index or reader never stops the others
         traceback.print_exc(file=sys.stderr)
-        row["skipped"] = f"its files could not be listed ({type(error).__name__})"
+        row["skipped"] = f"its files could not be listed ({error_kind(error)})"
         return row
     rule = dicom_person_rule(group, candidates)
     pairs, fallback = persons_of(group, candidates, rule)
@@ -403,6 +494,23 @@ def plan_group(group, args, salt, frozen, renders):
     if not chosen:
         row["skipped"] = "nothing found under its rules"
     return row
+
+
+def error_kind(error):
+    """What went wrong, never the error's text, which can name a file: the class with its module
+    where it is not a builtin, since lmdb.Error and zstd.Error share a name, and the errno's symbol
+    where the error carries one, as errno or as py-lmdb's code (ENOLCK, ESTALE), each cut to a
+    shape the summary keeps whole (group_line)."""
+    import errno
+
+    kind = type(error).__qualname__
+    if type(error).__module__ != "builtins":
+        kind = f"{type(error).__module__}.{kind}"
+    kind = re.sub(r"[^A-Za-z0-9_.]", "", kind)[:60]
+    code = getattr(error, "errno", None) or getattr(error, "code", None)
+    if isinstance(code, int) and not isinstance(code, bool) and code in errno.errorcode:
+        kind += " " + errno.errorcode[code]
+    return kind
 
 
 def candidate_rows(group, args, renders):
@@ -423,20 +531,27 @@ def candidate_rows(group, args, renders):
 
 
 def stage_plan(args, table, renders=None, folders=None):
-    """plan.json: every group's chosen files, made once for the same table, frozen list and
-    renders (what stage_render returned: each render group's record, and each CT folder's choice
-    of subjects with the mask counts it was made from), so a render that fails in one run and
-    succeeds in the next is planned again."""
+    """plan.json: every group's chosen files, made once for the same table, frozen list, renders
+    (what stage_render returned: each render group's record, and each CT folder's choice of
+    subjects with the mask counts it was made from) and code, so a render that fails in one run and
+    succeeds in the next is planned again, and so is a plan an older code made (DEVIATIONS.md, item
+    10). A kept plan where a group could not be listed at all, its folder not there or its reader
+    failing, is made again too, since nothing in the stamp says the data or the reader has come
+    right since; a plan made again the same is not written again, and one made again with the same
+    groups keeps its digest, and so the images and features keyed by it."""
     renders, folders = renders or {}, folders or {}
     path = Path(args.out) / "plan.json"
     stamp = {"table": sha256_of(args.groups), "frozen": sha256_of(args.frozen) if args.frozen else "",
-             "index": index_stamp(args.index), "renders": digest_of(renders), "folders": digest_of(folders)}
-    if path.is_file() and read_json(path).get("stamp") == stamp:
-        return read_json(path)
+             "index": index_stamp(args.index), "renders": digest_of(renders), "folders": digest_of(folders),
+             "code": code_digest()}
+    kept = read_json(path) if path.is_file() else None
+    if kept and kept.get("stamp") == stamp and all("found" in g for g in kept["groups"]):
+        return kept
     frozen = frozen_persons(args.frozen)
     groups = [plan_group(g, args, table.salt, frozen, renders) for g in table.groups]
     plan = {"version": 1, "salt": table.salt, "stamp": stamp, "groups": groups, "renders": folders}
-    write_json(path, plan)
+    if plan != kept:  # a plan made again the same is left as it was written
+        write_json(path, plan)
     return plan
 
 
@@ -459,11 +574,14 @@ def index_stamp(index):
 def stage_render(args, table):
     """The synthetic X-rays of every render group, by tools/flexray_render.py: the CTs of a folder
     are chosen once (render_folders), among those with masks under every segmenter the folder's
-    groups name, so every render group on one folder renders the same subjects, and the per-view
-    seeds take the folder's salt and not the group's, so two groups on one folder differ only by
-    their blocks and engine; once every group has rendered, the subjects every group on a folder
-    kept are the ones that enter the analysis (share_subjects), since one scheme's masks may
-    hold nothing FleXray supervises for a CT the other's do. Returns what each group got and
+    groups name whose masks are read, so every render group on one folder renders the same
+    subjects, a group whose segmenter's masks are not read (no folder, one that holds too few
+    CTs' masks to test a group, or --skip-masks) being skipped with that reason while the others
+    render (the owner's word of 2026-10-27), and the per-view seeds take the folder's salt and not the group's, so two
+    groups on one folder differ only by their blocks and engine; once every group has rendered,
+    the subjects every group on a folder kept are the ones that enter the analysis
+    (share_subjects), since one scheme's masks may hold nothing FleXray supervises for a CT the
+    other's do. Returns what each group got and
     each folder's choice, for the plan."""
     renders = {}
     groups = [g for g in table.groups if g.source == "render"]
@@ -473,11 +591,13 @@ def stage_render(args, table):
     roots = mask_roots(args)
     folders = render_folders(args, table, renderer, roots)
     write_subjects(args.out, folders)
-    for group in groups:
+    for number, group in enumerate(groups, 1):
+        note_stage(args.out, "render", "running", f"group {number} of {len(groups)}: {group.id}")
         folder = folders[group.folder]
         subjects = folder["subjects"][:max(1, group.cap // group.per_person)]
-        if folder.get("skipped") or not subjects:
-            why = folder.get("skipped") or "no CT has masks under every segmenter named, " + mask_counts(folder)
+        why = folder.get("skipped") or unread_masks(group, folder)
+        if why or not subjects:
+            why = why or "no CT has masks under every segmenter required, " + mask_counts(folder)
             log(f"{group.id}: {why}; its renders are skipped")
             renders[group.id] = {"skipped": why}
             continue
@@ -510,22 +630,49 @@ def share_subjects(renders, groups, folders):
 
 def mask_roots(args):
     """The folder of each segmenter's masks, --spineps and --moose or <data root>/<segmenter>,
-    those that are there: a root that is not is left out, so the renderer finds no mask under it
-    and refuses a render that needs it in words, and the folder's record says it was not found."""
+    those that are there and not named by --skip-masks: a root that is not is left out, so the
+    renderer finds no mask under it, the folder's CTs are chosen without it and the groups that
+    name it are skipped with the reason the folder's record gives (mask_state)."""
     roots = {}
-    for name in ("spineps", "moose"):
-        given = getattr(args, name, "") or str(Path(args.data_root) / name)
-        if Path(given).is_dir():
-            roots[name] = Path(given)
+    for name in MASK_SEGMENTERS:
+        given = Path(getattr(args, name, "") or str(Path(args.data_root) / name))
+        if not left_out(args, name) and given.is_dir():
+            roots[name] = given
     return roots
+
+
+def left_out(args, name):
+    return name in (getattr(args, "skip_masks", None) or ())
+
+
+def mask_state(args, name, roots):
+    """Whether a segmenter's masks are read, by the roots mask_roots found: found, left out by
+    --skip-masks, or no folder."""
+    if name in roots:
+        return "found"
+    return LEFT_OUT if left_out(args, name) else "no folder"
+
+
+def unread_masks(group, folder):
+    """Why a render group cannot render, where its recipe's segmenter is one whose masks the run
+    does not read (the folder's record of its roots says why); nothing for a group that reads
+    them, or none."""
+    segmenter = blocks_rules().parse(group.blocks).segmenter
+    state = folder.get("roots", {}).get(segmenter, "found")
+    if state == "found":
+        return ""
+    return f"its segmenter {segmenter}'s masks are not read ({state})"
 
 
 def render_folders(args, table, renderer, roots, pending=()):
     """Each render folder's choice of CTs, made once for every render group on it: the segmenters
-    its groups name (schwingnet.domain_gap.segmenters_named) less the pending ones, the masks the
-    segment job is yet to make, the subjects with masks under each, and the first of them in the
-    salted order (schwingnet.domain_gap.choose_subjects), as many as the largest group needs;
-    with the counts the plan and the summary say. A folder that is not there is skipped with its
+    its groups name (schwingnet.domain_gap.segmenters_named, which leaves segmenter none out) less
+    the pending ones, the masks the segment job is yet to make, and less those whose masks are not
+    read (no folder, or --skip-masks: mask_state), the subjects with masks under each one left,
+    and the first of them in the salted order (schwingnet.domain_gap.choose_subjects), as many as
+    the largest group needs, every subject being a candidate where none is left; a segmenter
+    whose folder holds fewer CTs' masks than MIN_PERSONS is not read either (too_few_masks); with
+    the counts the plan and the summary say. A folder that is not there is skipped with its
     reason."""
     folders = {}
     for group in (g for g in table.groups if g.source == "render"):
@@ -538,23 +685,38 @@ def render_folders(args, table, renderer, roots, pending=()):
             continue
         named = rules().segmenters_named([g.blocks for g in on_folder])
         count = max(max(1, g.cap // g.per_person) for g in on_folder)
-        folders[group.folder] = subject_choice(renderer, ct_root, named, roots, table.salt, count, pending)
+        choice = subject_choice(renderer, ct_root, named, roots, table.salt, count, pending)
+        states = {name: mask_state(args, name, roots) for name in named}
+        choice["roots"] = states | {name: too_few_masks(n) for name, n in choice["thin"].items()}
+        folders[group.folder] = choice
     return folders
 
 
 def subject_choice(renderer, ct_root, named, roots, salt, count, pending):
     """One folder's choice of CTs and the record it is made from: every subject the renderer finds
-    under the folder, those with masks under each segmenter required (named less pending), and
-    the first count, in the salted order, of the subjects with masks under every one of them."""
+    under the folder, those with masks under each segmenter required (named less pending, less
+    those with no root, whose masks are not read, and less those whose root holds fewer subjects'
+    masks than MIN_PERSONS, listed as thin with their counts), and the first count, in the salted
+    order, of the subjects with masks under every one of them; every subject where none is
+    required."""
     pure = rules()
     subjects = frozenset(subject_id(s) for s in renderer.find_subjects(ct_root))
-    masked = {name: masked_subjects(renderer, ct_root, name, roots) & subjects
-              for name in named if name not in pending}
+    found = {name: masked_subjects(renderer, ct_root, name, roots) & subjects
+             for name in named if name not in pending and name in roots}
+    masked = {name: held for name, held in found.items() if len(held) >= MIN_PERSONS}
     chosen = pure.choose_subjects(subjects, masked, count, salt)
     return {"subjects": list(chosen), "segmenters": list(named), "pending": [n for n in named if n in pending],
-            "roots": {name: ("found" if name in roots else "no folder") for name in named},
-            "ct": len(subjects), "masks": {name: len(found) for name, found in masked.items()},
+            "thin": {name: len(held) for name, held in found.items() if name not in masked},
+            "ct": len(subjects), "masks": {name: len(held) for name, held in masked.items()},
             "every": len(pure.with_masks(subjects, masked)), "count": count}
+
+
+def too_few_masks(count):
+    """Why a segmenter's folder that is there is not read: it holds no CT's masks, or fewer than a
+    group needs persons to be tested."""
+    if count == 0:
+        return NO_MASKS
+    return f"only {count} CTs have them, under {MIN_PERSONS}"
 
 
 def masked_subjects(renderer, ct_root, segmenter, roots):
@@ -567,16 +729,22 @@ def masked_subjects(renderer, ct_root, segmenter, roots):
 
 
 def mask_counts(folder):
-    """A folder's mask counts in words: how many CTs had masks under each segmenter and under
-    every one, of how many CTs."""
-    parts = [f"{name} {folder['masks'].get(name, 0)}" for name in folder.get("segmenters", [])
-             if name not in folder.get("pending", [])]
+    """A folder's mask counts in words: how many CTs had masks under each segmenter required and
+    under every one, of how many CTs, then the named segmenters that were not required: those the
+    segment job is yet to make, and those whose masks were not read, with why."""
     pending = folder.get("pending", [])
+    states = folder.get("roots", {})
+    unread = [name for name in folder.get("segmenters", [])
+              if name not in pending and states.get(name, "found") != "found"]
+    parts = [f"{name} {folder['masks'].get(name, 0)}" for name in folder.get("segmenters", [])
+             if name not in pending and name not in unread]
     text = f"{folder.get('every', 0)} with every mask of {folder.get('ct', 0)} CTs"
     if parts:
         text += f" ({', '.join(parts)})"
     if pending:
         text += f", {' and '.join(pending)} to be made"
+    if unread:
+        text += ", " + ", ".join(f"{name} not read ({states[name]})" for name in unread)
     return text
 
 
@@ -707,13 +875,16 @@ def decode_one(reference):
 
 def stage_images(args, plan):
     """images.npy (n x 256 x 256, float16) and rows.json (group, family, person, file index) for
-    every chosen file that decodes; the failures are counted by group and kind."""
+    every chosen file that decodes; the failures are counted by group and kind. They are kept for
+    the same plan and the same code, so the code the run's record names made every array."""
     import numpy as np
 
     out = Path(args.out)
     rows_path, images_path = out / "rows.json", out / "images.npy"
-    if rows_path.is_file() and images_path.is_file() and read_json(rows_path).get("plan") == plan_digest(plan):
-        return read_json(rows_path), np.load(images_path, mmap_mode="r")
+    if rows_path.is_file() and images_path.is_file():
+        kept = read_json(rows_path)
+        if kept.get("plan") == plan_digest(plan) and kept.get("code") == code_digest():
+            return kept, np.load(images_path, mmap_mode="r")
     files = [(g["id"], g["family"], f, p) for g in plan["groups"] for f, p in g["chosen"]]
     log(f"decoding {len(files)} images with {args.workers} workers")
     decoded = decode_all([f for _, _, f, _ in files], args.workers)
@@ -725,7 +896,7 @@ def stage_images(args, plan):
             failures[group][why] += 1
     images = np.stack([decoded[i][0] for i in keep]) if keep else np.zeros((0, SIDE, SIDE), np.float16)
     np.save(images_path, images)
-    rows = {"plan": plan_digest(plan), "failures": failures,
+    rows = {"plan": plan_digest(plan), "code": code_digest(), "failures": failures,
             "rows": [{"group": files[i][0], "family": files[i][1], "person": files[i][3]} for i in keep]}
     write_json(rows_path, rows)
     return rows, np.load(images_path, mmap_mode="r")
@@ -882,7 +1053,8 @@ def unavailable(space, args):
 
 
 def stage_features(args, images, rows):
-    """features/<space>.npz: for each image, the space's features of the image and of its inverse."""
+    """features/<space>.npz: for each image, the space's features of the image and of its inverse,
+    written whole and renamed, so a job cut while it writes leaves the last whole file or none."""
     import numpy as np
     import torch
 
@@ -895,7 +1067,7 @@ def stage_features(args, images, rows):
         if why:
             done[space] = why
             continue
-        if path.is_file() and str(np.load(path)["plan"]) == rows["plan"]:
+        if features_kept(path, rows["plan"], rows["code"]):
             done[space] = None
             continue
         log(f"features: {space} over {len(images)} images")
@@ -905,9 +1077,30 @@ def stage_features(args, images, rows):
             batch = torch.from_numpy(np.asarray(images[start:start + 64], dtype=np.float32)).unsqueeze(1)
             stored.append(embed(batch))
             inverse.append(embed(1.0 - batch))
-        np.savez(path, stored=np.concatenate(stored), inverse=np.concatenate(inverse), plan=rows["plan"])
+            if start % (64 * 20) == 0:
+                note_stage(args.out, "features", "running", f"{space} {start} of {len(images)} images")
+        part = folder / f"{space}.npz.part"
+        with open(part, "wb") as handle:
+            np.savez(handle, stored=np.concatenate(stored), inverse=np.concatenate(inverse), plan=rows["plan"],
+                     code=rows["code"])
+        os.replace(part, path)
         done[space] = None
     return done
+
+
+def features_kept(path, plan, code):
+    """Whether a space's features are there whole for this plan and this code; a file a cut job
+    left half written, which np.load cannot open, counts as none, and so does one an older code
+    made, since the run's record names the code it ran (DEVIATIONS.md, item 10)."""
+    import numpy as np
+
+    if not path.is_file():
+        return False
+    try:
+        kept = np.load(path)
+        return str(kept["plan"]) == plan and str(kept["code"]) == code
+    except (OSError, ValueError, KeyError, EOFError, zipfile.BadZipFile):
+        return False
 
 
 # --- the analysis ----------------------------------------------------------------------------------
@@ -1011,12 +1204,49 @@ def contrast(frame, z64, a, b, seed, *, permute=False, prdc=False):
         result["auc_logistic"]["p"] = s.c2st_permutation_p(
             frame.x[rows], labels, persons, observed_auc=result["auc_logistic"]["auc"],
             perms=PERMUTATIONS_C2ST, seed=seed, paired=paired)
-    result["mmd"] = s.mmd_test(z64[a], z64[b], persons[:len(a)], persons[len(a):],
-                               perms=PERMUTATIONS_MMD, seed=seed, paired=paired)
+    result["mmd"] = mmd_where_it_fits(s, z64[a], z64[b], persons[:len(a)], persons[len(a):],
+                                      perms=PERMUTATIONS_MMD, seed=seed, paired=paired)
     result.update(distances(frame, z64, (a, b), seed))
     if prdc:
         result["prdc"] = s.prdc(z64[b], z64[a])
     return result
+
+
+# What this process's MMD tests ran on since the unit began: a shard's workers share one card of
+# whatever size the gpu class gave the task (DEVIATIONS.md item 9).
+_MMD_RUNS = {"tests": 0, "cpu": 0}
+
+
+def mmd_where_it_fits(s, *args, **kwargs):
+    """The MMD test on the card, or, where the card has no room left for it, the same test with
+    numpy on the CPU: the permutations are numpy's draws under the same seed either way, so the
+    numbers differ in their last digits alone, and a unit is never failed for the card's size."""
+    _MMD_RUNS["tests"] += 1
+    try:
+        return s.mmd_test(*args, **kwargs)
+    except Exception as error:
+        if not out_of_card_memory(error):
+            raise
+    free_card()
+    _MMD_RUNS["cpu"] += 1
+    return s.mmd_test(*args, **kwargs, backend="numpy")
+
+
+def out_of_card_memory(error):
+    """Whether torch said the card is full: a CUDA out-of-memory error, at an allocation or as the
+    process opened its context on the card."""
+    return isinstance(error, RuntimeError) and "out of memory" in str(error).lower()
+
+
+def free_card():
+    """The memory torch holds cached on the card given back, so the workers that share it are not
+    kept out by a unit already finished."""
+    torch = sys.modules.get("torch")
+    try:
+        if torch is not None and torch.cuda.is_initialized():
+            torch.cuda.empty_cache()
+    except Exception:  # a card that will not answer leaves nothing to give back
+        pass
 
 
 def distances(frame, z64, sides, seed):
@@ -1036,20 +1266,11 @@ def equal_rows(frame, a, b, seed):
     return capped(frame, a, size, f"fd:{seed}"), capped(frame, b, size, f"fd:{seed}")
 
 
-def calibration(frame, z64, salt, seed):
-    """The split-half nulls: each group with enough persons split in two by person; the tests
-    must find nothing there, or the pipeline is leaking."""
+def calibration_of(nulls):
+    """The split-half nulls read together: each group with SPLIT_PERSONS persons or more split in
+    two by person (null_unit), where the tests must find nothing, or the pipeline is leaking."""
     import numpy as np
 
-    s = stats()
-    nulls = {}
-    for group in frame.order:
-        if frame.persons(group) < SPLIT_PERSONS:
-            continue
-        rows = frame.rows_of(group)
-        half = s.split_half(list(frame.person[rows]), f"{salt}:{group}")
-        a, b = rows[half == 1], rows[half == 0]
-        nulls[group] = contrast(frame, z64, a, b, seed)
     aucs = [v["auc_logistic"]["auc"] for v in nulls.values()]
     return {"groups": nulls, "auc_median": float(np.median(aucs)) if aucs else None,
             "auc_range": [float(min(aucs)), float(max(aucs))] if aucs else None,
@@ -1068,59 +1289,258 @@ def flagged_nulls(nulls):
     return [g for g, value in zip(groups, q) if value < 0.05]
 
 
-def analyse_space(frame, salt, seed):
-    """The whole analysis of one feature space."""
+# A reading's analysis is a list of units, each one contrast, one null, one structure measure or one
+# map, which reads only the reading's head (the features, their standardised copy and its first 64
+# principal components) and the plan, with its own seed. So the list gives the same result run one
+# unit after another in one process (analyse_head, the run subcommand) or claimed by the tasks of a
+# Slurm array (prepare, shard, merge), and the assembly puts every unit where the analysis has
+# always put it, in the order it has always run them. Each unit's result passes through JSON in
+# both, so a unit run here and one read back from a task's file are the same object.
+
+MAP_METHODS = ("pca", "tsne", "umap", "lda")
+SEED = 0
+
+
+class Head:
+    """One reading of one feature space, ready for its units: the frame, the standardised features
+    and their first 64 principal components, the reading's first numbers, and the groups its units
+    are planned from (the testable synthetic and real groups and each pooled real family)."""
+
+    def __init__(self, key, frame, z, z64, base, salt):
+        self.key, self.frame, self.z, self.z64, self.base, self.salt = key, frame, z, z64, base, salt
+        self.invalid = base.get("invalid", "")
+        self.synthetic, self.real, self.families = [], [], {}
+        if not self.invalid:
+            self.synthetic = frame.testable("synthetic")
+            self.real = frame.testable("fluoroscopy") + frame.testable("film")
+            self.families = {f: pooled(frame, f, salt) for f in ("fluoroscopy", "film")}
+
+
+def space_head(key, frame, salt, seed=SEED):
+    """The head of one reading: z, z64 and its first numbers, the reason it is not read among them
+    where every image has the same features."""
     import numpy as np
 
     s = stats()
     z = s.standardise(frame.x)
     z64, explained = s.pca(z, min(64, z.shape[1], len(z) - 1), seed=seed)
-    result = {"dim": int(frame.x.shape[1]), "rows": int(len(frame.x)),
-              "feature_spread": float(np.mean(np.std(frame.x, axis=0))),
-              "pca64_explained": float(np.sum(explained))}
-    if result["feature_spread"] < 1e-6:
-        result["invalid"] = "every image has the same features"
+    base = {"dim": int(frame.x.shape[1]), "rows": int(len(frame.x)),
+            "feature_spread": float(np.mean(np.std(frame.x, axis=0))),
+            "pca64_explained": float(np.sum(explained))}
+    if base["feature_spread"] < 1e-6:
+        base["invalid"] = "every image has the same features"
+    return Head(key, frame, z, z64, base, salt)
+
+
+def unit_id(key, kind, a="", b=""):
+    return "/".join(part for part in (key, kind, a, b) if part)
+
+
+def space_units(head):
+    """The reading's units in the order the analysis has always run them: each synthetic group
+    against each pooled family (with the C2ST's permutation p and PRDC) and against each real
+    group, every pair of real groups, the two families against each other, the replication pairs,
+    the split-half nulls, the structure measures, the nearest real corpus of each synthetic group,
+    the FD64 of every pair and the four maps."""
+    if head.invalid:
+        return []
+    frame, plan = head.frame, []
+    plan += [("family", sg, f) for sg in head.synthetic for f, rows in head.families.items() if len(rows)]
+    plan += [("group", sg, rg) for sg in head.synthetic for rg in head.real]
+    plan += [("real", a, b) for i, a in enumerate(head.real) for b in head.real[i + 1:]]
+    if both_families(head):
+        plan.append(("fvf", "fluoroscopy", "film"))
+    plan += [("replication", a, b) for a, b in REPLICATION_PAIRS]
+    plan += [("null", g, "") for g in frame.order if frame.persons(g) >= SPLIT_PERSONS]
+    plan.append(("structure", "", ""))
+    if nearest_ready(head):
+        plan += [("nearest", sg, "") for sg in head.synthetic]
+    plan.append(("fd_all", "", ""))
+    plan += [("maps", method, "") for method in MAP_METHODS]
+    return [{"id": unit_id(head.key, kind, a, b), "key": head.key, "kind": kind, "a": a, "b": b}
+            for kind, a, b in plan]
+
+
+def both_families(head):
+    return bool(len(head.families.get("fluoroscopy", ())) and len(head.families.get("film", ())))
+
+
+def nearest_ready(head):
+    """Whether there are two real corpora or more, so a classifier trained on them alone can name
+    the nearest of them for each synthetic group."""
+    import numpy as np
+
+    real_rows = np.flatnonzero(np.isin(head.frame.group, head.real))
+    return len(set(head.frame.group[real_rows])) >= 2
+
+
+def run_unit(head, unit, seed=SEED):
+    """One unit's result as JSON reads it back, its keys sorted as a task's result file holds them
+    (write_json), and the arrays a map unit draws beside it."""
+    piece, arrays = UNIT_RUNNERS[unit["kind"]](head, unit["a"], unit["b"], seed)
+    return json.loads(json.dumps(piece, sort_keys=True)), arrays
+
+
+def family_unit(head, sg, family, seed):
+    frame = head.frame
+    return contrast(frame, head.z64, frame.rows_of(sg), head.families[family], seed, permute=True, prdc=True), {}
+
+
+def pair_unit(head, a, b, seed):
+    frame = head.frame
+    return contrast(frame, head.z64, frame.rows_of(a), frame.rows_of(b), seed), {}
+
+
+def families_unit(head, _a, _b, seed):
+    return contrast(head.frame, head.z64, head.families["fluoroscopy"], head.families["film"], seed), {}
+
+
+def replication_unit(head, a, b, seed):
+    """One replication pair (REPLICATION_PAIRS) with every measure a family contrast gets, the C2ST
+    permutation p and PRDC among them, precision and recall being the first group's against the
+    second; a pair with a group the space cannot test is listed with the reason, so a FluXray not
+    fetched or a render that failed is read in the result and not guessed at."""
+    frame = head.frame
+    missing = [f"{g}: {frame.why_untestable(g)}" for g in (a, b) if frame.why_untestable(g)]
+    if missing:
+        return {"skipped": "; ".join(missing)}, {}
+    return contrast(frame, head.z64, frame.rows_of(a), frame.rows_of(b), seed, permute=True, prdc=True), {}
+
+
+def null_unit(head, group, _b, seed):
+    """One split-half null: the group split in two by person and every test run on the halves."""
+    frame = head.frame
+    rows = frame.rows_of(group)
+    half = stats().split_half(list(frame.person[rows]), f"{head.salt}:{group}")
+    return contrast(frame, head.z64, rows[half == 1], rows[half == 0], seed), {}
+
+
+def structure_unit(head, _a, _b, seed):
+    """Silhouette, neighbour purity and the share of each group's neighbours in each family."""
+    import numpy as np
+
+    s, frame, z64 = stats(), head.frame, head.z64
+    keep = np.isin(frame.group, frame.order)
+    return {"silhouette": s.silhouette(z64[keep], frame.group[keep], seed=seed),
+            "purity": s.knn_purity(z64[keep], frame.group[keep]),
+            "family_share": s.neighbour_family_share(z64[keep], frame.group[keep], frame.family[keep])}, {}
+
+
+def nearest_unit(head, sg, _b, seed):
+    """Which real corpus a classifier trained on the real corpora alone calls one synthetic group."""
+    import numpy as np
+
+    frame = head.frame
+    real_rows = np.flatnonzero(np.isin(frame.group, head.real))
+    return stats().nearest_real(frame.x[real_rows], frame.group[real_rows], list(frame.person[real_rows]),
+                                frame.x[frame.rows_of(sg)], seed=seed), {}
+
+
+def distances_unit(head, _a, _b, seed):
+    return all_distances(head.frame, head.z64, seed), {}
+
+
+def map_unit(head, method, _b, seed):
+    """One of the maps of up to MAP_ROWS rows a group, drawn on those rows' first 50 components,
+    with its trustworthiness against them (none for LDA, which is supervised) and each group's
+    centre and spread; a map that could not be drawn keeps the sentence that says why."""
+    s, frame = stats(), head.frame
+    rows = map_rows(frame, head.salt)
+    z50, _ = s.pca(head.z[rows], min(50, head.z.shape[1], len(rows) - 1), seed=seed)
+    xy = s.reductions(z50, seed=seed, groups=frame.group[rows], methods=(method,))[method]
+    if not hasattr(xy, "shape"):
+        return {"trust": None, "not_drawn": xy}, {"rows": rows}
+    trust = float(s.trust(z50, xy, seed=seed)) if method != "lda" else None
+    centres = {g: centre(xy[frame.group[rows] == g]) for g in frame.order}
+    return {"trust": trust, "centres": centres}, {"rows": rows, "xy": xy}
+
+
+def map_rows(frame, salt):
+    import numpy as np
+
+    return np.concatenate([capped(frame, frame.rows_of(g), MAP_ROWS, f"{salt}:map:{g}") for g in frame.order])
+
+
+UNIT_RUNNERS = {"family": family_unit, "group": pair_unit, "real": pair_unit, "fvf": families_unit,
+                "replication": replication_unit, "null": null_unit, "structure": structure_unit,
+                "nearest": nearest_unit, "fd_all": distances_unit, "maps": map_unit}
+
+
+def assemble_space(head, pieces, arrays):
+    """The reading's result and maps from its units' results, each put where the analysis has
+    always put it, then the steps that read them together: the nulls' summary, the gap ratios,
+    Benjamini-Hochberg over the space and the replication words."""
+    result = dict(head.base)
+    if head.invalid:
         return result, None
-    synthetic = [g for g in frame.testable("synthetic")]
-    real = frame.testable("fluoroscopy") + frame.testable("film")
-    families = {f: pooled(frame, f, salt) for f in ("fluoroscopy", "film")}
-    result["vs_family"] = family_contrasts(frame, z64, synthetic, families, seed)
-    result["vs_group"] = {sg: {rg: contrast(frame, z64, frame.rows_of(sg), frame.rows_of(rg), seed)
-                               for rg in real} for sg in synthetic}
-    result["real_real"] = {f"{a}|{b}": contrast(frame, z64, frame.rows_of(a), frame.rows_of(b), seed)
-                           for i, a in enumerate(real) for b in real[i + 1:]}
-    if len(families["fluoroscopy"]) and len(families["film"]):
-        result["fluoroscopy_vs_film"] = contrast(frame, z64, families["fluoroscopy"], families["film"], seed)
-    result["replication"] = replication_contrasts(frame, z64, seed)
-    result["calibration"] = calibration(frame, z64, salt, seed)
-    result["ratios"] = gap_ratios(frame, result, synthetic)
-    result["structure"] = structure(frame, z64, real, synthetic, seed)
-    result["fd_all"] = all_distances(frame, z64, seed)
+    slots = {"vs_family": {sg: {} for sg in head.synthetic}, "vs_group": {sg: {} for sg in head.synthetic},
+             "real_real": {}, "replication": {}, "nulls": {},
+             "structure": {"nearest_real": {}} if nearest_ready(head) else {}}
+    maps = {"coords": {}, "trust": {}, "centres": {}}
+    for unit in space_units(head):
+        piece = pieces[unit["id"]]
+        if unit["kind"] == "maps":
+            place_map(maps, unit["a"], piece, arrays[unit["id"]])
+        else:
+            place(slots, unit, piece)
+    result.update(vs_family=slots["vs_family"], vs_group=slots["vs_group"], real_real=slots["real_real"])
+    if "fvf" in slots:
+        result["fluoroscopy_vs_film"] = slots["fvf"]
+    result["replication"] = slots["replication"]
+    result["calibration"] = calibration_of(slots["nulls"])
+    result["ratios"] = gap_ratios(head.frame, result, head.synthetic)
+    result["structure"] = slots["structure"]
+    result["fd_all"] = slots["fd_all"]
     adjust(result)
     replication_words(result)
-    maps = map_coordinates(frame, z, salt, seed)
     result["maps"] = {k: v for k, v in maps.items() if k != "coords"}
     return result, maps
 
 
-def family_contrasts(frame, z64, synthetic, families, seed):
-    return {sg: {f: contrast(frame, z64, frame.rows_of(sg), rows, seed, permute=True, prdc=True)
-                 for f, rows in families.items() if len(rows)} for sg in synthetic}
+def place(slots, unit, piece):
+    """One unit's result in its slot of the reading's result."""
+    kind, a, b = unit["kind"], unit["a"], unit["b"]
+    if kind in ("family", "group"):
+        slots["vs_family" if kind == "family" else "vs_group"][a][b] = piece
+    elif kind in ("real", "replication"):
+        slots["real_real" if kind == "real" else "replication"][f"{a}|{b}"] = piece
+    elif kind == "null":
+        slots["nulls"][a] = piece
+    elif kind == "structure":
+        slots["structure"].update(piece)
+    elif kind == "nearest":
+        slots["structure"]["nearest_real"][a] = piece
+    else:
+        slots[kind] = piece
 
 
-def replication_contrasts(frame, z64, seed):
-    """The replication test's pairs (REPLICATION_PAIRS), each with every measure a family contrast
-    gets, the C2ST permutation p and PRDC among them, precision and recall being the first group's
-    against the second; a pair with a group the space cannot test is listed with the reason, so a
-    FluXray not fetched or a render that failed is read in the result and not guessed at."""
-    out = {}
-    for a, b in REPLICATION_PAIRS:
-        missing = [f"{g}: {frame.why_untestable(g)}" for g in (a, b) if frame.why_untestable(g)]
-        if missing:
-            out[f"{a}|{b}"] = {"skipped": "; ".join(missing)}
-            continue
-        out[f"{a}|{b}"] = contrast(frame, z64, frame.rows_of(a), frame.rows_of(b), seed, permute=True, prdc=True)
-    return out
+def place_map(maps, method, piece, arrays):
+    """One map's coordinates, trustworthiness and centres; every map draws the same rows."""
+    maps["coords"]["rows"] = arrays["rows"]
+    maps["coords"][method] = arrays["xy"] if "xy" in arrays else piece["not_drawn"]
+    maps["trust"][method] = piece["trust"]
+    if "centres" in piece:
+        maps["centres"][method] = piece["centres"]
+
+
+def analyse_space(frame, salt, seed=SEED, key="space"):
+    """The whole analysis of one reading of a feature space, its units run here one after another."""
+    return analyse_head(space_head(key, frame, salt, seed), seed)
+
+
+def analyse_head(head, seed=SEED, seconds=None):
+    """A reading's units one after another and their assembly; each unit's seconds are added to
+    seconds[0] where a list is given, as the record's summed unit seconds."""
+    units = space_units(head)
+    pieces, arrays = {}, {}
+    for number, unit in enumerate(units, 1):
+        started = time.time()
+        pieces[unit["id"]], arrays[unit["id"]] = run_unit(head, unit, seed)
+        took = time.time() - started
+        if seconds is not None:
+            seconds[0] += took
+        log(f"unit {number} of {len(units)}: {unit['id']} in {took:.1f} s")
+    return assemble_space(head, pieces, arrays)
 
 
 def replication_words(result):
@@ -1167,36 +1587,38 @@ def gap_ratios(frame, result, synthetic):
     return ratios
 
 
-def structure(frame, z64, real, synthetic, seed):
-    """Silhouette, neighbour purity, the share of each group's neighbours in each family, and which
-    real corpus a classifier trained on the real corpora alone calls each synthetic group."""
-    import numpy as np
-
-    s = stats()
-    keep = np.isin(frame.group, frame.order)
-    out = {"silhouette": s.silhouette(z64[keep], frame.group[keep], seed=seed),
-           "purity": s.knn_purity(z64[keep], frame.group[keep]),
-           "family_share": s.neighbour_family_share(z64[keep], frame.group[keep], frame.family[keep])}
-    real_rows = np.flatnonzero(np.isin(frame.group, real))
-    if len(set(frame.group[real_rows])) >= 2:
-        out["nearest_real"] = {sg: s.nearest_real(frame.x[real_rows], frame.group[real_rows],
-                                                  list(frame.person[real_rows]), frame.x[frame.rows_of(sg)],
-                                                  seed=seed) for sg in synthetic}
-    return out
-
-
 def adjust(result):
-    """Benjamini-Hochberg over every MMD p of the space's contrasts, the replication pairs among
-    them, and over its C2ST permutation p-values; the split-half nulls are adjusted among
-    themselves (flagged_nulls)."""
+    """Benjamini-Hochberg over every MMD p of the space, the split-half nulls' among them as
+    PREREG.md section 3 says, and over its C2ST permutation p-values, which the nulls do not have.
+    Each contrast's MMD carries q from that family and q_without_nulls from its contrasts alone,
+    the family the first sharded run used (DEVIATIONS.md, item 11), in results.json, and the
+    worded pairs' verdict lines print both.
+    A null's own flag stays its BH among the nulls (flagged_nulls, DEVIATIONS.md, item 8)."""
     pure = rules()
     for key in ("mmd", "c2st"):
         found = list(p_values(result, key))
         if not found:
             continue
-        adjusted = pure.benjamini_hochberg(tuple(p for _, p in found))
+        nulls = tuple(null_mmd_p_values(result)) if key == "mmd" else ()
+        adjusted = pure.benjamini_hochberg(tuple(p for _, p in found) + nulls)
         for (holder, _), q in zip(found, adjusted):
             holder["q"] = q
+        if key == "mmd":
+            alone = pure.benjamini_hochberg(tuple(p for _, p in found))
+            for (holder, _), q in zip(found, alone):
+                holder["q_without_nulls"] = q
+
+
+# The calibration line's last words where the split-half nulls' MMD p-values are in the space's
+# MMD family, which tools/report.py reads to say which family a run's q came from.
+NULLS_IN_FAMILY = ", nulls in the mmd q family"
+
+
+def null_mmd_p_values(result):
+    """The MMD p of every split-half null of the space, in the calibration's order."""
+    for null in result.get("calibration", {}).get("groups", {}).values():
+        if "p" in null.get("mmd", {}):
+            yield float(null["mmd"]["p"])
 
 
 def p_values(result, key):
@@ -1213,25 +1635,6 @@ def p_values(result, key):
             yield holder, float(holder["p"])
 
 
-def map_coordinates(frame, z, salt, seed):
-    """PCA, t-SNE, UMAP and LDA maps of up to MAP_ROWS rows a group, with each map's
-    trustworthiness against the first 50 components and each group's centre and spread."""
-    import numpy as np
-
-    s = stats()
-    rows = np.concatenate([capped(frame, frame.rows_of(g), MAP_ROWS, f"{salt}:map:{g}") for g in frame.order])
-    z50, _ = s.pca(z[rows], min(50, z.shape[1], len(rows) - 1), seed=seed)
-    maps = s.reductions(z50, seed=seed, groups=frame.group[rows])
-    out = {"coords": {"rows": rows, **maps}, "trust": {}, "centres": {}}
-    for name, xy in maps.items():
-        if not hasattr(xy, "shape"):
-            out["trust"][name] = None
-            continue
-        out["trust"][name] = float(s.trust(z50, xy, seed=seed)) if name != "lda" else None
-        out["centres"][name] = {g: centre(xy[frame.group[rows] == g]) for g in frame.order}
-    return out
-
-
 def centre(xy):
     import numpy as np
 
@@ -1239,34 +1642,61 @@ def centre(xy):
 
 
 def stage_analysis(args, plan, rows):
-    """results.json and the figures, every available space in turn."""
+    """results.json and the figures, every available reading in turn, its units run here."""
+    results, all_maps, total, seconds = new_results(plan, rows), {}, 0, [0.0]
+    for key, head in reading_heads(args, plan, rows):
+        if isinstance(head, str):
+            results["spaces"][key] = {"invalid": head}
+            continue
+        total += len(space_units(head))
+        log(f"analysis: {key}, {len(space_units(head))} units")
+        result, maps = analyse_head(head, seconds=seconds)
+        results["spaces"][key] = result
+        if maps:
+            all_maps[key] = (head.frame, maps)
+    record = {"jobs": {"run": job_label()}, "gpus": {gpu_name(args.device): 1},
+              "units": {"total": total, "done": total, "failed": 0}, "mmd": mmd_backend(),
+              "units_seconds": round(seconds[0])}
+    return finish_results(args, results, all_maps, record=record)
+
+
+def reading_heads(args, plan, rows):
+    """(key, head) for each reading in the order the analysis reads them: every space
+    inversion-invariant, and FleXray's own space as stored too; a space with no features gives the
+    reason in place of a head."""
     import numpy as np
 
-    results = {"plan": rows["plan"], "spaces": {}, "groups": group_rows(plan, rows),
-               "renders": plan.get("renders", {})}
-    all_maps = {}
     for space in SPACES:
         path = Path(args.out) / "features" / f"{space}.npz"
         if not path.is_file():
-            results["spaces"][space] = {"invalid": unavailable(space, args) or "no features"}
+            yield space, unavailable(space, args) or "no features"
             continue
         data = np.load(path)
         stored, inverse = data["stored"], data["inverse"]
         for reading, x in (("invariant", (stored + inverse) / 2.0), ("as_stored", stored)):
             if reading == "as_stored" and space != PRIMARY_SPACE:
                 continue
-            log(f"analysis: {space} ({reading})")
-            frame = Frame(x, rows["rows"], plan)
-            result, maps = analyse_space(frame, plan["salt"], seed=0)
             key = space if reading == "invariant" else f"{space}_as_stored"
-            results["spaces"][key] = result
-            if maps:
-                all_maps[key] = (frame, maps)
+            yield key, space_head(key, Frame(x, rows["rows"], plan), plan["salt"])
+
+
+def new_results(plan, rows):
+    return {"plan": rows["plan"], "spaces": {}, "groups": group_rows(plan, rows), "renders": plan.get("renders", {})}
+
+
+def finish_results(args, results, all_maps, record=None, run=None):
+    """The study's verdict, its run record, results.json and the figures, the same whether the
+    units ran here or in an array's tasks; an array's run block is its prepare's, what the renders,
+    the plan and the features were made from, with the merge's own beside it."""
     results["replication"] = replication_verdict(results)
+    results["_run"] = run or run_block(args)
+    results["_record"] = record or {}
     write_json(Path(args.out) / "results.json", results)
     tool_figures = Path(args.out) / "figures"
     tool_figures.mkdir(exist_ok=True)
+    started = time.time()
     figures(all_maps, results, tool_figures)
+    note_seconds(args.out, "figures", time.time() - started)
     return results, all_maps
 
 
@@ -1282,7 +1712,8 @@ def replication_verdict(results):
 
 def pair_verdict(results, pair):
     """One pair's word in the primary space's inversion-invariant reading, with the persons and
-    rows a side it was read from, or why there is none."""
+    rows a side it was read from and the MMD's q it was read on, beside its q over the contrasts
+    alone (DEVIATIONS.md, item 11), or why there is none."""
     verdict = {"word": None, "reason": ""}
     space = results["spaces"].get(PRIMARY_SPACE, {})
     found = space.get("replication", {}).get(pair, {})
@@ -1290,6 +1721,7 @@ def pair_verdict(results, pair):
         verdict["reason"] = f"space {PRIMARY_SPACE} not run, {space['invalid']}"
     elif "word" in found:
         verdict.update(word=found["word"], persons=found["persons"], n=found["n"])
+        verdict.update({key: found["mmd"][key] for key in ("q", "q_without_nulls") if key in found["mmd"]})
     else:
         verdict["reason"] = found.get("skipped", "the pair was not tested")
     return verdict
@@ -1308,6 +1740,1328 @@ def group_rows(plan, rows):
              "persons": len(decoded.get(g["id"], ())), "person_rule": g.get("person_rule", ""),
              "person_fallback": g.get("person_fallback", 0), "frozen_dropped": g.get("frozen_dropped", 0),
              "failures": rows["failures"].get(g["id"], {}), "skipped": g["skipped"]} for g in plan["groups"]]
+
+
+# --- the record: what ran, from which code, on what -----------------------------------------------
+
+STUDY = "drr-domain-gap"
+# The files a unit runs, whose digest names the units: a done unit from other code is done again,
+# and a task whose copy differs from the one prepare planned with refuses (runs are named by their
+# code, docs/memory/runs-are-named-by-their-code.md).
+CODE_FILES = ("tools/domain_gap.py", "tools/domain_gap_stats.py", "src/schwingnet/domain_gap.py")
+PREREG = ROOT / "docs" / "research" / "drr-domain-gap" / "PREREG.md"
+# Everything the study runs or reads from the repository, the renderers and the groups among them,
+# which a run by hand reports dirty when any of it differs from the commit it names.
+RUN_PATHS = ("tools", "src", "vendor", "data/domain_gap", "data/splits", "docs/research/drr-domain-gap/PREREG.md")
+
+
+def code_digest():
+    digest = hashlib.sha256()
+    for name in CODE_FILES:
+        digest.update(name.encode("ascii") + b"\0" + (ROOT / name).read_bytes() + b"\0")
+    return digest.hexdigest()
+
+
+def prereg_digest():
+    """The frozen pre-registration's sha256, or empty where this copy holds none."""
+    return sha256_of(PREREG) if PREREG.is_file() else ""
+
+
+def git_state():
+    """(commit, dirty) of the code this process runs: the grid's step gives them, since it runs
+    from a copy of the commit that is no checkout; by hand they are read from git."""
+    if os.environ.get("SN_GIT_HEAD"):
+        return os.environ["SN_GIT_HEAD"], os.environ.get("SN_GIT_DIRTY", "no") != "no"
+    import subprocess
+
+    def git(*words):
+        done = subprocess.run(["git", "-C", str(ROOT), *words], capture_output=True, text=True)
+        return done.stdout.strip() if done.returncode == 0 else ""
+
+    head = git("rev-parse", "HEAD")
+    return head or "unknown", bool(git("status", "--porcelain", "--", *RUN_PATHS))
+
+
+def job_label():
+    """The Slurm job this process runs in, an array task as <array job>_<task>, else local."""
+    array, task = os.environ.get("SLURM_ARRAY_JOB_ID"), os.environ.get("SLURM_ARRAY_TASK_ID")
+    if array and task:
+        return f"{array}_{task}"
+    return os.environ.get("SLURM_JOB_ID", "local")
+
+
+def utc_now():
+    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+
+
+def run_block(args):
+    """The Lab Recipe's _run block (its section on code and environment): the job and task, host and
+    time, the commit and whether the tree was clean, the script with its hash and arguments, the
+    sha256 of every input read, and the frozen pre-registration's hash."""
+    import socket
+
+    head, dirty = git_state()
+    out = Path(args.out)
+    inputs = {name: sha256_of(out / name) for name in ("plan.json", "rows.json") if (out / name).is_file()}
+    inputs.update({f"features/{p.name}": sha256_of(p) for p in sorted((out / "features").glob("*.npz"))})
+    if getattr(args, "groups", "") and Path(args.groups).is_file():
+        inputs["groups.json"] = sha256_of(args.groups)
+    return {"job": os.environ.get("SLURM_ARRAY_JOB_ID") or os.environ.get("SLURM_JOB_ID", "local"),
+            "task": os.environ.get("SLURM_ARRAY_TASK_ID", ""), "host": socket.gethostname(), "utc": utc_now(),
+            "git_head": head, "git_dirty": dirty, "script": "tools/domain_gap.py",
+            "script_sha256": sha256_of(Path(__file__)), "code_digest": code_digest(), "argv": sys.argv[1:],
+            "inputs": inputs, "prereg_sha256": prereg_digest(), "seed": SEED}
+
+
+# --- the stages' progress: STAGES.json and PROGRESS.txt -------------------------------------------
+#
+# The owner's ask of 2026-10-27 17:53 UTC: "make sure you are logging, and I want to see a visual
+# representation of what is happening". Every stage says when it starts and how long it took in
+# analysis/STAGES.json, and PROGRESS.txt says where the whole study stands in at most about 40
+# lines of counts and group ids, each made safe for the grid's redaction, which grid/gate.sh's
+# status shows and a cloud session draws; nothing in it names a file or a person.
+
+ANALYSIS = "analysis"
+PROGRESS = "PROGRESS.txt"
+PROGRESS_SECONDS = 30   # a task rewrites PROGRESS.txt at most this often, since it lists folders on CephFS
+STAGE_ORDER = ("render", "plan", "images", "features", "heads", "analysis", "figures", "summary")
+
+
+def analysis_folder(out):
+    folder = Path(out) / ANALYSIS
+    folder.mkdir(parents=True, exist_ok=True)
+    return folder
+
+
+def stages_of(out):
+    path = Path(out) / ANALYSIS / "STAGES.json"
+    try:
+        return read_json(path)
+    except (OSError, ValueError):
+        return {}
+
+
+def note_stage(out, stage, state, detail=""):
+    """One stage's state (running, done, failed, stopped by Slurm's TERM or skipped) with when it
+    began and what it is on; a change of state is a line of the run log too, and a new detail of a
+    running stage is not."""
+    stages = stages_of(out)
+    entry = stages.get(stage, {})
+    before = entry.get("state")
+    if state == "running" and before != "running":
+        entry["since"] = time.time()
+    if state != "running" and "since" in entry:
+        entry["seconds"] = round(time.time() - entry["since"], 1)
+    entry.update(state=state, detail=detail)
+    stages[stage] = entry
+    write_json(analysis_folder(out) / "STAGES.json", stages)
+    if state != before:
+        runlog_note(out, stage_note(stage, entry))
+    write_progress(out, force=True)
+
+
+def note_seconds(out, stage, seconds):
+    stages = stages_of(out)
+    stages[stage] = {"state": "done", "seconds": round(seconds, 1), "detail": ""}
+    write_json(analysis_folder(out) / "STAGES.json", stages)
+    runlog_note(out, stage_note(stage, stages[stage]))
+
+
+def stage_note(stage, entry):
+    """A stage's change of state as the run log says it, with its seconds once it has them."""
+    state = {"running": "started", "failed": "FAILED", "stopped": "ended by Slurm (TERM)"}.get(entry["state"], entry["state"])
+    took = f" after {entry['seconds']:.0f} s" if entry["state"] != "running" and "seconds" in entry else ""
+    return f"{RUNLOG_WHO[0]}: stage {stage} {state}{took}"
+
+
+def staged(out, stage, step):
+    """step() run as one stage, its start, end and seconds noted, a failure noted before it rises."""
+    note_stage(out, stage, "running")
+    log(f"stage {stage}: started")
+    try:
+        result = step()
+    except Terminated:
+        note_stage(out, stage, "stopped")
+        raise
+    except BaseException:
+        note_stage(out, stage, "failed")
+        raise
+    note_stage(out, stage, "done")
+    log(f"stage {stage}: done in {stages_of(out).get(stage, {}).get('seconds', 0)} s")
+    return result
+
+
+_LAST_PROGRESS = [0.0]
+
+
+def write_progress(out, force=False):
+    """PROGRESS.txt whole, renamed into place, at most every PROGRESS_SECONDS unless forced."""
+    if not force and time.time() - _LAST_PROGRESS[0] < PROGRESS_SECONDS:
+        return
+    _LAST_PROGRESS[0] = time.time()
+    try:
+        lines = [rules().safe_line(line) for line in progress_lines(Path(out))]
+        part = own_part(Path(out) / PROGRESS)
+        part.write_text("\n".join(lines) + "\n", encoding="ascii")
+        os.replace(part, Path(out) / PROGRESS)
+    except (OSError, ValueError) as error:  # the progress page is a view of the run, never a reason to stop it
+        log(f"PROGRESS.txt not rewritten: {type(error).__name__}: {error}")
+
+
+PROGRESS_LINES = 60     # PROGRESS.txt's lines at most, the run log's newest always among them
+
+
+def progress_lines(out):
+    """Where the study stands: the headline, the stages, each reading's units by kind, each task,
+    the rate with the time left, the units done by five-minute step for the live view's chart, and
+    last the run log's newest lines, which the rest gives way to where there is not room for all."""
+    stages, record = stages_of(out), units_record(out)
+    state = unit_state(out, record) if record else None
+    events = events_of(record) if record else []
+    lines = [headline(stages, record, state)]
+    lines += stage_lines(stages)
+    if record:
+        lines += reading_lines(record, state)
+        lines += task_lines(out, state)
+        lines += rate_lines(record, state, events)
+    newest = log_lines(out, record, events)
+    return lines[:PROGRESS_LINES - len(newest)] + newest
+
+
+def headline(stages, record, state):
+    now = time.strftime("%Y-%m-%d %H:%M UTC", time.gmtime())
+    running = [s for s in STAGE_ORDER if stages.get(s, {}).get("state") == "running"]
+    stage = running[0] if running else next((s for s in reversed(STAGE_ORDER) if s in stages), "none")
+    if record and not running and "figures" not in stages and len(state["done"]) < len(record["units"]):
+        stage = "analysis"
+    if not record:
+        return f"drr-gap at {now}: stage {stage}"
+    return (f"drr-gap at {now}: stage {stage}; units {len(state['done'])} of {len(record['units'])} done,"
+            f" {len(state['running'])} running, {len(state['failed'])} failed")
+
+
+def stage_lines(stages):
+    lines = []
+    for stage in STAGE_ORDER:
+        entry = stages.get(stage)
+        if not entry:
+            continue
+        if entry.get("state") == "running":
+            since = time.strftime("%H:%M UTC", time.gmtime(entry.get("since", time.time())))
+            minutes = (time.time() - entry.get("since", time.time())) / 60
+            text = f"stage {stage}: running since {since} ({minutes:.0f} min)"
+        else:
+            text = f"stage {stage}: {entry.get('state')} in {entry.get('seconds', 0):.0f} s"
+        lines.append(text + (f", {entry['detail']}" if entry.get("detail") else ""))
+    return lines
+
+
+def unit_state(out, record):
+    """Which units are done, failed and claimed, from the folders' names alone (no file read)."""
+    folder = Path(out) / ANALYSIS
+    names = {kind: listed(folder / kind) for kind in ("done", "failed", "claims")}
+    numbers = {kind: {int(n.split(".")[0]) for n in found if n.split(".")[0].isdigit()} for kind, found in names.items()}
+    done = {i for i in numbers["done"] if f"{i:05d}.json" in names["done"]}
+    failed = numbers["failed"] - done
+    return {"done": done, "failed": failed, "running": numbers["claims"] - done - failed}
+
+
+def listed(folder):
+    try:
+        return set(os.listdir(folder))
+    except OSError:
+        return set()
+
+
+def reading_lines(record, state):
+    lines = []
+    for key in record["keys"]:
+        if key in record.get("invalid", {}):
+            lines.append(f"reading {key}: not read, {record['invalid'][key]}")
+            continue
+        indexes = [i for i, u in enumerate(record["units"]) if u["key"] == key]
+        kinds = {}
+        for i in indexes:
+            kind = record["units"][i]["kind"]
+            kinds.setdefault(kind, [0, 0])
+            kinds[kind][1] += 1
+            kinds[kind][0] += i in state["done"]
+        parts = ", ".join(f"{kind} {d} of {t}" for kind, (d, t) in kinds.items())
+        lines.append(f"reading {key}: {sum(i in state['done'] for i in indexes)} of {len(indexes)} ({parts})")
+    return lines
+
+
+def task_lines(out, state):
+    lines = []
+    for path in sorted((Path(out) / ANALYSIS / "tasks").glob("*.json")):
+        try:
+            task = read_json(path)
+        except (OSError, ValueError):
+            continue
+        beat = time.strftime("%H:%M:%S", time.gmtime(task.get("beat", 0)))
+        lines.append(f"task {task.get('task')} ({task.get('job')}, {task.get('host')}, {task.get('gpu')}):"
+                     f" {task.get('state')}, {task.get('done', 0)} done, {task.get('held', 0)} running,"
+                     f" {task.get('failed', 0)} failed, beat {beat} UTC")
+    return lines
+
+
+def rate_lines(record, state, events=None):
+    """Units a minute over the last ten minutes, weighted by their cost for the time left, and the
+    units done at each five minutes since the first was done."""
+    times = sorted(done_times(record, events))
+    if not times:
+        return []
+    now, first = time.time(), times[0][0]
+    recent = [cost for at, cost in times if at > now - 600]
+    left = sum(unit_cost(u) for i, u in enumerate(record["units"]) if i not in state["done"])
+    speed = sum(recent) / 10.0
+    lines = [f"rate: {len(recent) / 10.0:.1f} units a minute over the last 10 minutes"
+             + (f", about {left / speed:.0f} min left" if speed > 0 and left else "")]
+    steps = [f"{minute} min {sum(1 for at, _ in times if at <= first + 60 * minute)}"
+             for minute in range(5, int((times[-1][0] - first) / 60) + 5, 5)]
+    lines.append("timeline of units done: " + ", ".join(steps[-12:]))
+    return lines
+
+
+def done_times(record, events=None):
+    """(time, cost) of every unit the tasks' event logs say is done."""
+    units = record["units"]
+    events = events_of(record) if events is None else events
+    return [(event["at"], unit_cost(units[event["index"]])) for event in events if event["event"] == "done"]
+
+
+def events_of(record):
+    """Every whole event the tasks of this list logged, in file order: a line a killed task left
+    half written, or one that names no unit of this list, is passed over, since the events are the
+    progress's and the record's view and never what decides a unit."""
+    folder = Path(record["out"]) / ANALYSIS / "events"
+    found = []
+    for path in sorted(folder.glob("*.jsonl")):
+        try:
+            lines = path.read_text(encoding="utf-8").splitlines()
+        except OSError:
+            continue
+        for line in lines:
+            try:
+                event = json.loads(line)
+                event["at"], event["index"] = float(event["at"]), int(event["index"])
+            except (ValueError, TypeError, KeyError, AttributeError):
+                continue
+            if 0 <= event["index"] < len(record["units"]) and event.get("stamp", record["stamp"]) == record["stamp"]:
+                found.append(event)
+    return found
+
+
+# --- the run log: what each step did, as it did it -------------------------------------------------
+#
+# The owner's ask of 2026-10-28 00:23 UTC: "make sure there is realtime logging in the
+# CLAIMS/REPORT". Each step notes what it does as it does it, one line with its time: prepare and
+# run each stage's start and end, each array task its start with its node and card, every unit it
+# fails (by the kind of error alone), every stale claim it takes over, every pool a dead worker
+# broke, how it ended, Slurm's TERM among the ends, and the merge what it read back and wrote.
+# PROGRESS.txt ends with the newest lines beside every unit the tasks' event logs say is done, so
+# the status word and the live page show the run moving; the merge's runlog writes the whole log
+# to RUNLOG.txt in the run folder and prints it, the middle cut, with the units' quarter marks in
+# place of each unit, for the bench report, whose run log tools/report.py carries into the CLAIM
+# report. One file per writer under analysis/runlog/, since appends to one file from the nodes of
+# an array are not atomic on the lab volume; every line is made safe for the grid's redaction as it
+# is written and again as it is read, and names no file and no person.
+
+RUNLOG = "runlog"
+RUNLOG_FILE_LINES = 400   # one writer's lines at most, the last of them saying the rest went unwritten
+RUNLOG_TAIL = 10          # the newest lines PROGRESS.txt ends with
+RUNLOG_REPORT = 50        # the lines the bench report carries, the middle cut where there are more
+RUNLOG_MARKS = (0.25, 0.5, 0.75, 1.0)  # the shares of the list done that the report marks
+RUNLOG_WHO = ["run"]      # the step this process notes its stages for: run, prepare or merge
+_RUNLOG_WRITTEN = {}
+_RUNLOG_LOCK = threading.Lock()
+
+
+def runlog_folder(out):
+    return Path(out) / ANALYSIS / RUNLOG
+
+
+def runlog_start(out, who):
+    """A new chain's run log, begun by the step that starts the chain (prepare, or run alone): an
+    earlier chain's lines gone, so no later step reads them as this one's; then this step's first."""
+    RUNLOG_WHO[0] = who
+    folder = runlog_folder(out)
+    try:
+        for path in folder.iterdir() if folder.is_dir() else ():
+            path.unlink(missing_ok=True)
+    except OSError as error:  # a record of the run, never a reason to end it; the job's log says what stayed
+        log(f"the earlier run log not cleared: {type(error).__name__}")
+    with _RUNLOG_LOCK:
+        for key in [k for k in _RUNLOG_WRITTEN if Path(k).parent == folder]:
+            del _RUNLOG_WRITTEN[key]
+    runlog_note(out, f"{who}: started as job {job_label()} on {host_name()}")
+
+
+def runlog_note(out, text, writer=None):
+    """One line of the run log as it happens, its time in seconds before it, appended to
+    analysis/runlog/<writer>.txt, the step's own file unless an array task names its own; a line
+    the volume will not take is said in the job's log and stops nothing, since the log is a record
+    of the run and never a reason to end it."""
+    folder = runlog_folder(out)
+    path = folder / f"{writer or RUNLOG_WHO[0]}.txt"
+    with _RUNLOG_LOCK:
+        count = _RUNLOG_WRITTEN.get(str(path), 0)
+        if count >= RUNLOG_FILE_LINES:
+            return
+        _RUNLOG_WRITTEN[str(path)] = count + 1
+        if count == RUNLOG_FILE_LINES - 1:
+            text = f"{text.split(':')[0]}: this step's run log is full, so its later lines are in its job's log alone"
+        try:
+            folder.mkdir(parents=True, exist_ok=True)
+            with open(path, "a", encoding="ascii") as stream:
+                stream.write(f"{time.time():.3f} {rules().safe_line(text)}\n")
+        except (OSError, ValueError) as error:
+            log(f"run log not written: {type(error).__name__}: {error}")
+    write_progress(out)
+
+
+def host_name():
+    import socket
+
+    return socket.gethostname()
+
+
+def runlog_entries(out):
+    """Every line of the run log as (time, text), oldest first, lines of one time in the order
+    their files and lines give them; a line with no time before it, as a job cut while writing
+    could leave, is passed over."""
+    entries = []
+    for path in sorted(runlog_folder(out).glob("*.txt")):
+        try:
+            lines = path.read_text(encoding="ascii", errors="replace").splitlines()
+        except OSError:
+            continue
+        for line in lines:
+            at, _, text = line.partition(" ")
+            try:
+                at = float(at)
+            except ValueError:
+                continue
+            if text and math.isfinite(at):
+                entries.append((at, text))
+    return sorted(entries, key=lambda entry: entry[0])
+
+
+def chain_start(entries):
+    """When this chain began: the time of the newest line a prepare, or a run alone, wrote as it
+    started, or None where the run log holds none, as a run from before the run log has."""
+    starts = [at for at, text in entries if text.startswith(("prepare: started as job", "run: started as job"))]
+    return max(starts) if starts else None
+
+
+def chain_events(events, start):
+    """The events of this chain alone: until a new prepare clears them after its heads, the events
+    folder still holds an earlier chain's, which must not read as this chain's units done; and with
+    no line saying when the chain began, no unit is this chain's."""
+    return [] if start is None else [event for event in events if event["at"] >= start]
+
+
+def kept_units(record, events):
+    """How many of the list's units an earlier chain left done, with this list's stamp, that this
+    chain has no done event for: prepare keeps them and no task runs them again."""
+    ran = {event["index"] for event in events if event["event"] == "done"}
+    folder = Path(record["out"]) / ANALYSIS
+    return sum(1 for index in range(len(record["units"]))
+               if index not in ran and unit_done(folder, index, record["stamp"]))
+
+
+def first_done(record, events):
+    """Each unit's first done event, oldest first: a unit taken over from a task that was only slow
+    is done twice, and counts once."""
+    seen, found = set(), []
+    for event in sorted((e for e in events if e["event"] == "done"), key=lambda e: e["at"]):
+        if event["index"] not in seen:
+            seen.add(event["index"])
+            found.append(event)
+    return found
+
+
+def unit_entries(record, events):
+    """Each unit done, as a run log line: which task, which unit and its seconds."""
+    entries = []
+    for event in first_done(record, events):
+        seconds = event.get("seconds")
+        took = f" in {seconds:.1f} s" if isinstance(seconds, (int, float)) and math.isfinite(seconds) else ""
+        entries.append((event["at"], f"task {event.get('task')}: unit {record['units'][event['index']]['id']} done{took}"))
+    return entries
+
+
+def mark_entries(record, events, kept=0):
+    """The times the list's units reached their first done and each share of RUNLOG_MARKS, as run
+    log lines, for a report that has no room for every unit; kept units an earlier chain left done
+    count from the start, so the marks reach the whole list and each count is the list's own."""
+    total, times = len(record["units"]), [event["at"] for event in first_done(record, events)]
+    counts = sorted({1, *(math.ceil(share * total) for share in RUNLOG_MARKS)})
+    return [(times[count - kept - 1], f"units: {count} of {total} done" + (f" ({count / total:.0%})" if count > 1 else ", the first"))
+            for count in counts if total and kept < count <= kept + len(times)]
+
+
+def log_lines(out, record, events):
+    """The run log's newest RUNLOG_TAIL lines for PROGRESS.txt, oldest first, each unit done among
+    them, with the time of day UTC each happened."""
+    entries = runlog_entries(out)
+    if record:
+        entries += unit_entries(record, chain_events(events, chain_start(entries)))
+    entries.sort(key=lambda entry: entry[0])
+    return [f"log: {time.strftime('%H:%M:%S', time.gmtime(at))} {text}" for at, text in entries[-RUNLOG_TAIL:]]
+
+
+def run_log_lines(out, every_unit):
+    """The whole run log, oldest first, each line with its date and time UTC: every unit done
+    among them, or, for the report, the quarter marks in their place and the tasks' routine starts
+    and finishes folded into one line each."""
+    entries = runlog_entries(out)
+    record = units_record(out)
+    if record:
+        events = chain_events(events_of(record), chain_start(entries))
+        entries += unit_entries(record, events) if every_unit else mark_entries(record, events, kept_units(record, events))
+    if not every_unit:
+        entries = fold_moved(fold_tasks(entries))
+    entries.sort(key=lambda entry: entry[0])
+    return [rules().safe_line(f"{time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(at))} {text}") for at, text in entries]
+
+
+TASK_STARTED = re.compile(r"task \d+: started as job \S+ of \d+ tasks on (?P<host>[^,]+), (?P<gpu>[^,]+), .*")
+TASK_FINISHED = re.compile(r"task \d+: finished, nothing left to claim: (?P<done>\d+) done and (?P<failed>\d+) failed here")
+
+
+def fold_tasks(entries):
+    """The array's routine lines, each task's start and its finish with nothing left to claim, as
+    one line each where there are several, at the first start and the last finish: sixteen tasks
+    would otherwise fill the report's room, which every failure and quarter mark needs."""
+    starts = sorted(((at, m) for at, text in entries if (m := TASK_STARTED.fullmatch(text))), key=lambda found: found[0])
+    ends = sorted(((at, m) for at, text in entries if (m := TASK_FINISHED.fullmatch(text))), key=lambda found: found[0])
+    if len(starts) < 2 and len(ends) < 2:
+        return entries
+    kept = [(at, text) for at, text in entries
+            if not (len(starts) > 1 and TASK_STARTED.fullmatch(text)) and not (len(ends) > 1 and TASK_FINISHED.fullmatch(text))]
+    if len(starts) > 1:
+        cards = {}
+        for _, m in starts:
+            cards[m["gpu"]] = cards.get(m["gpu"], 0) + 1
+        hosts = {m["host"] for _, m in starts}
+        kept.append((starts[0][0], f"tasks: {len(starts)} started from {clock(starts[0][0])} to {clock(starts[-1][0])} on"
+                                   f" {len(hosts)} node{'s' if len(hosts) != 1 else ''}, "
+                                   + ", ".join(f"{gpu} x{n}" for gpu, n in sorted(cards.items()))))
+    if len(ends) > 1:
+        done, failed = sum(int(m["done"]) for _, m in ends), sum(int(m["failed"]) for _, m in ends)
+        kept.append((ends[-1][0], f"tasks: {len(ends)} finished with nothing left to claim from {clock(ends[0][0])} to"
+                                  f" {clock(ends[-1][0])}, {done} units done and {failed} failed among them"))
+    return kept
+
+
+MOVED = re.compile(r"task \d+: unit \S+ ran its MMD on the CPU \([^)]*\), since the card had no room left for it")
+
+
+def fold_moved(entries):
+    """The units whose MMD a full card sent to the CPU, as one line where there are several, at
+    the first: a small card may send hundreds, each a line RUNLOG.txt keeps, and the report keeps
+    their count, so its room holds every failure and quarter mark."""
+    moved = sorted(at for at, text in entries if MOVED.fullmatch(text))
+    if len(moved) < 2:
+        return entries
+    return [(at, text) for at, text in entries if not MOVED.fullmatch(text)] + [
+        (moved[0], f"units: {len(moved)} ran their MMD on the CPU from {clock(moved[0])} to {clock(moved[-1])},"
+                   " since their cards had no room left for it")]
+
+
+def clock(at):
+    return time.strftime("%H:%M:%S", time.gmtime(at))
+
+
+RUNLOG_MARK = re.compile(r"units: \d+ of")
+RUNLOG_TELLING = re.compile(r"units: \d+ of|FAILED|failed \(|took over|died|broke|ended by Slurm|stopped after|refused"
+                            r"|replaced|on the CPU|ended \d")
+
+
+def cut_keeping(lines, most):
+    """At most most lines, kept in turn: every quarter mark, then every line that says something
+    went wrong, then the others, each kind the first and the last of it where its room is short,
+    with a line where the first left out stood saying how many are not shown and where they are."""
+    if len(lines) <= most:
+        return lines
+    room, shown = most - 1, set()
+    for kind in (RUNLOG_MARK, RUNLOG_TELLING, None):
+        found = [i for i, line in enumerate(lines) if i not in shown and (kind is None or kind.search(line))]
+        take = min(room, len(found))
+        shown |= set(found[:take - take // 2]) | set(found[len(found) - take // 2:])
+        room -= take
+    out, marked = [], False
+    for i, line in enumerate(lines):
+        if i in shown:
+            out.append(line)
+        elif not marked:
+            out.append(f"... {len(lines) - len(shown)} lines not shown here; the run folder's RUNLOG.txt holds them")
+            marked = True
+    return out
+
+
+def runlog(args):
+    """The runlog subcommand: the whole run log, every unit done among its lines, written to
+    RUNLOG.txt in the run folder, and printed as the bench report carries it, the units' quarter
+    marks in place of each unit, the tasks' routine lines and the units sent to the CPU folded, and
+    at most RUNLOG_REPORT lines, every quarter mark among them and then every line of something gone
+    wrong that the room holds (cut_keeping)."""
+    out = Path(args.out)
+    try:
+        part = own_part(out / "RUNLOG.txt")
+        part.write_text("".join(f"{line}\n" for line in run_log_lines(out, every_unit=True)), encoding="ascii")
+        os.replace(part, out / "RUNLOG.txt")
+    except (OSError, ValueError) as error:  # the printed log still reaches the report; this line, the job's log alone
+        print(f"drr-gap {time.strftime('%H:%M:%S')} RUNLOG.txt not written: {type(error).__name__}: {error}", file=sys.stderr, flush=True)
+    for line in cut_keeping(run_log_lines(out, every_unit=False), RUNLOG_REPORT):
+        print(line)
+    return 0
+
+
+class Terminated(BaseException):
+    """Slurm's TERM, at its time limit or a cancel, raised where the step stands so its last line
+    in the run log can say so; a BaseException, so no handler of one unit's failure counts it."""
+
+
+_ENDING = [False]   # the step has begun to write how it ended, which no TERM may cut
+
+
+def on_term(signum, frame):
+    """Slurm signals every process of the step and Apptainer's starter passes its own TERM on, so
+    a second one comes a moment after the first: ignored from the first on, so it cannot cut the
+    step's closing line, the task's record or the restore of the handler main makes last; and one
+    that comes once the step is ending raises nothing, since its closing lines are being written."""
+    signal.signal(signal.SIGTERM, signal.SIG_IGN)
+    if not _ENDING[0]:
+        raise Terminated()
+
+
+# --- the analysis in a Slurm array: prepare, shard, merge -----------------------------------------
+#
+# The owner's word of 2026-10-27 17:51 UTC, after the study ran for three hours on four CPUs of a
+# V100 node: "cancel and shard requesting h200 / see the beethoven protocol for doing so". The
+# Beethoven protocol is the Lab Recipe (artifacts/the-lab-recipe-1t2gvp/index.md, its grid rules):
+# one job prepares (every stage up to the features, then each reading's head and the list of its
+# units), an array's tasks share that one list through atomic claims, beat while they work, take
+# over a claim whose holder stopped beating, run a GPU self-test before the first unit and stop
+# after three failures in a row (rule 8), and a join assembles the result once every unit is done.
+# A unit is idempotent, so a claim taken over from a task that was only slow costs a duplicate of
+# the same file and nothing else.
+
+HEARTBEAT_SECONDS = 60
+STALE_SECONDS = 1200    # twenty missed beats: a holder this quiet has died or lost its node
+TAKEOVER_SETTLE = 2.0   # seconds a takeover waits before it reads back whose claim stood
+WATCH_SECONDS = 60      # how often a task with nothing left to claim looks at the others' units
+FAILURE_STREAK = 3
+# A unit's weight in the order units are claimed in, heaviest first so the array's tail is short,
+# and in the time left: a permuted C2ST refits its classifier PERMUTATIONS_C2ST times a fold.
+UNIT_WEIGHT = {"family": 60, "replication": 60, "maps": 6, "structure": 4, "nearest": 4}
+MAP_WEIGHT = {"tsne": 20, "umap": 10}
+
+
+def unit_cost(unit):
+    if unit["kind"] == "maps":
+        return MAP_WEIGHT.get(unit["a"], 2)
+    return UNIT_WEIGHT.get(unit["kind"], 2)
+
+
+def units_record(out):
+    """analysis/units.json with the run folder it is in, or None before prepare has written it."""
+    path = Path(out) / ANALYSIS / "units.json"
+    try:
+        record = read_json(path)
+    except (OSError, ValueError):
+        return None
+    record["out"] = str(out)
+    return record
+
+
+def prepared_inputs(args, out):
+    """Every stage up to the features, each noted: the plan, the rows and the images."""
+    table = read_table(args.groups)
+    renders, folders = staged(out, "render", lambda: stage_render(args, table))
+    plan = staged(out, "plan", lambda: stage_plan(args, table, renders, folders))
+    rows, images = staged(out, "images", lambda: stage_images(args, plan))
+    if not rows["rows"]:
+        raise StageError("no image decoded")
+    staged(out, "features", lambda: stage_features(args, images, rows))
+    return plan, rows
+
+
+def prepare(args):
+    """The prepare subcommand: every stage up to the features as run makes them, then each
+    reading's head under analysis/heads/ and the list of every unit in analysis/units.json, and
+    last analysis/PREPARED.json, so an array task reads a whole list or none. The claims, failures
+    and task records of an earlier array are cleared; its done units are kept and count where their
+    stamp is this list's, the same plan, heads and code."""
+    os.umask(0o077)
+    out = Path(args.out)
+    out.mkdir(parents=True, exist_ok=True)
+    folder = analysis_folder(out)
+    (folder / "PREPARED.json").unlink(missing_ok=True)
+    runlog_start(out, "prepare")
+    gpu = gpu_name(args.device)
+    runlog_note(out, f"prepare: computes on {gpu}")
+    plan, rows = prepared_inputs(args, out)
+    record = staged(out, "heads", lambda: write_heads(args, plan, rows))
+    clear_array(folder)
+    write_json(folder / "PREPARED.json", {"job": job_label(), "utc": utc_now(), "gpu": gpu, "units": len(record["units"]),
+                                          "stamp": record["stamp"], "run": run_block(args)})
+    kept = sum(1 for index in range(len(record["units"])) if unit_done(folder, index, record["stamp"]))
+    runlog_note(out, f"prepare: {len(record['units'])} units listed over {len(record['keys'])} readings"
+                     f" ({len(record['invalid'])} not read), so the array's tasks claim them"
+                     + (f"; {kept} of them an earlier chain left done, which count as done" if kept else ""))
+    write_progress(out, force=True)
+    log(f"prepared {len(record['units'])} units over {len(record['keys'])} readings, stamp {record['stamp'][:16]}")
+    return 0
+
+
+def write_heads(args, plan, rows):
+    """Each reading's head, written once for the same features, plan and code, and units.json."""
+    import numpy as np
+
+    folder = analysis_folder(args.out) / "heads"
+    folder.mkdir(exist_ok=True)
+    keys, units, invalid, heads = [], [], {}, {}
+    for key, head in reading_heads(args, plan, rows):
+        keys.append(key)
+        if isinstance(head, str):
+            invalid[key] = head
+            continue
+        heads[key] = save_head(folder, head, np)
+        units += space_units(head)
+    code = code_digest()
+    record = {"study": STUDY, "plan": rows["plan"], "salt": plan["salt"], "seed": SEED, "keys": keys,
+              "invalid": invalid, "units": units, "code": code, "heads": heads,
+              "stamp": digest_of([rows["plan"], code, heads, SEED])}
+    write_json(analysis_folder(args.out) / "units.json", record)
+    return record
+
+
+def save_head(folder, head, np):
+    """A reading's head as heads/<key>.npz (the features, z and z64) and heads/<key>.json (its first
+    numbers), the arrays written whole and renamed; their sha256 names the head in the units' stamp."""
+    path = folder / f"{head.key}.npz"
+    part = folder / f"{head.key}.npz.part"
+    with open(part, "wb") as handle:
+        np.savez(handle, x=head.frame.x, z=head.z, z64=head.z64)
+    os.replace(part, path)
+    write_json(folder / f"{head.key}.json", {"key": head.key, "base": head.base, "salt": head.salt})
+    return sha256_of(path)
+
+
+def load_head(out, key):
+    """A reading's head as prepare wrote it, its frame rebuilt from the run's own plan and rows."""
+    import numpy as np
+
+    out = Path(out)
+    folder = out / ANALYSIS / "heads"
+    data = np.load(folder / f"{key}.npz")
+    meta = read_json(folder / f"{key}.json")
+    frame = Frame(data["x"], read_json(out / "rows.json")["rows"], read_json(out / "plan.json"))
+    return Head(key, frame, data["z"], data["z64"], meta["base"], meta["salt"])
+
+
+def clear_array(folder):
+    """An earlier array's claims, failures, task records and events gone, so this one starts clean;
+    its done units stay, each counting again where its stamp is the new list's."""
+    for name in ("claims", "failed", "tasks", "events"):
+        sub = folder / name
+        if sub.is_dir():
+            for path in sub.iterdir():
+                path.unlink(missing_ok=True)
+        sub.mkdir(exist_ok=True)
+    (folder / "done").mkdir(exist_ok=True)
+
+
+def gpu_name(device):
+    """The card this process would compute on, by torch, or what stands in its place."""
+    if device != "cuda":
+        return "cpu"
+    try:
+        import torch
+
+        return torch.cuda.get_device_name(0) if torch.cuda.is_available() else "no CUDA device"
+    except Exception as error:  # torch missing or the driver refusing: said, never fatal here
+        return f"no GPU ({type(error).__name__})"
+
+
+def gpu_self_test(device):
+    """Rule 8's self-test before the first unit: the card's name where a small product on it comes
+    out right, else None and why; a CPU run passes as cpu."""
+    if device != "cuda":
+        return "cpu", ""
+    try:
+        import torch
+
+        if not torch.cuda.is_available():
+            return None, "torch sees no CUDA device"
+        a = torch.ones((64, 64), dtype=torch.float64, device="cuda")
+        if float((a @ a).sum().item()) != 64.0 ** 3:
+            return None, "a product on the card came out wrong"
+        return torch.cuda.get_device_name(0), ""
+    except Exception as error:  # a card the build cannot run fails here and not on the first unit
+        return None, f"{type(error).__name__}: {error}"
+
+
+def claim_path(folder, index):
+    return folder / "claims" / f"{index:05d}"
+
+
+def done_path(folder, index):
+    return folder / "done" / f"{index:05d}.json"
+
+
+def failed_path(folder, index):
+    return folder / "failed" / f"{index:05d}.json"
+
+
+def unit_done(folder, index, stamp):
+    """Whether unit index has a result from this list's plan, heads and code."""
+    try:
+        return read_json(done_path(folder, index)).get("stamp") == stamp
+    except (OSError, ValueError):
+        return False
+
+
+def settled(folder, index, stamp):
+    return unit_done(folder, index, stamp) or failed_path(folder, index).exists()
+
+
+def try_claim(folder, index, token, note=None):
+    """Whether this task now holds unit index: a claim file made new, which only one creator wins,
+    or one whose holder has not beaten for STALE_SECONDS, taken over and read back, a takeover told
+    to note for the run log."""
+    path = claim_path(folder, index)
+    try:
+        handle = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+    except FileExistsError:
+        return take_over(path, token, note)
+    with os.fdopen(handle, "w", encoding="ascii") as stream:
+        stream.write(token)
+    return True
+
+
+def take_over(path, token, note=None):
+    try:
+        if time.time() - path.stat().st_mtime < STALE_SECONDS:
+            return False
+        part = path.with_name(f"{path.name}.{os.getpid()}.take")
+        part.write_text(token, encoding="ascii")
+        os.replace(part, path)
+        time.sleep(TAKEOVER_SETTLE)
+        taken = path.read_text(encoding="ascii") == token
+    except OSError:
+        return False
+    if taken:
+        log(f"took over the stale claim on unit {int(path.name)}")
+        if note:
+            note(f"took over the stale claim on unit {int(path.name)}, whose holder had not beaten for {STALE_SECONDS / 60:.0f} min")
+    return taken
+
+
+def claim_is_stale(folder, index):
+    try:
+        return time.time() - claim_path(folder, index).stat().st_mtime >= STALE_SECONDS
+    except OSError:
+        return True
+
+
+class Task:
+    """One array task's record: tasks/<task>.json rewritten at each beat, and events/<task>-<pid>.jsonl
+    appended at each claim, unit done and failure, which the progress reads."""
+
+    def __init__(self, folder, task, tasks, gpu, stamp):
+        import socket
+
+        self.folder, self.task, self.tasks, self.gpu, self.stamp = folder, task, tasks, gpu, stamp
+        self.host, self.job = socket.gethostname(), job_label()
+        self.token = f"{self.job} task {task} on {self.host} pid {os.getpid()} at {utc_now()}"
+        self.counts = {"done": 0, "failed": 0}
+        self.held = 0
+        self.running = {}   # claim_loop's units in the pool now, which a TERM's line counts
+        self.replaced = False
+        self.events = folder / "events" / f"{task:04d}-{os.getpid()}.jsonl"
+
+    def note(self, text):
+        """One line of the run log in this task's own file, named by the task as its event log is."""
+        runlog_note(self.folder.parent, f"task {self.task}: {text}", writer=task_writer(self.task))
+
+    def event(self, what, index, unit_id_, **extra):
+        if what in self.counts:
+            self.counts[what] += 1
+        line = json.dumps({"event": what, "index": index, "id": unit_id_, "at": time.time(), "task": self.task,
+                           "stamp": self.stamp, **extra})
+        with open(self.events, "a", encoding="utf-8") as stream:
+            stream.write(line + "\n")
+
+    def beat(self, claims, state="running"):
+        """Every held claim touched, so no other task takes it over, and the task's record rewritten."""
+        for path in claims:
+            try:
+                os.utime(path)
+            except OSError:
+                pass
+        self.held = len(claims)
+        write_json(self.folder / "tasks" / f"{self.task:04d}.json",
+                   {"task": self.task, "tasks": self.tasks, "job": self.job, "host": self.host, "gpu": self.gpu,
+                    "state": state, "beat": time.time(), "held": self.held, **self.counts})
+
+
+def shard(args):
+    """The shard subcommand, one task of the array: units claimed from the list prepare wrote,
+    heaviest first, run by a pool of --workers processes, each result written whole, until none is
+    left to claim and no other task's claim is still beating. It exits 0 having done nothing where
+    prepare wrote no list (rule 9: the merge says why), 4 where the GPU fails its self-test before
+    the first unit, so a task on a card the build cannot run claims nothing, and 3 once
+    FAILURE_STREAK units have failed in a row."""
+    os.umask(0o077)
+    out = Path(args.out)
+    folder = out / ANALYSIS
+    if not (folder / "PREPARED.json").is_file():
+        log("shard: prepare left no analysis/PREPARED.json, so there is nothing to claim")
+        return 0
+    record = units_record(out)
+    if record is None or record["code"] != code_digest():
+        raise StageError("the code differs from the code prepare planned the units with")
+    gpu, why = gpu_self_test(args.device)
+    if gpu is None:
+        log(f"shard: the GPU self-test failed ({why}); no unit claimed")
+        runlog_note(out, f"task {args.task}: on {host_name()}, the GPU self-test failed ({why.split(':')[0]}), so it claims no unit",
+                    writer=task_writer(args.task))
+        return 4
+    task = Task(folder, args.task, args.tasks, gpu, record["stamp"])
+    task.beat([])
+    log(f"shard: task {args.task} of {args.tasks} on {task.host}, {gpu}, {args.workers} workers,"
+        f" {len(record['units'])} units in the list")
+    task.note(f"started as job {task.job} of {args.tasks} tasks on {task.host}, {gpu},"
+              f" {args.workers} worker{'s' if args.workers != 1 else ''}, {len(record['units'])} units in the list")
+    _ENDING[0] = False
+    try:
+        code = claim_loop(out, record, task, args.workers)
+        _ENDING[0] = True
+    except Terminated:
+        running = f", {len(task.running)} running when it came" if task.running else ""
+        task.note(f"ended by Slurm (TERM: its time, or a cancel) with {task.counts['done']} done and"
+                  f" {task.counts['failed']} failed here{running}")
+        task.beat([], state="terminated")
+        write_progress(out, force=True)
+        return 143
+    if not task.replaced:
+        task.note({0: f"finished, nothing left to claim: {task.counts['done']} done and {task.counts['failed']} failed here",
+                   3: f"stopped after {FAILURE_STREAK} failures in a row, {task.counts['done']} done here"}.get(code, f"ended {code}"))
+    task.beat([], state="stopped" if code else "finished")
+    write_progress(out, force=True)
+    return code
+
+
+def task_writer(task):
+    """The run log file of one array task's process, named as its event log is."""
+    return f"task-{task:04d}-{os.getpid()}"
+
+
+def claim_loop(out, record, task, workers):
+    """Claim, run and settle units until none is left to claim and no other task's claim is still
+    beating; 3 once FAILURE_STREAK units have failed in a row, 0 otherwise, and 0 too where a new
+    prepare replaced the list under this task. A pool that a worker's death breaks is replaced by
+    one of half the size, down to one worker, whose death names the unit it ran (broken_pool)."""
+    from concurrent.futures import FIRST_COMPLETED, wait
+    from concurrent.futures.process import BrokenProcessPool
+
+    folder, stamp, units = Path(out) / ANALYSIS, record["stamp"], record["units"]
+    order = sorted(range(len(units)), key=lambda i: (-unit_cost(units[i]), i))
+    todo, others, held, streak, size = [i for i in order if not settled(folder, i, stamp)], [], {}, 0, workers
+    task.running = held
+    pool = unit_pool(size)
+    try:
+        while streak < FAILURE_STREAK:
+            if list_replaced(out, stamp):
+                log("shard: a new prepare replaced the list of units, so this task stops and claims nothing more")
+                task.note("a new prepare replaced the list of units, so it stops and claims nothing more")
+                task.replaced = True
+                return 0
+            try:
+                while streak < FAILURE_STREAK and len(held) < max(1, size):
+                    index = next_unit(folder, todo, others, stamp, task.token, note=task.note)
+                    if index is None:
+                        break
+                    try:
+                        held[pool.submit(unit_task, str(out), index, units[index], record["seed"], stamp)] = (index, time.time())
+                    except BrokenProcessPool:
+                        release(folder, task, units, index)
+                        todo.insert(0, index)
+                        raise
+                    task.event("claimed", index, units[index]["id"])
+                if not held:
+                    if streak >= FAILURE_STREAK:
+                        break
+                    task.beat([], state="watching")
+                    if not watch_others(folder, todo, others, stamp):
+                        break
+                    continue
+                finished, _ = wait(list(held), timeout=HEARTBEAT_SECONDS, return_when=FIRST_COMPLETED)
+                broken = [future for future in finished if isinstance(future.exception(), BrokenProcessPool)]
+                for future in finished:
+                    if future in broken:
+                        continue
+                    index, started = held.pop(future)
+                    outcome = settle(folder, task, units, index, future, started)
+                    if outcome is None:
+                        continue
+                    streak = 0 if outcome else streak + 1
+                if broken:
+                    raise BrokenProcessPool("a worker of the pool died")
+            except BrokenProcessPool:
+                pool, size, failed = broken_pool(pool, held, folder, task, units, todo, size, workers)
+                streak += failed
+                continue
+            task.beat([claim_path(folder, i) for i, _ in held.values()])
+            write_progress(out)
+    finally:
+        pool.shutdown(wait=False, cancel_futures=True)
+    if streak >= FAILURE_STREAK:
+        log(f"shard: stopped after {FAILURE_STREAK} failures in a row")
+        return 3
+    log(f"shard: nothing left to claim; {task.counts['done']} done and {task.counts['failed']} failed here")
+    return 0
+
+
+LIST_READS = 3            # reads of units.json before an unreadable list is taken as unchanged
+LIST_RETRY_SECONDS = 2.0  # the pause before each read again
+
+
+def list_replaced(out, stamp):
+    """Whether a new prepare has replaced the list this task claims from: units.json read whole
+    with another stamp. A read the lab volume fails for a moment is tried again, and a list that
+    still cannot be read is no reason to stop, since the task holds its list in memory and a
+    replacement is seen at the next read that works."""
+    for attempt in range(LIST_READS):
+        record = units_record(out)
+        if record is not None:
+            return record["stamp"] != stamp
+        if attempt < LIST_READS - 1:
+            time.sleep(LIST_RETRY_SECONDS)
+    return False
+
+
+def release(folder, task, units, index):
+    """This task's claim on a unit let go, so any task may take the unit at once; a claim another
+    task has taken since is left as it stands."""
+    path = claim_path(folder, index)
+    try:
+        if path.read_text(encoding="ascii") == task.token:
+            path.unlink()
+    except OSError:
+        pass
+    task.event("released", index, units[index]["id"])
+
+
+def broken_pool(pool, held, folder, task, units, todo, size, workers):
+    """A worker of the pool died (the kernel's OOM killer, a crash in native code), which breaks
+    every unit the pool held. In a pool of more than one worker none of them is failed for it,
+    since all but one did nothing wrong: each claim is let go, the unit put back at the head of
+    this task's list, and a pool of half as many workers takes them, so units that filled the
+    job's memory together run fewer at a time, and a unit that breaks every pool it is in soon
+    runs alone. In a pool of one worker the unit broke it alone: it is failed (error
+    BrokenProcessPool), counted toward FAILURE_STREAK, and the next pool has the task's full
+    count of workers again. Every pool after a break is of processes, so no death reaches the
+    task itself. The new pool, its size and how many units failed."""
+    pool.shutdown(wait=False, cancel_futures=True)
+    entries = sorted(held.values(), reverse=True)
+    held.clear()
+    if size <= 1:
+        for index, started in entries:
+            fail_unit(folder, task, units[index], index, started, "BrokenProcessPool",
+                      ["its worker died running it alone"], "its worker died running it alone")
+        log(f"shard: a worker died running unit {', '.join(units[i]['id'] for i, _ in entries) or 'none'} alone;"
+            f" failed, and a pool of {workers} workers goes on")
+        task.note(f"a worker died running unit {', '.join(units[i]['id'] for i, _ in entries) or 'none'} alone, so it"
+                  f" is failed, and a pool of {workers} workers goes on")
+        return unit_pool(workers, processes=True), workers, len(entries)
+    smaller = max(1, size // 2)
+    log(f"shard: a worker died and broke the pool; {len(entries)} units let go and claimed again by {smaller} workers")
+    task.note(f"a worker died and broke the pool of {size}: {len(entries)} units let go and claimed again by {smaller} workers")
+    for index, _ in entries:
+        release(folder, task, units, index)
+        todo.insert(0, index)
+    return unit_pool(smaller, processes=True), smaller, 0
+
+
+def next_unit(folder, todo, others, stamp, token, note=None):
+    """The next unit this task claims, or None: a settled one is dropped and one another task holds
+    is set aside, to be watched once nothing is left to claim."""
+    while todo:
+        index = todo.pop(0)
+        if settled(folder, index, stamp):
+            continue
+        if try_claim(folder, index, token, note):
+            return index
+        others.append(index)
+    return None
+
+
+def watch_others(folder, todo, others, stamp):
+    """With nothing left to claim, the units other tasks hold: a settled one dropped, one whose
+    holder stopped beating put back to be taken over; True while any is still held."""
+    still = [i for i in others if not settled(folder, i, stamp)]
+    others[:] = []
+    for index in still:
+        (todo if claim_is_stale(folder, index) else others).append(index)
+    if others and not todo:
+        time.sleep(WATCH_SECONDS)
+    return bool(todo or others)
+
+
+class ListChanged(Exception):
+    """The list of units a task claims from was replaced by a new prepare while a unit waited."""
+
+
+def settle(folder, task, units, index, future, started):
+    """A finished unit's outcome: True when done and logged with its seconds; False when it failed,
+    recorded with the kind of error and where in the study's code it rose; None when a new prepare
+    replaced the list under it, which is no failure of the unit: this task's claim on it is let go
+    and the new list's folders are left alone."""
+    unit = units[index]
+    try:
+        seconds, backend = future.result()
+    except ListChanged:
+        release(folder, task, units, index)
+        return None
+    except Exception as error:  # one unit's failure is recorded and counted toward the streak, never fatal alone
+        fail_unit(folder, task, unit, index, started, type(error).__name__, where_raised(error), str(error))
+        return False
+    task.event("done", index, unit["id"], seconds=round(seconds, 1), backend=backend)
+    log(f"unit {unit['id']} done in {seconds:.1f} s ({task.counts['done']} done by this task)")
+    if backend.endswith("numpy") and backend != chosen_backend():
+        task.note(f"unit {unit['id']} ran its MMD on the CPU ({backend}), since the card had no room left for it")
+    return True
+
+
+def fail_unit(folder, task, unit, index, started, kind, where, message):
+    """failed/<index>.json for a unit, which settles it for every task until a new prepare."""
+    write_json(failed_path(folder, index), {"id": unit["id"], "error": kind, "where": where, "task": task.token})
+    task.event("failed", index, unit["id"], seconds=round(time.time() - started, 1), error=kind)
+    log(f"unit {unit['id']} FAILED after {time.time() - started:.0f} s: {kind}: {message}")
+    task.note(f"unit {unit['id']} FAILED after {time.time() - started:.0f} s ({kind}; its job's log has the message)")
+
+
+def where_raised(error):
+    """The last frames of the study's own code an error rose through, as name:line: a worker's
+    error comes back with the worker's traceback as its cause, in text, and the parent's own frames
+    there are the pool's."""
+    cause = getattr(error, "__cause__", None)
+    text = getattr(cause, "tb", "") if cause is not None else ""
+    frames = re.findall(r'File "([^"]+)", line (\d+), in (\S+)', text)
+    if not frames and error.__traceback__ is not None:
+        frames = [(f.filename, str(f.lineno), f.name) for f in traceback.extract_tb(error.__traceback__)]
+    return [f"{Path(name).name}:{function}:{line}" for name, line, function in frames[-3:]]
+
+
+def unit_pool(workers, processes=None):
+    """workers processes, started fresh rather than forked (the self-test opened CUDA here, which a
+    fork must not copy), each with one BLAS and torch thread so the node's CPUs are the pool's; or,
+    for one worker unless processes is asked for, one thread of this process, so the task still
+    beats while a unit runs. After a pool breaks the task asks for processes even for one worker,
+    so a unit that kills its worker never kills the task (broken_pool)."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    if not (workers > 1 if processes is None else processes):
+        return ThreadPoolExecutor(max_workers=1)
+    for name in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS"):
+        os.environ[name] = "1"
+    context = multiprocessing.get_context("spawn")
+    return ProcessPoolExecutor(max_workers=max(1, workers), mp_context=context, initializer=pool_start)
+
+
+def pool_start():
+    """A worker's first act: one torch thread, so the node's CPUs are the pool's."""
+    try:
+        import torch
+
+        torch.set_num_threads(1)
+    except ImportError:
+        pass
+
+
+_LOADED = {}
+
+
+def loaded(key, make):
+    """One object per process for key: a worker reads the list and each head once."""
+    if key not in _LOADED:
+        _LOADED[key] = make()
+    return _LOADED[key]
+
+
+def unit_task(out, index, unit, seed, stamp):
+    """One unit in a worker, as the task read it from its list: its head loaded once per process,
+    its result written whole, then (seconds, the MMD's backend); ListChanged, with nothing written,
+    where a new prepare has replaced the list, before the unit runs or once it has, so a unit of
+    an old list never writes over the new list's result of the same number."""
+    if list_replaced(out, stamp):
+        raise ListChanged(f"unit {index} was claimed from list {stamp[:16]}, which a new prepare replaced")
+    head = loaded((str(out), stamp, unit["key"]), lambda: load_head(out, unit["key"]))
+    started = time.time()
+    _MMD_RUNS.update(tests=0, cpu=0)
+    piece, arrays = run_unit(head, unit, seed)
+    seconds = time.time() - started
+    backend = mmd_backend()
+    free_card()
+    if list_replaced(out, stamp):
+        raise ListChanged(f"unit {index} of list {stamp[:16]} ran while a new prepare replaced the list")
+    save_unit(Path(out) / ANALYSIS, index, unit, piece, arrays, stamp, seconds, backend)
+    return seconds, backend
+
+
+def mmd_backend():
+    """Which backend the unit's MMD permutations ran on here, as domain_gap_stats chooses it, numpy
+    where a full card sent every test to the CPU and both where it sent some."""
+    chosen = chosen_backend()
+    if not _MMD_RUNS["cpu"] or chosen == "numpy":
+        return chosen
+    return "numpy" if _MMD_RUNS["cpu"] == _MMD_RUNS["tests"] else f"{chosen}+numpy"
+
+
+def chosen_backend():
+    """The backend domain_gap_stats chooses here for an MMD test that fits: torch on its device,
+    or numpy where torch or its card is missing."""
+    torch, device = stats().torch_device("auto")
+    return f"torch-{device.type}" if torch is not None else "numpy"
+
+
+def save_unit(folder, index, unit, piece, arrays, stamp, seconds, backend):
+    """done/<index>.npz with a map's arrays first, then done/<index>.json, both written whole: a
+    result file that is there names arrays that are there."""
+    import numpy as np
+
+    if arrays:
+        part = own_part(folder / "done" / f"{index:05d}.npz")
+        with open(part, "wb") as handle:
+            np.savez(handle, **arrays)
+        os.replace(part, folder / "done" / f"{index:05d}.npz")
+    write_json(done_path(folder, index), {"id": unit["id"], "stamp": stamp, "piece": piece, "seconds": round(seconds, 3),
+                                          "backend": backend, "job": job_label(), "utc": utc_now()})
+
+
+def read_units(folder, record, key):
+    """The results of one reading's units as prepare listed them, and a map unit's arrays."""
+    import numpy as np
+
+    pieces, arrays = {}, {}
+    for index, unit in enumerate(record["units"]):
+        if unit["key"] != key:
+            continue
+        done = read_json(done_path(folder, index))
+        if done["id"] != unit["id"] or done["stamp"] != record["stamp"]:
+            raise StageError(f"unit {index} holds another unit's result")
+        pieces[unit["id"]] = done["piece"]
+        npz = folder / "done" / f"{index:05d}.npz"
+        arrays[unit["id"]] = dict(np.load(npz)) if npz.is_file() else {}
+    return pieces, arrays
+
+
+def open_units(folder, record):
+    """(the units not done, the units failed), each as a count by kind."""
+    missing, failed = {}, {}
+    for index, unit in enumerate(record["units"]):
+        if unit_done(folder, index, record["stamp"]):
+            continue
+        holder = failed if failed_path(folder, index).exists() else missing
+        holder[unit["kind"]] = holder.get(unit["kind"], 0) + 1
+    return missing, failed
+
+
+def merge(args):
+    """The merge subcommand, the array's join: every unit's result read back and each reading
+    assembled as the analysis in one process assembles it, then results.json, the figures, W&B and
+    summary.txt as run writes them. It refuses while any unit is not done or has failed, saying
+    how many of which kind, so no part of a result is ever written; a resend of the study word then
+    runs only those, the done units counting again under the same plan, heads and code."""
+    os.umask(0o077)
+    out = Path(args.out)
+    folder = out / ANALYSIS
+    if not (folder / "PREPARED.json").is_file():
+        raise StageError("prepare did not finish: there is no analysis/PREPARED.json")
+    RUNLOG_WHO[0] = "merge"
+    runlog_note(out, f"merge: started as job {job_label()} on {host_name()}")
+    record = units_record(out)
+    if record is None:
+        raise StageError("analysis/units.json cannot be read whole")
+    if record["code"] != code_digest():
+        raise StageError("the code differs from the code prepare planned the units with")
+    missing, failed = open_units(folder, record)
+    write_progress(out, force=True)
+    if missing or failed:
+        runlog_note(out, f"merge: refused, {sum(missing.values())} of {len(record['units'])} units not done"
+                         f" {words_by_kind(missing)} and {sum(failed.values())} failed {words_by_kind(failed)}")
+        raise StageError(f"{sum(missing.values())} of {len(record['units'])} units not done {words_by_kind(missing)}"
+                         f" and {sum(failed.values())} failed {words_by_kind(failed)}")
+    joined = array_record(out, record)
+    tasks, cards = joined["jobs"]["tasks"], ", ".join(f"{n} x{c}" for n, c in sorted(joined["gpus"].items()))
+    runlog_note(out, f"merge: every one of the {len(record['units'])} units read back as done, from {tasks}"
+                     f" task{'s' if tasks != 1 else ''}; the jobs ran on {cards}, prepare's among them")
+    note_seconds(out, "analysis", joined["analysis_seconds"])
+    plan, rows = read_json(out / "plan.json"), read_json(out / "rows.json")
+    results, all_maps = new_results(plan, rows), {}
+    for key in record["keys"]:
+        if key in record["invalid"]:
+            results["spaces"][key] = {"invalid": record["invalid"][key]}
+            continue
+        head = load_head(out, key)
+        result, maps = assemble_space(head, *read_units(folder, record, key))
+        results["spaces"][key] = result
+        if maps:
+            all_maps[key] = (head.frame, maps)
+    run = dict(read_json(folder / "PREPARED.json")["run"], merge=run_block(args))
+    if run["prereg_sha256"] != prereg_digest():
+        raise StageError("the pre-registration differs from the one prepare read")
+    results, all_maps = finish_results(args, results, all_maps, record=joined, run=run)
+    write_summary(args, results, all_maps)
+    runlog_note(out, "merge: results.json, the figures and summary.txt written")
+    return 0
+
+
+def words_by_kind(counts):
+    return "(" + ", ".join(f"{kind} {n}" for kind, n in sorted(counts.items())) + ")" if counts else ""
+
+
+def array_record(out, record):
+    """What the report says of the run as a whole: the jobs, the cards, the units and the seconds
+    of every stage, read from prepare's record, the tasks' records and the units' results."""
+    folder = Path(out) / ANALYSIS
+    prepared = read_json(folder / "PREPARED.json")
+    tasks = [read_json(p) for p in sorted((folder / "tasks").glob("*.json"))]
+    seconds, backends, finished, began = 0.0, set(), [], []
+    for index in range(len(record["units"])):
+        done = read_json(done_path(folder, index))
+        seconds += float(done.get("seconds", 0))
+        backends.add(done.get("backend", "unknown"))
+    for event in events_of(record):
+        (finished if event["event"] == "done" else began if event["event"] == "claimed" else []).append(event["at"])
+    gpus = {}
+    for name in [prepared.get("gpu", "")] + [t.get("gpu", "") for t in tasks]:
+        if name:
+            gpus[name] = gpus.get(name, 0) + 1
+    arrays = sorted({t["job"].split("_")[0] for t in tasks if "_" in str(t.get("job", ""))})
+    return {"jobs": {"prepare": prepared.get("job", "unknown"), "array": ", ".join(arrays) or "none",
+                     "tasks": len(tasks), "merge": job_label()},
+            "gpus": gpus, "units": {"total": len(record["units"]), "done": len(record["units"]), "failed": 0},
+            "mmd": backends.pop() if len(backends) == 1 else "mixed " + "/".join(sorted(backends)),
+            "units_seconds": round(seconds), "analysis_seconds": round(max(finished) - min(began)) if finished and began else 0}
+
+
+def write_summary(args, results, all_maps):
+    """W&B, then summary.txt with the record's lines first, and results.json again with every
+    stage's seconds in its record, which only now are all known."""
+    out = Path(args.out)
+    line = wandb_push(args, results, all_maps)
+    results["_record"]["seconds"] = {stage: entry.get("seconds", 0) for stage, entry in stages_of(out).items()}
+    write_json(out / "results.json", results)
+    lines = summary_lines(results, line)
+    (out / "summary.txt").write_text("\n".join(lines) + "\n", encoding="ascii")
+    note_stage(out, "summary", "done")
+    print("\n".join(lines))
 
 
 # --- the figures -----------------------------------------------------------------------------------
@@ -1595,10 +3349,11 @@ def auc_text(auc):
 
 
 def summary_lines(results, wandb_line):
-    """At most LINE_BUDGET short lines, each made safe for the grid's redaction, of what the study
-    found: the header and the replication verdict, the groups, then the primary space in full,
-    the other spaces' family contrasts and replication pair, FleXray's space as stored for
-    FleXray's own groups, and last the secondary lines (the nearest real corpora, the other spaces'
+    """The run's record in RECORD_LINES lines first, which the study's report reads from the top
+    (tools/report.py, study mode), then at most LINE_BUDGET short lines of what the study found, each
+    made safe for the grid's redaction: the header and the replication verdict, the groups, then the primary space in full,
+    the other spaces' family contrasts, FleXray's space as stored for FleXray's own groups, and
+    last the secondary lines (the nearest real corpora, the other spaces' replication pairs and
     replication-only contrasts, the map centres). The sections carry a rank, and whole sections
     are given up from the highest rank down until the lines fit, so what is cut is the least read
     and never the middle of a table."""
@@ -1609,7 +3364,42 @@ def summary_lines(results, wandb_line):
     for key, space in results["spaces"].items():
         sections += space_sections(key, space, detail_of(key))
     lines = fit_lines(sections, LINE_BUDGET)
-    return [rules().safe_line(line) for line in lines][:LINE_BUDGET]
+    record = [rules().safe_line(line) for line in record_lines(results)][:RECORD_LINES]
+    return record + [rules().safe_line(line) for line in lines][:LINE_BUDGET]
+
+
+RECORD_SECONDS = ("render", "plan", "images", "features", "heads", "analysis", "figures")
+
+
+def short_digest(digest):
+    """A digest's first 16 hex digits in four groups of four, so no run of eight digits is ever read
+    as a date by the grid's filter, which would split it (schwingnet.domain_gap.safe_line)."""
+    return "-".join(digest[i:i + 4] for i in range(0, 16, 4)) if digest else "none"
+
+
+def record_lines(results):
+    """The run's record in five lines, which the study's CLAIM report reads from the summary
+    (tools/report.py, study mode): the code and its inputs, the jobs and the cards, the units, the
+    seconds of each stage, and the environment's pins as the grid's step gives them."""
+    run, record = results.get("_run"), results.get("_record", {})
+    if not run:
+        return []
+    jobs, units, seconds = record.get("jobs", {}), record.get("units", {}), record.get("seconds", {})
+    cards = ", ".join(f"{name} x{count}" for name, count in sorted(record.get("gpus", {}).items())) or "none"
+    if "prepare" in jobs:
+        ran = f"prepare {jobs['prepare']}, array {jobs['array']} ({jobs['tasks']} tasks), merge {jobs['merge']}"
+    else:
+        ran = f"run {jobs.get('run', 'local')}"
+    timed = [f"{stage} {seconds.get(stage, 0):.0f}" + (" (wall)" if stage == "analysis" else "") for stage in RECORD_SECONDS]
+    timed.insert(-1, f"units {record.get('units_seconds', 0):.0f} (summed)")
+    return [f"record: study {STUDY}; commit {run['git_head'][:7]}; tree {'dirty' if run['git_dirty'] else 'clean'};"
+            f" seed {run['seed']}; plan {short_digest(results.get('plan', ''))}; groups.json {short_digest(run['inputs'].get('groups.json', ''))};"
+            f" PREREG {short_digest(run['prereg_sha256'])}; code {short_digest(run['code_digest'])}",
+            f"record: jobs {ran}; GPUs {cards}",
+            f"record: units {units.get('done', 0)} of {units.get('total', 0)} done, {units.get('failed', 0)} failed;"
+            f" mmd backend {record.get('mmd', 'unknown')}",
+            "record: seconds " + ", ".join(timed),
+            f"record: environment {os.environ.get('SN_PINS', 'not given')}"]
 
 
 def fit_lines(sections, budget):
@@ -1637,13 +3427,23 @@ def verdict_line(pair, found, verdict):
     word is a non-rejection rule (replication_word: an AUC bound at most 0.6 and an MMD q at least
     0.05) that a small sample satisfies for want of power, and the segment job may have labelled
     fewer CTs than the study asked for, so a reader of "replicated" sees at once how many CTs it
-    rests on. A pair with no word gives its reason, cut to what the report's line holds."""
+    rests on; then the MMD's q the word was read on and its q over the contrasts alone, the family
+    the first sharded run read (DEVIATIONS.md, item 11), so a reader sees whether the family
+    moves the word. A pair with no word gives its reason, cut to what the report's line holds."""
     a, b = pair.split("|")
     if found.get("word"):
         return (f"replication {a} vs {b} in {verdict['space']} ({verdict['reading']}): {found['word']}"
-                f" ({counts_text(found)})")
+                f" ({counts_text(found)}{verdict_q(found)})")
     head = f"replication {a} vs {b}: no verdict, "
     return head + found["reason"][:rules().LINE_LIMIT - len(head)]
+
+
+def verdict_q(found):
+    """The verdict's MMD q and its q over the contrasts alone, where the verdict carries them."""
+    if found.get("q") is None:
+        return ""
+    alone = found.get("q_without_nulls")
+    return f"; mmd q {fmt(found['q'], 3)}" + ("" if alone is None else f", {fmt(alone, 3)} without nulls")
 
 
 def counts_text(c):
@@ -1653,8 +3453,9 @@ def counts_text(c):
 
 def render_summary(folders):
     """One line a CT folder: how many CTs its render groups drew from, of how many with masks under
-    every segmenter they name, each segmenter's count and the folder's CTs, and how many every
-    group kept (share_subjects), the CTs the analysis reads; or why it was skipped."""
+    every segmenter required, each such segmenter's count and the folder's CTs, the named
+    segmenters whose masks were not read and why (mask_counts), and how many every group kept
+    (share_subjects), the CTs the analysis reads; or why it was skipped."""
     lines = []
     for folder, record in folders.items():
         if record.get("skipped"):
@@ -1675,37 +3476,53 @@ def detail_of(key):
 
 
 def group_summary(groups):
-    """One line a group: its counts, or why it was skipped; a render group whose counts are those
-    of a render group listed before it, as the six that render one choice of CTs are, says so in
-    place of the counts, which keeps five lines for the tables."""
-    lines, seen = [], {}
+    """One line a group: its counts, or why it was skipped; the render groups whose counts are
+    those of a render group listed before it, as the seven that render one choice of CTs are, are
+    named together on one line where the first of them stands, in place of their counts, which
+    keeps the lines for the tables."""
+    lines, first_of, folded = [], {}, {}
     for g in groups:
-        if g["skipped"] and not g["decoded"]:
-            lines.append(f"group {g['id']} {g['family']} skipped, {g['skipped'][:90]}")
-            continue
-        flag = " persons by file" if g["person_fallback"] and g["person_fallback"] >= g["chosen"] else ""
-        fails = sum(g["failures"].values())
-        line = (f"group {g['id']} {g['family']} found {g['found']} chosen {g['chosen']} decoded {g['decoded']}"
-                f" persons {g['persons']}{flag}" + (f" undecoded {fails}" if fails else ""))
+        line = group_line(g)
         counts = line.split(" ", 3)[3]
-        if g.get("source") == "render" and counts in seen:
-            line = f"group {g['id']} {g['family']} counts as {seen[counts]}"
-        elif g.get("source") == "render":
-            seen[counts] = g["id"]
-        lines.append(line)
+        if g.get("source") != "render" or g["skipped"] and not g["decoded"]:
+            lines.append(line)
+        elif counts not in first_of:
+            first_of[counts] = g["id"]
+            lines.append(line)
+        else:
+            head = first_of[counts]
+            if head not in folded:
+                folded[head] = (len(lines), [])
+                lines.append("")
+            folded[head][1].append(g["id"])
+    for head, (at, ids) in folded.items():
+        lines[at] = f"groups counted as {head}: {' '.join(ids)}"
     return lines
+
+
+def group_line(g):
+    """A group's line: its counts, or why it was skipped, the reason cut at 150 characters, which
+    keeps a listing's error kind or every rule's count of refused rows whole and, after the longest
+    group's head of 47 characters, the line within the report's limit."""
+    if g["skipped"] and not g["decoded"]:
+        return f"group {g['id']} {g['family']} skipped, {g['skipped'][:150]}"
+    flag = " persons by file" if g["person_fallback"] and g["person_fallback"] >= g["chosen"] else ""
+    fails = sum(g["failures"].values())
+    return (f"group {g['id']} {g['family']} found {g['found']} chosen {g['chosen']} decoded {g['decoded']}"
+            f" persons {g['persons']}{flag}" + (f" undecoded {fails}" if fails else ""))
 
 
 # The rank of each section of a space's summary, by how it is read (fit_lines gives the highest
 # up first): the primary space's table 2 and its real-real lines 3, the other spaces' tables 4,
 # since no finding rests on one encoder's view, the primary space's heatmap rows 5, the as-stored
 # reading 6, the context lines 7 (the nearest real corpora, the other spaces' real-real medians),
-# the replication-only groups' contrasts with the real corpora and the later pairs outside the
-# primary space 8, the map centres 9. With the study's 22-group table and every space run, the
-# centres, the secondary lines, the context lines and the as-stored reading are given up, and the
-# heatmap rows too once FluXray is present; the tables of the three spaces stay whole (counted
-# on 2026-10-26 from a results record in this shape with every group full: 128 lines fitted to 76
-# without FluXray, 138 to 80 with it; tests/test_domain_gap_run.py holds the budget).
+# the replication-only groups' contrasts with the real corpora and every replication pair outside
+# the primary space 8, whose words the study's verdict never reads, the map centres 9. With the
+# study's 23-group table and every space run, the centres, the secondary lines, the context lines
+# and the as-stored reading are given up, and the heatmap rows too once FluXray is present; the
+# tables of the three spaces stay whole (counted on 2026-10-27 from a results record in this shape
+# with every group full and the render groups' equal counts on one line: 134 lines fitted to 75
+# without FluXray, 150 to 79 with it; tests/test_domain_gap_run.py holds the budget).
 RANK = {"full": 2, "full_real": 3, "brief": 4, "full_auc": 5, "focus": 6, "context": 7, "secondary": 8, "centres": 9}
 
 
@@ -1714,8 +3531,8 @@ def space_sections(key, space, detail):
     pairs and the family contrasts of the groups that face the real corpora first; the primary
     space adds the later pairs, the real-real table, the heatmap rows, the nearest real corpora
     and the map centres; the as-stored reading keeps FleXray's own groups; the replication-only
-    groups' contrasts are secondary in every space, and so are the later pairs outside the
-    primary one."""
+    groups' contrasts are secondary in every space, and so is every pair of the other spaces,
+    worded or not, since the study's verdict is read in the primary space alone."""
     if space.get("invalid"):
         return [(RANK[detail], [f"space {key} not run, {space['invalid']}"])]
     head = [f"space {key} dim {space['dim']} rows {space['rows']} spread {fmt(space['feature_spread'], 3)}"
@@ -1728,7 +3545,8 @@ def space_sections(key, space, detail):
                      (RANK["full_auc"], group_auc_summary(space)), (RANK["context"], nearest_summary(space)),
                      (RANK["secondary"], secondary), (RANK["centres"], centre_summary(space))]
     elif detail == "brief":
-        sections += [(RANK["context"], real_summary(space, detail)), (RANK["secondary"], later + secondary)]
+        sections[0] = (RANK[detail], head + families)
+        sections += [(RANK["context"], real_summary(space, detail)), (RANK["secondary"], first + later + secondary)]
     else:
         sections.append((RANK["secondary"], later))
     return [(rank, lines) for rank, lines in sections if lines]
@@ -1762,8 +3580,10 @@ def replication_summary(space):
 def replication_line(pair, c):
     """A pair's line: the persons and rows a side first, since the word at its end is a
     non-rejection rule that a small sample satisfies for want of power (verdict_line), then the
-    measures a family line carries with the MMD's q, the word's second input (the C2ST's q stays
-    in results.json, since with it the line of a worded pair would pass the report's limit), the
+    measures a family line carries with the MMD's q, the word's second input (the C2ST's q and
+    the MMD's q over the contrasts alone stay in results.json, since with either the line of a
+    worded pair at the first run's widths would pass the report's limit and give up its PRDC;
+    the worded pairs' q over the contrasts alone is on their verdict lines, verdict_line), the
     last of them left off whole where the line would still pass it, so a cut never takes the
     word."""
     a, b = pair.split("|")
@@ -1792,13 +3612,31 @@ def within_limit(head, numbers, word):
 
 
 def calibration_summary(space):
+    """The split-half nulls' line, its counts first and, where a null has an MMD p, that the nulls
+    are in the MMD's false-discovery family (adjust, DEVIATIONS.md, item 11), then the flagged
+    groups' names on lines of their own within the report's limit, so no cut ever takes a count
+    or a name (DEVIATIONS.md, item 8: every contrast of a flagged group in the space is not
+    read)."""
     cal = space.get("calibration", {})
     if cal.get("auc_median") is None:
         return []
-    return [f" calibration split-half auc median {fmt(cal['auc_median'])} range"
-            f" {fmt(cal['auc_range'][0])} to {fmt(cal['auc_range'][1])} over {len(cal['groups'])},"
-            f" mmd flagged {len(cal['flagged'])}" + (f" ({' '.join(cal['flagged'])})" if cal["flagged"] else "")
-            + f", auc interval above half {len(cal.get('auc_above', []))}"]
+    head = (f" calibration split-half auc median {fmt(cal['auc_median'])} range {fmt(cal['auc_range'][0])} to"
+            f" {fmt(cal['auc_range'][1])} over {len(cal['groups'])}, mmd flagged {len(cal['flagged'])},"
+            f" auc interval above half {len(cal.get('auc_above', []))}")
+    if any(True for _ in null_mmd_p_values(space)):
+        head += NULLS_IN_FAMILY
+    return [head] + name_lines(" calibration flagged", cal["flagged"])
+
+
+def name_lines(lead, names):
+    """lead and as many names as the report's limit takes on each line, every name on one."""
+    limit, lines, line = rules().LINE_LIMIT, [], lead
+    for name in names:
+        if line != lead and len(line) + 1 + len(name) > limit:
+            lines.append(line)
+            line = lead
+        line += f" {name}"
+    return lines + ([line] if line != lead else [])
 
 
 def family_line(space, sg, family, c):
@@ -1865,40 +3703,56 @@ def wrapped(head, parts, width=180):
 # --- the command line ------------------------------------------------------------------------------
 
 def run(args):
+    """Every stage in this process, the analysis's units one after another: the reference the
+    array's three steps (prepare, shard, merge) reproduce, to the bit where this process has one
+    BLAS, OpenMP and torch thread (OMP_NUM_THREADS, OPENBLAS_NUM_THREADS and MKL_NUM_THREADS of 1)
+    as the array's workers have; with more, a measure may move in its last digits (DEVIATIONS.md,
+    item 2)."""
     os.umask(0o077)
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
-    table = read_table(args.groups)
-    renders, folders = stage_render(args, table)
-    plan = stage_plan(args, table, renders, folders)
-    rows, images = stage_images(args, plan)
-    if not rows["rows"]:
-        raise StageError("no image decoded")
-    stage_features(args, images, rows)
-    results, all_maps = stage_analysis(args, plan, rows)
-    line = wandb_push(args, results, all_maps)
-    lines = summary_lines(results, line)
-    (out / "summary.txt").write_text("\n".join(lines) + "\n", encoding="ascii")
-    print("\n".join(lines))
+    runlog_start(out, "run")
+    plan, rows = prepared_inputs(args, out)
+    results, all_maps = staged(out, "analysis", lambda: stage_analysis(args, plan, rows))
+    write_summary(args, results, all_maps)
+    runlog_note(out, "run: results.json, the figures and summary.txt written")
     return 0
 
 
 def plan_subjects(args):
     """The plan subcommand: each render folder's choice of CTs, made as the run makes it but
     without the masks the segment job is yet to make (MADE_SEGMENTERS), written to
-    <out>/render-subjects.json for that job; nothing is rendered or decoded. A folder whose choice
-    is empty fails the command, so the job never runs on nothing."""
+    <out>/render-subjects.json for that job; nothing is rendered or decoded. The groups on segmenter
+    none require no masks, so the table's choice is the one the segment job served before they
+    were added, among the CTs with SPINEPS's masks; a segmenter whose masks are not read is left
+    out of it as the run leaves it out. A folder whose choice is empty fails the command, so the
+    job never runs on nothing, and so does one whose mask folder holds too few CTs' masks: the run
+    reads such a folder as no masks, but the masks the plan reads are ones the data root already
+    holds, so a folder of them holding too few is a data root to look at, not a choice to make."""
     os.umask(0o077)
     table = read_table(args.groups)
     renderer = tool("flexray_render")
     folders = render_folders(args, table, renderer, mask_roots(args), pending=MADE_SEGMENTERS)
+    for record in folders.values():
+        if record.get("thin"):
+            record.update(subjects=[], every=0)
     write_subjects(args.out, folders)
     for folder, record in folders.items():
         log(render_summary({folder: record})[0])
-    empty = [folder for folder, record in folders.items() if not record["subjects"]]
+    empty = [folder + thin_reason(record) for folder, record in folders.items() if not record["subjects"]]
     if empty or not folders:
         raise StageError("no CT chosen for " + (", ".join(empty) or "any folder: the table has no render group"))
     return 0
+
+
+def thin_reason(record):
+    """Why the plan chose no CT of a folder whose mask folder holds too few: the masks it reads are
+    ones the data root already holds."""
+    thin = record.get("thin") or {}
+    if not thin:
+        return ""
+    names = " and ".join(f"{name} {count}" for name, count in thin.items())
+    return f" (too few CTs with the masks the data root should already hold: {names})"
 
 
 def summary(args):
@@ -1921,6 +3775,9 @@ def study_arguments(parser, features=True):
     parser.add_argument("--frozen", default="")
     parser.add_argument("--spineps", default="", help="the SPINEPS masks' folder; <data root>/spineps")
     parser.add_argument("--moose", default="", help="the MOOSE masks' folder; <data root>/moose")
+    parser.add_argument("--skip-masks", action="append", default=[], choices=MASK_SEGMENTERS, metavar="NAME",
+                        help="leave a segmenter's masks out (spineps or moose, repeatable): the groups that name it"
+                             " are skipped with that reason and the CTs are chosen without its masks")
 
 
 def parse(argv):
@@ -1928,21 +3785,92 @@ def parse(argv):
     sub = parser.add_subparsers(dest="command", required=True)
     study_arguments(sub.add_parser("run", help="every stage, each skipped when done"))
     study_arguments(sub.add_parser("plan", help="the choice of CTs alone, to render-subjects.json"), features=False)
-    show = sub.add_parser("summary", help="print the summary of a finished run")
-    show.add_argument("--out", required=True)
+    study_arguments(sub.add_parser("prepare", help="every stage up to the features, then the heads and the list of units"))
+    task = sub.add_parser("shard", help="one array task: claim units from the list and run them")
+    task.add_argument("--out", required=True)
+    task.add_argument("--task", type=int, default=int(os.environ.get("SLURM_ARRAY_TASK_ID", "0")))
+    task.add_argument("--tasks", type=int, default=int(os.environ.get("SLURM_ARRAY_TASK_COUNT", "1")))
+    task.add_argument("--workers", type=int, default=1)
+    task.add_argument("--device", default="cuda")
+    join = sub.add_parser("merge", help="the array's join: every unit read back, results.json and summary.txt")
+    join.add_argument("--out", required=True)
+    join.add_argument("--groups", default=str(ROOT / "data" / "domain_gap" / "groups.json"))
+    join.add_argument("--wandb", choices=("auto", "off"), default="auto")
+    for name, words in (("summary", "print the summary of a finished run"), ("progress", "write and print PROGRESS.txt"),
+                        ("runlog", "write RUNLOG.txt and print the run log as the bench report carries it")):
+        show = sub.add_parser(name, help=words)
+        show.add_argument("--out", required=True)
     return parser.parse_args(argv)
 
 
-COMMANDS = {"run": run, "plan": plan_subjects, "summary": summary}
+def progress(args):
+    write_progress(args.out, force=True)
+    print((Path(args.out) / PROGRESS).read_text(encoding="ascii"), end="")
+    return 0
+
+
+COMMANDS = {"run": run, "plan": plan_subjects, "prepare": prepare, "shard": shard, "merge": merge,
+            "summary": summary, "progress": progress, "runlog": runlog}
+# The steps whose end the run log says: a failure by the job's report line or its error's kind
+# alone, since an error's message may name a file, and Slurm's TERM where it fell.
+LOGGED = ("run", "prepare", "merge", "shard")
+
+
+def step_note(args, how):
+    """The run log's line for how a step ended, in the step's own file: an array task's under its
+    own number, so the CLAIM report says how every task ended, its failures among them."""
+    if args.command == "shard":
+        runlog_note(args.out, f"task {args.task}: {how}", writer=task_writer(args.task))
+    else:
+        runlog_note(args.out, f"{args.command}: {how}", writer=args.command)
 
 
 def main(argv=None):
     args = parse(argv)
+    # Slurm's TERM raises where the step stands, so its run log says how it ended; a signal is the
+    # main thread's alone, and the handler before is put back once the step's last lines are
+    # written. The job's log ends with the step's reason, which the bench report quotes as its last
+    # line, so it is printed after the run log's line and PROGRESS.txt, whose own failures print.
+    _ENDING[0] = False
+    previous = signal.signal(signal.SIGTERM, on_term) if threading.current_thread() is threading.main_thread() else None
+    ending = None
     try:
         return COMMANDS[args.command](args)
     except StageError as error:
-        print(f"drr-gap FAILED: {error}", flush=True)
+        _ENDING[0] = True
+        ending = f"drr-gap FAILED: {error}"
+        if args.command in LOGGED:
+            step_note(args, "FAILED, as its step's line in the bench report says")
         return 2
+    except Terminated:
+        _ENDING[0] = True
+        ending = "drr-gap: ended by Slurm (TERM)"
+        if args.command in LOGGED:
+            step_note(args, "ended by Slurm (TERM: its time, or a cancel)")
+        return 143
+    except Exception as error:
+        _ENDING[0] = True
+        if args.command in LOGGED:
+            step_note(args, f"FAILED with {type(error).__name__}, as its job's log says")
+        raise
+    finally:
+        _ENDING[0] = True
+        if args.command in LOGGED:
+            last_progress(args.out)
+        if previous is not None:
+            signal.signal(signal.SIGTERM, previous)
+        if ending:
+            print(ending, flush=True)
+
+
+def last_progress(out):
+    """PROGRESS.txt written once more as a step ends, past the limit on how often it is rewritten,
+    so the status word shows the step's last line of the run log, its end among them; a view of the
+    run, so a write the volume refuses is passed over."""
+    try:
+        write_progress(out, force=True)
+    except Exception as error:  # the run log and the bench report still say how the step ended
+        log(f"PROGRESS.txt not written at the end: {type(error).__name__}")
 
 
 if __name__ == "__main__":

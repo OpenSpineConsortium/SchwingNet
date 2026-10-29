@@ -7,10 +7,14 @@ FleXray's synthetic DRRs to be set beside every held real X-ray corpus, and for 
 to be rendered both through this project's blocks and through FleXray's own code, so the two can
 be compared; and on 2026-10-26 that the CTs' labels come from SPINEPS's existing masks for the
 production renders and from MOOSE, moosez's masks, only when replicating FleXray's own dataset,
-never from TotalSegmentator, the segmenter being a block of its own (schwingnet.segmenters).
-tools/domain_gap.py runs the study and calls render_subjects here for each render group. A render
-is a configuration of schwingnet.render_blocks (FleXray's released MOOSE recipe on SPINEPS masks
-when no block is named) run by an engine:
+never from TotalSegmentator, the segmenter being a block of its own (schwingnet.segmenters); and on
+2026-10-27 that the tests comparing DRRs with real X-rays run without masks at all, since a DRR's
+pixels are the CT's projection alone: segmenter none reads no mask and renders every CT, for a
+recipe that reads no labels (schwingnet.render_blocks.reads_labels: crop_sampler uniform,
+isocentre volume-centre, attenuation off, as the presets physical-ct and, but for its segmenter,
+fluxray-raw are). tools/domain_gap.py runs the study and calls render_subjects here for each
+render group. A render is a configuration of schwingnet.render_blocks (FleXray's released MOOSE
+recipe on SPINEPS masks when no block is named) run by an engine:
 
 - "blocks" calls tools/render_blocks.py, one function per named choice, FleXray's primitives
   (fxr.drr) underneath for the pose draw and the rendering;
@@ -32,37 +36,41 @@ Both read the same CT once (nibabel) and one label volume of MOOSE's stored ids 
 segmenter block (tools/render_blocks.py, NAMES["segmenter"]: SPINEPS's mask relabelled from the
 VerSe alphabet, or moosez's model outputs merged), which is what FleXray's own code reads, L6 and
 the thirteenth ribs in it and dropped by FleXray's remap as in its own training, T13 and the
-coccyx left out and recorded as unsupervised; and they write the same layout. The seed of a view
+coccyx left out and recorded as unsupervised, or under segmenter none no label volume at all, every
+planned crop then kept with no structure in it; and they write the same layout. The seed of a view
 comes from the salt, the subject and the view alone, not from the engine or the group, so two
 render groups on one folder that differ only by their attenuation block share every crop,
 isocentre and pose, and the reference engine seeds FleXray's own generators from the same number
 (its draws differ where its code differs; that is the point of the test).
 
     python tools/flexray_render.py --ct-root <dir> --out <dir> --subjects 250 --salt <s> \\
-        --spineps <dir> [--moose <dir>] [--device cuda] [--engine blocks|flexray-runtime] \\
+        [--spineps <dir>] [--moose <dir>] [--device cuda] [--engine blocks|flexray-runtime] \\
         [--blocks KEY=VALUE]... [--subject ID]...
     python tools/flexray_render.py segment --segmenter moose --ct-root <dir> \\
         --subjects <out>/render-subjects.json --weights <dir> --out <dir> [--device cuda] [--plan]
 
-A subject is a folder under --ct-root, one to four levels down, that holds ct.nii.gz; its masks
-are found under the segmenter's folder (--spineps, --moose; a render whose segmenter has no folder
-is refused in words before anything is written): SPINEPS's by the file *_seg-vert_msk.nii* whose
-name before _seg-vert names the subject, moosez's under <moose>/<subject>/ by the model's region
-in each file's path (tools/render_blocks.py, locate_spineps and locate_moose), each on the CT's
-grid, the shape and the affine its header gives, read once a subject (header_grid); a mask of
-another shape or another affine is skipped by name with that reason. Without --subject,
-subjects are taken in the order of rank_key("<salt>:subjects", id) until --subjects are kept, a
-subject with no mask, no structure FleXray supervises or an unreadable file passed over with its
-reason; with --subject the named ones alone are rendered, in that order. Each CT is read as
-float32 HU in its own voxel order with its affine, as FleXray's NIfTI packer reads it.
+A render needs the CTs, and the masks folder of its segmenter unless that is none. A subject is a
+folder under --ct-root, one to four levels down, that holds ct.nii.gz; its masks are found under the
+segmenter's folder (--spineps, --moose; a render whose segmenter has no folder is refused in words
+before anything is written, and segmenter none asks for none): SPINEPS's by the file
+*_seg-vert_msk.nii* whose name before _seg-vert names the subject, moosez's under
+<moose>/<subject>/ by the model's region in each file's path (tools/render_blocks.py,
+locate_spineps and locate_moose), each on the CT's grid, the shape and the affine its header
+gives, read once a subject (header_grid); a mask of another shape or another affine is skipped by
+name with that reason. Without --subject, subjects are taken in the order of
+rank_key("<salt>:subjects", id) until --subjects are kept, a subject with no mask, no structure
+FleXray supervises or an unreadable file passed over with its reason (under segmenter none only
+an unreadable file); with --subject the named ones alone are rendered, in that order. Each CT is
+read as float32 HU in its own voxel order with its affine, as FleXray's NIfTI packer reads it.
 
 Per view, in FleXray's order of draws: one crop by the crop sampler's weights, one isocentre, one
 pose, one gate and the attenuation factors, one render, scaled to 0 to 1 and written as a 16-bit
 grey PNG, <out>/images/<subject>_v<k>.png (65535 is 1; tools/domain_gap.py reads 16-bit PNGs at
 their depth). <out>/manifest.json holds the blocks record, the engine, the segmenter, FleXray's
 version, each kept subject's label record (the scheme, the mask files by name, the MOOSE ids
-present, the dropped names present, the unsupervised values seen, the moosez models missing) and
-per view the subject, the crop (z_start, z_stop, the pads), the isocentre (the MOOSE label and the
+present, the dropped names present, the unsupervised values seen, the moosez models missing; under
+segmenter none the scheme none, nothing read and a note saying so) and per view the subject, the
+crop (z_start, z_stop, the pads), the isocentre (the MOOSE label and the
 point in mm), the pose (rot_deg, xyz_mm, orthographic, sdd, delx, and grid, the pose's index under
 fluxray-grid, else null), the attenuation factors drawn for the labels the crop holds or null, and
 the seed. <out>/RENDER.json records the settings, the subjects kept and passed over, the versions
@@ -236,9 +244,12 @@ def has_masks(subject, segmenter, roots, grid):
     """Whether the segmenter's locator finds the subject's masks on the CT's grid under its
     folder: one SPINEPS mask, or under moose every model's file, since the segment job makes
     all five for each chosen CT and a render that read fewer would label less than the
-    replication's, with no word in the manifest but models_missing."""
+    replication's, with no word in the manifest but models_missing; always under none, which
+    reads no mask."""
     parts = blocks_tool()
     root = roots.get(segmenter)
+    if segmenter == rules().NO_SEGMENTER:
+        return True
     if segmenter == "spineps":
         return parts.locate_spineps(subject, root, grid) is not None
     found = parts.locate_moose(subject, root, grid)
@@ -249,9 +260,10 @@ def find_subjects(ct_root, segmenter=None, roots=None):
     """The subjects under ct_root (ct_subjects), as ids; with a segmenter named, only those
     whose masks that scheme's locator finds, on the CT's grid, under roots[segmenter], which
     must be given, as load_subject will find them, so the subject choice of tools/domain_gap.py
-    and the render agree on which CTs have masks."""
+    and the render agree on which CTs have masks; with segmenter none, which reads no mask,
+    every CT, no masks folder asked for."""
     found = ct_subjects(ct_root)
-    if segmenter is None:
+    if segmenter is None or segmenter == rules().NO_SEGMENTER:
         return found
     problems = schemes().scheme_problems(segmenter)
     if problems:
@@ -306,7 +318,8 @@ def load_subject(folder, subject, blocks, roots, supervised):
     """One subject read for rendering: the CT as read, its affine, the label volume of MOOSE's
     stored ids the segmenter block builds from its masks, and that volume's record; passed over
     when no mask is found, when the masks hold nothing, or nothing FleXray's protocol supervises,
-    since such a subject gives FleXray's sampler no crop to draw."""
+    since such a subject gives FleXray's sampler no crop to draw. Under segmenter none the label
+    is None and no subject is passed over for its labels, since the render reads none."""
     import numpy as np
 
     parts = blocks_tool()
@@ -316,6 +329,8 @@ def load_subject(folder, subject, blocks, roots, supervised):
         label, record = parts.NAMES["segmenter"][blocks.segmenter](subject, grid, roots)
     except parts.MaskProblem as problem:
         raise SkipSubject(str(problem)) from problem
+    if label is None:
+        return {"id": subject, "volume": volume, "affine": affine, "label": None, "record": record}
     if not label.any():
         raise SkipSubject("no structure in its masks")
     if not np.isin(np.unique(label), np.asarray(supervised)).any():
@@ -444,7 +459,8 @@ class BlocksEngine(Engine):
                 "grid": grid_record()}
 
     def prepare(self, subject):
-        """The volume windowed and clamped, the crops planned with what they hold, and weighed."""
+        """The volume windowed and clamped, the crops planned with what they hold (every planned
+        crop, holding nothing, when no label was read), and weighed."""
         parts, blocks = self.parts, self.blocks
         volume = parts.NAMES["hu_window"][blocks.hu_window](subject["volume"])
         volume = parts.NAMES["air_clamp"][blocks.air_clamp](volume)
@@ -532,12 +548,12 @@ class RuntimeEngine(Engine):
     def prepare(self, subject):
         """The pack and the loader: the HU window to float16 (CTPreprocessing.apply), the air clamp
         the loader applies (_apply_ct_hu_bounds), the crops planned and described as the packer
-        describes them (plan_z_crops, crop_z, crop_metadata), the background-only ones dropped,
-        and the weights of the training sampler (inverse_label_frequency_weights), or every crop
-        alike under crop_sampler=uniform."""
+        describes them (plan_z_crops, crop_z, crop_metadata), the background-only ones dropped
+        (every one kept, holding nothing, when no label was read), and the weights of the
+        training sampler (inverse_label_frequency_weights), or every crop alike under
+        crop_sampler=uniform."""
         import numpy as np
         import torch
-        from fxr.datasets.ct_crops import crop_metadata, crop_z
         from fxr.datasets.preprocessing import CTPreprocessing
         from fxr.datasets.runtime import _apply_ct_hu_bounds
         from fxr.datasets.sampling import inverse_label_frequency_weights
@@ -547,15 +563,9 @@ class RuntimeEngine(Engine):
                                      hu_min=AIR_HU, air_clamp_hu=AIR_CLAMP_HU)
         crops = []
         for spec in self.crop_specs(int(subject["volume"].shape[-1])):
-            label_crop = crop_z(subject["label"], spec, fill_value=0)
-            if not np.any(label_crop != 0):
-                continue
-            meta = crop_metadata(spec, label_crop, subject_id=subject["id"],
-                                 source_sample_id=subject["id"])
-            crops.append({"spec": spec, "z_start": spec.z_start, "z_stop": spec.z_stop,
-                          "pad_before": spec.z_pad_before, "pad_after": spec.z_pad_after,
-                          "ids": [int(i) for i in meta["crop_foreground_label_ids"]],
-                          "centroids": [tuple(c) for c in meta["fg_centroids_ijk"]]})
+            crop = packed_crop(spec, subject)
+            if crop is not None:
+                crops.append(crop)
         if not crops:
             raise SkipSubject("no crop holds a structure")
         if self.blocks.crop_sampler == "uniform":
@@ -579,19 +589,29 @@ class RuntimeEngine(Engine):
         renderer: the crop, the volume with air in the pads, the native labels validated by the
         projection (the pack's label item carries a channel axis and the loader batches one
         subject, so the projection reads (1, 1, D, H, W) and gives back (1, D, H, W), as it does
-        for fxr-render), and the affine moved to the crop."""
-        import numpy as np
+        for fxr-render), or None when no label was read, and the affine moved to the crop."""
         import torch
         from fxr.datasets.ct_crops import crop_z, offset_affine
 
         crop = prepared["crops"][self.draw_crop(prepared["weights"])]
         spec = crop["spec"]
         volume = torch.from_numpy(crop_z(prepared["volume"], spec, fill_value=AIR_HU))[None]
-        label = torch.from_numpy(crop_z(prepared["label"], spec, fill_value=0).astype(np.int64))
-        native = self.projection.validated_native_ids(label[None, None].to(self.device),
-                                                      source=f"CT {subject}", require_mapped=True)
+        native = self.native_labels(prepared["label"], spec, subject)
         affine = torch.from_numpy(offset_affine(prepared["affine"], spec))
         return crop, volume.to(self.device), native, affine
+
+    def native_labels(self, label, spec, subject):
+        """The crop's labels validated by FleXray's projection as its loader hands them on, or
+        None when no label was read (segmenter none, which only the explicit-pose path takes)."""
+        import numpy as np
+        import torch
+        from fxr.datasets.ct_crops import crop_z
+
+        if label is None:
+            return None
+        cropped = torch.from_numpy(crop_z(label, spec, fill_value=0).astype(np.int64))
+        return self.projection.validated_native_ids(cropped[None, None].to(self.device),
+                                                    source=f"CT {subject}", require_mapped=True)
 
     def view(self, prepared, subject):
         """One view through SegmentationDRRRuntime.render, as fxr-render calls it
@@ -681,6 +701,29 @@ class RuntimeEngine(Engine):
             drawn = sample_attenuation(config.attenuation_range, len(self.supervised), self.device,
                                        torch.float32, config.attenuation_dist)
         return dict(zip(self.supervised, (float(f) for f in drawn.tolist()), strict=True))
+
+
+def packed_crop(spec, subject):
+    """One planned crop as FleXray's packer describes it (crop_z, crop_metadata): the spec, its
+    z range and pads, the native ids it holds and their centroids; None for a crop whose labels
+    are background alone, which the packer drops; every crop, holding nothing, when no label
+    was read."""
+    import numpy as np
+    from fxr.datasets.ct_crops import crop_metadata, crop_z
+
+    crop = {"spec": spec, "z_start": spec.z_start, "z_stop": spec.z_stop,
+            "pad_before": spec.z_pad_before, "pad_after": spec.z_pad_after, "ids": [],
+            "centroids": []}
+    if subject["label"] is None:
+        return crop
+    label_crop = crop_z(subject["label"], spec, fill_value=0)
+    if not np.any(label_crop != 0):
+        return None
+    meta = crop_metadata(spec, label_crop, subject_id=subject["id"],
+                         source_sample_id=subject["id"])
+    crop["ids"] = [int(i) for i in meta["crop_foreground_label_ids"]]
+    crop["centroids"] = [tuple(c) for c in meta["fg_centroids_ijk"]]
+    return crop
 
 
 def grid_record():
@@ -812,7 +855,8 @@ def log(text):
 
 def check_arguments(subjects, salt, device, blocks, engine, roots):
     """The arguments held to what the engines take, the blocks' faults in engine_problems' words
-    and a segmenter with no masks folder refused, before anything is written."""
+    and a segmenter with no masks folder refused, before anything is written; segmenter none
+    reads no mask, so it asks for no folder."""
     found = rules().engine_problems(engine, blocks)
     if found:
         raise rules().RenderBlockError("; ".join(found))
@@ -822,6 +866,8 @@ def check_arguments(subjects, salt, device, blocks, engine, roots):
         raise ValueError("salt must be a non-empty string")
     if str(device).split(":")[0] not in ("cpu", "cuda"):
         raise ValueError("device must be cpu or cuda")
+    if blocks.segmenter == rules().NO_SEGMENTER:
+        return
     root = roots.get(blocks.segmenter)
     if root is None:
         raise ValueError(f"segmenter={blocks.segmenter}: no masks folder given "
@@ -901,8 +947,8 @@ def render_subjects(ct_root, out, subjects, salt, device, *, blocks, engine="blo
                     subject_ids=None, roots=None):
     """Render blocks.views views of each of the first `subjects` usable CTs under ct_root, in the
     salted order, or of the subject_ids given, into out, by the engine named, the masks under
-    roots[blocks.segmenter]; returns what was rendered, the subjects kept and the ones passed
-    over with their reasons."""
+    roots[blocks.segmenter] (none read under segmenter none); returns what was rendered, the
+    subjects kept and the ones passed over with their reasons."""
     roots = {name: Path(path) for name, path in (roots or {}).items() if path is not None}
     check_arguments(subjects, salt, device, blocks, engine, roots)
     started = time.perf_counter()
@@ -1290,7 +1336,8 @@ def render_main(argv):
     parser.add_argument("--engine", default="blocks", choices=rules().ENGINES)
     parser.add_argument("--blocks", action="append", default=[], metavar="KEY=VALUE",
                         help="a render block, repeatable; none is FleXray's released recipe on "
-                             "SPINEPS masks")
+                             "SPINEPS masks; segmenter=none reads no masks, with a recipe that "
+                             "reads no labels")
     parser.add_argument("--subject", action="append", default=None, metavar="ID",
                         help="a subject to render, repeatable; none takes the salted order")
     parser.add_argument("--spineps", type=Path, default=None, help="the SPINEPS masks folder")

@@ -3,10 +3,12 @@
 # `schwingnet <word> [<id>]`, so the owner never types a grid command again (his rule of
 # 2026-10-21 19:37 UTC). The gate's side brings the checkout to main first (a clone at ~/SchwingNet
 # when there is none, else a fast-forward) and then runs `bash ~/SchwingNet/grid/gate.sh <word> [<id>]`.
-# On the login node this script runs only bash, git, hpcworker, squeue, sacct, scancel, flock, awk,
-# sed and coreutils (warrior kills python by name); every byte of work is a Slurm job, queued through
-# hpcworker's `job submit` with a class and no partition or QoS of ours (grid/hpcw.sh, issue #77),
-# and every Python step of those jobs runs inside the container (grid/box.sh, grid/bin/).
+# On the login node this script runs only bash, git (with gh as its sign-in for a carried folder),
+# hpcworker, squeue, sacct, scancel, flock, awk, sed and coreutils (warrior kills python by name);
+# every byte of work is a Slurm job, queued through hpcworker's `job submit` with a class and no
+# partition or QoS of ours (grid/hpcw.sh, issue #77), and every Python step of those jobs runs inside
+# the container (grid/box.sh, grid/bin/). The one exception is a carried folder's copy, which git
+# makes here as the gate's side fetches main, since it is a copy and no computation (word_fetch_carried).
 #
 #   start           the whole graph, with Slurm dependencies, once:
 #                     setup        the container and the pixi environments, only when pixi.lock
@@ -37,7 +39,10 @@
 #   fetch <id>      one set of grid/fetch-xray.json, a credentialed one with ~/.netrc, banked and catalogued;
 #                   or one source of grid/run-platform-fetch.sh's --gated-ids (CADS, RSNA RATIC, RSPECT,
 #                   ReXGradient once its token or link file is in place; the full NLST on the owner's yes),
-#                   after any live X-ray fetch
+#                   after any live X-ray fetch; or one carried folder of grid/carry/, a commit a cloud
+#                   session pushed to a private branch, fetched with git on this node and checked file by
+#                   file against its SHA256SUMS before it lands, with no job (the owner's word of
+#                   2026-10-28 17:24 UTC for the Claude project's shared folder)
 #   explore <id>    one look inside a fetched set (tools/explore.py, grid/explore.sbatch): the first send
 #                   queues one job for the listing of its raw folder and zips and, for a set the gate
 #                   names one for (explore_against), the comparison with it by name and content; the
@@ -83,12 +88,22 @@
 #   bench <name>    one public model's benchmark as its authors published it (#287, the owner's word and
 #                   count of 2026-10-25): flexray_carmlspine, flexray_deepfluoro or xvr_deepfluoro, each one
 #                   GPU job (grid/bench.sbatch, tools/bench_public.py) once its fetch has landed; the next
-#                   send prints logs/BENCH-<name>.md, and every later one prints it again and queues nothing;
-#                   and flexray_drr_gap, the DRR domain-gap study (tools/domain_gap.py) as one GPU job of
-#                   the same shape, once FleXray's weights, a whole sample index, the TotalSegmentator CTs,
-#                   the SPINEPS masks (spineps), the MOOSE masks (moose, which flexray_drr_seg makes) and
-#                   the ImageNet file are there, FluXray read when fetched and skipped with its reason
-#                   otherwise; only its summary leaves the grid, through grid/redact.sed; and
+#                   send prints logs/BENCH-<name>.md, and every later one prints it again and queues nothing,
+#                   but for a report that ended in failure on older code (#312) or whose job BENCH_RERUNS
+#                   lists, the owner's count for one more run, each kept under its job's number and queued once more;
+#                   and flexray_drr_gap, the DRR domain-gap study (tools/domain_gap.py), sharded (the
+#                   owner's words of 2026-10-27 17:51 UTC and 2026-10-28 00:23 UTC): three GPU jobs on
+#                   any card of the gpu class (grid/drr-gap.sbatch), prepare, an array of DRR_GAP_TASKS
+#                   (16) shard tasks afterany it and
+#                   the merge afterany the array, all queued or none, each step run from prepare's copy of
+#                   the code and none holding the checkout, once FleXray's weights, a whole sample index,
+#                   the TotalSegmentator CTs and the ImageNet file are there; FluXray, the SPINEPS masks
+#                   (spineps) and the MOOSE masks (moose, which flexray_drr_seg makes) are each read where
+#                   they are there and the groups that need one skipped with its reason otherwise, since
+#                   a DRR is a projection of the CT alone and the groups that read no label render
+#                   without masks (the owner's word of 2026-10-27), and the send says which are read; a
+#                   send while any of the three is live prints the study's PROGRESS.txt, which status
+#                   shows too, and refuses; only its summary leaves the grid, through grid/redact.sed; and
 #                   flexray_drr_seg, one GPU job before it (the owner's word of 2026-10-26: MOOSE labels
 #                   for the FleXray replication, SPINEPS for production): the study's choice of CTs
 #                   (tools/domain_gap.py plan) and MOOSE on exactly those (tools/flexray_render.py segment),
@@ -125,13 +140,22 @@
 #                   job (grid/realism.sbatch, tools/realism.py) once its inputs have landed and the stage before
 #                   it has finished; the next send prints logs/REALISM-<stage>.md, and every later one prints it
 #                   again and queues nothing
+#   literature <list>  one reading list's papers fetched onto the grid (the owner's word of 2026-10-27
+#                   23:00 UTC; grid/literature.sbatch, grid/literature_fetch.py, the list grid/literature/<list>.csv):
+#                   PMC's open-access copies, Elsevier's through its API with the key and institutional token
+#                   the key route wrote, and the open copies Semantic Scholar names, under the size rule, into
+#                   the landing literature_<list>, 0700; queued as one batch job, the next send prints
+#                   logs/LITERATURE-<list>.md, which names every paper it could not get, keeps it under its job's
+#                   number and queues nothing, and the send after that fetches again what is still missing
 #   stop            cancel the gate's own jobs that are still queued or running, and nothing else
 #   cancel <job>    cancel one of the gate's own live jobs and every other live job its word queued
-#                   with it (a fetch's bank and catalog), and nothing else
+#                   with it (a fetch's bank and catalog, the DRR domain-gap study's three jobs), and nothing else
 #
 # While a version 1 run, a sweep, an experiment run, a benchmark, an anomaly stage, a bordercall stage, the census or a
 # realism stage lasts, grid/logs/HOLD names its job and commit (grid/v1-driver.sbatch, grid/sweep-driver.sbatch,
-# grid/experiment-driver.sbatch, grid/bench.sbatch, grid/anomaly.sbatch, grid/bordercall.sbatch, grid/census.sbatch, grid/realism.sbatch); the gate's side skips its fast-forward while the file is there, and every word but a refused one
+# grid/experiment-driver.sbatch, grid/bench.sbatch, grid/anomaly.sbatch, grid/bordercall.sbatch, grid/census.sbatch,
+# grid/realism.sbatch; not the DRR domain-gap study's steps, grid/drr-gap.sbatch, which run from a copy of their
+# code); the gate's side skips its fast-forward while the file is there, and every word but a refused one
 # clears a hold whose job Slurm no longer holds, so the run's later steps run the code it
 # recorded. One file holds one job, so each run that takes it waits afterany on every other one
 # still live (checkout_holders) rather than run beside it.
@@ -169,6 +193,8 @@ RUNS=${RUNS:-/rs/rs_grp_oschome/go2432/runs}
 # code part naming the code its rows run and the plan's bytes, as `tools/block_sweep.py state` prints it.
 SMOKE=${SMOKE:-/rs/rs_grp_oschome/go2432/smoke}
 MODELS=${MODELS:-/rs/rs_grp_oschome/go2432/models}
+# Each benchmark's results, <name>/ (grid/bench.sbatch, grid/drr-gap.sbatch), where status reads a PROGRESS.txt.
+BENCH_ROOT=${BENCH_ROOT:-/rs/rs_grp_oschome/go2432/bench}
 WEIGHTS=$MODELS/resnet18-f37072fd.pth
 SWEEP_BANK=${SWEEP_BANK:-$DATA_ROOT/realxray/carmlspine_sweep}
 # The anomaly route's stages write under ANOMALY_ROOT (grid/anomaly.sbatch reads the same default from
@@ -176,20 +202,41 @@ SWEEP_BANK=${SWEEP_BANK:-$DATA_ROOT/realxray/carmlspine_sweep}
 ANOMALY_ROOT=${ANOMALY_ROOT:-$VOLUME/go2432/anomaly}
 G3_SPLIT=${G3_SPLIT:-$HOME/split_final.json}
 NETRC=${NETRC:-$HOME/.netrc}
+# The DRR domain-gap study's array (bench flexray_drr_gap, grid/drr-gap.sbatch): how many shard tasks
+# share its units, a committed default changed by pull request, since a gate word carries no option
+# and the owner's count of jobs decides it. Its three jobs ask no partition, so the gpu class puts
+# each on whichever of its partitions frees first (the owner's words of 2026-10-28 00:23 UTC, "shard
+# it to more gpus like 16" and "drop the requirement for h200 unless its a memory problem").
+DRR_GAP_TASKS=16
+# The benchmarks the owner's word and count let run once more although a report of theirs stands,
+# each as <id>:<the job that report's first line names>: a committed list changed by pull request,
+# as DRR_GAP_TASKS is, since a gate word carries no option. A send of bench <id> whose standing
+# report names a job listed beside the id, from a commit other than the checkout's, keeps that report
+# under its job's number, as a failure on older code is kept (#312), and queues the benchmark again;
+# the new report names its own job, which no entry lists, so an entry queues its benchmark once and
+# every later send prints the new report and queues nothing. A run that writes no report (its merge
+# cut short, or its prepare never started) leaves none standing, and the next send queues the
+# benchmark again, as it does wherever no report stands, so that send waits for the owner's word.
+# flexray_drr_gap:40828920 is the owner's
+# tap of 2026-10-28 16:28 UTC, "Rerun, family as PREREG says", one more run of the DRR domain-gap
+# study's 18 jobs (prepare, 16 shards, the merge) once FluXray's reader was fixed (#441) and the
+# family set (#442), and his word of 22:58 UTC that day, "The FluXray rerun: go, and which project
+# runs it., this project can run it now".
+BENCH_RERUNS="flexray_drr_gap:40828920"
 LOGS=$REPO/grid/logs
 STATE=$LOGS/GATE_JOBS.txt
-WORDS="start status leaks v1 latency fetch explore dropzip unpack nodequota folders samples sweep bank experiment bench anomaly bordercall census realism stop cancel"
+WORDS="start status leaks v1 latency fetch explore dropzip unpack nodequota folders samples sweep bank experiment bench anomaly bordercall census realism literature stop cancel"
 ENVS="default train-cpu train-gpu telemetry"
 
 word=${1:-}
 id=${2:-}
 # Matched whole, so one argument holding two words ("v1 latency") is refused and never runs nothing.
 case "$word" in
-  start|status|leaks|v1|latency|fetch|explore|dropzip|unpack|nodequota|folders|samples|sweep|bank|experiment|bench|anomaly|bordercall|census|realism|stop|cancel) ;;
+  start|status|leaks|v1|latency|fetch|explore|dropzip|unpack|nodequota|folders|samples|sweep|bank|experiment|bench|anomaly|bordercall|census|realism|literature|stop|cancel) ;;
   "") echo "refusing: no word; one of: $WORDS"; exit 64 ;;
   *) echo "refusing: '$word' is not one of: $WORDS"; exit 64 ;;
 esac
-if [ "$word" = fetch ] || [ "$word" = explore ] || [ "$word" = dropzip ] || [ "$word" = unpack ] || [ "$word" = sweep ] || [ "$word" = bank ] || [ "$word" = bench ] || [ "$word" = anomaly ] || [ "$word" = bordercall ] || [ "$word" = census ] || [ "$word" = realism ]; then
+if [ "$word" = fetch ] || [ "$word" = explore ] || [ "$word" = dropzip ] || [ "$word" = unpack ] || [ "$word" = sweep ] || [ "$word" = bank ] || [ "$word" = bench ] || [ "$word" = anomaly ] || [ "$word" = bordercall ] || [ "$word" = census ] || [ "$word" = realism ] || [ "$word" = literature ]; then
   [ $# -eq 2 ] || { echo "refusing: $word takes exactly one id"; exit 64; }
   case "$id" in ""|*[!a-z0-9_]*) echo "refusing: an id is lower-case letters, digits and _"; exit 64 ;; esac
   [ ${#id} -le 40 ] || { echo "refusing: an id is at most 40 characters"; exit 64; }
@@ -240,14 +287,14 @@ submit() {  # submit WHAT CLASS [K=V...] [job submit options...] -- SCRIPT: the 
 gate_ids() {  # every job id the gate's list names, oldest first
   [ -f "$STATE" ] && awk '{ print $1 }' "$STATE"
 }
-QUEUED=""
+QUEUED="" SQUEUE_ANSWERED=""
 snapshot() {  # what Slurm holds for WHO, read once per word; a failed squeue refuses the word
   local out
   if ! out=$("$SQUEUE" -h -u "$WHO" -o '%i' 2>/dev/null); then
     echo "refusing: squeue failed, so the gate cannot tell which of its jobs are queued or running; send the word again"
     return 75
   fi
-  QUEUED=" $(echo "$out" | sed 's/_.*//' | sort -u | tr '\n' ' ') "
+  QUEUED=" $(echo "$out" | sed 's/_.*//' | sort -u | tr '\n' ' ') " SQUEUE_ANSWERED=yes
 }
 live_ids() {  # the gate's jobs Slurm still holds, queued or running (an array as its base id)
   gate_ids | sort -u | while read -r job; do
@@ -324,7 +371,10 @@ checkout_holders() {  # afterany:<job> for every live job of the gate's that hol
   # A version 1 run, a sweep, an experiment run, a benchmark, an anomaly stage, a bordercall stage and the census each write grid/logs/HOLD, one file
   # naming one job, and the first of two side by side to end would clear it while the other still
   # runs, whose end check then finds the checkout moved and throws the run away; so each waits for
-  # the others, a sweep sent while a benchmark lasts up to its 12 hours among them.
+  # the others, a sweep sent while a benchmark lasts up to its 12 hours among them. The DRR domain-gap
+  # study's three jobs (bench_flexray_drr_gap, _shard, _merge) match too, though they run from a copy
+  # of their code and hold no HOLD, so a run sent while the study lasts waits for it as it waited for
+  # the study's one job before: bench flexray_drr_seg among them, which writes the masks it reads.
   local job waits=""
   [ -f "$STATE" ] || return 0
   for job in $(awk '$3 == "v1_driver" || $3 == "sweep" || $3 ~ /^experiment_[0-9]+$/ || $3 ~ /^bench_[a-z_]+$/ || $3 ~ /^anomaly_[a-z_]+$/ || $3 ~ /^bordercall_[a-z]+$/ || $3 ~ /^census_[a-z]+$/ { print $1 }' "$STATE" | sort -u); do
@@ -416,6 +466,27 @@ newest_jobs() {  # " <id> <id> ... ": the newest job the gate submitted for each
 }
 what_of() {  # what_of ID: what the gate recorded job ID as
   awk -v j="$1" '$1 == j { what = $3 } END { print what }' "$STATE" 2>/dev/null
+}
+# sacct says a queued job is PENDING and no more, so a job that waits hours reads the same whether
+# Slurm is waiting for a node to come free or will never start it under its partition's or QoS's
+# limits; squeue's reason tells the two apart, and its expected start says how long the first is.
+# The reason is the one field of the job list Slurm may write in words of its own, so it passes the
+# same redaction as a log's lines; a row the redaction cuts short is dropped, never shown in part.
+pending_reasons() {  # one squeue read of WHO's pending jobs: id|base id|reason|expected start per row, nothing where squeue does not answer
+  "$SQUEUE" -h -u "$WHO" -t PENDING -o '%i|%r|%S' 2>/dev/null | LC_ALL=C tr -cd '\12\40-\176' | sed -r -f "$REPO/grid/redact.sed" \
+    | awk -F'|' 'NF == 3 && $1 ~ /^[0-9]/ { base = $1; sub(/_.*/, "", base); print $1 "|" base "|" substr($2, 1, 80) "|" substr($3, 1, 19) }'
+}
+waiting_for() {  # waiting_for ID STATE PENDING: what a PENDING job waits for, as a tail for its sacct line, else nothing
+  # An array split by Slurm, one task held or requeued apart from the rest, has a row for each part,
+  # so the row of the same id comes first and its array's first row only where none has that id.
+  [ "$2" = PENDING ] || return 0
+  awk -F'|' -v job="$1" 'function tail(reason, start) {
+      return ", waiting: " reason (start ~ /^[0-9][0-9][0-9][0-9]-/ ? ", start expected " start " grid time" : "") }
+    $3 == "" { next }
+    $1 == job { exact = tail($3, $4); exit }
+    { base = job; sub(/_.*/, "", base) }
+    $2 == base && first == "" { first = tail($3, $4) }
+    END { print (exact != "" ? exact : first) }' <<< "$3"
 }
 masked() {  # every line status shows of a log or a stage report: masked, then cut
   sed -r -f "$REPO/grid/redact.sed" | cut -c "1-$LINE_CHARS"
@@ -612,21 +683,27 @@ word_status() {
     -f "$REPO/grid/status-page.awk"
 }
 status_sections() {  # every section of status whole, in the order the page shows them
-  local ids run lines job name state elapsed code node probe
-  # The space first and the sweeps' progress, the one live view of a sweep, after it; then the
-  # sample manifest, which once came after the jobs, where the page's end cut it.
+  local ids run lines job name state elapsed code node probe pending
+  # The space first and the sweeps' progress, the one live view of a sweep, after it, then each
+  # benchmark's, the DRR domain-gap study's while its shards run; then the sample manifest, which
+  # once came after the jobs, where the page's end cut it.
   word_space
   sweep_progress | head -n "$SWEEP_LINES_SHOWN"
+  bench_progress
   samples_report
   ids=$(gate_ids | tail -n 60 | tr '\n' ',' | sed 's/,$//')
   if [ -z "$ids" ]; then
     echo "no job submitted by the gate yet; 'start' submits the graph"
   else
-    echo "## the gate's newest jobs (sacct): id, what, state, elapsed, exit code, node"
+    echo "## the gate's newest jobs (sacct): id, what, state, elapsed, exit code, node, and what a pending job waits for (squeue)"
     lines=$("$SACCT" -X -n -P -j "$ids" --format=JobID,JobName,State,Elapsed,ExitCode,NodeList 2>/dev/null)
+    # squeue is asked for reasons only where the word's own read of it answered and a job waits,
+    # so a slow scheduler costs status no second timeout and a quiet list no extra call.
+    pending=""
+    if [ -n "$SQUEUE_ANSWERED" ] && [[ "$lines" == *"|PENDING|"* ]]; then pending=$(pending_reasons); fi
     while IFS='|' read -r job name state elapsed code node; do
       [ -n "$job" ] || continue
-      echo "  $job $(what_of "${job%%_*}") $state $elapsed $code $node"
+      echo "  $job $(what_of "${job%%_*}") $state $elapsed $code $node$(waiting_for "$job" "$state" "$pending")"
     done <<< "$lines"
     fetch_progress
     failed_tails "$lines"
@@ -700,6 +777,26 @@ sweep_progress() {  # for each plan under SMOKE, its newest sweep's PROGRESS.txt
     echo "## sweep $(basename "$plan"), $(basename "$(dirname "$progress")") ($(date -r "$progress" '+%F %T'))" \
       | LC_ALL=C tr -cd '\11\12\40-\176' | masked
     progress_lines "$progress" | LC_ALL=C tr -cd '\11\12\40-\176' | smoke_paths | masked | sed 's/^/  /'
+  done
+}
+
+# A benchmark whose tool keeps <name>/PROGRESS.txt under BENCH_ROOT, the DRR domain-gap study's
+# (grid/drr-gap.sbatch), shows it here while it runs: the study's one live view from outside the
+# grid, as a sweep's is, at most BENCH_PROGRESS_LINES short lines of counts and group ids, each masked.
+BENCH_PROGRESS_LINES=60
+bench_progress_of() {  # bench_progress_of NAME: one benchmark's PROGRESS.txt as status shows it, its heading and its first lines, masked
+  local progress=$BENCH_ROOT/$1/PROGRESS.txt
+  [ -f "$progress" ] || return 0
+  echo "## bench $1, progress ($(date -r "$progress" '+%F %T'))" | LC_ALL=C tr -cd '\11\12\40-\176' | masked
+  head -n "$BENCH_PROGRESS_LINES" "$progress" | LC_ALL=C tr -cd '\11\12\40-\176' | masked | sed 's/^/  /'
+}
+bench_progress() {  # every benchmark under BENCH_ROOT that keeps a PROGRESS.txt, by its folder's name
+  local folder name
+  for folder in "$BENCH_ROOT"/*/; do
+    name=$(basename "$folder")
+    # A benchmark's folder is named by its id; any other name is no benchmark's and is passed over.
+    case "$name" in ""|*[!a-z0-9_]*) continue ;; esac
+    bench_progress_of "$name"
   done
 }
 
@@ -806,6 +903,8 @@ fetch_section() {  # fetch_section ID: open or credentialed, the section of grid
 }
 word_fetch() {
   local section setup busy waits="" one args=(--only "$id")
+  # A folder a cloud session carried to GitHub comes by git on this node, with no job (word_fetch_carried).
+  if [ -f "$REPO/grid/carry/$id.txt" ]; then word_fetch_carried; return; fi
   # A look at the set taken before this fetch no longer says what it holds (word_explore).
   rm -f "$LOGS/EXPLORE-$id.md" "$LOGS/EXPLORE-$id.md.key"
   section=$(fetch_section "$id")
@@ -862,6 +961,115 @@ word_fetch_gated() {  # one gated CT source through the platform script, recorde
   echo "$out" | sed -n 's/^\([a-z0-9_]*\): job \([0-9][0-9]*\).*/\2 \1/p' | while read -r one name; do
     record "$one" "dp_$name"
   done
+  return $rc
+}
+
+# A carried folder (grid/carry/<id>.txt): files a cloud session can hand on only through GitHub, as a
+# Claude project's shared folder, which does not follow the owner to another project (the owner's
+# word of 2026-10-28 17:24 UTC, "push these to the grid to the new project to fine there"). They ride
+# as one commit on a branch of a private repository, and the fetch word brings that commit's tree
+# onto the data root as the landing <id> with git on this node, as the gate's side fetches main: a
+# copy and no computation, so no job is queued. The record pins the repository, the branch, the
+# commit, the files and bytes its tree holds and the sha256 of its SHA256SUMS, which lists every other
+# file; each is checked before the folder is put in place, so what lands is exactly what the session
+# sent, or nothing. The size rule's lock is held from the room's reading until the folder is in
+# place, so nothing is admitted beside bytes the rule has not counted, and the git copy counts
+# against the room with the files while it lasts. A later send checks the landing against
+# SHA256SUMS again and fetches nothing.
+CARRY_BASE=${CARRY_BASE:-https://github.com}
+CARRY_TIMEOUT=${CARRY_TIMEOUT:-480}
+carry_field() {  # carry_field KEY: the one value the record gives KEY on a line "KEY VALUE"; status 1 where it gives none, several or more than one word
+  awk -v k="$1" '$1 == k { n++; v = $2; if (NF != 2) n++ } END { if (n != 1) exit 1; print v }' "$REPO/grid/carry/$id.txt"
+}
+carry_gh() {  # where gh is, on PATH or where a login shell finds it, as the grid gate's own gh_on_path looks; status 1 where it is not
+  local d
+  command -v gh 2>/dev/null && return 0
+  for d in "$HOME/bin" "$HOME/.local/bin" "$HOME/opt/gh/bin"; do [ -x "$d/gh" ] && { echo "$d/gh"; return 0; }; done
+  return 1
+}
+carry_fetch() {  # carry_fetch GIT_DIR URL BRANCH: the branch's tip fetched as refs/carry, through gh's own sign-in where gh is found
+  # A ~/.gitconfig helper may hold another account's sign-in, as the grid gate's artifacts word found,
+  # so gh's comes first, as that word fetches.
+  local gh helper=()
+  gh=$(carry_gh) && helper=(-c credential.helper= -c "credential.helper=!env -u GITHUB_TOKEN -u GH_TOKEN $gh auth git-credential")
+  GIT_TERMINAL_PROMPT=0 timeout "$CARRY_TIMEOUT" git ${helper[@]+"${helper[@]}"} --git-dir="$1" fetch -q --no-tags --depth 1 "$2" "+refs/heads/$3:refs/carry" < /dev/null
+}
+carry_tree() {  # carry_tree GIT_DIR COMMIT: "<files> <bytes> <others>", the tree's plain files, their bytes, and its entries that are none (links, submodules)
+  git --git-dir="$1" ls-tree -r -l --full-tree "$2" | awk -F '\t' '
+    { split($1, f, " "); if (f[1] == "100644" || f[1] == "100755") { n++; b += f[4] } else o++ }
+    END { printf "%d %.0f %d\n", n, b, o }'
+}
+carry_check() {  # carry_check FOLDER MANIFEST FILES: 0 where SHA256SUMS hashes to MANIFEST, lists every other file once and each matches; the reason otherwise
+  local f=$1 listed found count out
+  [ "$(sha256sum < "$f/SHA256SUMS" 2>/dev/null | cut -c1-64)" = "$2" ] || { echo "its SHA256SUMS is not the one the record names"; return 1; }
+  listed=$(sed 's/^[0-9a-f]\{64\}  //' "$f/SHA256SUMS" | LC_ALL=C sort)
+  found=$(cd "$f" && find . -path ./meta/CARRIED -prune -o -type f ! -path ./SHA256SUMS -print | sed 's|^\./||' | LC_ALL=C sort)
+  [ "$listed" = "$found" ] || { echo "SHA256SUMS does not list exactly the files there"; return 1; }
+  count=$(printf '%s\n' "$listed" | grep -c .)
+  [ "$count" = $(( $3 - 1 )) ] || { echo "SHA256SUMS lists $count files where the record counts $(( $3 - 1 )) beside it"; return 1; }
+  out=$(cd "$f" && sha256sum -c --quiet --strict SHA256SUMS 2>&1) && return 0
+  echo "$(printf '%s\n' "$out" | grep -c 'FAILED') of its files do not match SHA256SUMS"
+  return 1
+}
+carry_land() {  # carry_land REPO BRANCH COMMIT FILES BYTES MANIFEST: the commit fetched to $stage, checked, checked out, checked again and put in place as $dest
+  local n b o why
+  if [ -e "$stage" ] || [ -L "$stage" ]; then
+    [ -d "$stage" ] && [ ! -L "$stage" ] || { echo "refusing: .carry_$id on the data root is no folder of this word's; nothing was fetched"; return 2; }
+    rm -rf "$stage" || { echo "fetch $id failed: an earlier send's .carry_$id could not be cleared"; return 1; }
+  fi
+  ( umask 077; mkdir "$stage" "$stage/tree" && git init -q --bare "$stage/git" ) > /dev/null 2>&1 \
+    || { echo "fetch $id failed: its git copy could not be made on the data root"; return 1; }
+  if ! carry_fetch "$stage/git" "$CARRY_BASE/$1.git" "$2" > "$stage/fetch.log" 2>&1; then
+    echo "fetch $id failed: git could not fetch the branch $2 of $1 within $CARRY_TIMEOUT seconds; what it said last:"
+    # with the data root cut, since no path under it leaves the grid (a full volume names the git copy's)
+    tail -n 3 "$stage/fetch.log" | printable | while IFS= read -r line; do echo "  ${line//"$DATA"/<data root>}"; done
+    return 1
+  fi
+  [ "$(git --git-dir="$stage/git" rev-parse -q --verify refs/carry 2>/dev/null)" = "$3" ] \
+    || { echo "refusing: the branch $2 of $1 is not at the record's commit ${3:0:12}; nothing was put in place"; return 2; }
+  read -r n b o <<< "$(carry_tree "$stage/git" "$3")"
+  [ "$n" = "$4" ] && [ "$b" = "$5" ] && [ "$o" = 0 ] \
+    || { echo "refusing: the commit holds $n files of $b bytes and $o other entries, where the record says $4 files of $5 bytes and none other; nothing was put in place"; return 2; }
+  ( umask 077; GIT_TERMINAL_PROMPT=0 timeout "$CARRY_TIMEOUT" git --git-dir="$stage/git" --work-tree="$stage/tree" checkout -q -f "$3" -- . < /dev/null ) > /dev/null 2>&1 \
+    || { echo "fetch $id failed: git could not check the commit out within $CARRY_TIMEOUT seconds"; return 1; }
+  [ ! -e "$stage/tree/meta" ] || { echo "refusing: the commit has a meta at its top, where the landing keeps its record; nothing was put in place"; return 2; }
+  why=$(carry_check "$stage/tree" "$6" "$4") || { echo "refusing: $why; nothing was put in place"; return 1; }
+  ( umask 077; mkdir "$stage/tree/meta" && echo "carried $3 $4 $5 $(date -u '+%FT%TZ') $1 $2" > "$stage/tree/meta/CARRIED" ) \
+    || { echo "fetch $id failed: meta/CARRIED could not be written"; return 1; }
+  chmod 700 "$stage/tree" && mv -T "$stage/tree" "$dest" || { echo "fetch $id failed: the checked folder could not be put in place"; return 1; }
+  echo "  $id: carried at ${3:0:12} from the branch $2 of $1: $4 files, $5 bytes, each matching SHA256SUMS; the landing $id on the data root, 0700, with meta/CARRIED"
+}
+word_fetch_carried() {  # one carried folder brought onto the data root, or its landing checked again where it stands
+  local DATA=$DATA_ROOT repo branch commit files bytes manifest dest stage need rc why
+  repo=$(carry_field repo) && branch=$(carry_field branch) && commit=$(carry_field commit) && files=$(carry_field files) \
+    && bytes=$(carry_field bytes) && manifest=$(carry_field manifest) \
+    || { echo "refusing: grid/carry/$id.txt does not give each of repo, branch, commit, files, bytes and manifest once"; return 2; }
+  [[ "$repo" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] && [[ "$branch" =~ ^[A-Za-z0-9_./-]+$ ]] && [[ "$branch" != *..* ]] \
+    && [[ "$commit" =~ ^[0-9a-f]{40}$ ]] && [[ "$manifest" =~ ^[0-9a-f]{64}$ ]] \
+    && [[ "$files" =~ ^[1-9][0-9]{0,8}$ ]] && [[ "$bytes" =~ ^[1-9][0-9]{0,14}$ ]] \
+    || { echo "refusing: a value of grid/carry/$id.txt is not of its shape"; return 2; }
+  [ -d "$DATA" ] || { echo "refusing: there is no data root to land $id in"; return 2; }
+  dest=$DATA/$id stage=$DATA/.carry_$id
+  if [ -e "$dest" ] || [ -L "$dest" ]; then
+    [ -d "$dest" ] && [ ! -L "$dest" ] && [ "$(awk '{ print $2; exit }' "$dest/meta/CARRIED" 2>/dev/null)" = "$commit" ] \
+      || { echo "refusing: $id is on the data root already and holds no carry of ${commit:0:12}; nothing was changed (move it aside to fetch it again)"; return 2; }
+    why=$(carry_check "$dest" "$manifest" "$files") || { echo "fetch $id: carried earlier, but $why"; return 1; }
+    echo "  $id: carried at ${commit:0:12} on $(awk '{ print $5; exit }' "$dest/meta/CARRIED"); its $files files match SHA256SUMS again; nothing was fetched"
+    return 0
+  fi
+  # The pack git fetches holds the files' bytes again until the folder is in place, and a little more.
+  need=$(( 2 * bytes + bytes / 50 ))
+  exec 8> "$DATA/.size-rule.lock" || { echo "refusing: the size rule's lock on the data root could not be opened; nothing was fetched"; return 2; }
+  if ! flock -w "${SIZE_RULE_WAIT:-900}" 8; then
+    exec 8>&-
+    echo "refusing: another decision held the size check for ${SIZE_RULE_WAIT:-900} seconds; nothing was fetched"
+    return 75
+  fi
+  room_for "$need" "the folder and its git copy need" "nothing was fetched" \
+    && carry_land "$repo" "$branch" "$commit" "$files" "$bytes" "$manifest"
+  rc=$?
+  exec 8>&-
+  rm -rf "$stage"
   return $rc
 }
 
@@ -1066,17 +1274,15 @@ bench_inputs_missing() {  # what bench $id still lacks on the data root, one lin
         || { echo "xvr's DeepFluoro models (fetch hf_xvr_models first)"; return; }
       [ -f "$DATA_ROOT/hf_xvr_data/raw/deepfluoro/subject01/volume.nii.gz" ] || echo "xvr's DeepFluoro data (fetch hf_xvr_data first)" ;;
     flexray_drr_gap)
-      # The study's inputs in the order the job reads them (grid/bench.sbatch); FluXray is optional
-      # and never refused for, so word_bench only says when it is not there. The masks are not
-      # optional: every render group's CTs are chosen among those with masks under both segmenters,
-      # so with no SPINEPS or no MOOSE folder the six render groups render nothing and the job
-      # would answer none of the replication.
+      # The study's inputs in the order its prepare step reads them (grid/drr-gap.sbatch). FluXray and the two
+      # segmenters' masks are optional and never refused for, so word_bench only says which are
+      # there: a DRR is a projection of the CT alone, so the render groups that read no label
+      # (segmenter=none) render without any mask, and a group whose segmenter's masks are not there,
+      # or too few CTs have, is skipped by the study with that reason (the owner's word of 2026-10-27).
       find "$DATA_ROOT/hf_flexray_weights/raw" -maxdepth 3 -name ensemble.json -print -quit 2>/dev/null | grep -q . \
         || { echo "FleXray's weights (fetch hf_flexray_weights first)"; return; }
       samples_index > /dev/null || { echo "a whole sample index (the gate word samples makes it)"; return; }
       [ -d "$DATA_ROOT/totalsegmentator_v201" ] || { echo "the TotalSegmentator CTs at $DATA_ROOT/totalsegmentator_v201, which its render groups draw"; return; }
-      [ -d "$DATA_ROOT/spineps" ] || { echo "the SPINEPS masks at $DATA_ROOT/spineps, the production segmenter's labels"; return; }
-      [ -d "$DATA_ROOT/moose" ] || { echo "the MOOSE masks at $DATA_ROOT/moose (bench flexray_drr_seg makes them)"; return; }
       weights_ready || echo "the ImageNet ResNet-18 file at $WEIGHTS (the gate word start fetches it)" ;;
     flexray_drr_seg)
       # The segment job's inputs in the order it reads them: the CTs and the SPINEPS masks the plan
@@ -1131,31 +1337,109 @@ bench_failed_on_older_code() {  # a report whose last line is a nonzero exit, fr
   began=$(sed -n '1s/.*, commit \([0-9a-f]*\|unknown\),.*/\1/p' "$1")
   [ -n "$began" ] && [ -n "$(bench_job_of "$1")" ] && [ "$began" != "${commit:0:7}" ]
 }
+bench_rerun_allowed() {  # a report whose job BENCH_RERUNS lists beside the benchmark's id, from a commit not the checkout's
+  local job began
+  job=$(bench_job_of "$1")
+  began=$(sed -n '1s/.*, commit \([0-9a-f]*\|unknown\),.*/\1/p' "$1")
+  [ -n "$job" ] && [ -n "$began" ] && [ "$began" != "${commit:0:7}" ] || return 1
+  case " $BENCH_RERUNS " in *" $id:$job "*) return 0 ;; esac
+  return 1
+}
+drr_gap_masks() {  # one line on each segmenter's masks bench flexray_drr_gap will read
+  # The study waits afterany on a live bench flexray_drr_seg, as on every run that holds the
+  # checkout, so it reads the MOOSE masks that job wrote once it has ended, however it ended; a
+  # folder that holds fewer CTs' masks than a group needs to be tested is read as no masks, which
+  # the study's summary says, so this line says only where each folder is. While that job holds
+  # the checkout this word is read by the gate at the commit the job started from, so it is sent
+  # once the job has ended.
+  local name label maker
+  for name in spineps moose; do
+    label="the ${name^^} masks" maker=""
+    [ "$name" != moose ] || maker=" (bench flexray_drr_seg makes them)"
+    if [ -d "$DATA_ROOT/$name" ]; then
+      echo "  $label: in $DATA_ROOT/$name, read where enough CTs have them (the study's summary says how many)"
+    else
+      echo "  $label: not at $DATA_ROOT/$name$maker; the render groups that name segmenter=$name are skipped with that reason"
+    fi
+  done
+}
+drr_gap_live() {  # the study's live jobs, its prepare, its shard array and its merge, space-separated
+  { live_of bench_flexray_drr_gap; live_of bench_flexray_drr_gap_shard; live_of bench_flexray_drr_gap_merge; } | tr '\n' ' ' | sed 's/ $//'
+}
+drr_gap_jobs() {  # drr_gap_jobs [WAIT...]: the study's three jobs (grid/drr-gap.sbatch), prepare after WAIT, the shard array afterany it, the merge afterany the array; all of them or none
+  # The owner's word of 2026-10-27 17:51 UTC: sharded by the Lab Recipe (rules 3, 8, 9 and 10,
+  # grid/drr-gap.sbatch), on any card since the owner's word of 2026-10-28 00:23 UTC. Each step reads a file to tell whether the one before it did
+  # its part, so each waits afterany; the shards and the merge are handed prepare's job, so neither
+  # reads a step file an earlier chain left, and the merge the array's count, so it names each task.
+  local waits=("$@") study prepare shards merge opts
+  study=(BENCH="$id" DATA_ROOT="$DATA_ROOT" INDEX="$(samples_index)" MODELS="$MODELS" BENCH_ROOT="$BENCH_ROOT")
+  prepare=$(submit bench_flexray_drr_gap gpu "${study[@]}" STEP=prepare ${waits[@]+"${waits[@]}"} \
+    --cpus 16 --mem 64G --time 12:00:00 --no-requeue -- drr-gap.sbatch) || return 1
+  # Both or neither, as grid/run-leaks.sh queues its array and join: a prepare whose shards were
+  # refused would cut units nobody claims, and shards whose merge was refused would leave no report.
+  if ! depend_on "afterany:$prepare" || ! shards=$(submit bench_flexray_drr_gap_shard gpu "${study[@]}" STEP=shard PREPARE_JOB="$prepare" \
+    ${opts[@]+"${opts[@]}"} --array "0-$((DRR_GAP_TASKS - 1))" --cpus 16 --mem 64G --time 12:00:00 --no-requeue -- drr-gap.sbatch); then
+    "$SCANCEL" "$prepare" && echo "  cancelled prepare $prepare, since its shard array was refused"
+    return 1
+  fi
+  if ! depend_on "afterany:$shards" || ! merge=$(submit bench_flexray_drr_gap_merge gpu "${study[@]}" STEP=merge PREPARE_JOB="$prepare" \
+    SHARD_TASKS="$DRR_GAP_TASKS" ${opts[@]+"${opts[@]}"} --cpus 4 --mem 64G --time 04:00:00 --no-requeue -- drr-gap.sbatch); then
+    "$SCANCEL" "$prepare" "$shards" && echo "  cancelled prepare $prepare and the shard array $shards, since the merge was refused"
+    return 1
+  fi
+  echo "  the study: prepare $prepare, then the shard array $shards ($DRR_GAP_TASKS tasks, afterany $prepare), then the merge $merge (afterany $shards), each on the first card of the gpu class that frees"
+}
+drr_gap_progress() {  # the study's PROGRESS.txt, masked, as a send while it lasts prints it, or that it has none yet
+  [ -f "$BENCH_ROOT/flexray_drr_gap/PROGRESS.txt" ] || { echo "  the study has written no PROGRESS.txt yet: prepare starts it once it runs"; return 0; }
+  bench_progress_of flexray_drr_gap
+}
 word_bench() {  # one public model's benchmark (#287): queued once, its report printed on every later send
-  local report=$LOGS/BENCH-$id.md busy missing holds opts setup extra
-  extra=()
+  local report=$LOGS/BENCH-$id.md busy missing holds opts setup again=""
   case "$id" in
     flexray_carmlspine|flexray_deepfluoro|xvr_deepfluoro|flexray_drr_gap|flexray_drr_seg) ;;
     *) echo "refusing: bench takes flexray_carmlspine, flexray_deepfluoro, xvr_deepfluoro, flexray_drr_gap or flexray_drr_seg"; return 64 ;;
   esac
+  if [ "$id" = flexray_drr_gap ]; then
+    # Any of the study's three jobs still live is the study still running: what it has done so far
+    # first, from its PROGRESS.txt, then the refusal.
+    busy=$(drr_gap_live)
+    if [ -n "$busy" ]; then
+      drr_gap_progress
+      echo "refusing: the benchmark $id is still queued or running (jobs $busy); send bench $id again once its merge ends"
+      return 75
+    fi
+  fi
   busy=$(live_of "bench_$id")
   [ -z "$busy" ] || { echo "refusing: the benchmark $id is still queued or running (job $busy); send bench $id again once it ends"; return 75; }
   if [ -f "$report" ]; then
-    # Kept, so the owner's count of one job each holds: a report that stands queues nothing.
+    # Kept, so the owner's count of one job each holds: a report that stands queues nothing. The
+    # study's report carries each step's lines, one for each of its 16 shard tasks, beside a summary
+    # of up to 85 and a run log of up to 50, so 220 lines are printed, its exit line last among them.
     echo "## $(basename "$report") ($(date -r "$report" '+%F %T'))"
-    head -n 100 "$report" | LC_ALL=C tr -cd '\11\12\40-\176' | masked | head -c 20000
-    bench_failed_on_older_code "$report" || return 0
-    # A benchmark that failed scored nothing, so once a fix has moved the checkout it is queued
-    # once more, its report kept under its job's number (#312); the same commit queues nothing.
-    mv "$report" "$LOGS/BENCH-$id-$(bench_job_of "$report").md" || return 1
-    echo "  the report above ended in failure on older code: queueing the benchmark again at $commit"
+    head -n 220 "$report" | LC_ALL=C tr -cd '\11\12\40-\176' | masked | head -c 45000
+    if bench_failed_on_older_code "$report"; then
+      # A benchmark that failed scored nothing, so once a fix has moved the checkout it is queued
+      # once more, its report kept under its job's number (#312); the same commit queues nothing.
+      again="ended in failure on older code"
+    elif bench_rerun_allowed "$report"; then
+      # The owner's count for one more run, listed in BENCH_RERUNS by the job of the report it replaces.
+      again="is job $(bench_job_of "$report")'s, which BENCH_RERUNS lets the owner's count run once more"
+    else
+      return 0
+    fi
   fi
   missing=$(bench_inputs_missing)
   [ -z "$missing" ] || { echo "refusing: bench $id needs $missing"; return 2; }
+  # Kept only once the inputs are there, so a refused send leaves the report standing as it was.
+  if [ -n "$again" ]; then
+    mv "$report" "$LOGS/BENCH-$id-$(bench_job_of "$report").md" || return 1
+    echo "  the report above $again: queueing the benchmark again at $commit"
+  fi
   if [ "$id" = flexray_drr_gap ]; then
     # The study reads the index this word checked and the ImageNet file beside the models; FluXray
-    # joins it only once fetched, and the job says so in its report rather than wait for it.
-    extra=(INDEX="$(samples_index)" MODELS="$MODELS")
+    # and each segmenter's masks join it only where they are there, and prepare says so in the
+    # report rather than wait for them.
+    drr_gap_masks
     [ -d "$DATA_ROOT/hf_flexray_data/raw" ] || echo "  FluXray: not on the data root (fetch hf_flexray_data); the study skips its group with that reason"
   fi
   # Stale environments are rebuilt by the one setup job, which every bench sent while it runs waits
@@ -1163,11 +1447,17 @@ word_bench() {  # one public model's benchmark (#287): queued once, its report p
   setup=$(setup_dependency) || return 1
   [ -z "$setup" ] || echo "  the environments: after the setup job that rebuilds them (${setup#afterok:})"
   # The job holds the checkout while it runs (grid/bench.sbatch), so it is queued after every other
-  # run that holds it, as a sweep is, rather than refused.
+  # run that holds it, as a sweep is, rather than refused; the study's prepare waits for them too,
+  # bench flexray_drr_seg among them, whose MOOSE masks it reads.
   holds=$(checkout_holders)
   [ -z "$holds" ] || echo "  the checkout: after the live runs that hold it ($holds)"
   depend_on "$(joined "$setup" "$holds")" || return 1
-  submit "bench_$id" gpu BENCH="$id" DATA_ROOT="$DATA_ROOT" ${extra[@]+"${extra[@]}"} ${opts[@]+"${opts[@]}"} --no-requeue -- bench.sbatch > /dev/null || return 1
+  if [ "$id" = flexray_drr_gap ]; then
+    drr_gap_jobs ${opts[@]+"${opts[@]}"} || return 1
+    echo "submitted the study. 'status' shows its progress while it runs; send bench $id again once its merge ends to read its report, logs/BENCH-$id.md."
+    return 0
+  fi
+  submit "bench_$id" gpu BENCH="$id" DATA_ROOT="$DATA_ROOT" ${opts[@]+"${opts[@]}"} --no-requeue -- bench.sbatch > /dev/null || return 1
   echo "submitted the benchmark. Send bench $id again once it ends to read its report, logs/BENCH-$id.md."
 }
 
@@ -1317,6 +1607,31 @@ word_census() {  # the owner's tiers over every SPINEPS mask the census lists, o
   depend_on "$(joined "$setup" "$holds")" || return 1
   submit "census_$id" batch STAGE="$id" ${opts[@]+"${opts[@]}"} --no-requeue -- census.sbatch > /dev/null || return 1
   echo "submitted the census $id. Send census $id again once it ends to read its report, logs/CENSUS-$id.md."
+}
+
+word_literature() {  # one reading list fetched onto the grid: queued once, its report printed and kept on the next send
+  local report=$LOGS/LITERATURE-$id.md busy
+  [ -f "$REPO/grid/literature/$id.csv" ] || { echo "refusing: no reading list grid/literature/$id.csv"; return 64; }
+  busy=$(live_of literature "literature:$id")
+  [ -z "$busy" ] || { echo "refusing: the fetch of the list $id is still queued or running (job $busy); send literature $id again once it ends"; return 75; }
+  if [ -f "$report" ]; then
+    # Printed once and kept under its job's number, so the send after this one fetches again what
+    # is still missing (an Elsevier paper once its access opens) while the landing keeps what came.
+    echo "## $(basename "$report") ($(date -r "$report" '+%F %T'))"
+    head -n 200 "$report" | LC_ALL=C tr -cd '\11\12\40-\176' | masked | head -c 30000
+    mv "$report" "$LOGS/LITERATURE-$id-$(bench_job_of "$report").md" || return 1
+    return 0
+  fi
+  if [ -f "$report.part" ]; then
+    # A job killed past its own trap, by memory or a node's failure, leaves its report unfinished:
+    # printed and kept the same way, so a failed run is never followed by a silent new one.
+    echo "## $(basename "$report") unfinished: the job ended before it wrote its exit ($(date -r "$report.part" '+%F %T'))"
+    head -n 200 "$report.part" | LC_ALL=C tr -cd '\11\12\40-\176' | masked | head -c 30000
+    mv "$report.part" "$LOGS/LITERATURE-$id-$(bench_job_of "$report.part")-unfinished.md" || return 1
+    return 0
+  fi
+  submit literature batch LIST_ID="$id" DATA_ROOT="$DATA_ROOT" VOLUME="$VOLUME" -- literature.sbatch > /dev/null || return 1
+  echo "submitted one job. It lands a byte only once the size rule admits it; send literature $id again once it ends to read its report, logs/LITERATURE-$id.md."
 }
 
 realism_class() {  # the job class a stage of the realism programme runs as, else nothing
@@ -1532,18 +1847,21 @@ bank_room() {  # bank_room NEED: 0 where the room under the quota takes NEED byt
   # The room the bank word decides against before it queues its job (grid/size-rule.sh): what the
   # running fetches owe first, then the room twice a minute apart, the smaller kept. The fetch
   # word's chain decides nothing at submit since #163; its job decides each set in turn.
+  room_for "$1" "the bank and its shard need" "nothing was queued"
+}
+room_for() {  # room_for NEED WHAT NOTHING: as bank_room, WHAT naming what needs NEED in a refusal and NOTHING what was left undone
   local owed owed_bytes owed_n unsized free free_from room
-  owed=$(owed_by_running "") || { echo "refusing: squeue did not answer, so what the running fetches owe is not known; nothing was queued"; return 75; }
+  owed=$(owed_by_running "") || { echo "refusing: squeue did not answer, so what the running fetches owe is not known; $3"; return 75; }
   read -r owed_bytes owed_n unsized <<< "$owed"
-  [ -z "$unsized" ] || { echo "refusing: the running fetch of $unsized states no size, so the room after it is not known; nothing was queued"; return 75; }
+  [ -z "$unsized" ] || { echo "refusing: the running fetch of $unsized states no size, so the room after it is not known; $3"; return 75; }
   read -r free free_from <<< "$(settled_room "$VOLUME")"
   if [ -z "$free" ]; then
-    echo "refusing: the room on the lab volume could not be read: $(room_unread_words "$VOLUME"); nothing was queued"
+    echo "refusing: the room on the lab volume could not be read: $(room_unread_words "$VOLUME"); $3"
     return 2
   fi
   room=$(( free > owed_bytes ? free - owed_bytes : 0 ))
   echo "  room: $(gb_down "$room") GB $(free_space_words "$free_from") after $(gb_up "$owed_bytes") GB owed to $(running_fetches "$owed_n")"
-  [ "$1" -le "$room" ] || { echo "refusing: the bank and its shard need $(gb_up "$1") GB and the room is $(gb_down "$room") GB; nothing was queued"; return 75; }
+  [ "$1" -le "$room" ] || { echo "refusing: $2 $(gb_up "$1") GB and the room is $(gb_down "$room") GB; $3"; return 75; }
 }
 admission_holder() {  # admission_holder [SET]: the live job whose admission $DATA/<SET>/meta/SIZE still holds (SET $id by default), else nothing
   local set=${1:-$id} state job
@@ -1700,6 +2018,7 @@ case "$word" in
   bordercall) word_bordercall ;;
   census) word_census ;;
   realism) word_realism ;;
+  literature) word_literature ;;
   samples) word_samples ;;
   sweep) word_sweep ;;
   bank) word_bank ;;

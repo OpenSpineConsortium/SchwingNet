@@ -1,0 +1,137 @@
+<title>SchwingNet Front Door</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style id="loader-style">
+/* The loader's own few words, shown only until the door arrives or where it cannot. */
+:root { --bg:#f6f7f9; --fg:#1b1f26; --muted:#5f6672; --accent:#9a5b00; --link:#1f5fa8;
+  --sans: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --bg:#15181d; --fg:#e8eaee; --muted:#9aa2ad; --accent:#e5a44a; --link:#7fb2ea; color-scheme:dark; }
+}
+:root[data-theme="dark"] { --bg:#15181d; --fg:#e8eaee; --muted:#9aa2ad; --accent:#e5a44a; --link:#7fb2ea; color-scheme:dark; }
+body { margin:0; background:var(--bg); color:var(--fg); font:14px/1.5 var(--sans); }
+#loader { max-width:42em; padding:24px 16px; }
+#loader-more { color:var(--muted); }
+#loader-more a { color:var(--link); }
+#loader button { font:inherit; font-size:13px; color:var(--accent); background:transparent; border:1px solid var(--accent); border-radius:6px; padding:3px 10px; cursor:pointer; }
+</style>
+<div id="loader" role="status"><p id="loader-text">Opening the repository...</p><p id="loader-more" hidden></p><p id="loader-do" hidden><button id="loader-again" type="button">Try again</button></p></div>
+
+<script>
+// The loader of the SchwingNet front door (tools/front_door_loader.html), the one page published
+// at the door's link. It holds none of the door: opened on claude.ai, it reads the door itself,
+// tools/front_door.html on main, through the viewer's own GitHub connector, puts the door's style
+// and markup in place of its own and runs the door's script, so a change to the door merged to main
+// is at the link the next time it is opened and the artifact is never published again for it (the
+// owner, 2026-10-27: "natively view the textbook in claude.ai without needing to ever need to
+// republish the front door artefact"). It is published again only when this file changes, or when
+// the door needs a capability the published declaration lacks (tools/textbook_publish.py,
+// CAPABILITIES). Whoever may merge to main decides the code the door runs, as for any file there.
+(function () {
+  "use strict";
+  var SERVER = "GitHub", OWNER = "OpenSpineConsortium", REPO = "SchwingNet";
+  var DOOR = "tools/front_door.html", REF = "refs/heads/main";
+
+  function code(e) { return (e && (e.code || e.name)) || "error"; }
+  function wait(ms) { return new Promise(function (done) { setTimeout(done, ms); }); }
+
+  function say(words, more, again) {
+    document.getElementById("loader-text").textContent = words;
+    var extra = document.getElementById("loader-more");
+    extra.hidden = !more;
+    extra.innerHTML = more || "";
+    document.getElementById("loader-do").hidden = !again;
+  }
+
+  // One read of the door, made again after the wait the runtime gives with rate_limited, and once
+  // more for a passing failure it marks retryable, as the door's own reads are.
+  function fetchDoor(mcp, tries) {
+    return mcp.callTool(SERVER, "get_file_contents", {owner: OWNER, repo: REPO, path: DOOR, ref: REF}).catch(function (e) {
+      var c = code(e);
+      if (c === "rate_limited" && tries < 4) return wait((e && e.retryAfterMs) || 2000).then(function () { return fetchDoor(mcp, tries + 1); });
+      if (e && e.retryable && c !== "rate_limited" && tries < 1) return wait(1500).then(function () { return fetchDoor(mcp, tries + 1); });
+      throw e;
+    });
+  }
+
+  // The door's text out of the connector's answer: GitHub's server gives a resource block of text,
+  // or of base64 for a file it takes as binary; a payload with content and encoding is the API's own.
+  function textOf(r) {
+    var blocks = r && Array.isArray(r.content) ? r.content : [];
+    for (var i = 0; i < blocks.length; i++) {
+      var res = blocks[i] && blocks[i].resource;
+      if (res && typeof res.text === "string") return res.text;
+      if (res && typeof res.blob === "string") return decode(res.blob);
+    }
+    var p = r && r.payload;
+    if (p && typeof p === "object" && typeof p.content === "string") return p.encoding === "base64" ? decode(p.content) : p.content;
+    throw {code: "unreadable", message: "the connector answered with no file"};
+  }
+
+  function decode(b64) {
+    var bytes = Uint8Array.from(atob(String(b64).replace(/\s+/g, "")), function (c) { return c.charCodeAt(0); });
+    return new TextDecoder().decode(bytes);
+  }
+
+  // The door in place of the loader: its head's style, metas and title join this head, its markup
+  // replaces this body, and its scripts are made again here, in order, since a script parsed by
+  // DOMParser never runs. The door starts itself once the document has loaded, which it has.
+  function install(html) {
+    var door = new DOMParser().parseFromString(html, "text/html");
+    var scripts = Array.prototype.slice.call(door.querySelectorAll("script"));
+    if (!scripts.length) throw {code: "unreadable", message: DOOR + " on main holds no script"};
+    scripts.forEach(function (s) { s.parentNode.removeChild(s); });
+    var own = document.getElementById("loader-style");
+    if (own) own.parentNode.removeChild(own);
+    Array.prototype.slice.call(door.head.childNodes).forEach(function (n) {
+      if (n.nodeName !== "TITLE") document.head.appendChild(document.importNode(n, true));
+    });
+    document.body.textContent = "";
+    Array.prototype.slice.call(door.body.childNodes).forEach(function (n) { document.body.appendChild(document.importNode(n, true)); });
+    // Set last: the loader's own title may sit in the body the line above emptied.
+    if (door.title) document.title = door.title;
+    scripts.forEach(function (s) {
+      var run = document.createElement("script");
+      Array.prototype.forEach.call(s.attributes, function (a) { run.setAttribute(a.name, a.value); });
+      run.async = false;
+      run.textContent = s.textContent;
+      document.body.appendChild(run);
+    });
+  }
+
+  function connectSteps() {
+    return "GitHub is added once as a custom connector in your own claude.ai settings, with a GitHub App of yours that may read this repository:<ol>" +
+      "<li>Open <a href=\"https://claude.ai/settings/connectors\" target=\"_blank\" rel=\"noopener\">claude.ai/settings/connectors</a> and choose Add custom connector.</li>" +
+      "<li>Name it exactly <code>GitHub</code>; the remote MCP server address is <code>https://api.githubcopilot.com/mcp/</code>.</li>" +
+      "<li>Under Advanced settings enter the client id and client secret of your GitHub App, whose callback URL is " +
+      "<code>https://claude.ai/api/mcp/auth_callback</code>; Add, then Connect and sign in to GitHub.</li>" +
+      "<li>Open this page again and allow it to use GitHub when asked.</li></ol>";
+  }
+
+  function stopped(e) {
+    var c = code(e), message = String((e && e.message) || "").replace(/[&<>"]/g, function (ch) {
+      return {"&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;"}[ch];
+    });
+    if (c === "absent") say("This view cannot reach your connectors.", "Open the door on claude.ai, signed in to the account that holds it.", false);
+    else if (c === "server_not_connected" || c === "server_not_found")
+      say("GitHub is not connected to your claude.ai account, so the door cannot be read.", connectSteps(), true);
+    else if (c === "needs_reauth") say("Your GitHub connector needs to be connected again.", "Reconnect GitHub in claude.ai Settings, Connectors, then try again.", true);
+    else if (c === "not_granted" || c === "consent_required" || c === "not_in_manifest")
+      say("The door may not use your GitHub connector, so it cannot be read.", "The artifact's Permissions menu turns GitHub on for this page.", true);
+    else if (c === "blocked_by_policy") say("Your organization's policy blocks this tool for you, so the door cannot be read.", "", false);
+    else say("The door could not be read from the repository (" + c + ").", message || "This is usually a passing network or service problem.", true);
+  }
+
+  function start() {
+    say("Opening the repository...", "", false);
+    if (!window.claude || typeof window.claude.use !== "function") { stopped({code: "absent"}); return; }
+    window.claude.use("mcp").then(function (mcp) {
+      if (!mcp) throw {code: "absent"};
+      return fetchDoor(mcp, 0);
+    }).then(function (r) { install(textOf(r)); }).catch(stopped);
+  }
+
+  document.getElementById("loader-again").addEventListener("click", start);
+  if (document.readyState === "complete") start();
+  else window.addEventListener("load", start, {once: true});
+})();
+</script>

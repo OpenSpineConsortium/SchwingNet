@@ -182,10 +182,11 @@ def test_a_table_holds_shared_subjects_to_a_render_group_of_the_same_shape() -> 
 
 
 # FluXray's raw render stream as the paper gives it, every word spelled out so the record reads
-# whole: MOOSE's labels, the whole volume drawn uniformly, one of the 90 fixed poses, the volume's
-# centre, a cone beam, the attenuation randomisation off, min-max scaling, 4 views at 1024 pixels.
+# whole: no label read (segmenter none, since the recipe reads none), the whole volume drawn
+# uniformly, one of the 90 fixed poses, the volume's centre, a cone beam, the attenuation
+# randomisation off, min-max scaling, 4 views at 1024 pixels.
 FLUXRAY_RAW_WORDS = (
-    "segmenter=moose",
+    "segmenter=none",
     "crop=whole",
     "crop_sampler=uniform",
     "pose=fluxray-grid",
@@ -196,10 +197,19 @@ FLUXRAY_RAW_WORDS = (
     "views=4",
     "detector=1024",
 )
-# The six render groups of the study's table: each one's blocks, engine and the group whose CTs it
-# shares, and the pair its note says it isolates.
+# FleXray's physical render from the CT alone: no label read, every crop drawn uniformly, the
+# crop's centre as the isocentre, the attenuation randomisation off (render_blocks.PHYSICAL_CT).
+PHYSICAL_CT_WORDS = (
+    "segmenter=none",
+    "crop_sampler=uniform",
+    "isocentre=volume-centre",
+    "attenuation=off",
+)
+# The seven render groups of the study's table: each one's blocks, engine and the group whose CTs
+# it shares, and the pair its note says it isolates.
 STUDY_RENDERS = {
     "flexray_drr": (("segmenter=moose", "attenuation=off"), "blocks", "", "flexray_replica"),
+    "flexray_drr_ct": (PHYSICAL_CT_WORDS, "blocks", "flexray_drr", "flexray_drr"),
     "flexray_replica": (("segmenter=moose",), "blocks", "flexray_drr", "flexray_reference"),
     "flexray_reference": (
         ("segmenter=moose",),
@@ -213,7 +223,7 @@ STUDY_RENDERS = {
 }
 
 
-def test_the_studys_own_table_holds_and_names_the_six_render_groups() -> None:
+def test_the_studys_own_table_holds_and_names_the_seven_render_groups() -> None:
     from dataclasses import replace
 
     from schwingnet import render_blocks
@@ -228,21 +238,32 @@ def test_the_studys_own_table_holds_and_names_the_six_render_groups() -> None:
     for i, (_, _, _, pair) in STUDY_RENDERS.items():
         assert pair in renders[i].note, i
     # The recipes are the presets they stand for: FleXray's with MOOSE's labels (its own), the
-    # same with the attenuation randomisation off, the project's default (SPINEPS) and FluXray's
-    # raw render stream; and the folder names both segmenters, so the CTs are chosen among those
-    # with masks under both.
+    # same with the attenuation randomisation off, the same from the CT alone, the project's
+    # default (SPINEPS) and FluXray's raw render stream, which reads no label and so takes
+    # segmenter none; and the folder names both segmenters, so the CTs are chosen among those with
+    # masks under both, the groups on segmenter none naming neither.
+    no_masks = render_blocks.NO_SEGMENTER
     assert render_blocks.parse(renders["flexray_replica"].blocks) == render_blocks.FLEXRAY
     assert render_blocks.parse(renders["flexray_reference"].blocks) == render_blocks.FLEXRAY
     assert render_blocks.parse(renders["flexray_drr"].blocks) == replace(
         render_blocks.PHYSICAL, segmenter="moose"
     )
+    assert render_blocks.parse(renders["flexray_drr_ct"].blocks) == render_blocks.PHYSICAL_CT
     assert render_blocks.parse(renders["flexray_spineps"].blocks) == render_blocks.DEFAULT
-    assert render_blocks.parse(renders["fluxray_raw"].blocks) == render_blocks.FLUXRAY_RAW
+    for raw in ("fluxray_raw", "fluxray_raw_reference"):
+        assert render_blocks.parse(renders[raw].blocks) == replace(
+            render_blocks.FLUXRAY_RAW, segmenter=no_masks
+        )
     assert gap.segmenters_named([g.blocks for g in renders.values()]) == ("moose", "spineps")
-    assert len({(g.folder, g.cap, g.per_person, g.licence) for g in renders.values()}) == 1
+    mask_free = {
+        i for i, g in renders.items() if render_blocks.parse(g.blocks).segmenter == no_masks
+    }
+    assert mask_free == {"flexray_drr_ct", "fluxray_raw", "fluxray_raw_reference"}
+    assert all("no masks are read" in renders[i].licence for i in mask_free)
+    assert len({(g.folder, g.cap, g.per_person) for g in renders.values()}) == 1
     assert all(g.cap // g.per_person == 250 for g in renders.values())
-    assert [g.id for g in parsed.groups[:7]] == [*STUDY_RENDERS, "fluxray"]
-    assert len(parsed.groups) == 22
+    assert [g.id for g in parsed.groups[:8]] == [*STUDY_RENDERS, "fluxray"]
+    assert len(parsed.groups) == 23
 
 
 # --- the choice of CTs -------------------------------------------------------------------------
@@ -255,6 +276,14 @@ def test_the_segmenters_named_are_each_recipes_once_in_order() -> None:
         "moose",
         "spineps",
     )
+    # A recipe on segmenter none reads no masks, so it names no segmenter: a folder whose groups
+    # all take it requires none, and beside another group it adds nothing to what that one needs.
+    assert gap.segmenters_named([PHYSICAL_CT_WORDS]) == ()
+    assert gap.segmenters_named([PHYSICAL_CT_WORDS, FLUXRAY_RAW_WORDS]) == ()
+    assert gap.segmenters_named([PHYSICAL_CT_WORDS, ("segmenter=moose",)]) == ("moose",)
+    assert gap.segmenters_named([FLUXRAY_RAW_WORDS, ()]) == ("spineps",)
+    with pytest.raises(ViolationError):
+        gap.segmenters_named([("segmenter=none",)])  # FleXray's recipe reads labels
     with pytest.raises(ViolationError):
         gap.segmenters_named([("segmenter=totalsegmentator",)])
     with pytest.raises(ViolationError):

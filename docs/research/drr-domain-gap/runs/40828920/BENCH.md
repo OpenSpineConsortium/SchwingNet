@@ -1,0 +1,139 @@
+# bench flexray_drr_gap: job 40828920 on voh6, commit d3fe578, 2026-10-28 03:08:36 UTC
+- code: commit <hex withheld> copied to /rs/rs_grp_oschome/go2432/bench/flexray_drr_gap/code-d3fe578, which every step runs; no step holds the checkout
+- PREREG.md: as frozen, sha256 3ca1b6b7aea60f00
+- GPU: Tesla V100-SXM2-16GB, 16384 MiB, 550.163.01
+- FluXray: read from /rs/rs_grp_oschome/go2432/data/hf_flexray_data/raw
+- masks: spineps in /rs/rs_grp_oschome/go2432/data/spineps; moose in /rs/rs_grp_oschome/go2432/data/moose; a render group whose segmenter's masks are not read, or too few CTs have, is skipped with tha
+- environment: flexray[train]==1.0.2 nanodrr==0.1.5 scikit-learn==1.9.1 umap-learn==0.5.12 numpy==2.4.6; index: /rs/rs_grp_oschome/go2432/data/_samples/<date withheld>-225857-J6Ax/samples.sqlite; weig
+- prepared: analysis/PREPARED.json written, so the shards claim its units
+- exit 0 at 2026-10-28 03:17:04 UTC
+- shard 0: job 40828921_0 on voh6, GPU Tesla V100-SXM2-16GB, exit 0 at 2026-10-28 03:24:36 UTC
+- shard 1: job 40828921_1 on voh7, GPU Tesla V100-SXM2-16GB, exit 0 at 2026-10-28 03:24:51 UTC
+- shard 2: job 40828921_2 on voh7, GPU Tesla V100-SXM2-16GB, exit 0 at 2026-10-28 03:24:14 UTC
+- shard 3: job 40828921_3 on voh4, GPU Tesla V100-SXM2-16GB, exit 0 at 2026-10-28 03:23:53 UTC
+- shard 4: job 40828921_4 on voh5, GPU Tesla V100-SXM2-16GB, exit 0 at 2026-10-28 03:24:38 UTC
+- shard 5: job 40828921_5 on alh5, GPU NVIDIA L40S, exit 0 at 2026-10-28 03:24:40 UTC
+- shard 6: job 40828921_6 on alh5, GPU NVIDIA L40S, exit 0 at 2026-10-28 03:24:18 UTC
+- shard 7: job 40828921_7 on alh4, GPU NVIDIA L40S, exit 0 at 2026-10-28 03:24:15 UTC
+- shard 8: job 40828921_8 on alh4, GPU NVIDIA L40S, exit 0 at 2026-10-28 03:24:15 UTC
+- shard 9: job 40828921_9 on alh4, GPU NVIDIA L40S, exit 0 at 2026-10-28 03:24:15 UTC
+- shard 10: job 40828921_10 on alh4, GPU NVIDIA L40S, exit 0 at 2026-10-28 03:24:15 UTC
+- shard 11: job 40828921_11 on voh1, GPU Tesla V100-SXM2-16GB, exit 0 at 2026-10-28 03:24:47 UTC
+- shard 12: job 40828921_12 on voh4, GPU Tesla V100-SXM2-16GB, exit 0 at 2026-10-28 03:24:11 UTC
+- shard 13: job 40828921_13 on voh4, GPU Tesla V100-SXM2-16GB, exit 0 at 2026-10-28 03:24:18 UTC
+- shard 14: job 40828921_14 on voh7, GPU Tesla V100-SXM2-16GB, exit 0 at 2026-10-28 03:24:27 UTC
+- shard 15: job 40828921_15 on voh4, GPU Tesla V100-SXM2-16GB, exit 0 at 2026-10-28 03:24:38 UTC
+- merge: job 40828923 on voh1
+- results: /rs/rs_grp_oschome/go2432/bench/flexray_drr_gap
+  record: study drr-domain-gap; commit d3fe578; tree clean; seed 0; plan 9ba4-8f43-b831-361d; groups.json 92a1-640b-70f1-b6c6; PREREG 3ca1-b6b7-aea6-0f00; code 8943-e46c-a4c5-5779
+  record: jobs prepare 40828920, array 40828921 (16 tasks), merge 40828923; GPUs NVIDIA L40S x6, Tesla V100-SXM2-16GB x11
+  record: units 716 of 716 done, 0 failed; mmd backend torch-cuda
+  record: seconds render 408, plan 0, images 0, features 0, heads 4, analysis 392 (wall), units 16706 (summed), figures 30
+  record: environment flexray[train] 1.0.2 nanodrr 0.1.5 scikit-learn 1.9.1 umap-learn 0.5.12 numpy 2.4.6 over the train-gpu torch
+  drr gap: 9127 images, 20 groups, W&B offline under the run folder offline
+  replication flexray_replica vs flexray_reference in flexray (invariant): not replicated (persons 26/26 n 104/104)
+  replication fluxray_raw vs fluxray_raw_reference in flexray (invariant): replicated (persons 26/26 n 103/103)
+  render totalsegmentator_v201: 27 CTs chosen of 27 with every mask of 1228 CTs (moose 27, spineps 27); 26 kept by every group
+  group flexray_drr synthetic found 104 chosen 104 decoded 104 persons 26
+  groups counted as flexray_drr: flexray_drr_ct flexray_replica flexray_reference flexray_spineps
+  group fluxray_raw synthetic found 104 chosen 104 decoded 103 persons 26 undecoded 1
+  groups counted as fluxray_raw: fluxray_raw_reference
+  group fluxray synthetic skipped, its files could not be listed (Error)
+  group ts_drr_project synthetic found 1316 chosen 76 decoded 74 persons 19 undecoded 2
+  group devcorpus synthetic found 39506 chosen 568 decoded 568 persons 142
+  group fluorogen synthetic found 2725 chosen 1000 decoded 1000 persons 1000 persons by file
+  group carmlspine_spots fluoroscopy found 299 chosen 288 decoded 288 persons 144
+  group deepfluoro fluoroscopy found 2659 chosen 1000 decoded 1000 persons 14
+  group geneva_hip fluoroscopy found 116 chosen 100 decoded 100 persons 1
+  group vindr_spinexr film skipped, nothing found under its rules
+  group buu_lspine film found 7204 chosen 1000 decoded 1000 persons 1000
+  group aasce film found 294 chosen 294 decoded 294 persons 294 persons by file
+  group nhanes2 film found 17073 chosen 1000 decoded 1000 persons 1000 persons by file
+  group csxa film found 4959 chosen 1000 decoded 1000 persons 1000 persons by file
+  group kub_stonex film found 5188 chosen 1000 decoded 1000 persons 1000 persons by file
+  group ieee_lateral film found 236 chosen 236 decoded 236 persons 236 persons by file
+  group lumos film skipped, no folder lumos/bank under the data root
+  group aariz film found 841 chosen 841 decoded 841 persons 841 persons by file
+  space flexray dim 1024 rows 9127 spread 0.144 pca64 0.91
+   calibration split-half auc median 0.49 range 0.44 to 0.52 over 10, mmd flagged 0, auc interval above half 0
+   replication flexray_replica vs flexray_reference persons 26/26 n 104/104 auc 0.50 [0.50, 0.50] p 0.911 knn 0.49 mmd p 0.047 q 0.048 fd64 0.0 kid64 -992.963 prdc 1.00 1.00 1.08 1.00 not replicated
+   replication fluxray_raw vs fluxray_raw_reference persons 26/26 n 103/103 auc 0.50 [0.50, 0.50] p 1.000 knn 0.50 mmd p 0.827 q 0.827 fd64 0.0 kid64 -2245.207 prdc 1.00 1.00 1.00 1.00 replicated
+   flexray_drr vs fluoroscopy auc 0.95 [0.91, 0.98] p 0.010 knn 0.95 fd64 1007.8 ratio 1.27 mmd p 0.001 prdc 0.26 0.75 0.08 0.03 closer than two real corpora
+   flexray_drr vs film auc 0.96 [0.94, 0.98] p 0.010 knn 0.95 fd64 1244.8 ratio 1.66 mmd p 0.001 prdc 0.13 0.72 0.04 0.01 closer than two real corpora
+   flexray_drr_ct vs fluoroscopy auc 0.88 [0.82, 0.94] p 0.010 knn 0.90 fd64 601.4 ratio 0.76 mmd p 0.001 prdc 0.27 0.94 0.10 0.06 closer than two real corpora
+   flexray_drr_ct vs film auc 0.93 [0.90, 0.96] p 0.010 knn 0.88 fd64 716.2 ratio 0.96 mmd p 0.001 prdc 0.14 0.90 0.04 0.01 closer than two real corpora
+   flexray_spineps vs fluoroscopy auc 0.96 [0.94, 0.98] p 0.010 knn 0.96 fd64 944.4 ratio 1.19 mmd p 0.001 prdc 0.19 0.75 0.08 0.04 closer than two real corpora
+   flexray_spineps vs film auc 0.97 [0.96, 0.98] p 0.010 knn 0.91 fd64 1159.4 ratio 1.55 mmd p 0.001 prdc 0.15 0.71 0.06 0.02 closer than two real corpora
+   ts_drr_project vs fluoroscopy auc 0.98 [0.96, 0.99] p 0.010 knn 0.95 fd64 599.8 ratio 0.76 mmd p 0.001 prdc 0.22 0.61 0.05 0.03 closer than two real corpora
+   ts_drr_project vs film auc 0.95 [0.93, 0.98] p 0.010 knn 0.94 fd64 559.5 ratio 0.75 mmd p 0.001 prdc 0.43 0.65 0.15 0.02 closer than two real corpora
+   devcorpus vs fluoroscopy auc 0.95 [0.92, 0.98] p 0.010 knn 0.98 fd64 638.3 ratio 0.81 mmd p 0.001 prdc 0.46 0.47 0.15 0.12 closer than two real corpora
+   devcorpus vs film auc 0.99 [0.99, 1.00] p 0.010 knn 1.00 fd64 578.5 ratio 0.77 mmd p 0.001 prdc 0.26 0.46 0.08 0.03 closer than two real corpora
+   fluorogen vs fluoroscopy auc 0.95 [0.93, 0.97] p 0.010 knn 0.97 fd64 542.6 ratio 0.68 mmd p 0.001 prdc 0.34 0.63 0.14 0.27 closer than two real corpora
+   fluorogen vs film auc 0.94 [0.93, 0.95] p 0.010 knn 0.97 fd64 337.7 ratio 0.45 mmd p 0.001 prdc 0.51 0.56 0.24 0.17 closer than two real corpora
+   replication flexray_drr_ct vs flexray_drr persons 26/26 n 104/104 auc 0.67 [0.60, 0.74] p 0.010 knn 0.68 mmd p 0.002 q 0.002 fd64 280.5 kid64 3519.898 prdc 0.89 0.90 0.83 0.95
+   replication flexray_drr vs flexray_replica persons 26/26 n 104/104 auc 0.57 [0.53, 0.60] p 0.010 knn 0.54 mmd p 0.001 q 0.001 fd64 33.5 kid64 -898.515 prdc 1.00 1.00 1.10 1.00
+   replication flexray_spineps vs flexray_replica persons 26/26 n 104/104 auc 0.53 [0.47, 0.59] p 0.208 knn 0.55 mmd p 0.135 q 0.136 fd64 159.6 kid64 -288.430 prdc 0.92 0.84 1.09 0.97
+   replication fluxray_raw_reference vs fluxray not tested, fluxray: its files could not be listed (Error)
+   real-real auc median 1.00 min 0.97 max 1.00 over 36 pairs
+   fluoroscopy vs film auc 0.97 [0.96, 0.98]
+   silhouette 0.01
+   flexray_drr vs groups auc/fd64; carmlspine_spots 1.00/1040; deepfluoro 0.96/1460; buu_lspine 1.00/1327; aasce 1.00/1268; nhanes2 0.99/1077; csxa 0.99/1527; kub_stonex 1.00/2089
+   flexray_drr vs groups auc/fd64; ieee_lateral 1.00/875; aariz 1.00/1716
+   flexray_drr_ct vs groups auc/fd64; carmlspine_spots 0.99/647; deepfluoro 0.90/884; buu_lspine 0.98/823; aasce 0.99/834; nhanes2 0.97/629; csxa 1.00/1034; kub_stonex 0.99/1391
+   flexray_drr_ct vs groups auc/fd64; ieee_lateral 1.00/568; aariz 1.00/1073
+  space imagenet dim 512 rows 9127 spread 0.562 pca64 0.78
+   calibration split-half auc median 0.48 range 0.43 to 0.51 over 10, mmd flagged 0, auc interval above half 0
+   flexray_drr vs fluoroscopy auc 0.99 [0.98, 1.00] p 0.010 knn 0.98 fd64 453.7 ratio 0.76 mmd p 0.001 prdc 0.37 0.05 0.12 0.01 closer than two real corpora
+   flexray_drr vs film auc 1.00 [1.00, 1.00] p 0.010 knn 1.00 fd64 497.9 ratio 0.92 mmd p 0.001 prdc 0.16 0.05 0.05 0.00 closer than two real corpora
+   flexray_drr_ct vs fluoroscopy auc 1.00 [0.99, 1.00] p 0.010 knn 0.99 fd64 397.8 ratio 0.67 mmd p 0.001 prdc 0.27 0.09 0.11 0.03 closer than two real corpora
+   flexray_drr_ct vs film auc 1.00 [1.00, 1.00] p 0.010 knn 1.00 fd64 423.2 ratio 0.78 mmd p 0.001 prdc 0.32 0.04 0.09 0.01 closer than two real corpora
+   flexray_spineps vs fluoroscopy auc 1.00 [0.99, 1.00] p 0.010 knn 0.98 fd64 416.3 ratio 0.70 mmd p 0.001 prdc 0.28 0.15 0.09 0.02 closer than two real corpora
+   flexray_spineps vs film auc 1.00 [1.00, 1.00] p 0.010 knn 1.00 fd64 445.3 ratio 0.83 mmd p 0.001 prdc 0.15 0.08 0.04 0.00 closer than two real corpora
+   ts_drr_project vs fluoroscopy auc 1.00 [1.00, 1.00] p 0.010 knn 1.00 fd64 557.1 ratio 0.93 mmd p 0.001 prdc 0.24 0.37 0.09 0.01 closer than two real corpora
+   ts_drr_project vs film auc 1.00 [1.00, 1.00] p 0.010 knn 1.00 fd64 669.8 ratio 1.24 mmd p 0.001 prdc 0.04 0.30 0.01 0.00 closer than two real corpora
+   devcorpus vs fluoroscopy auc 1.00 [1.00, 1.00] p 0.010 knn 0.99 fd64 575.8 ratio 0.96 mmd p 0.001 prdc 0.49 0.01 0.19 0.01 closer than two real corpora
+   devcorpus vs film auc 1.00 [1.00, 1.00] p 0.010 knn 1.00 fd64 675.3 ratio 1.25 mmd p 0.001 prdc 0.49 0.00 0.16 0.01 closer than two real corpora
+   fluorogen vs fluoroscopy auc 0.99 [0.97, 1.00] p 0.010 knn 0.98 fd64 424.1 ratio 0.71 mmd p 0.001 prdc 0.12 0.34 0.04 0.01 closer than two real corpora
+   fluorogen vs film auc 0.99 [0.99, 0.99] p 0.010 knn 0.99 fd64 293.5 ratio 0.54 mmd p 0.001 prdc 0.26 0.35 0.12 0.07 closer than two real corpora
+  space physics dim 83 rows 9127 spread 0.128 pca64 1.00
+   calibration split-half auc median 0.50 range 0.42 to 0.59 over 10, mmd flagged 0, auc interval above half 2
+   flexray_drr vs fluoroscopy auc 0.98 [0.96, 1.00] p 0.010 knn 0.96 fd64 167.5 ratio 1.46 mmd p 0.001 prdc 0.19 0.31 0.05 0.01 closer than two real corpora
+   flexray_drr vs film auc 1.00 [1.00, 1.00] p 0.010 knn 1.00 fd64 149.0 ratio 2.55 mmd p 0.001 prdc 0.24 0.27 0.09 0.01 closer than two real corpora
+   flexray_drr_ct vs fluoroscopy auc 0.99 [0.98, 1.00] p 0.010 knn 0.95 fd64 124.9 ratio 1.09 mmd p 0.001 prdc 0.28 0.34 0.09 0.03 closer than two real corpora
+   flexray_drr_ct vs film auc 1.00 [0.99, 1.00] p 0.010 knn 0.98 fd64 107.0 ratio 1.83 mmd p 0.001 prdc 0.38 0.42 0.18 0.02 closer than two real corpora
+   flexray_spineps vs fluoroscopy auc 1.00 [0.99, 1.00] p 0.010 knn 0.96 fd64 147.5 ratio 1.29 mmd p 0.001 prdc 0.31 0.41 0.10 0.02 closer than two real corpora
+   flexray_spineps vs film auc 1.00 [1.00, 1.00] p 0.010 knn 0.98 fd64 130.2 ratio 2.23 mmd p 0.001 prdc 0.32 0.26 0.11 0.02 closer than two real corpora
+   ts_drr_project vs fluoroscopy auc 0.98 [0.95, 1.00] p 0.010 knn 0.98 fd64 176.3 ratio 1.54 mmd p 0.001 prdc 0.03 0.54 0.01 0.00 closer than two real corpora
+   ts_drr_project vs film auc 0.96 [0.91, 1.00] p 0.010 knn 0.94 fd64 139.1 ratio 2.38 mmd p 0.001 prdc 0.12 0.83 0.05 0.00 closer than two real corpora
+   devcorpus vs fluoroscopy auc 1.00 [1.00, 1.00] p 0.010 knn 0.99 fd64 192.2 ratio 1.68 mmd p 0.001 prdc 0.08 0.30 0.02 0.03 closer than two real corpora
+   devcorpus vs film auc 1.00 [0.99, 1.00] p 0.010 knn 0.99 fd64 139.5 ratio 2.39 mmd p 0.001 prdc 0.10 0.31 0.03 0.02 closer than two real corpora
+   fluorogen vs fluoroscopy auc 1.00 [0.99, 1.00] p 0.010 knn 0.99 fd64 150.9 ratio 1.32 mmd p 0.001 prdc 0.02 0.76 0.01 0.02 closer than two real corpora
+   fluorogen vs film auc 0.99 [0.98, 0.99] p 0.010 knn 0.98 fd64 79.8 ratio 1.36 mmd p 0.001 prdc 0.24 0.79 0.11 0.06 closer than two real corpora
+- run log, UTC: each step's lines as it wrote them while it ran, with the units' quarter marks
+  2026-10-28 03:09:14 prepare: started as job 40828920 on voh6
+  2026-10-28 03:10:08 prepare: computes on Tesla V100-SXM2-16GB
+  2026-10-28 03:10:08 prepare: stage render started
+  2026-10-28 03:16:56 prepare: stage render done after 408 s
+  2026-10-28 03:16:56 prepare: stage plan started
+  2026-10-28 03:16:56 prepare: stage plan done after 0 s
+  2026-10-28 03:16:56 prepare: stage images started
+  2026-10-28 03:16:57 prepare: stage images done after 0 s
+  2026-10-28 03:16:57 prepare: stage features started
+  2026-10-28 03:16:57 prepare: stage features done after 0 s
+  2026-10-28 03:16:57 prepare: stage heads started
+  2026-10-28 03:17:01 prepare: stage heads done after 4 s
+  2026-10-28 03:17:02 prepare: 716 units listed over 4 readings (0 not read), so the array's tasks claim them
+  2026-10-28 03:17:17 tasks: 16 started from 03:17:17 to 03:24:36 on 7 nodes, NVIDIA L40S x6, Tesla V100-SXM2-16GB x10
+  2026-10-28 03:18:17 units: 1 of 716 done, the first
+  2026-10-28 03:18:56 units: 179 of 716 done (25%)
+  2026-10-28 03:19:02 units: 358 of 716 done (50%)
+  2026-10-28 03:19:04 units: 537 of 716 done (75%)
+  2026-10-28 03:23:50 units: 716 of 716 done (100%)
+  2026-10-28 03:24:48 tasks: 16 finished with nothing left to claim from 03:23:51 to 03:24:48, 716 units done and 0 failed among them
+  2026-10-28 03:24:56 merge: started as job 40828923 on voh1
+  2026-10-28 03:24:57 merge: every one of the 716 units read back as done, from 16 tasks; the jobs ran on NVIDIA L40S x6, Tesla V100-SXM2-16GB x11, prepare's among them
+  2026-10-28 03:24:57 merge: stage analysis done after 392 s
+  2026-10-28 03:25:32 merge: stage figures done after 30 s
+  2026-10-28 03:26:40 merge: stage summary done
+  2026-10-28 03:26:40 merge: results.json, the figures and summary.txt written
+- exit 0 at 2026-10-28 03:26:43 UTC

@@ -1,0 +1,1302 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Gold Tier 3 CT</title>
+<style>
+:root {
+  color-scheme: light;
+  --bg: #f9f9f7;
+  --surface: #fcfcfb;
+  --surface-2: #f1f0ec;
+  --ink: #0b0b0b;
+  --ink-2: #52514e;
+  --muted: #6b6a65;
+  --line: #e1e0d9;
+  --axis: #c3c2b7;
+  --ring: rgba(11, 11, 11, 0.10);
+  --accent: #2a78d6;
+  --accent-ink: #1d5fb0;
+  --accent-wash: rgba(42, 120, 214, 0.10);
+  --good: #0ca30c;
+  --good-ink: #006300;
+  --warn: #fab219;
+  --serious: #ec835a;
+  --crit: #d03b3b;
+  --crit-ink: #b02a2a;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #0d0d0d;
+    --surface: #1a1a19;
+    --surface-2: #232321;
+    --ink: #f0efec;
+    --ink-2: #c3c2b7;
+    --muted: #9a988f;
+    --line: #2c2c2a;
+    --axis: #383835;
+    --ring: rgba(255, 255, 255, 0.10);
+    --accent: #3987e5;
+    --accent-ink: #8bb8f0;
+    --accent-wash: rgba(57, 135, 229, 0.16);
+    --good-ink: #2fc42f;
+    --crit-ink: #ef7d7d;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0d0d0d;
+  --surface: #1a1a19;
+  --surface-2: #232321;
+  --ink: #f0efec;
+  --ink-2: #c3c2b7;
+  --muted: #9a988f;
+  --line: #2c2c2a;
+  --axis: #383835;
+  --ring: rgba(255, 255, 255, 0.10);
+  --accent: #3987e5;
+  --accent-ink: #8bb8f0;
+  --accent-wash: rgba(57, 135, 229, 0.16);
+  --good-ink: #2fc42f;
+  --crit-ink: #ef7d7d;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font: 15px/1.5 var(--sans);
+  -webkit-text-size-adjust: 100%;
+}
+.wrap { max-width: 1180px; margin: 0 auto; padding: 0 16px 48px; }
+header.top { padding: 22px 0 10px; }
+header.top h1 { font-size: 24px; line-height: 1.2; margin: 0 0 4px; letter-spacing: -0.01em; }
+header.top p { margin: 0; color: var(--ink-2); max-width: 70ch; }
+.confidential {
+  margin: 12px 0 0; padding: 8px 12px; border-radius: 8px;
+  background: var(--surface-2); color: var(--ink-2); font-size: 13px;
+  border-left: 3px solid var(--crit);
+}
+nav.tabs {
+  position: sticky; top: 0; z-index: 5; background: var(--bg);
+  display: flex; gap: 2px; overflow-x: auto; scrollbar-width: thin;
+  border-bottom: 1px solid var(--line); margin: 14px 0 18px;
+}
+nav.tabs button {
+  appearance: none; border: 0; background: none; color: var(--ink-2);
+  font: inherit; font-size: 14px; padding: 10px 12px; cursor: pointer; white-space: nowrap;
+  border-bottom: 2px solid transparent; margin-bottom: -1px;
+}
+nav.tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); font-weight: 600; }
+nav.tabs button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+section[role="tabpanel"][hidden] { display: none; }
+h2 { font-size: 18px; margin: 26px 0 8px; }
+h2:first-child { margin-top: 0; }
+h3 { font-size: 15px; margin: 18px 0 6px; }
+p { margin: 6px 0 10px; }
+.lede { color: var(--ink-2); max-width: 78ch; }
+.small { font-size: 13px; color: var(--muted); }
+code, .mono { font-family: var(--mono); font-size: 0.9em; }
+pre {
+  background: var(--surface-2); padding: 12px; border-radius: 8px; overflow-x: auto;
+  font: 13px/1.5 var(--mono); margin: 8px 0 12px;
+}
+.card {
+  background: var(--surface); border-radius: 10px; box-shadow: 0 0 0 1px var(--ring);
+  padding: 14px 16px;
+}
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; }
+.tile .k { font-size: 13px; color: var(--ink-2); }
+.tile .v { font-size: 28px; font-weight: 600; line-height: 1.15; margin: 4px 0 2px; }
+.tile .s { font-size: 13px; color: var(--muted); }
+.tablewrap { overflow-x: auto; border-radius: 10px; box-shadow: 0 0 0 1px var(--ring); background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-weight: 600; color: var(--ink-2); background: var(--surface-2); white-space: nowrap; position: sticky; top: 0; }
+tbody tr:last-child td { border-bottom: 0; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+tr.click { cursor: pointer; }
+tr.click:hover td { background: var(--accent-wash); }
+th.sort { cursor: pointer; user-select: none; }
+th.sort[aria-sort="ascending"]::after { content: " \2191"; }
+th.sort[aria-sort="descending"]::after { content: " \2193"; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 8px 0 12px; }
+input[type="search"], input[type="text"], select, textarea {
+  font: inherit; font-size: 14px; color: var(--ink); background: var(--surface);
+  border: 1px solid var(--axis); border-radius: 7px; padding: 6px 9px; max-width: 100%;
+}
+textarea { width: 100%; resize: vertical; }
+input[type="search"] { min-width: 0; flex: 1 1 220px; }
+label.check { display: inline-flex; gap: 6px; align-items: center; font-size: 14px; color: var(--ink-2); }
+button.btn {
+  font: inherit; font-size: 14px; border-radius: 7px; padding: 6px 12px; cursor: pointer;
+  border: 1px solid var(--axis); background: var(--surface); color: var(--ink);
+}
+button.btn:hover { background: var(--surface-2); }
+button.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+button.btn.primary:hover { filter: brightness(1.08); }
+button.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+button.btn:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.seg { display: inline-flex; flex-wrap: wrap; border-radius: 8px; box-shadow: 0 0 0 1px var(--axis); overflow: hidden; }
+.seg button { appearance: none; border: 0; background: var(--surface); color: var(--ink-2); font: inherit; font-size: 13.5px; padding: 6px 11px; cursor: pointer; }
+.seg button + button { box-shadow: -1px 0 0 var(--axis); }
+.seg button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+.chip {
+  display: inline-block; font-size: 12px; line-height: 1.6; padding: 0 7px; border-radius: 999px;
+  background: var(--surface-2); color: var(--ink-2); box-shadow: 0 0 0 1px var(--ring); white-space: nowrap;
+}
+.chip.link { cursor: pointer; }
+.chip.link:hover { background: var(--accent-wash); color: var(--ink); }
+.status { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; white-space: nowrap; }
+.status::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--axis); flex: none; }
+.status.pass::before { background: var(--good); }
+.status.fail::before { background: var(--crit); }
+.status.look::before { background: var(--warn); }
+.status.not_run::before { background: var(--axis); }
+.pager { display: flex; gap: 8px; align-items: center; justify-content: flex-end; margin: 8px 0; flex-wrap: wrap; }
+.pager .small { margin-right: auto; }
+details { margin: 8px 0; }
+summary { cursor: pointer; color: var(--ink-2); }
+dl.facts { display: grid; grid-template-columns: max-content 1fr; gap: 3px 14px; margin: 8px 0; font-size: 14px; }
+dl.facts dt { color: var(--ink-2); }
+dl.facts dd { margin: 0; }
+.muted { color: var(--muted); }
+.ok { color: var(--good-ink); }
+.bad { color: var(--crit-ink); }
+
+/* interval chart */
+.ivl { margin: 6px 0 4px; }
+.ivl-row { display: grid; grid-template-columns: minmax(130px, 34%) 1fr 92px; align-items: center; gap: 10px; min-height: 30px; }
+.ivl-label { font-size: 13.5px; color: var(--ink); }
+.ivl-label .small { display: block; line-height: 1.2; }
+.ivl-track { position: relative; height: 28px; }
+.ivl-grid { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--line); }
+.ivl-grid.zero { background: var(--axis); }
+.ivl-whisker { position: absolute; top: 50%; height: 2px; margin-top: -1px; background: var(--accent); border-radius: 1px; }
+.ivl-whisker::before, .ivl-whisker::after { content: ""; position: absolute; top: -4px; width: 2px; height: 10px; background: var(--accent); border-radius: 1px; }
+.ivl-whisker::before { left: 0; }
+.ivl-whisker::after { right: 0; }
+.ivl-dot { position: absolute; top: 50%; width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 2px var(--surface); }
+.ivl-hit { position: absolute; inset: 0; cursor: default; }
+.ivl-val { font-size: 13px; text-align: right; font-variant-numeric: tabular-nums; color: var(--ink-2); }
+.ivl-axis { position: relative; height: 20px; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.ivl-axis span { position: absolute; transform: translateX(-50%); }
+.tip {
+  position: fixed; z-index: 30; pointer-events: none; background: var(--surface); color: var(--ink);
+  box-shadow: 0 0 0 1px var(--ring), 0 6px 20px rgba(0,0,0,0.18); border-radius: 8px; padding: 8px 10px;
+  font-size: 13px; max-width: 280px; display: none;
+}
+
+/* bench */
+.bench { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 16px; align-items: start; }
+.bench > * { min-width: 0; }
+.bench-list { max-height: 78vh; overflow-y: auto; padding: 4px; }
+.bench-item {
+  display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; padding: 7px 9px; border-radius: 7px; cursor: pointer;
+  font-size: 13.5px;
+}
+.bench-item:hover { background: var(--surface-2); }
+.bench-item[aria-current="true"] { background: var(--accent-wash); box-shadow: inset 3px 0 0 var(--accent); }
+.bench-item .small { grid-column: 1 / -1; }
+.views { display: flex; gap: 12px; flex-wrap: wrap; margin: 10px 0; }
+.views figure { margin: 0; flex: 1 1 260px; max-width: 520px; }
+.views img { width: 100%; height: auto; display: block; border-radius: 8px; background: #111; }
+.views figcaption { font-size: 12.5px; color: var(--muted); margin-top: 4px; }
+.verdicts { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+.verdicts button { min-width: 150px; text-align: left; }
+.verdicts button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+.verdicts kbd { font-family: var(--mono); font-size: 11px; opacity: 0.7; margin-left: 6px; }
+.others { margin: 8px 0 0; padding: 0; list-style: none; font-size: 13.5px; }
+.others li { padding: 4px 0; border-top: 1px solid var(--line); }
+.bench-mobile { display: none; flex-wrap: nowrap; }
+.bench-mobile select { min-width: 0; }
+
+/* sql */
+#sql-text { font-family: var(--mono); font-size: 13px; min-height: 96px; }
+.sql-out { margin-top: 10px; max-height: 60vh; overflow: auto; }
+
+dialog {
+  border: 0; border-radius: 12px; padding: 0; width: min(960px, calc(100vw - 32px)); max-height: calc(100vh - 32px);
+  background: var(--surface); color: var(--ink); box-shadow: 0 0 0 1px var(--ring), 0 16px 48px rgba(0,0,0,0.3);
+}
+dialog::backdrop { background: rgba(0,0,0,0.45); }
+.dlg-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 12px 16px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--surface); }
+.dlg-head h3 { margin: 0; }
+.dlg-body { padding: 4px 16px 16px; }
+
+@media (max-width: 760px) {
+  .bench { grid-template-columns: minmax(0, 1fr); }
+  .bench-list { display: none; }
+  .bench-mobile { display: flex; }
+  .ivl-row { grid-template-columns: minmax(110px, 40%) 1fr 70px; gap: 6px; }
+  .verdicts button { min-width: 0; flex: 1 1 45%; }
+  header.top h1 { font-size: 21px; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <h1>Gold Tier 3 CT</h1>
+    <p>Every CT the project counts as gold tier 3, as one dataset: one row per study with its member and site, tier, the facts read from its masks, two column calls kept apart, an anomaly class with its status, and every quality check. Built from the SchwingNet records by <code>tools/gold3_ct.py</code>.</p>
+    <div class="confidential">Confidential. Unpublished data work with a provisional patent in preparation. Keep this page private; do not share its link.</div>
+  </header>
+
+  <nav class="tabs" role="tablist" aria-label="Sections">
+    <button role="tab" id="tab-overview" aria-controls="p-overview" data-tab="overview">Overview</button>
+    <button role="tab" id="tab-anomalies" aria-controls="p-anomalies" data-tab="anomalies">Anomaly statistics</button>
+    <button role="tab" id="tab-note" aria-controls="p-note" data-tab="note">Note table</button>
+    <button role="tab" id="tab-studies" aria-controls="p-studies" data-tab="studies">Studies</button>
+    <button role="tab" id="tab-qa" aria-controls="p-qa" data-tab="qa">Quality checks</button>
+    <button role="tab" id="tab-bench" aria-controls="p-bench" data-tab="bench">Reader bench</button>
+    <button role="tab" id="tab-sql" aria-controls="p-sql" data-tab="sql">SQL</button>
+  </nav>
+
+  <section role="tabpanel" id="p-overview" aria-labelledby="tab-overview"></section>
+  <section role="tabpanel" id="p-anomalies" aria-labelledby="tab-anomalies" hidden></section>
+  <section role="tabpanel" id="p-note" aria-labelledby="tab-note" hidden></section>
+  <section role="tabpanel" id="p-studies" aria-labelledby="tab-studies" hidden></section>
+  <section role="tabpanel" id="p-qa" aria-labelledby="tab-qa" hidden></section>
+  <section role="tabpanel" id="p-bench" aria-labelledby="tab-bench" hidden></section>
+  <section role="tabpanel" id="p-sql" aria-labelledby="tab-sql" hidden></section>
+</div>
+
+<div class="tip" id="tip" role="tooltip"></div>
+<dialog id="study-dlg" aria-labelledby="study-dlg-title">
+  <div class="dlg-head"><h3 id="study-dlg-title"></h3><button class="btn" id="study-dlg-close">Close</button></div>
+  <div class="dlg-body" id="study-dlg-body"></div>
+</dialog>
+
+<script type="application/json" id="page-data">__PAGE_DATA__</script>
+<script type="application/json" id="build-data">__BUILD_DATA__</script>
+<script>
+"use strict";
+const D = JSON.parse(document.getElementById("page-data").textContent);
+const BUILD = JSON.parse(document.getElementById("build-data").textContent);
+const COLS = D.studies.columns;
+const ROWS = D.studies.rows.map(r => Object.fromEntries(COLS.map((c, i) => [c, r[i]])));
+const BY_ITEM = new Map(ROWS.map(r => [r.item, r]));
+const BENCH = BUILD.bench;
+const BENCH_BY_ITEM = new Map(BENCH.map(b => [b.item, b]));
+
+const CLASS_NAMES = {
+  normal: "Typical by the names (T12L5)",
+  l6_twelve_ribs: "L6 below L5, 12 rib pairs",
+  l6_thirteen_ribs: "L6, 13th rib on the body named L1",
+  four_lumbar_twelve_ribs: "L4 at the sacrum, 12 rib pairs",
+  eleven_ribs: "11 rib pairs, ribless T12",
+  thirteen_ribs: "13 rib pairs",
+  asymmetric_ribs: "11 ribs one side, 12 the other",
+  labelling_error: "Labelling error in the release",
+  open: "Open: needs the CT",
+  look: "Look: L5 fragment, labels out of order, or ribs one level off",
+  not_whole: "No C2 in the field (silver 3)",
+  repaired: "Repaired mask (gold 4)",
+  t13: "T13",
+  l6: "L6",
+  four_lumbar: "Four lumbar",
+  unread: "Not read yet"
+};
+const VARIANT_CLASSES = ["l6_twelve_ribs", "l6_thirteen_ribs", "four_lumbar_twelve_ribs", "eleven_ribs", "thirteen_ribs", "asymmetric_ribs"];
+const MASK_CLASSES = ["labelling_error", "open", "look"];
+const STATUS_NAMES = {
+  confirmed_by_masks: "confirmed by masks",
+  candidate: "candidate",
+  not_assessed: "not assessed",
+  labelling_error: "labelling error",
+  open: "open",
+  reader_confirmed: "reader confirmed"
+};
+const VERDICTS = [
+  { key: "true_anomaly", label: "True anomaly", hint: "the views show the class as named" },
+  { key: "labelling_error", label: "Labelling error", hint: "the mask's names are wrong" },
+  { key: "not_anomaly", label: "Not an anomaly", hint: "a typical spine" },
+  { key: "needs_ct", label: "Needs the CT", hint: "the masks cannot settle it" }
+];
+const VERDICT_NAMES = Object.fromEntries(VERDICTS.map(v => [v.key, v.label]));
+
+/* ---------- small helpers ---------- */
+function el(tag, attrs, ...kids) {
+  const node = document.createElement(tag);
+  if (attrs) {
+    for (const [k, v] of Object.entries(attrs)) {
+      if (v === null || v === undefined || v === false) continue;
+      if (k === "class") node.className = v;
+      else if (k === "text") node.textContent = v;
+      else if (k.startsWith("on")) node.addEventListener(k.slice(2), v);
+      else node.setAttribute(k, v === true ? "" : v);
+    }
+  }
+  for (const kid of kids.flat(Infinity)) {
+    if (kid === null || kid === undefined || kid === false) continue;
+    node.append(kid instanceof Node ? kid : document.createTextNode(String(kid)));
+  }
+  return node;
+}
+function fill(node, ...kids) {
+  node.replaceChildren();
+  node.append(...kids.flat(Infinity).filter(k => k !== null && k !== undefined && k !== false));
+}
+const fmt = n => (n === null || n === undefined) ? "\u2013" : Number(n).toLocaleString("en-US");
+const pct = (x, digits = 1) => (x === null || x === undefined) ? "\u2013" : (100 * x).toFixed(digits) + "%";
+const className = c => CLASS_NAMES[c] || c || "\u2013";
+const statusName = s => STATUS_NAMES[s] || s || "\u2013";
+const shortItem = item => item.replace("enhance_pet:", "").replace("verse:", "");
+const siteOf = r => r.member === "verse" ? "VerSe" : (r.site || "\u2013");
+const uniqueChecks = s => s ? [...new Set(s.split(/\s+/).filter(Boolean))] : [];
+function store(key, value) {
+  try { if (value === undefined) return localStorage.getItem(key); localStorage.setItem(key, value); } catch (e) { return null; }
+  return null;
+}
+function table(headers, rows, opts = {}) {
+  const thead = el("thead", null, el("tr", null, headers.map(h => el("th", { class: h.num ? "num" : null, scope: "col" }, h.label))));
+  const tbody = el("tbody", null, rows.map(r => el("tr", r.onclick ? { class: "click", onclick: r.onclick, tabindex: "0", onkeydown: e => { if (e.key === "Enter") r.onclick(); } } : null,
+    r.cells.map((c, i) => el("td", { class: headers[i] && headers[i].num ? "num" : null }, c)))));
+  return el("div", { class: "tablewrap" + (opts.cls ? " " + opts.cls : "") }, el("table", null, thead, tbody));
+}
+// The 95 percent Wilson interval, as tools/gold3_ct.py gives it, held to the estimate at none and at all.
+// The page works it out from the counts, since the page data's four-digit bounds would round twice.
+function wilson(hits, total) {
+  if (!total) return [0, 1];
+  const z = 1.959963984540054, p = hits / total, z2 = z * z, d = 1 + z2 / total;
+  const centre = (p + z2 / (2 * total)) / d, half = z * Math.sqrt(p * (1 - p) / total + z2 / (4 * total * total)) / d;
+  return [Math.min(Math.max(0, centre - half), p), Math.max(Math.min(1, centre + half), p)];
+}
+// A repaint replaces nodes, so focus is carried across by each focusable node's data-key.
+function focusedKey(container) {
+  const a = document.activeElement;
+  return a && a !== document.body && container.contains(a) && a.dataset ? a.dataset.key || null : null;
+}
+function restoreFocus(container, key) {
+  if (!key) return;
+  const node = container.querySelector('[data-key="' + CSS.escape(key) + '"]');
+  if (node && document.activeElement !== node && !node.disabled) node.focus({ preventScroll: true });
+}
+
+/* ---------- tooltip ---------- */
+const tip = document.getElementById("tip");
+function showTip(e, html) {
+  tip.replaceChildren(...html);
+  tip.style.display = "block";
+  const pad = 12, w = tip.offsetWidth, h = tip.offsetHeight;
+  let x = e.clientX + pad, y = e.clientY + pad;
+  if (x + w > window.innerWidth - 8) x = e.clientX - w - pad;
+  if (y + h > window.innerHeight - 8) y = e.clientY - h - pad;
+  tip.style.left = Math.max(8, x) + "px";
+  tip.style.top = Math.max(8, y) + "px";
+}
+function hideTip() { tip.style.display = "none"; }
+
+/* ---------- tabs ---------- */
+const tabs = [...document.querySelectorAll("nav.tabs button")];
+const built = new Set();
+const builders = {};
+function openTab(name, focus) {
+  if (!builders[name]) name = "overview";
+  for (const t of tabs) {
+    const on = t.dataset.tab === name;
+    t.setAttribute("aria-selected", on ? "true" : "false");
+    t.tabIndex = on ? 0 : -1;
+    document.getElementById("p-" + t.dataset.tab).hidden = !on;
+    if (on && focus) t.focus();
+  }
+  if (!built.has(name)) {
+    const panel = document.getElementById("p-" + name);
+    panel.replaceChildren();
+    try { builders[name](panel); built.add(name); }
+    catch (e) { console.error(e); panel.replaceChildren(el("p", { class: "bad" }, "This section could not be drawn: " + (e && e.message ? e.message : e))); }
+  }
+  store("gold3.tab", name);
+}
+tabs.forEach((t, i) => {
+  t.addEventListener("click", () => openTab(t.dataset.tab));
+  t.addEventListener("keydown", e => {
+    if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+      const j = (i + (e.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length;
+      openTab(tabs[j].dataset.tab, true);
+    }
+  });
+});
+
+/* ---------- reader verdicts (db) ---------- */
+const VERDICT_KEYS = new Set(VERDICTS.map(v => v.key));
+const TERMINAL_CODES = new Set(["invalid_argument", "transform_error", "resource_exhausted", "quota_exceeded", "revoked", "not_granted", "capability_disabled", "capability_removed"]);
+const GONE_CODES = new Set(["revoked", "not_granted", "capability_disabled", "capability_removed"]);
+const V = {
+  db: null, user: null, me: null, canWrite: false, synced: false, state: "connecting",
+  docs: new Map(),        // reader id -> {items: {...}}
+  mine: {},               // item -> {verdict, call, note, utc}, as this screen holds them
+  serverMine: {},         // the reader's own items as the store last sent them
+  writing: false, dirty: false, pending: false, tries: 0, listeners: new Set(), names: {}
+};
+const textOf = x => typeof x === "string" ? x : "";
+const own = (obj, key) => !!obj && typeof obj === "object" && Object.prototype.hasOwnProperty.call(obj, key);
+// Every document is written by a viewer, so only a known verdict counts and only text is shown.
+function cleanVerdict(raw) {
+  if (!raw || typeof raw !== "object" || !VERDICT_KEYS.has(raw.verdict)) return null;
+  return { verdict: raw.verdict, call: textOf(raw.call), note: textOf(raw.note), utc: textOf(raw.utc) };
+}
+function cleanItems(items) {
+  const out = {};
+  if (!items || typeof items !== "object") return out;
+  for (const [key, raw] of Object.entries(items)) {
+    if (key === "__proto__" || !raw || typeof raw !== "object") continue;
+    const v = { verdict: VERDICT_KEYS.has(raw.verdict) ? raw.verdict : "", call: textOf(raw.call), note: textOf(raw.note), utc: textOf(raw.utc) };
+    if (v.verdict || v.call || v.note) out[key] = v;
+  }
+  return out;
+}
+function verdictsFor(item) {
+  const out = [];
+  for (const [reader, doc] of V.docs) {
+    const v = cleanVerdict(own(doc, "items") && own(doc.items, item) ? doc.items[item] : null);
+    if (v) out.push(Object.assign({}, v, { reader }));
+  }
+  return out;
+}
+function eachVerdict(fn) {
+  for (const [reader, doc] of V.docs) {
+    if (!own(doc, "items") || !doc.items || typeof doc.items !== "object") continue;
+    for (const [item, raw] of Object.entries(doc.items)) {
+      const v = BENCH_BY_ITEM.has(item) ? cleanVerdict(raw) : null;
+      if (v) fn(reader, item, v);
+    }
+  }
+}
+// A write replaces the reader's whole document, so none goes out before the store's own copy has arrived.
+const canSave = () => !!(V.db && V.me && V.canWrite && V.synced);
+function notifyVerdicts() { V.listeners.forEach(fn => { try { fn(); } catch (e) { console.error(e); } }); }
+async function resolveNames() {
+  if (!V.user) return;
+  const ids = [...V.docs.keys()];
+  if (!ids.length) return;
+  try {
+    const ps = await V.user.profiles(ids);
+    for (const id of ids) V.names[id] = (ps && ps[id] && ps[id].name) || "";
+  } catch (e) { /* names stay blank */ }
+}
+function readerName(id) {
+  if (id === V.me) return "you";
+  return V.names[id] || "another reader";
+}
+const pause = ms => new Promise(ok => setTimeout(ok, ms));
+async function writeMine() {
+  const body = { reader: V.me, items: JSON.parse(JSON.stringify(V.mine)) };
+  try { await V.db.collection("verdicts").doc(V.me).set(body); }
+  catch (e) {
+    if (e && TERMINAL_CODES.has(e.code)) throw e;
+    await pause(300 + Math.random() * 700);
+    await V.db.collection("verdicts").doc(V.me).set(body);
+  }
+}
+function dropToReadOnly(state) {
+  V.canWrite = false; V.pending = false; V.state = state;
+  V.mine = JSON.parse(JSON.stringify(V.serverMine));
+  if (V.me) V.docs.set(V.me, { reader: V.me, items: V.mine });
+}
+async function saveMine() {
+  if (!canSave()) return;
+  if (V.writing) { V.dirty = true; return; }
+  V.writing = true;
+  try {
+    do { V.dirty = false; await writeMine(); } while (V.dirty);
+    V.pending = false;
+    V.state = "saved";
+  } catch (e) {
+    const code = (e && e.code) || "unknown";
+    if (code === "invalid_argument" || code === "transform_error") dropToReadOnly("readonly");
+    else if (GONE_CODES.has(code)) dropToReadOnly("revoked");
+    else V.state = "unsaved:" + code;
+  } finally {
+    V.writing = false;
+    notifyVerdicts();
+  }
+}
+function setMine(item, patch) {
+  if (!canSave()) return false;
+  const prev = V.mine[item] || {};
+  const next = Object.assign({}, prev, patch, { utc: new Date().toISOString() });
+  if (!next.verdict && !next.note && !next.call) delete V.mine[item]; else V.mine[item] = next;
+  V.docs.set(V.me, { reader: V.me, items: V.mine });
+  V.pending = true;
+  V.state = "saving";
+  notifyVerdicts();
+  saveMine();
+  return true;
+}
+function applySnapshot(snap) {
+  const seen = new Map();
+  for (const d of snap.docs) {
+    const data = d.exists === false ? null : d.data();
+    if (data && typeof data === "object") seen.set(d.id, data);
+  }
+  if (!snap.metadata || snap.metadata.fromCache !== true) V.synced = true;
+  if (V.me) {
+    const mineDoc = seen.get(V.me);
+    V.serverMine = cleanItems(mineDoc && mineDoc.items);
+    if (!V.pending && !V.writing) V.mine = JSON.parse(JSON.stringify(V.serverMine));
+    seen.set(V.me, { reader: V.me, items: V.mine });
+  }
+  V.docs = seen;
+  V.tries = 0;
+  if (V.state === "connecting" || V.state.startsWith("lost:")) V.state = canSave() ? "ready" : (V.canWrite ? "connecting" : "readonly");
+  resolveNames().then(notifyVerdicts);
+  notifyVerdicts();
+}
+function subscribeVerdicts() {
+  let live = true;
+  const again = code => {
+    V.state = "lost:" + code;
+    notifyVerdicts();
+    if (V.tries >= 5) return;
+    V.tries++;
+    setTimeout(subscribeVerdicts, 1000 * Math.pow(2, V.tries) + Math.random() * 1000);
+  };
+  try {
+    V.db.collection("verdicts").onSnapshot(snap => { if (live) applySnapshot(snap); }, err => {
+      if (!live) return;
+      live = false;
+      const code = (err && err.code) || "unknown";
+      if (GONE_CODES.has(code)) { dropToReadOnly("revoked"); notifyVerdicts(); }
+      else if (TERMINAL_CODES.has(code)) { V.state = "lost:" + code; notifyVerdicts(); }
+      else again(code);
+    });
+  } catch (e) { live = false; again((e && e.code) || "unknown"); }
+}
+async function connectVerdicts() {
+  const c = window.claude;
+  if (!c || typeof c.use !== "function") { V.state = "absent"; notifyVerdicts(); return; }
+  let db = null, user = null;
+  try { [db, user] = await Promise.all([c.use("db"), c.use("user")]); } catch (e) { db = null; }
+  V.user = user;
+  if (!db) { V.state = "absent"; notifyVerdicts(); return; }
+  V.db = db;
+  try { V.me = user ? await user.id() : null; } catch (e) { V.me = null; }
+  // user.can("data.write") answers for the root rule, which only the owner passes; a reader writes
+  // under verdicts/{self}, so a refused write decides instead.
+  V.canWrite = !!V.me;
+  V.state = V.canWrite ? "connecting" : "readonly";
+  subscribeVerdicts();
+  notifyVerdicts();
+}
+function verdictStateText() {
+  const s = V.state, code = s.slice(s.indexOf(":") + 1);
+  if (s === "connecting") return V.db ? "Loading the verdicts already saved\u2026" : "Connecting to the page's store\u2026";
+  if (s === "absent") return "This view has no store, so verdicts cannot be saved or read here. Open the page on claude.ai, signed in.";
+  if (s === "readonly") return "You can read the verdicts but not record one at your sharing level.";
+  if (s === "revoked") return "The page's store is no longer available in this view.";
+  if (s === "saving") return "Saving\u2026";
+  if (s === "saved") return "Saved to the page's store.";
+  if (s === "ready") return "Verdicts are saved to the page's store as you choose them.";
+  if (s.startsWith("unsaved:")) return "Not saved: the store answered " + code + ". Your choices stay on this screen, and the next one you make tries again.";
+  if (s.startsWith("lost:")) return "The store stopped sending updates (" + code + "), so other readers' verdicts may be out of date" + (canSave() ? "; your choices still save." : ".");
+  return "The store answered " + s + ".";
+}
+
+/* ---------- downloads ---------- */
+async function offerDownload(filename, data, statusNode) {
+  const c = window.claude;
+  let dl = null;
+  try { dl = c && c.use ? await c.use("downloads") : null; } catch (e) { dl = null; }
+  if (!dl) {
+    const url = URL.createObjectURL(data instanceof Blob ? data : new Blob([data]));
+    const a = el("a", { href: url, download: filename });
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+    return;
+  }
+  try {
+    const res = await dl.save({ filename, data });
+    if (statusNode) statusNode.textContent = res && res.status === "saved" ? "Saved " + filename + "." : "";
+  } catch (e) {
+    if (statusNode) statusNode.textContent = e && e.code === "declined" ? "" : "The save did not go through (" + ((e && e.code) || "error") + ").";
+  }
+}
+
+/* ---------- the SQL store ---------- */
+let sqlReady = null;
+function loadScript(src) {
+  return new Promise((ok, fail) => {
+    const s = el("script", { src, crossorigin: "anonymous" });
+    s.onload = ok; s.onerror = () => fail(new Error("could not load " + src));
+    document.head.append(s);
+  });
+}
+// The zip travels as base64 inside JSON, since an artifact serves no archive type.
+async function storeFile() {
+  const res = await fetch(BUILD.store.file);
+  if (!res.ok) throw new Error("the store file answered " + res.status);
+  const carrier = await res.json();
+  const text = atob(carrier.data || "");
+  const zip = new Uint8Array(text.length);
+  for (let i = 0; i < text.length; i++) zip[i] = text.charCodeAt(i);
+  if (zip.length !== carrier.bytes) throw new Error("the store file holds " + zip.length + " bytes, not " + carrier.bytes);
+  return zip;
+}
+async function inflateRaw(bytes) {
+  const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+// The store is published as a zip of one entry, read through its central directory.
+async function unzipOne(zip) {
+  const dv = new DataView(zip.buffer, zip.byteOffset, zip.byteLength);
+  let end = -1;
+  for (let i = zip.length - 22; i >= 0 && i >= zip.length - 22 - 65535; i--) if (dv.getUint32(i, true) === 0x06054b50) { end = i; break; }
+  if (end < 0) throw new Error("the store file is not a zip archive");
+  const dir = dv.getUint32(end + 16, true);
+  if (dv.getUint32(dir, true) !== 0x02014b50) throw new Error("the zip archive's directory is damaged");
+  const method = dv.getUint16(dir + 10, true), packed = dv.getUint32(dir + 20, true), size = dv.getUint32(dir + 24, true), local = dv.getUint32(dir + 42, true);
+  if (dv.getUint32(local, true) !== 0x04034b50) throw new Error("the zip archive's entry is damaged");
+  if (method !== 0 && method !== 8) throw new Error("the zip archive uses compression method " + method);
+  const start = local + 30 + dv.getUint16(local + 26, true) + dv.getUint16(local + 28, true);
+  const body = zip.subarray(start, start + packed);
+  const out = method === 0 ? body.slice() : await inflateRaw(body);
+  if (out.length !== size) throw new Error("the store unpacked to " + out.length + " bytes, not " + size);
+  return out;
+}
+async function sha256Hex(bytes) {
+  if (!(window.crypto && crypto.subtle)) return null;
+  const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", bytes));
+  return [...digest].map(b => b.toString(16).padStart(2, "0")).join("");
+}
+async function storeBytes() {
+  const bytes = await unzipOne(await storeFile());
+  const hash = await sha256Hex(bytes).catch(() => null);
+  if (hash && hash !== BUILD.store.published_sha256) throw new Error("the store file is not the one this page was built with");
+  return bytes;
+}
+function openStore() {
+  if (!sqlReady) {
+    sqlReady = (async () => {
+      if (typeof initSqlJs !== "function") await loadScript(BUILD.sqljs);
+      const SQL = await initSqlJs();
+      const db = new SQL.Database(await storeBytes());
+      db.run("PRAGMA query_only = ON");
+      return db;
+    })();
+    sqlReady.catch(() => { sqlReady = null; });
+  }
+  return sqlReady;
+}
+function toCsv(result) {
+  const q = v => {
+    if (v === null || v === undefined) return "";
+    const s = String(v);
+    return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  };
+  return [result.columns.map(q).join(","), ...result.values.map(r => r.map(q).join(","))].join("\n") + "\n";
+}
+
+/* ---------- Overview ---------- */
+builders.overview = function (root) {
+  const m = key => D.members.find(x => x.member === key.member && x.site === key.site) || {};
+  const ep = m({ member: "enhance_pet", site: "all" });
+  const vs = m({ member: "verse", site: "all" });
+  const ts = m({ member: "totalsegmentator", site: "all" });
+  const epAll = D.class_shares.filter(c => c.member === "enhance_pet" && c.site === "all");
+  const n = cls => (epAll.find(c => c.class === cls) || {}).n || 0;
+  const variants = VARIANT_CLASSES.reduce((s, c) => s + n(c), 0);
+  const epClasses = D.classes.filter(c => c.member === "enhance_pet");
+  const byStatus = (classes, status) => epClasses.filter(c => classes.includes(c.class) && c.status === status).reduce((s, c) => s + c.studies, 0);
+  const readerConfirmed = byStatus(VARIANT_CLASSES, "reader_confirmed");
+  const withRows = (ep.gold3 || 0) + (vs.gold3 || 0);
+  const personsHigh = (ep.persons_high || 0) + (vs.persons_high || 0);
+  const readTile = el("div", { class: "s" });
+  const readValue = el("div", { class: "v" }, "\u2013");
+  const paintRead = () => {
+    const items = new Set();
+    eachVerdict((reader, item) => items.add(item));
+    readValue.textContent = fmt(items.size);
+    readTile.textContent = "of " + fmt(BENCH.length) + " bench studies have a recorded verdict. Only a reader's verdict makes an anomaly reader confirmed.";
+  };
+  V.listeners.add(paintRead);
+
+  const tiles = el("div", { class: "tiles" },
+    el("div", { class: "card tile" }, el("div", { class: "k" }, "Gold 3 studies with rows"), el("div", { class: "v" }, fmt(withRows)),
+      el("div", { class: "s" }, "ENHANCE.PET " + fmt(ep.gold3) + ", VerSe " + fmt(vs.gold3) + " (provisional until the sacrum is seen)")),
+    el("div", { class: "card tile" }, el("div", { class: "k" }, "Declared without rows"), el("div", { class: "v" }, fmt(ts.gold3_by_records)),
+      el("div", { class: "s" }, "TotalSegmentator v3, perhaps " + fmt(ts.persons_high) + "; its subject list is on the grid only")),
+    el("div", { class: "card tile" }, el("div", { class: "k" }, "Persons, at most"), el("div", { class: "v" }, fmt(personsHigh + (ts.persons_low || 0))),
+      el("div", { class: "s" }, fmt(personsHigh + (ts.persons_high || 0)) + " if TotalSegmentator's count is " + fmt(ts.persons_high) + "; at least " + fmt(ep.persons_low) + " autoPET persons")),
+    el("div", { class: "card tile" }, el("div", { class: "k" }, "Variant spines in ENHANCE.PET, by the masks"), el("div", { class: "v" }, fmt(variants)),
+      el("div", { class: "s" }, "of " + fmt(ep.gold3) + " whole studies: " + fmt(byStatus(VARIANT_CLASSES, "confirmed_by_masks")) + " confirmed by masks, " + fmt(byStatus(VARIANT_CLASSES, "candidate")) + " candidates, " + (readerConfirmed ? fmt(readerConfirmed) : "none") + " reader confirmed; plus " + n("labelling_error") + " labelling errors, " + n("open") + " open and " + n("look") + " to look at")),
+    el("div", { class: "card tile" }, el("div", { class: "k" }, "Reader verdicts"), readValue, readTile)
+  );
+
+  const memberRows = D.members.filter(x => x.member !== "totalsegmentator" || true).map(x => ({
+    cells: [
+      x.member === "enhance_pet" ? "ENHANCE.PET" : x.member === "verse" ? "VerSe" : "TotalSegmentator",
+      x.site === "all" ? "all" : x.site,
+      fmt(x.studies), (!x.gold3 && x.gold3_by_records) ? fmt(x.gold3_by_records) + " by records" : fmt(x.gold3), fmt(x.gold4), fmt(x.silver3),
+      (x.persons_low === null || x.persons_low === undefined ? "at most " + fmt(x.persons_high) : (x.persons_low === x.persons_high ? fmt(x.persons_low) : fmt(x.persons_low) + " to " + fmt(x.persons_high))),
+      el("span", { class: "small" }, x.persons_basis)
+    ]
+  }));
+  const memberOrder = r => ["ENHANCE.PET", "VerSe", "TotalSegmentator"].indexOf(r.cells[0]) * 10 + ["all", "autoPET", "Leipzig", "Careggi"].indexOf(r.cells[1]);
+  memberRows.sort((a, b) => memberOrder(a) - memberOrder(b));
+
+  const dlStatus = el("span", { class: "small" });
+  const btnStore = el("button", { class: "btn", onclick: async () => {
+    btnStore.disabled = true; dlStatus.textContent = "Reading the store\u2026";
+    try { const zip = await storeFile(); dlStatus.textContent = ""; await offerDownload(BUILD.store.zip_name, zip, dlStatus); }
+    catch (e) { dlStatus.textContent = String(e.message || e); }
+    btnStore.disabled = false;
+  } }, "Download the store (SQLite, zipped)");
+  const btnManifest = el("button", { class: "btn", onclick: async () => {
+    btnManifest.disabled = true; dlStatus.textContent = "Opening the store\u2026";
+    try {
+      const db = await openStore();
+      const res = db.exec("SELECT * FROM workflow_manifest ORDER BY item")[0];
+      dlStatus.textContent = "";
+      await offerDownload("gold3-workflow-manifest.csv", toCsv(res), dlStatus);
+    } catch (e) { dlStatus.textContent = String(e.message || e); }
+    btnManifest.disabled = false;
+  } }, "Download the workflow manifest (CSV)");
+
+  root.append(
+    tiles,
+    el("h2", null, "Members"),
+    el("p", { class: "lede" }, "Gold is a field from C2 to the sacrum in one study, silver a partial one. Tier 3 is one modality with a person's annotation, tier 4 one without. The three repaired ENHANCE.PET masks take their names from a rule (two) or a machine (one), and neither raises a tier, so they stay gold 4. Leipzig and Careggi carry no person id, so their persons are an upper bound."),
+    table([{ label: "Member" }, { label: "Site" }, { label: "Studies", num: true }, { label: "Gold 3", num: true }, { label: "Gold 4", num: true }, { label: "Silver 3", num: true }, { label: "Persons" }, { label: "What the persons rest on" }], memberRows),
+    el("h2", null, "Using it in the workflow"),
+    el("p", { class: "lede" }, "The store builds from the committed records alone, with no grid job, into a folder outside the repository. The workflow reads the manifest: one row per study with its person, member, site, tier, part, anomaly class and status, and where its CT is (for ENHANCE.PET, the public bucket). Holdout and fold persons are flagged and left out with --training-only. This page's copy of the store leaves out locations on the grid; tools/gold3_ct.py export on a clone gives them."),
+    el("pre", null, [
+      "python3 tools/gold3_ct.py build --root \"$GOLD3_ROOT\"",
+      "python3 tools/gold3_ct.py query \"SELECT member, tier, count(*) FROM item GROUP BY member, tier\"",
+      "python3 tools/gold3_ct.py export --format json --tier gold3 --training-only",
+      "python3 tools/gold3_ct.py stats      # STATS.md, classes with 95% Wilson intervals",
+      "python3 tools/gold3_ct.py qa         # QA.md, every check by study",
+      "python3 tools/gold3_ct.py check      # fails on stale pages or a broken note table"
+    ].join("\n")),
+    el("p", null, "Views in the store: ", ["gold3_persons_by_member", "anomalies_by_class_and_status", "qa_failures", "workflow_manifest"].map(v => [el("code", null, v), " "])),
+    el("div", { class: "controls" }, btnStore, btnManifest, dlStatus),
+    el("h2", null, "What the quality checks can and cannot show"),
+    el("p", { class: "lede" }, "They show that each mask is the file the bucket lists and reads cleanly in its scheme, that a study is whole by the rule, that its labels are in order without gaps or split pieces, and that the release's names and the ribs, two masks drawn and checked by the same readers, tell the same story, read twice by separate code. They cannot show that an anomaly is in the patient: agreement of two masks is not a reader's read of the CT, and a lumbosacral question always needs the CT. No check reads CT intensity, the metal rule or the match of a mask to its CT; those need the CTs. A rib with no spine label within 3 mm says nothing, so a study read on one side only, or on none, is thinner than its count looks. The reader bench is the step past this."),
+    el("h2", null, "Provenance"),
+    el("dl", { class: "facts" },
+      el("dt", null, "Store"), el("dd", null, el("code", null, BUILD.store.name)),
+      el("dt", null, "Store sha256"), el("dd", null, el("code", { style: "word-break: break-all" }, BUILD.store.sha256)),
+      el("dt", null, "This page's copy"), el("dd", null, el("code", { style: "word-break: break-all" }, BUILD.store.published_sha256),
+        el("div", { class: "small" }, "the same store with its grid locations and the anomaly route's notes taken out")),
+      el("dt", null, "Built from"), el("dd", null, BUILD.source),
+      el("dt", null, "Mask facts"), el("dd", null, D.facts_committed ? "taken from the published masks and committed" : "not committed yet: ENHANCE.PET's counts rest on the records")
+    ),
+    el("details", null, el("summary", null, "Input files and their sha256"),
+      table([{ label: "File" }, { label: "sha256" }], Object.entries(D.inputs).map(([f, h]) => ({ cells: [el("code", null, f), el("code", { class: "small", style: "word-break: break-all" }, h)] }))))
+  );
+  paintRead();
+};
+
+/* ---------- Anomaly statistics ---------- */
+builders.anomalies = function (root) {
+  const choices = [
+    { key: "enhance_pet|all", label: "ENHANCE.PET, all sites" },
+    { key: "enhance_pet|autoPET", label: "autoPET" },
+    { key: "enhance_pet|Leipzig", label: "Leipzig" },
+    { key: "enhance_pet|Careggi", label: "Careggi" },
+    { key: "verse|all", label: "VerSe" }
+  ];
+  let current = store("gold3.anom") || choices[0].key;
+  if (!choices.some(c => c.key === current)) current = choices[0].key;
+  const seg = el("div", { class: "seg", role: "group", "aria-label": "Member and site" });
+  const body = el("div");
+  function paint() {
+    seg.replaceChildren(...choices.map(c => el("button", { "aria-pressed": c.key === current ? "true" : "false", onclick: () => { current = c.key; store("gold3.anom", current); paint(); } }, c.label)));
+    const [member, site] = current.split("|");
+    const shares = D.class_shares.filter(c => c.member === member && c.site === site).map(s => { const [low, high] = wilson(s.n, s.whole); return Object.assign({}, s, { low, high }); });
+    const whole = (shares.find(s => s.class === "normal") || shares[0] || {}).whole || 0;
+    if (member === "enhance_pet") for (const c of [...VARIANT_CLASSES, ...MASK_CLASSES]) {
+      if (!shares.some(s => s.class === c)) { const [low, high] = wilson(0, whole); shares.push({ member, site, class: c, n: 0, whole, low, high }); }
+    }
+    const groups = member === "verse"
+      ? [{ title: "VerSe classes", note: "VerSe's classes are the readers' reads as the committed records carry them.", classes: shares.map(s => s.class).filter(c => c !== "normal") }]
+      : [
+          { title: "Variant spines", note: "Read from the release's names and the ribs.", classes: VARIANT_CLASSES },
+          { title: "Mask problems and looks", note: "Labelling errors are about the masks; open and look studies may be the masks or the anatomy and need a reader, the open ones the CT.", classes: MASK_CLASSES }
+        ];
+    const all = groups.flatMap(g => g.classes.map(c => shares.find(s => s.class === c)).filter(Boolean));
+    const max = Math.max(0.01, ...all.map(s => s.high));
+    const step = max > 0.3 ? 0.1 : max > 0.12 ? 0.05 : max > 0.05 ? 0.02 : 0.01;
+    const top = Math.ceil(max / step) * step;
+    const ticks = []; for (let t = 0; t <= top + 1e-9; t += step) ticks.push(t);
+    const pos = x => (100 * x / top) + "%";
+    const normal = shares.find(s => s.class === "normal");
+    const unread = shares.find(s => s.class === "unread");
+    const inSite = r => r.member === member && (site === "all" || r.site === site);
+    const normalBy = status => D.classes.filter(c => inSite(c) && c.class === "normal" && c.status === status).reduce((s, c) => s + c.studies, 0);
+    const noRibRead = ROWS.filter(r => inSite(r) && r.class === "normal" && r.status === "candidate" && (!r.call_by_ribs || r.call_by_ribs === "none")).length;
+    const normalText = !normal ? "" : member === "verse"
+      ? " Typical by the reads: " + fmt(normal.n) + " (" + pct(normal.n / whole) + ", " + pct(normal.low) + " to " + pct(normal.high) + ")."
+      : " Typical by the names: " + fmt(normal.n) + " (" + pct(normal.n / whole) + ", " + pct(normal.low) + " to " + pct(normal.high) + "), " + fmt(normalBy("confirmed_by_masks")) + " of them confirmed by masks and " + fmt(normalBy("candidate")) + " candidates" + (noRibRead ? ", " + fmt(noRibRead) + " of those with no rib read" : "") + ".";
+    const parts = [
+      el("p", { class: "lede" }, (member === "verse"
+          ? "Each class's share of the " + fmt(whole) + " provisional series" + (unread ? " (" + fmt(unread.n) + " not read yet)" : "")
+          : "Each class's share of the " + fmt(whole) + " whole studies") + ", with its 95 percent Wilson interval." +
+        normalText +
+        (member === "enhance_pet" ? " Studies with no C2 and the three repaired masks are outside the denominator." : ""))
+    ];
+    for (const g of groups) {
+      const rows = g.classes.map(c => shares.find(s => s.class === c)).filter(Boolean).sort((a, b) => b.n - a.n);
+      if (!rows.length) continue;
+      parts.push(el("h3", null, g.title), el("p", { class: "small" }, g.note));
+      const chart = el("div", { class: "ivl", role: "img", "aria-label": g.title + ": share of whole studies with 95 percent intervals; the table below gives the numbers" });
+      chart.append(el("div", { class: "ivl-row" }, el("span"), el("div", { class: "ivl-axis" }, ticks.map(t => el("span", { style: "left:" + pos(t) }, (100 * t).toFixed(step < 0.02 ? 0 : 0) + "%"))), el("span")));
+      for (const s of rows) {
+        const share = s.n / s.whole;
+        const track = el("div", { class: "ivl-track" },
+          ticks.map(t => el("div", { class: "ivl-grid" + (t === 0 ? " zero" : ""), style: "left:" + pos(t) })),
+          el("div", { class: "ivl-whisker", style: "left:" + pos(s.low) + ";width:calc(" + pos(s.high) + " - " + pos(s.low) + ")" }),
+          el("div", { class: "ivl-dot", style: "left:" + pos(share) }),
+          el("div", { class: "ivl-hit" }));
+        const hit = track.lastChild;
+        const tipBody = () => [el("strong", null, className(s.class)), el("br"), fmt(s.n) + " of " + fmt(s.whole) + " whole studies, " + pct(share), el("br"), "95% interval " + pct(s.low) + " to " + pct(s.high)];
+        hit.addEventListener("mousemove", e => showTip(e, tipBody()));
+        hit.addEventListener("mouseleave", hideTip);
+        chart.append(el("div", { class: "ivl-row" },
+          el("div", { class: "ivl-label" }, className(s.class)),
+          track,
+          el("div", { class: "ivl-val" }, fmt(s.n) + " \u00b7 " + pct(share))));
+      }
+      parts.push(chart);
+    }
+    const OUTSIDE = ["not_whole", "repaired"];
+    const outside = shares.filter(s => OUTSIDE.includes(s.class));
+    parts.push(el("h3", null, "The numbers"),
+      table([{ label: "Class" }, { label: "Studies", num: true }, { label: "Whole", num: true }, { label: "Share", num: true }, { label: "95% interval", num: true }],
+        shares.filter(s => !OUTSIDE.includes(s.class)).sort((a, b) => b.n - a.n).map(s => ({ cells: [className(s.class), fmt(s.n), fmt(s.whole), pct(s.n / s.whole), pct(s.low) + " to " + pct(s.high)] }))),
+      outside.length ? el("p", { class: "small" }, "Outside the denominator: " + outside.map(s => className(s.class) + ", " + fmt(s.n)).join("; ") + ".") : null);
+    const cls = D.classes.filter(c => c.member === member && (site === "all" || c.site === site));
+    const agg = new Map();
+    for (const c of cls) {
+      const k = c.class + "|" + c.status;
+      const a = agg.get(k) || { class: c.class, status: c.status, studies: 0, needs_ct: 0 };
+      a.studies += c.studies; a.needs_ct += c.needs_ct; agg.set(k, a);
+    }
+    const aggRows = [...agg.values()].filter(a => a.class !== "normal").sort((a, b) => a.class.localeCompare(b.class) || a.status.localeCompare(b.status));
+    parts.push(el("h3", null, "By status"),
+      el("p", { class: "small" }, "Confirmed by masks: each lowest rib meets the body of its own number and every structural check that applies passes, so the names and the ribs are consistent with the class, though the two calls may differ, as in an eleven-rib or thirteen-rib column; that is two masks agreeing, not a reader's read. Candidate: the ribs do not settle it, a structural check fails or says look, or the class is a look, an asymmetry or a repaired mask. Needs the CT: a lumbosacral question no mask can settle."),
+      table([{ label: "Class" }, { label: "Status" }, { label: "Studies", num: true }, { label: "Need the CT", num: true }],
+        aggRows.map(a => ({ cells: [className(a.class), statusName(a.status), fmt(a.studies), fmt(a.needs_ct)] }))));
+    fill(body, parts);
+  }
+  root.append(el("div", { class: "controls" }, seg), body);
+  paint();
+};
+
+/* ---------- Note table ---------- */
+builders.note = function (root) {
+  const t = D.note_table;
+  const rows = Object.keys(t.expected).map(k => ({
+    cells: [k, ...t.columns.map((_, i) => {
+      const got = (t.rows[k] || [])[i], want = t.expected[k][i];
+      return got === want ? el("span", null, fmt(got)) : el("span", { class: "bad" }, fmt(got) + " (note " + fmt(want) + ")");
+    })]
+  }));
+  rows.push({ cells: [el("strong", null, "Studies"), ...t.columns.map((_, i) => el("strong", { class: t.studies[i] === t.expected_studies[i] ? null : "bad" }, fmt(t.studies[i])))] });
+  root.append(
+    el("p", { class: "lede" }, "Before the classes extend to every whole study they must give exactly the numbers of the note's table \u201cWhat the ribs say about the unusual lumbar counts\u201d on its " + fmt(t.expected_studies[1] + t.expected_studies[2] + 1) + " unusual studies (" + fmt(t.expected_studies[1]) + " with L4 above the sacrum, " + fmt(t.expected_studies[2]) + " with an L6 below an L5, and 0529, a labelling error with an L6 in place of its L5, which is in neither column) and its " + fmt(t.expected_studies[0]) + " controls. A build that does not reproduce them is a bug."),
+    el("p", null, t.matches ? el("span", { class: "status pass" }, "This build reproduces the note's table, cell for cell.") : el("span", { class: "status fail" }, "This build does not reproduce the note's table; the cells that differ are marked.")),
+    table([{ label: "What the ribs say" }, ...t.columns.map(c => ({ label: c, num: true }))], rows)
+  );
+};
+
+/* ---------- Studies ---------- */
+const STUDY_COLS = [
+  { key: "item", label: "Study", fmt: r => shortItem(r.item) },
+  { key: "site", label: "Site", fmt: siteOf },
+  { key: "tier", label: "Tier" },
+  { key: "part", label: "Part" },
+  { key: "class", label: "Class", fmt: r => className(r.class) },
+  { key: "status", label: "Status", fmt: r => statusName(r.status) },
+  { key: "call_by_names", label: "By names" },
+  { key: "call_by_ribs", label: "By ribs" },
+  { key: "rib_pairs", label: "Rib pairs", num: true },
+  { key: "lowest_rib_row", label: "Lowest rib" },
+  { key: "l4_to_sacrum_mm", label: "L4 to sacrum, mm", num: true },
+  { key: "qa_fail", label: "QA fail", fmt: r => uniqueChecks(r.qa_fail).join(" ") },
+  { key: "qa_look", label: "QA look", fmt: r => uniqueChecks(r.qa_look).join(" ") }
+];
+builders.studies = function (root) {
+  const opt = (v, l) => el("option", { value: v }, l);
+  const uniq = key => [...new Set(ROWS.map(r => r[key]).filter(v => v !== null && v !== undefined))].sort();
+  const q = el("input", { type: "search", placeholder: "Search a study, class, call or check (e.g. 0603, l6, T11L5, Q09)", "aria-label": "Search studies" });
+  const fSite = el("select", { "aria-label": "Member and site" }, opt("", "All members"), opt("autoPET", "autoPET"), opt("Leipzig", "Leipzig"), opt("Careggi", "Careggi"), opt("VerSe", "VerSe"));
+  const fTier = el("select", { "aria-label": "Tier" }, opt("", "All tiers"), uniq("tier").map(t => opt(t, t)));
+  const fClass = el("select", { "aria-label": "Class" }, opt("", "All classes"), uniq("class").map(c => opt(c, className(c))));
+  const fStatus = el("select", { "aria-label": "Status" }, opt("", "All statuses"), uniq("status").map(s => opt(s, statusName(s))));
+  const fQa = el("input", { type: "checkbox" });
+  const fBench = el("input", { type: "checkbox" });
+  const count = el("span", { class: "small" });
+  const pager = el("div", { class: "pager" });
+  const holder = el("div");
+  let sortKey = "item", sortDir = 1, page = 0;
+  const PAGE = 50;
+  function filtered() {
+    const words = q.value.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    return ROWS.filter(r => {
+      if (fSite.value && siteOf(r) !== fSite.value) return false;
+      if (fTier.value && r.tier !== fTier.value) return false;
+      if (fClass.value && r.class !== fClass.value) return false;
+      if (fStatus.value && r.status !== fStatus.value) return false;
+      if (fQa.checked && !r.qa_fail && !r.qa_look) return false;
+      if (fBench.checked && !BENCH_BY_ITEM.has(r.item)) return false;
+      if (!words.length) return true;
+      const hay = [r.item, siteOf(r), r.tier, r.part, r.class, className(r.class), r.status, r.call_by_names, r.call_by_ribs, r.lowest_rib_row, r.qa_fail, r.qa_look].join(" ").toLowerCase();
+      return words.every(w => hay.includes(w));
+    });
+  }
+  function paint() {
+    const focusKey = focusedKey(root);
+    const rows = filtered();
+    const col = STUDY_COLS.find(c => c.key === sortKey);
+    const keyOf = r => {
+      const v = r[sortKey];
+      if (v === null || v === undefined || v === "") return null;
+      const k = col.num ? v : (col.fmt ? col.fmt(r) : String(v));
+      return k === "" ? null : k;
+    };
+    rows.sort((a, b) => {
+      const x = keyOf(a), y = keyOf(b);
+      if (x === null || y === null) return x === y ? a.item.localeCompare(b.item) : (x === null ? 1 : -1);
+      const c = col.num ? x - y : x.localeCompare(y, "en", { numeric: true });
+      return c ? c * sortDir : a.item.localeCompare(b.item);
+    });
+    const pages = Math.max(1, Math.ceil(rows.length / PAGE));
+    page = Math.min(page, pages - 1);
+    const slice = rows.slice(page * PAGE, page * PAGE + PAGE);
+    count.textContent = fmt(rows.length) + " of " + fmt(ROWS.length) + " studies";
+    const thead = el("thead", null, el("tr", null, STUDY_COLS.map(c => el("th", {
+      class: "sort" + (c.num ? " num" : ""), scope: "col", tabindex: "0", "data-key": "sort-" + c.key,
+      "aria-sort": c.key === sortKey ? (sortDir > 0 ? "ascending" : "descending") : null,
+      onclick: () => { if (sortKey === c.key) sortDir = -sortDir; else { sortKey = c.key; sortDir = 1; } paint(); },
+      onkeydown: e => { if (e.key === "Enter") e.target.click(); }
+    }, c.label))));
+    const tbody = el("tbody", null, slice.map(r => el("tr", { class: "click", tabindex: "0", "data-key": "row-" + r.item, onclick: () => openStudy(r.item), onkeydown: e => { if (e.key === "Enter") openStudy(r.item); } },
+      STUDY_COLS.map(c => el("td", { class: c.num ? "num" : null }, c.fmt ? c.fmt(r) : (r[c.key] === null || r[c.key] === undefined ? "\u2013" : String(r[c.key])))))));
+    holder.replaceChildren(el("div", { class: "tablewrap" }, el("table", null, thead, tbody)));
+    pager.replaceChildren(count,
+      el("button", { class: "btn", disabled: page === 0, "data-key": "prev", onclick: () => { page--; paint(); } }, "Previous"),
+      el("span", { class: "small" }, "page " + (page + 1) + " of " + pages),
+      el("button", { class: "btn", disabled: page >= pages - 1, "data-key": "next", onclick: () => { page++; paint(); } }, "Next"));
+    restoreFocus(root, focusKey);
+  }
+  [q, fSite, fTier, fClass, fStatus, fQa, fBench].forEach(x => x.addEventListener("input", () => { page = 0; paint(); }));
+  root.append(
+    el("p", { class: "lede" }, "One row per study. The call by names reads the release's labels; the call by ribs reads which body each rib meets. They are kept apart and never merged. Choose a row for its facts, and its views where it is on the reader bench."),
+    el("div", { class: "controls" }, q),
+    el("div", { class: "controls" }, fSite, fTier, fClass, fStatus,
+      el("label", { class: "check" }, fQa, "QA fail or look"), el("label", { class: "check" }, fBench, "On the reader bench")),
+    holder, pager);
+  paint();
+};
+
+function viewFigures(b) {
+  if (!b) return null;
+  const figs = [el("figure", null, el("img", { src: b.view, alt: "Front and side projections of the published masks of study " + shortItem(b.item), loading: "lazy" }),
+    el("figcaption", null, b.repaired_view ? "Published masks, front and side" : "Masks, front (with ribs and their numbers) and side"))];
+  if (b.repaired_view) figs.push(el("figure", null, el("img", { src: b.repaired_view, alt: "Front and side projections of the repaired mask of study " + shortItem(b.item), loading: "lazy" }),
+    el("figcaption", null, "Repaired mask, front and side")));
+  return el("div", { class: "views" }, figs);
+}
+function factList(r) {
+  return el("dl", { class: "facts" },
+    el("dt", null, "Member, site"), el("dd", null, (r.member === "enhance_pet" ? "ENHANCE.PET" : r.member === "verse" ? "VerSe" : r.member) + (r.site ? ", " + r.site : "")),
+    el("dt", null, "Tier"), el("dd", null, r.tier + (r.provisional ? " (provisional)" : "")),
+    el("dt", null, "Part"), el("dd", null, r.part + (r.training_allowed ? "" : ", not for training (" + r.anomaly_role + ")")),
+    el("dt", null, "Class"), el("dd", null, className(r.class)),
+    el("dt", null, "Status"), el("dd", null, statusName(r.status) + (r.needs_ct ? "; needs the CT" : "")),
+    el("dt", null, "Call by names"), el("dd", null, r.call_by_names || "\u2013"),
+    el("dt", null, "Call by ribs"), el("dd", null, r.call_by_ribs || "\u2013"),
+    el("dt", null, "Rib pairs"), el("dd", null, r.rib_pairs === null ? "\u2013" : String(r.rib_pairs)),
+    el("dt", null, "Lowest rib"), el("dd", null, r.lowest_rib_row || "\u2013"),
+    el("dt", null, "L4 to sacrum"), el("dd", null, r.l4_to_sacrum_mm === null ? "\u2013" : r.l4_to_sacrum_mm + " mm, shortest 3-D distance"),
+    el("dt", null, "QA fail"), el("dd", null, uniqueChecks(r.qa_fail).length ? uniqueChecks(r.qa_fail).map(c => [checkChip(c), " "]) : "none"),
+    el("dt", null, "QA look"), el("dd", null, uniqueChecks(r.qa_look).length ? uniqueChecks(r.qa_look).map(c => [checkChip(c), " "]) : "none"),
+    r.class === "repaired" ? [el("dt", null, "Repaired"), el("dd", null, "The calls and facts above come from the repaired mask (row " + shortItem(r.item) + "r); the QA lists join the published and the repaired readings, which QA.md lists apart.")] : null);
+}
+function checkChip(id) {
+  const c = D.checks.find(x => x.id === id);
+  return el("span", { class: "chip", title: c ? c.title + ": " + c.holds : id }, id + (c ? " " + c.title : ""));
+}
+const dlg = document.getElementById("study-dlg");
+document.getElementById("study-dlg-close").addEventListener("click", () => dlg.close());
+dlg.addEventListener("click", e => { if (e.target === dlg) dlg.close(); });
+function openStudy(item) {
+  const r = BY_ITEM.get(item);
+  if (!r) return;
+  const b = BENCH_BY_ITEM.get(item);
+  document.getElementById("study-dlg-title").textContent = "Study " + item;
+  const verdicts = verdictsFor(item);
+  fill(document.getElementById("study-dlg-body"),
+    factList(r),
+    viewFigures(b),
+    b ? el("p", null, el("button", { class: "btn primary", onclick: () => { dlg.close(); openTab("bench"); benchGo(item); } }, "Read it on the bench")) : el("p", { class: "small" }, r.member === "verse" ? "Not on the reader bench: VerSe's series have no mask views yet." : "Not on the reader bench: the bench holds ENHANCE.PET's anomaly, look, open and labelling-error studies, the ones with no C2 and the three repaired."),
+    verdicts.length ? el("ul", { class: "others" }, verdicts.map(v => el("li", null, readerName(v.reader) + ": " + (VERDICT_NAMES[v.verdict] || v.verdict) + (v.call ? ", reads " + v.call : "") + (v.note ? ". " + v.note : "")))) : null
+  );
+  if (typeof dlg.showModal === "function") dlg.showModal(); else dlg.setAttribute("open", "");
+}
+
+/* ---------- Quality checks ---------- */
+builders.qa = function (root) {
+  const counts = {};
+  for (const c of D.qa_counts) (counts[c.check_id] = counts[c.check_id] || {})[c.verdict] = c.n;
+  const byCheck = {};
+  for (const r of ROWS) {
+    for (const id of uniqueChecks(r.qa_fail)) (byCheck[id] = byCheck[id] || { fail: [], look: [] }).fail.push(r.item);
+    for (const id of uniqueChecks(r.qa_look)) (byCheck[id] = byCheck[id] || { fail: [], look: [] }).look.push(r.item);
+  }
+  const chips = items => items.map(i => [el("span", { class: "chip link", tabindex: "0", onclick: () => openStudy(i), onkeydown: e => { if (e.key === "Enter") openStudy(i); } }, shortItem(i)), " "]);
+  root.append(
+    el("p", { class: "lede" }, "Sixteen checks, each run where it applies; not run counts the readings a check had nothing to read in. The counts are mask readings: the 1,597 published ENHANCE.PET studies and the three repaired masks. A fail or a look is the check working: it is how shifted rib ladders and labelling errors were found, 0603 and 1134 among them, and the open 1336."),
+    table([{ label: "Check" }, { label: "What it holds" }, { label: "Threshold" }, { label: "Pass", num: true }, { label: "Fail", num: true }, { label: "Look", num: true }, { label: "Not run", num: true }],
+      D.checks.map(c => {
+        const n = counts[c.id] || {};
+        return { cells: [el("strong", null, c.id + " " + c.title), el("span", { class: "small" }, c.holds), el("code", { class: "small" }, c.thresholds),
+          fmt(n.pass || 0), n.fail ? el("span", { class: "bad" }, fmt(n.fail)) : "0", fmt(n.look || 0), fmt(n.not_run || 0)] };
+      })),
+    el("h2", null, "Which studies failed or need a look"),
+    el("p", { class: "small" }, "Choose a study for its facts and views. These lists are by study, so a repaired study's list joins its published and repaired readings, which QA.md lists apart; the counts above are by reading."),
+    ...D.checks.filter(c => byCheck[c.id]).map(c => el("div", { class: "card", style: "margin:10px 0" },
+      el("h3", { style: "margin-top:0" }, c.id + " " + c.title),
+      byCheck[c.id].fail.length ? el("p", null, el("span", { class: "status fail" }, "fail, " + byCheck[c.id].fail.length + (byCheck[c.id].fail.length === 1 ? " study" : " studies")), " ", chips(byCheck[c.id].fail)) : null,
+      byCheck[c.id].look.length ? el("p", null, el("span", { class: "status look" }, "look, " + byCheck[c.id].look.length + (byCheck[c.id].look.length === 1 ? " study" : " studies")), " ", chips(byCheck[c.id].look)) : null))
+  );
+};
+
+/* ---------- Reader bench ---------- */
+let benchGo = () => {};
+builders.bench = function (root) {
+  const order = BENCH.map(b => b.item);
+  let current = store("gold3.bench") || order[0];
+  if (!BENCH_BY_ITEM.has(current)) current = order[0];
+  const fClass = el("select", { "aria-label": "Class" }, el("option", { value: "" }, "All classes"),
+    [...new Set(BENCH.map(b => BY_ITEM.get(b.item).class))].sort().map(c => el("option", { value: c }, className(c))));
+  const fTodo = el("input", { type: "checkbox" });
+  const stateLine = el("p", { class: "small", "aria-live": "polite" });
+  const progress = el("p", { class: "small" });
+  const list = el("div", { class: "bench-list card" });
+  const emptyNote = el("p", { class: "small" }, "Nothing left under this filter.");
+  const mobileSel = el("select", { "aria-label": "Study", style: "flex:1 1 auto" });
+  const card = el("div", { class: "card" });
+  const itemNodes = new Map();
+  let refs = null;
+  function visible() {
+    return order.filter(i => {
+      const r = BY_ITEM.get(i);
+      if (fClass.value && r.class !== fClass.value) return false;
+      if (fTodo.checked && V.mine[i] && V.mine[i].verdict) return false;
+      return true;
+    });
+  }
+  function move(delta) {
+    const vis = visible();
+    if (!vis.length) return;
+    const k = vis.indexOf(current);
+    go(vis[Math.min(vis.length - 1, Math.max(0, (k < 0 ? 0 : k + delta)))]);
+  }
+  function go(item) {
+    if (refs) refs.flush();
+    current = item; store("gold3.bench", item);
+    paintList(); paintCard();
+    const node = itemNodes.get(item);
+    if (node && node.isConnected) node.scrollIntoView({ block: "nearest" });
+  }
+  benchGo = go;
+  // A list entry keeps its node from paint to paint, so a click that began on it still lands.
+  function listNode(i) {
+    let node = itemNodes.get(i);
+    if (!node) {
+      const r = BY_ITEM.get(i);
+      node = el("div", { class: "bench-item", "data-item": i, tabindex: "0", onclick: () => go(i), onkeydown: e => { if (e.key === "Enter") go(i); } },
+        el("strong", null, shortItem(i) + " \xb7 " + siteOf(r)), el("span", { class: "small" }), el("span", { class: "small" }, className(r.class)));
+      itemNodes.set(i, node);
+    }
+    const mine = V.mine[i], n = verdictsFor(i).length;
+    node.children[1].textContent = mine && VERDICT_KEYS.has(mine.verdict) ? VERDICT_NAMES[mine.verdict] : (n ? n + " read" : "");
+    node.setAttribute("aria-current", i === current ? "true" : "false");
+    return node;
+  }
+  function paintList() {
+    const vis = visible();
+    const nodes = vis.length ? vis.map(listNode) : [emptyNote];
+    const want = new Set(nodes);
+    for (const child of [...list.children]) if (!want.has(child)) child.remove();
+    nodes.forEach((node, k) => { if (list.children[k] !== node) list.insertBefore(node, list.children[k] || null); });
+    if (document.activeElement === mobileSel) return;
+    const options = vis.includes(current) ? vis : [current, ...vis];
+    mobileSel.replaceChildren(...options.map(i => el("option", { value: i, selected: i === current },
+      shortItem(i) + " \xb7 " + className(BY_ITEM.get(i).class) + (V.mine[i] && V.mine[i].verdict ? " \u2713" : "") + (vis.includes(i) ? "" : " (filtered out)"))));
+  }
+  function othersBlock(item) {
+    const others = verdictsFor(item).filter(v => v.reader !== V.me);
+    return others.length ? [el("h3", null, "Other readers"), el("ul", { class: "others" }, others.map(v => el("li", null,
+      readerName(v.reader) + ": " + VERDICT_NAMES[v.verdict] + (v.call ? ", reads " + v.call : "") + (v.note ? ". " + v.note : ""))))] : [];
+  }
+  // Built once per study; the reader's own edits update it in place, so focus never drops mid-edit.
+  function paintCard() {
+    const item = current;
+    const r = BY_ITEM.get(item), b = BENCH_BY_ITEM.get(item), mine = V.mine[item] || {};
+    const can = canSave();
+    const call = el("input", { type: "text", value: mine.call || "", placeholder: "e.g. T12L5", "aria-label": "Your column call", disabled: !can, maxlength: "40", style: "width:9em" });
+    const note = el("textarea", { rows: "2", placeholder: "Optional note: what you see", "aria-label": "Note", disabled: !can, maxlength: "2000" }, mine.note || "");
+    let timer = null;
+    const commitText = () => {
+      clearTimeout(timer); timer = null;
+      const c = call.value.trim(), n = note.value.trim(), now = V.mine[item] || {};
+      if ((now.call || "") !== c || (now.note || "") !== n) setMine(item, { call: c, note: n });
+    };
+    const later = () => { clearTimeout(timer); timer = setTimeout(commitText, 900); };
+    call.addEventListener("input", later); note.addEventListener("input", later);
+    call.addEventListener("blur", commitText); note.addEventListener("blur", commitText);
+    const buttons = VERDICTS.map((v, k) => el("button", {
+      class: "btn", "aria-pressed": mine.verdict === v.key ? "true" : "false", disabled: !can, title: v.hint,
+      onclick: () => {
+        clearTimeout(timer); timer = null;
+        const now = V.mine[item] || {};
+        setMine(item, { verdict: now.verdict === v.key ? "" : v.key, call: call.value.trim(), note: note.value.trim() });
+      }
+    }, v.label, el("kbd", null, String(k + 1))));
+    const others = el("div");
+    fill(card,
+      el("div", { class: "controls", style: "justify-content:space-between;margin-top:0" },
+        el("h2", { style: "margin:0" }, "Study " + shortItem(item) + " \xb7 " + siteOf(r)),
+        el("div", { class: "controls", style: "margin:0" },
+          el("button", { class: "btn", onclick: () => move(-1), title: "Previous (k or left arrow)" }, "Previous"),
+          el("button", { class: "btn", onclick: () => move(1), title: "Next (j or right arrow)" }, "Next"))),
+      el("p", { style: "margin:4px 0" }, el("strong", null, className(r.class)), " \xb7 " + statusName(r.status) + (r.needs_ct ? " \xb7 needs the CT" : "")),
+      viewFigures(b),
+      el("p", { class: "small" }, "These are projections of the masks, not the CT: colours mark the release's vertebra labels, grey the ribs with their numbers. Count from C2 with the rib pairs. A lumbosacral question, such as an L5 counted into the sacrum, needs the CT."),
+      el("h3", null, "Your verdict"),
+      el("div", { class: "verdicts", role: "group", "aria-label": "Verdict" }, buttons),
+      el("div", { class: "controls" }, el("label", { class: "check" }, "Your column call", call)),
+      note,
+      stateLine,
+      el("h3", null, "The facts"),
+      factList(r),
+      others
+    );
+    refs = { item, call, note, buttons, others, flush: commitText };
+    syncCard();
+  }
+  function syncCard() {
+    if (!refs || refs.item !== current) { paintCard(); return; }
+    const mine = V.mine[current] || {}, can = canSave();
+    refs.buttons.forEach((btn, k) => {
+      btn.setAttribute("aria-pressed", mine.verdict === VERDICTS[k].key ? "true" : "false");
+      if (btn.disabled !== !can) btn.disabled = !can;
+    });
+    for (const [node, key] of [[refs.call, "call"], [refs.note, "note"]]) {
+      if (node.disabled !== !can) node.disabled = !can;
+      if (document.activeElement !== node && node.value.trim() !== (mine[key] || "")) node.value = mine[key] || "";
+    }
+    fill(refs.others, othersBlock(current));
+    stateLine.textContent = verdictStateText();
+  }
+  function paintProgress() {
+    const mineN = Object.entries(V.mine).filter(([k, v]) => BENCH_BY_ITEM.has(k) && v && VERDICT_KEYS.has(v.verdict)).length;
+    const per = new Map();
+    eachVerdict((reader, item) => per.set(item, (per.get(item) || 0) + 1));
+    const two = [...per.values()].filter(n => n >= 2).length;
+    progress.textContent = (V.me ? "You have read " + fmt(mineN) + " of " + fmt(BENCH.length) + ". " : "") +
+      "All readers: " + fmt(per.size) + (per.size === 1 ? " study" : " studies") + " with a verdict, " + fmt(two) + " with two or more.";
+  }
+  const dlStatus = el("span", { class: "small" });
+  const exportBtn = el("button", { class: "btn", onclick: () => {
+    const out = [];
+    eachVerdict((reader, item, v) => out.push({ item, reader_id: reader, verdict: v.verdict, column_call_read: v.call || null, note: v.note || null, utc: v.utc || null }));
+    out.sort((a, b) => a.item.localeCompare(b.item) || a.reader_id.localeCompare(b.reader_id));
+    offerDownload("gold3-reader-verdicts.json", JSON.stringify({ dataset: BUILD.store.name, verdicts: out }, null, 1) + "\n", dlStatus);
+  } }, "Download the verdicts (JSON)");
+  const refilter = () => { paintList(); const vis = visible(); if (vis.length && !vis.includes(current)) go(vis[0]); };
+  fClass.addEventListener("input", refilter);
+  fTodo.addEventListener("input", refilter);
+  mobileSel.addEventListener("input", () => go(mobileSel.value));
+  document.addEventListener("keydown", e => {
+    if (root.hidden || (dlg && dlg.open)) return;
+    const t = e.target;
+    if (t && t.closest && t.closest("nav.tabs, input, textarea, select, [contenteditable]")) return;
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.key === "j" || e.key === "ArrowRight") { move(1); e.preventDefault(); }
+    else if (e.key === "k" || e.key === "ArrowLeft") { move(-1); e.preventDefault(); }
+    else if (/^[1-4]$/.test(e.key) && !e.repeat && canSave()) {
+      const v = VERDICTS[Number(e.key) - 1], mine = V.mine[current] || {};
+      setMine(current, { verdict: mine.verdict === v.key ? "" : v.key });
+      e.preventDefault();
+    }
+  });
+  root.append(
+    el("p", { class: "lede" }, "Every ENHANCE.PET anomaly, look, open and labelling-error study, the studies with no C2 and the three repaired masks, " + fmt(BENCH.length) + " in all; VerSe's series have no mask views yet. A reader's verdict here is the quality assurance that an anomaly is true; only a recorded verdict makes it reader confirmed. Two readers counting from C2 with the rib pairs is the plan. Keys: 1 to 4 choose a verdict, j and k move."),
+    el("div", { class: "controls" }, fClass, el("label", { class: "check" }, fTodo, "Not yet read by me"), exportBtn, dlStatus),
+    progress,
+    el("div", { class: "bench" }, list, el("div", null, el("div", { class: "bench-mobile controls" },
+      el("button", { class: "btn", onclick: () => move(-1), "aria-label": "Previous study" }, "\u2190"), mobileSel, el("button", { class: "btn", onclick: () => move(1), "aria-label": "Next study" }, "\u2192")), card))
+  );
+  V.listeners.add(() => { paintList(); paintProgress(); syncCard(); });
+  paintList(); paintCard(); paintProgress();
+};
+
+/* ---------- SQL ---------- */
+builders.sql = function (root) {
+  const presets = [
+    { label: "Gold 3 persons by member", sql: "SELECT * FROM gold3_persons_by_member;" },
+    { label: "Anomalies by class and status", sql: "SELECT * FROM anomalies_by_class_and_status ORDER BY member, site, class, status;" },
+    { label: "QA failures", sql: "SELECT * FROM qa_failures ORDER BY check_id, item;" },
+    { label: "Workflow manifest", sql: "SELECT * FROM workflow_manifest ORDER BY item;" },
+    { label: "Tables", sql: "SELECT type, name FROM sqlite_master WHERE type IN ('table','view') ORDER BY type, name;" },
+    { label: "Classes by site", sql: "SELECT anomaly.class, item.site, count(*) AS studies\nFROM anomaly JOIN item USING (item)\nGROUP BY anomaly.class, item.site ORDER BY studies DESC;" }
+  ];
+  const text = el("textarea", { id: "sql-text", spellcheck: "false", "aria-label": "SQL query" }, presets[0].sql);
+  const status = el("p", { class: "small" });
+  const out = el("div", { class: "sql-out" });
+  let last = null;
+  const csvBtn = el("button", { class: "btn", disabled: true, onclick: () => { if (last) offerDownload("gold3-query.csv", toCsv(last), status); } }, "Download the result (CSV)");
+  const mb = n => fmt(Math.round(n / 1e5) / 10);
+  async function run() {
+    status.textContent = "Opening the store (" + mb(BUILD.store.zip_bytes) + " MB zipped, " + mb(BUILD.store.bytes) + " MB open)\u2026";
+    try {
+      const db = await openStore();
+      const t0 = performance.now();
+      let result = null, statements = 0;
+      for (const stmt of db.iterateStatements(text.value)) {
+        try {
+          const columns = stmt.getColumnNames(), values = [];
+          while (stmt.step()) values.push(stmt.get());
+          result = { columns, values };
+          statements++;
+        } finally { stmt.free(); }
+      }
+      const ms = Math.round(performance.now() - t0);
+      last = result && result.columns.length ? result : null;
+      csvBtn.disabled = !last;
+      if (!result) { out.replaceChildren(); status.textContent = "Nothing to run."; return; }
+      const shown = result.values.slice(0, 1000);
+      out.replaceChildren(result.columns.length
+        ? table(result.columns.map(c => ({ label: c })), shown.map(r => ({ cells: r.map(v => v === null ? el("span", { class: "muted" }, "null") : (v instanceof Uint8Array ? "<" + v.length + " bytes>" : String(v))) })))
+        : el("p", { class: "small" }, "The last statement returns no columns."));
+      status.textContent = fmt(result.values.length) + (result.values.length === 1 ? " row" : " rows") + (result.values.length > shown.length ? ", the first 1,000 shown" : "") +
+        (statements > 1 ? " from the last of " + statements + " statements" : "") + " (" + ms + " ms). The store opens read-only in this page; nothing you run changes the dataset.";
+    } catch (e) {
+      status.textContent = "Error: " + (e && e.message ? e.message : e);
+    }
+  }
+  text.addEventListener("keydown", e => { if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); run(); } });
+  root.append(
+    el("p", { class: "lede" }, "The same SQLite store the workflow builds, opened in this page with sql.js. Run any read-only query; Ctrl or Cmd with Enter runs it."),
+    el("div", { class: "controls" }, presets.map(p => el("button", { class: "btn", onclick: () => { text.value = p.sql; run(); } }, p.label))),
+    text,
+    el("div", { class: "controls" }, el("button", { class: "btn primary", onclick: run }, "Run"), csvBtn),
+    status, out,
+    el("details", null, el("summary", null, "The schema"), el("pre", null, D.schema))
+  );
+};
+
+/* ---------- start ---------- */
+connectVerdicts();
+openTab(store("gold3.tab") || "overview");
+</script>
+</body>
+</html>

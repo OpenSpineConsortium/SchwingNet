@@ -12,11 +12,13 @@ order of reading and no clock. The CTs the render groups on one folder draw from
 same way, once for the folder, among the subjects that have masks under every segmenter those
 groups name (the owner's words of 2026-10-26: MOOSE's masks when replicating FleXray's own
 dataset, SPINEPS's for the project's production runs, the segmenter a block of the recipe), so
-that groups differing only by their recipe render the same CTs. The AUC is the Mann-Whitney
-statistic counted in integers, the permutation p-value is never zero, the Benjamini-Hochberg
-adjustment never makes a smaller p larger, and the gap's word is fixed before the numbers come
-back. Only printable text leaves the grid, through grid/redact.sed, so a report line is made to
-pass that filter unchanged: a line the filter would rewrite would lose the number it carries.
+that groups differing only by their recipe render the same CTs; a group on segmenter none
+renders from the CT alone and names no segmenter (the owner's word of 2026-10-27). The AUC is the
+Mann-Whitney statistic counted in integers, the permutation p-value is never zero, the
+Benjamini-Hochberg adjustment never makes a smaller p larger, and the gap's word is fixed before
+the numbers come back. Only printable text leaves the grid, through grid/redact.sed, so a report
+line is made to pass that filter unchanged: a line the filter would rewrite would lose the number
+it carries.
 """
 
 import re
@@ -453,6 +455,11 @@ def _blocks_hold(words: tuple[str, ...]) -> bool:
     return True
 
 
+def _reads_no_masks(words: tuple[str, ...]) -> bool:
+    """Whether a group's recipe takes segmenter none, so it reads no segmenter's masks."""
+    return render_blocks.parse(words).segmenter == render_blocks.NO_SEGMENTER
+
+
 @beartype
 @require(
     lambda blocks_named: all(_blocks_hold(words) for words in blocks_named),
@@ -464,14 +471,23 @@ def _blocks_hold(words: tuple[str, ...]) -> bool:
     "each one of the segmenters",
 )
 @ensure(
-    lambda result, blocks_named: len(result) >= 1 or not blocks_named,
-    "groups name at least one segmenter, since every recipe has one",
+    lambda result: render_blocks.NO_SEGMENTER not in result,
+    "a recipe that reads no masks names no segmenter whose masks are needed",
+)
+@ensure(
+    lambda result, blocks_named: (
+        (len(result) == 0) == all(_reads_no_masks(words) for words in blocks_named)
+    ),
+    "no segmenter exactly when every group renders from the CT alone",
 )
 def segmenters_named(blocks_named: Sequence[tuple[str, ...]]) -> tuple[str, ...]:
-    """The segmenters the render groups on one folder name, each once and in order: the
-    segmenter block of each group's recipe, the project's default (SPINEPS) where the words name
-    none. The folder's CTs are chosen among those that have masks under every one of them."""
-    return tuple(sorted({render_blocks.parse(words).segmenter for words in blocks_named}))
+    """The segmenters whose masks the render groups on one folder read, each once and in order:
+    the segmenter block of each group's recipe, the project's default (SPINEPS) where the words
+    name none, and nothing for a group on segmenter none, which renders from the CT alone (the
+    owner's word of 2026-10-27). The folder's CTs are chosen among those that have masks under
+    every one of them; a folder whose groups all render from the CT alone requires no masks."""
+    named = {render_blocks.parse(words).segmenter for words in blocks_named}
+    return tuple(sorted(named - {render_blocks.NO_SEGMENTER}))
 
 
 @beartype

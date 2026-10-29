@@ -1,0 +1,291 @@
+{
+ "about": "What a person or the note decided about single ENHANCE.PET studies, read by tools/gold3_ct.py as data. The rules in the tool are general and run on every study; this record only names the studies whose reading a person or the note settled, each with the reason and where it is written. Nothing here was repaired except the three under repaired.",
+ "labelling_error": [
+  {
+   "id": "0529",
+   "why": "the body below L4 is labelled L6 and there is no L5, a skipped label; the lowest ribs are 12 on T12, so the L6 label is very likely L5",
+   "source": "docs/research/enhance-pet-gold-tier-3.md, What the ribs say; the Claude project's files, enhance-pet-repair/README.md"
+  },
+  {
+   "id": "0245",
+   "why": "every rib leads on the label one level up, the first rib on C7, so the labels sit one level high from the thorax down and the five lumbar bodies are labelled T12 and L1 to L4",
+   "source": "docs/research/enhance-pet-gold-tier-3.md, What the ribs say; the Claude project's files, enhance-pet-repair/README.md"
+  },
+  {
+   "id": "0603",
+   "why": "the label T6 holds 10,349 voxels between T5's 34,247 and T7's 46,457, a split piece that pushes every label below it one level down; from rib 6 down every rib leads on the label one level down",
+   "source": "docs/research/enhance-pet-gold-tier-3.md, What the ribs say; the Claude project's files, enhance-pet-repair/README.md"
+  }
+ ],
+ "open": [
+  {
+   "id": "0005",
+   "why": "the twelve right ribs lead one level up, the eleven left ribs each on their own label: either the left mask lacks its first rib and the labels sit one level high, or the right side has a cervical rib numbered rib 1 and the column has 23 bodies with eleven rib pairs; the CT has to settle it",
+   "source": "docs/research/enhance-pet-gold-tier-3.md, What the ribs say; the Claude project's files, enhance-pet-repair/README.md"
+  },
+  {
+   "id": "1336",
+   "why": "every rib leads on the label one level below its own and no rib leads on T1: either the rib mask lacks its first ribs or the body named T1 bears no rib; both readings leave 25 bodies above the sacrum, and the CT has to settle which",
+   "source": "docs/research/enhance-pet-gold-tier-3.md, What the ribs say; the Claude project's files, enhance-pet-repair/README.md"
+  }
+ ],
+ "look": [
+  {
+   "id": "0179",
+   "why": "an L5 label of 1,036 voxels against L4's 39,282; L4 comes within 2.5 mm of the sacrum, inside the controls' range: a short lumbar spine with a piece labelled L5, or a small L5",
+   "source": "docs/research/enhance-pet-gold-tier-3.md, How many are whole; the Claude project's files, enhance-pet-repair/README.md"
+  },
+  {
+   "id": "0213",
+   "why": "an L5 label of 8,531 voxels against L4's 47,727; L4 comes within 2.5 mm of the sacrum, inside the controls' range",
+   "source": "docs/research/enhance-pet-gold-tier-3.md, How many are whole; the Claude project's files, enhance-pet-repair/README.md"
+  },
+  {
+   "id": "0270",
+   "why": "an L5 label of 3,322 voxels against L4's 94,219; L4 touches the sacrum (0.8 mm), below the controls' range",
+   "source": "docs/research/enhance-pet-gold-tier-3.md, How many are whole; the Claude project's files, enhance-pet-repair/README.md"
+  },
+  {
+   "id": "1240",
+   "why": "an L5 label of 1,886 voxels against L4's 25,999; L4 touches the sacrum (1.0 mm), below the controls' range",
+   "source": "docs/research/enhance-pet-gold-tier-3.md, How many are whole; the Claude project's files, enhance-pet-repair/README.md"
+  },
+  {
+   "id": "0816",
+   "why": "labels out of head-foot order, clearly: ribs 6 to 12 on both sides lead one level up, T5's and L5's labels may each cover two bodies; the spine is strongly kyphotic, which weakens the tally",
+   "source": "the Claude project's files, enhance-pet-repair/README.md, More candidates"
+  },
+  {
+   "id": "1273",
+   "why": "labels out of head-foot order, clearly: T3's label holds only 1,899 voxels and T6's 24,834, ribs 5 lead on T4 and right rib 7 on T6, 1283's scramble on a smaller scale",
+   "source": "the Claude project's files, enhance-pet-repair/README.md, More candidates"
+  },
+  {
+   "id": "0040",
+   "why": "labels out of head-foot order, weakly: both first ribs lead on C7 and right ribs 8 and 9 on T10 and T11, but the upper thoracic spine runs almost level, so it may be the bend",
+   "source": "the Claude project's files, enhance-pet-repair/README.md, More candidates"
+  },
+  {
+   "id": "1463",
+   "why": "labels out of head-foot order, weakly: right ribs 8 and 9 lead one level up on few contacts; on the left rib 10 ties between T9 and T10",
+   "source": "the Claude project's files, enhance-pet-repair/README.md, More candidates"
+  }
+ ],
+ "repaired": [
+  {
+   "id": "1134",
+   "voxels": "readers",
+   "why": "no T1 label in the published mask; the spine has 11 rib-bearing bodies and 23 bodies from C1 to L5, a real count variant; the repair names the bodies by their ribs, T1 to T11 and then L1 to L5",
+   "source": "docs/research/enhance-pet-gold-tier-3.md, The three left out; the Claude project's files, enhance-pet-repair/README.md"
+  },
+  {
+   "id": "1283",
+   "voxels": "machine",
+   "why": "labels T3 to T11 scrambled; the repaired mask is MOOSE's rerun with five stray pieces given to the body they touch, a machine's mask checked by rule",
+   "source": "docs/research/enhance-pet-gold-tier-3.md, The three left out; the Claude project's files, enhance-pet-repair/README.md"
+  },
+  {
+   "id": "1347",
+   "voxels": "readers",
+   "why": "a body between T8 and T10 labelled T1 as a second piece, no T9; both ninth ribs meet that piece, which the repair names T9; the lumbosacral junction stays open",
+   "source": "docs/research/enhance-pet-gold-tier-3.md, The three left out; the Claude project's files, enhance-pet-repair/README.md"
+  }
+ ],
+ "repaired_tier": "gold 4 until a person checks it: the readers' voxels under names a rule moved, or a machine's mask",
+ "out_of_order_read_as_bend": [
+  {
+   "id": "0246",
+   "why": "neighbouring labels out of head-foot order, but every rib with contacts leads on its own label or the exceptions are a handful of voxels: a bent spine is the likeliest reading",
+   "source": "the Claude project's files, enhance-pet-repair/README.md, More candidates"
+  },
+  {
+   "id": "0490",
+   "why": "neighbouring labels out of head-foot order, but every rib with contacts leads on its own label or the exceptions are a handful of voxels: a bent spine is the likeliest reading",
+   "source": "the Claude project's files, enhance-pet-repair/README.md, More candidates"
+  },
+  {
+   "id": "1046",
+   "why": "neighbouring labels out of head-foot order, but every rib with contacts leads on its own label or the exceptions are a handful of voxels: a bent spine is the likeliest reading",
+   "source": "the Claude project's files, enhance-pet-repair/README.md, More candidates"
+  },
+  {
+   "id": "1451",
+   "why": "neighbouring labels out of head-foot order, but every rib with contacts leads on its own label or the exceptions are a handful of voxels: a bent spine is the likeliest reading",
+   "source": "the Claude project's files, enhance-pet-repair/README.md, More candidates"
+  },
+  {
+   "id": "1508",
+   "why": "neighbouring labels out of head-foot order, but every rib with contacts leads on its own label or the exceptions are a handful of voxels: a bent spine is the likeliest reading",
+   "source": "the Claude project's files, enhance-pet-repair/README.md, More candidates"
+  },
+  {
+   "id": "1530",
+   "why": "neighbouring labels out of head-foot order, but every rib with contacts leads on its own label or the exceptions are a handful of voxels: a bent spine is the likeliest reading",
+   "source": "the Claude project's files, enhance-pet-repair/README.md, More candidates"
+  }
+ ],
+ "known_exceptions": {
+  "Q15": [
+   {
+    "id": "1213",
+    "why": "CT-details.xlsx gives 0.98 mm, which is its pixel spacing, though its NIfTI slices are 3 mm apart",
+    "source": "docs/research/enhance-pet-gold-tier-3.md, What the bucket holds"
+   }
+  ]
+ },
+ "controls": {
+  "ids": [
+   "0001",
+   "0002",
+   "0003",
+   "0004",
+   "0006",
+   "0007",
+   "0008",
+   "0010",
+   "0011",
+   "0012",
+   "0013",
+   "0014",
+   "0015",
+   "0016",
+   "0017",
+   "0018",
+   "0019",
+   "0020",
+   "0021",
+   "0022",
+   "0023",
+   "0025",
+   "0026",
+   "0027",
+   "0028",
+   "0029",
+   "0030",
+   "0031",
+   "0032",
+   "0033",
+   "0034",
+   "0035",
+   "0036",
+   "0038",
+   "0039",
+   "0040",
+   "0041",
+   "0042",
+   "0043",
+   "0044",
+   "0045",
+   "0046",
+   "0047",
+   "0048",
+   "0049",
+   "0050",
+   "0051",
+   "0053",
+   "0054",
+   "0055",
+   "0056",
+   "0057",
+   "0058",
+   "0059",
+   "0061",
+   "0062",
+   "0063",
+   "0064",
+   "0065",
+   "0066",
+   "0067",
+   "0068",
+   "0069",
+   "0071",
+   "0072",
+   "0073",
+   "0074",
+   "0076",
+   "0077",
+   "0078",
+   "0079",
+   "0081",
+   "0082",
+   "0084",
+   "0085",
+   "0086",
+   "0087",
+   "0088",
+   "0089",
+   "0090",
+   "0091",
+   "0092",
+   "0093",
+   "0094",
+   "0095",
+   "0096",
+   "0098",
+   "0099",
+   "0100",
+   "0101",
+   "0102",
+   "0103",
+   "0104",
+   "0105",
+   "0106",
+   "0107",
+   "0109",
+   "0110",
+   "0111",
+   "0112"
+  ],
+  "source": "bordercall holdings/count_enhance_pet.py contact_ids (count.json rib_contact_ids.controls of 2026-10-27): the first 100 strict whole studies, every level from C2 to L5 named, no L6 and no variant, read beside the variants as their reference"
+ },
+ "note_table": {
+  "source": "docs/research/enhance-pet-gold-tier-3.md, What the ribs say about the unusual lumbar counts",
+  "columns": [
+   "controls",
+   "L4 above the sacrum",
+   "L6 below L5"
+  ],
+  "groups": {
+   "controls": "the ids under controls above",
+   "L4 above the sacrum": "whole studies with no L5 label and no L6 whose every label from L4 down overlaps the next head to foot by 5 mm or more (count_enhance_pet's no_l5 without an L6)",
+   "L6 below L5": "whole studies with every level from C2 to L5 named and an L6 below the L5 (count_enhance_pet's strict with an L6)"
+  },
+  "rows": {
+   "rib 12 on T12": [
+    96,
+    24,
+    51
+   ],
+   "rib 11 on T11": [
+    3,
+    8,
+    0
+   ],
+   "rib 11 on T11 on one side, rib 12 on T12 on the other": [
+    0,
+    1,
+    0
+   ],
+   "rib 13 on L1": [
+    0,
+    0,
+    14
+   ],
+   "a label one level off": [
+    0,
+    2,
+    2
+   ],
+   "no spine label within 3.0 mm": [
+    1,
+    4,
+    0
+   ]
+  },
+  "studies": [
+   100,
+   39,
+   67
+  ]
+ }
+}
