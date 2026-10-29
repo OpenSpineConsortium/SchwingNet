@@ -23,9 +23,9 @@ Each run works in its own folder, <out>/<stage>-<run key>-<run id>, named by the
 the run that made it. A run cut short and resumed carries on in the folder it began, since a resume
 clones start and its folder with it, the render and the edit skipping every sample already whole; a
 shard that fails fails the run, since the PREREG's sample is all the drawn subjects, and a later
-launch of the same key resumes it from that shard. A new run of the same key, which the launcher
-starts only after one that ended, begins in an empty folder of its own, so no file of an earlier
-draw is ever counted as this run's. An edit run that ends well writes <out>/edit.json, which names
+launch of the same key resumes it from that shard. A new run of the same key, whenever the
+launcher starts one, after a run that ended well or beside one still going, begins in an empty
+folder of its own, so no file of another run's draw is ever counted as this run's. An edit run that ends well writes <out>/edit.json, which names
 its folder: the stats stage reads the edit through it and copies the small files the report reads,
 and the stats run's key reads it with the weights the statistics load, so a new edit or new
 weights start new statistics; the stats start records the job's own environment and the weights'
@@ -115,19 +115,34 @@ def file_sha256(path):
     return digest.hexdigest()
 
 
+# Files a read itself writes, which would give every launch a new key and so never resume a run:
+# LMDB's lock file beside the ThunderDB's data.
+WRITTEN_BY_READING = ("lock.mdb",)
+
+
+def listing_line(root, path):
+    """A file's path, size and modification time, or None for one gone since it was listed."""
+    try:
+        stat = path.stat()
+    except OSError:
+        return None
+    return f"{path.relative_to(root)}\t{stat.st_size}\t{stat.st_mtime_ns}"
+
+
 def listing_sha256(folder):
-    """One sha256 over a folder's files by path and size, cheap enough for the launcher's key."""
+    """One sha256 over a folder's files by path, size and modification time, cheap enough for the
+    launcher's key, so a file fetched again, even at the same size, starts a new run."""
     root = Path(folder)
     if not folder or not root.is_dir():
         return "absent"
-    lines = sorted(f"{path.relative_to(root)}\t{path.stat().st_size}" for path in root.rglob("*") if path.is_file())
-    return hashlib.sha256("\n".join(lines).encode("utf-8")).hexdigest()
+    lines = (listing_line(root, path) for path in root.rglob("*") if path.name not in WRITTEN_BY_READING and path.is_file())
+    return hashlib.sha256("\n".join(sorted(line for line in lines if line)).encode("utf-8")).hexdigest()
 
 
 def key_reads(words, folder):
     """What a run of these words reads that the words do not name, for the launcher's key: for the
     edit, FluXray's samples.csv by its bytes and the ThunderDB, the CTs, the truth, the klein
-    weights and the FleXray bundle by their files' names and sizes, so data that landed or changed
+    weights and the FleXray bundle by their files' names, sizes and times, so data that landed or changed
     starts a new run rather than carrying an old one on; for the stats, the edit pointer by its
     bytes, the bundle by its listing and the ImageNet weights by their bytes, so a new edit or new
     weights start new statistics."""
@@ -169,6 +184,15 @@ def write_json(path, value):
 
 def utc_now():
     return datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+
+
+def code_state():
+    """The checkout's commit and whether its tree is clean, read where the step runs: a commit
+    says which code ran only from a clean tree, and git that cannot be read says neither."""
+    head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=REPO, capture_output=True, text=True)
+    tree = subprocess.run(["git", "status", "--porcelain"], cwd=REPO, capture_output=True, text=True)
+    commit = head.stdout.strip() if head.returncode == 0 else ""
+    return {"commit": commit or None, "clean_tree": bool(commit) and tree.returncode == 0 and not tree.stdout.strip()}
 
 
 def run_key():
@@ -250,7 +274,7 @@ class RealismFlow(FlowSpec):
             Path(self.folder).mkdir(parents=True, exist_ok=True)
             self.started = utc_now()
             self.where = {"host": socket.gethostname(), "slurm_job": os.environ.get("SLURM_JOB_ID") or "none",
-                          "run": f"{current.flow_name}/{current.run_id}", "datastore": stage.datastore_root()}
+                          "run": f"{current.flow_name}/{current.run_id}", "datastore": stage.datastore_root(), **code_state()}
             write_json(Path(self.root) / f"{self.which}.last.json", {"folder": self.folder, "run": self.where["run"],
                                                                       "key": self.key, "started": self.started, "verdict": None})
             beat.folder = self.folder
@@ -420,16 +444,16 @@ class RealismFlow(FlowSpec):
         return lines
 
     def ended_in(self):
-        """The run that ends the folder, which a resume makes another than the run in where."""
+        """The run that ends the folder, which a resume makes another than the run in where, with
+        the commit and tree it ended on, since a resume may run on a later commit of the same code."""
         return {"run": f"{current.flow_name}/{current.run_id}", "host": socket.gethostname(),
-                "slurm_job": os.environ.get("SLURM_JOB_ID") or "none", "ended": utc_now()}
+                "slurm_job": os.environ.get("SLURM_JOB_ID") or "none", "ended": utc_now(), **code_state()}
 
     def record(self):
         files = [path for path in Path(self.folder).rglob("*") if path.is_file() and path.stat().st_size < (64 << 20)
                  and path.suffix in (".json", ".jsonl", ".csv", ".txt", ".md") and path.name != "RECORD.json"]
-        tree = subprocess.run(["git", "status", "--porcelain"], cwd=REPO, capture_output=True, text=True)
         return {"study": STUDY, "stage": self.which, "run": self.where["run"], "key": self.key,
-                "commit": self.commit, "clean_tree": tree.returncode == 0 and not tree.stdout.strip(),
+                "commit": self.commit, "clean_tree": self.where.get("clean_tree") is True and self.ended["clean_tree"],
                 "prereg": self.prereg_path, "prereg_sha256": self.prereg_sha256, "frozen": realism.frozen_lines(),
                 "started": self.started, "ended": self.ended["ended"], "where": self.where, "ended_in": self.ended,
                 "paths": self.paths,
@@ -459,8 +483,11 @@ class RealismFlow(FlowSpec):
             write_json(Path(self.root) / f"{self.which}.last.json", ended)
             if self.which == "edit" and self.verdict == 0:
                 write_json(Path(self.root) / "edit.json", ended)
+            # The job's report puts its own "- " before each line it relays, so a line is printed
+            # without the one SUMMARY.md's list gives it, and a blank line not at all.
             for line in [*lines, f"report: {self.report_line}", f"verdict {self.verdict}"]:
-                print(f"RealismFlow: {line}", flush=True)
+                if line.strip():
+                    print(f"RealismFlow: {line.removeprefix('- ')}", flush=True)
             beat.say(f"verdict {self.verdict}; report {self.report_line}")
             stage.finish(self.verdict, [*lines[:6], f"report: {self.report_line}", f"folder: {self.folder}"])
         current.card.append(Markdown(f"# Realism {self.which}, run {current.run_id}\n\nFolder {self.folder}; verdict "

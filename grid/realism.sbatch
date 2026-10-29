@@ -51,17 +51,27 @@ report() { echo "- $*" | tee -a "$REPORT.part"; }
 pointer_field() {  # pointer_field NAME: one string field of the stage's pointer, as the flow's write_json lays it out
   sed -n "s/^ *\"$1\": *\"\([^\"]*\)\",\{0,1\}\$/\1/p" "$REALISM_ROOT/$STAGE.last.json" 2>/dev/null | head -n 1
 }
-summary() {  # summary DECISION: this job's run folder, and the SUMMARY.md this job wrote there
+summary() {  # summary DECISION RUN: this job's run folder, and the SUMMARY.md this job wrote there
   # The pointer the flow's start and end write outlives the job that wrote it, so it counts only
-  # where it names the key the launcher's decision line gives this job, and SUMMARY.md only where
-  # this job wrote it: a launcher that refused, or a start that failed before the pointer, would
-  # otherwise put an earlier run's folder and numbers beside this job's exit.
-  local key folder
+  # where it names the key the launcher's decision line gives this job and a run of this job's: the
+  # run the launcher's last line names, or the run a resume carries on (the decision's origin, whose
+  # start the resume clones, pointer and all); and SUMMARY.md only where this job wrote it. A
+  # launcher that refused, or a start that failed before the pointer, would otherwise put an
+  # earlier run's folder and numbers beside this job's exit.
+  local key origin this named folder
   key=$(printf '%s\n' "$1" | sed -n 's/.*"key": *"\([^"]*\)".*/\1/p')
+  origin=$(printf '%s\n' "$1" | sed -n 's/.*"origin": *"\([^"]*\)".*/\1/p')
+  this=$2
   [ -n "$key" ] || { report "run folder: none for this job (the launcher named no run key)"; return; }
   folder=$(pointer_field folder)
   if [ -z "$folder" ] || [ "$(pointer_field key)" != "$key" ]; then
     report "run folder: none for this job ($REALISM_ROOT/$STAGE.last.json names no run of the key $key)"
+    return
+  fi
+  named=$(pointer_field run)
+  named=${named#RealismFlow/}
+  if [ -z "$named" ] || { [ "$named" != "$this" ] && [ "$named" != "$origin" ]; }; then
+    report "run folder: none for this job ($REALISM_ROOT/$STAGE.last.json names run ${named:-none} of the key $key, not this job's run ${this:-unnamed}${origin:+ or the run $origin it resumes})"
     return
   fi
   report "run folder: $folder"
@@ -142,6 +152,9 @@ out=$(mktemp "$REPO/grid/logs/realism-flow-${SLURM_JOB_ID:-$$}.XXXXXX")
 # The Metaflow datastore is the launcher's default on the grid, where the run's progress page is.
 bash grid/box.sh "$venv/bin/python" flows/launch.py realism --max-workers 1 -- "${words[@]}" 2>&1 | tee "$out"
 rc=${PIPESTATUS[0]}
+# The launcher has exited, so a TERM from here on ends only the report's last lines: the exit kept
+# is the launcher's, which says how the run ended, and not the 143 a TERM during the run means.
+trap 'report "TERMINATED: Slurm ended the job after the launcher exited $rc, before the report was whole"; finish "$rc"' TERM
 decision=$(grep -m 1 '"decision":' "$out")
 report "launcher: ${decision:-it printed no decision line}"
 # Metaflow's runtime heads each line a task prints with its time and [run/step/task (pid N)], even
@@ -155,6 +168,6 @@ root=$(printf '%s\n' "$decision" | sed -n 's/.*"root": *"\([^"]*\)".*/\1/p')
 id=$(printf '%s\n' "$run" | sed -n 's/.*"run": *"RealismFlow\/\([0-9A-Za-z_-]*\)".*/\1/p')
 [ -n "$root" ] || root="(the datastore the launcher names)"
 report "progress page: $root/progress/RealismFlow/${id:-<run>}/index.html (Open OnDemand's Files app, then View or Download)"
-summary "$decision"
+summary "$decision" "$id"
 report "launcher exited $rc"
 finish "$rc"

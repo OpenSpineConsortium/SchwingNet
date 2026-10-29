@@ -959,7 +959,8 @@ def run_stats(args):
 
 # How the tests treat subjects, written into every stats.json so the report quotes the run's own
 # file for it (PREREG.md, section 3).
-COMPONENTS_RULE = f"k principal components ({PCA_COMPONENTS}, or the space's dimension where it has fewer)"
+COMPONENTS_RULE = (f"k principal components ({PCA_COMPONENTS}, or fewer where the space's dimension or the pooled "
+                   "images are fewer)")
 STATS_RULES = {
     "neighbours": f"{KNN} nearest neighbours, every image of the sample's own subject left out in both sets",
     "auc_interval": f"{BOOTSTRAPS}-draw bootstrap over subjects, 95 percent",
@@ -1109,9 +1110,11 @@ POSE_COLUMNS = ("sample_id", "subject_id", "pose_id", "y", "z", "alpha_deg")
 
 
 def subjects_with_poses(sample_rows, per_subject):
-    """The subjects with at least per_subject samples at a pose on the paper's grid, by
-    poses_from_samples' rule, which the draw takes its poses from (drawn_samples)."""
-    counts = Counter(sample["subject_id"] for sample in poses_from_samples(sample_rows)["samples"])
+    """The subjects with at least per_subject distinct samples at a pose on the paper's grid, by
+    poses_from_samples' rule, which the draw takes its poses from (drawn_samples); a sample
+    samples.csv names twice counts once, as the draw counts it."""
+    named = {(sample["subject_id"], sample["sample_id"]) for sample in poses_from_samples(sample_rows)["samples"]}
+    counts = Counter(subject for subject, _ in named)
     return {subject for subject, count in counts.items() if count >= per_subject}
 
 

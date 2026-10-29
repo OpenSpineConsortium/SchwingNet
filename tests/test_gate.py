@@ -2085,7 +2085,9 @@ esac
     # Metaflow's runtime relays them, its time and task ahead of each, and the pointer and SUMMARY.md
     # the flow writes left where the job reads them. FAKE_MODE refuse is a launcher that refuses
     # before any run, nostart a run whose start failed before it wrote the pointer, and hang a run
-    # still going when Slurm ends the job; FAKE_KEY is the run key the decision line names.
+    # still going when Slurm ends the job; FAKE_KEY is the run key the decision line names, FAKE_RUN
+    # the run id, FAKE_ORIGIN the run a resume carries on, and FAKE_LINES how many lines the end step
+    # prints before its own.
     FAKE_REALISM_PYTHON = """#!/bin/bash
 echo "$*" >> "$FAKE/realism-python.log"
 [ "$1" = flows/launch.py ] || exit 0
@@ -2095,8 +2097,14 @@ if [ "${FAKE_MODE:-}" = refuse ]; then
   exit 90
 fi
 key=${FAKE_KEY:-0123456789abcdef}
-folder=$REALISM_ROOT/$STAGE-$key
-echo '{"code": "c0de", "decision": "run", "flow": "realism", "key": "'"$key"'", "live": null, "origin": null, "root": "/rs/x/metaflow"}'
+run=${FAKE_RUN:-1761710000000001}
+if [ -n "${FAKE_ORIGIN:-}" ]; then
+  folder=$REALISM_ROOT/$STAGE-$key-$FAKE_ORIGIN
+  echo '{"code": "c0de", "decision": "resume", "flow": "realism", "key": "'"$key"'", "live": null, "origin": "'"$FAKE_ORIGIN"'", "root": "/rs/x/metaflow"}'
+else
+  folder=$REALISM_ROOT/$STAGE-$key-$run
+  echo '{"code": "c0de", "decision": "run", "flow": "realism", "key": "'"$key"'", "live": null, "origin": null, "root": "/rs/x/metaflow"}'
+fi
 if [ "${FAKE_MODE:-}" = hang ]; then
   touch "$FAKE/realism-started"
   sleep 30
@@ -2104,12 +2112,15 @@ fi
 if [ "${FAKE_MODE:-}" != nostart ]; then
   mkdir -p "$folder"
   printf '# summary of the stand-in\\n- keep: 7 of 8 edits kept\\n' > "$folder/SUMMARY.md"
-  printf '{\\n "folder": "%s",\\n "key": "%s",\\n "run": "RealismFlow/1761710000000001",\\n "verdict": 0\\n}\\n' "$folder" "$key" > "$REALISM_ROOT/$STAGE.last.json"
-  for line in '- keep: 7 of 8 edits kept' 'report: CLAIM 2024 and REFORMS report current (the stand-in)' 'verdict 0'; do
-    echo "2026-10-29 04:00:00.123 [1761710000000001/end/7 (pid 4242)] RealismFlow: $line"
+  printf '{\\n "folder": "%s",\\n "key": "%s",\\n "run": "RealismFlow/%s",\\n "verdict": 0\\n}\\n' "$folder" "$key" "$run" > "$REALISM_ROOT/$STAGE.last.json"
+  for n in $(seq 1 "${FAKE_LINES:-0}"); do
+    echo "2026-10-29 04:00:00.123 [$run/end/7 (pid 4242)] RealismFlow: extra $n"
+  done
+  for line in 'keep: 7 of 8 edits kept' 'report: CLAIM 2024 and REFORMS report current (the stand-in)' 'verdict 0'; do
+    echo "2026-10-29 04:00:00.123 [$run/end/7 (pid 4242)] RealismFlow: $line"
   done
 fi
-echo '{"flow": "realism", "run": "RealismFlow/1761710000000001", "successful": true, "verdict": 0}'
+echo '{"flow": "realism", "run": "RealismFlow/'"$run"'", "successful": true, "verdict": 0}'
 echo "REALISM_RC=${FAKE_RC:-0} 2026-10-29 04:00:00"
 exit "${FAKE_RC:-0}"
 """
@@ -2171,7 +2182,7 @@ exit "${FAKE_RC:-0}"
         self.assertIn("\n- report: CLAIM 2024 and REFORMS report current (the stand-in)\n", report)
         self.assertIn("\n- verdict 0\n", report)
         self.assertNotIn("RealismFlow:", report)
-        self.assertIn(f"- run folder: {self.tmp / 'realism' / 'edit-0123456789abcdef'}\n", report)
+        self.assertIn(f"- run folder: {self.tmp / 'realism' / 'edit-0123456789abcdef-1761710000000001'}\n", report)
         self.assertIn("- progress page: /rs/x/metaflow/progress/RealismFlow/1761710000000001/index.html", report)
         self.assertIn("### SUMMARY.md", report)
         self.assertIn("# summary of the stand-in", report)
@@ -2191,7 +2202,7 @@ exit "${FAKE_RC:-0}"
         # pointer, or reached it under another key, must not paste the earlier run's numbers
         self.realism_edit_ready()
         report = self.repo / "grid" / "logs" / "REALISM-edit.md"
-        folder = self.tmp / "realism" / "edit-0123456789abcdef"
+        folder = self.tmp / "realism" / "edit-0123456789abcdef-1761710000000001"
         self.assertEqual(self.realism_job("edit").returncode, 0)
         self.assertIn(f"- run folder: {folder}\n", report.read_text(encoding="utf-8"))
         hour_ago = time.time() - 3600
@@ -2211,13 +2222,41 @@ exit "${FAKE_RC:-0}"
         self.assertIn(f"- run folder: none for this job ({self.tmp / 'realism' / 'edit.last.json'} names no run of the key "
                       "fedcba9876543210)\n", text)
         self.assertNotIn("### SUMMARY.md", text)
-        # a new run of the same key whose start failed again: its folder, but not the SUMMARY.md an earlier job wrote
-        done = self.realism_job("edit", FAKE_MODE="nostart", FAKE_RC="1")
+        # a new run of the same key whose start failed before the pointer: the pointer names the earlier run
+        done = self.realism_job("edit", FAKE_MODE="nostart", FAKE_RUN="1761710000000002", FAKE_RC="1")
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        text = report.read_text(encoding="utf-8")
+        self.assertIn(f"- run folder: none for this job ({self.tmp / 'realism' / 'edit.last.json'} names run 1761710000000001 "
+                      "of the key 0123456789abcdef, not this job's run 1761710000000002)\n", text)
+        self.assertNotIn(str(folder), text)
+        self.assertNotIn("summary of the stand-in", text)
+        # a resume of that run, which clones its start and pointer and failed again before its end:
+        # the folder it carries on, but not the SUMMARY.md an earlier job wrote
+        done = self.realism_job("edit", FAKE_MODE="nostart", FAKE_RUN="1761710000000003", FAKE_ORIGIN="1761710000000001", FAKE_RC="1")
         self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
         text = report.read_text(encoding="utf-8")
         self.assertIn(f"- run folder: {folder}\n", text)
         self.assertIn("- SUMMARY.md: not written by this job (the run did not reach its end step)\n", text)
         self.assertNotIn("summary of the stand-in", text)
+
+    def test_the_realism_job_keeps_the_last_lines_of_the_end_step_and_its_launcher_s_exit(self):
+        # the end step's last 40 lines, the report and the verdict last among them, and never its first
+        self.realism_edit_ready()
+        self.assertEqual(self.realism_job("edit", FAKE_LINES="45").returncode, 0)
+        text = (self.repo / "grid" / "logs" / "REALISM-edit.md").read_text(encoding="utf-8")
+        head = text[:text.index("### SUMMARY.md")]
+        relayed = [line for line in head.splitlines() if line.startswith(("- extra ", "- keep: ", "- report: ", "- verdict "))]
+        self.assertEqual(relayed[0], "- extra 9")
+        self.assertEqual(relayed[-1], "- verdict 0")
+        self.assertEqual(len(relayed), 40)
+        self.assertNotIn("- - ", text)
+        # a TERM once the launcher has exited keeps the launcher's exit, and none after finish begins
+        # writes a second report (a TERM there comes too late to time in a test, so the script is read)
+        script = (GRID / "realism.sbatch").read_text(encoding="utf-8")
+        after = script[script.index("rc=${PIPESTATUS[0]}"):]
+        self.assertRegex(after.splitlines()[3], r"^trap '.*finish \"\$rc\"' TERM$")
+        finish = script[script.index("finish() {"):]
+        self.assertEqual(finish.splitlines()[2].split("#")[0].strip(), "trap '' TERM")
 
     def test_a_realism_job_slurm_ends_writes_its_exit_and_the_gate_queues_nothing_at_its_commit(self):
         # Slurm's TERM at the time limit or a cancel reaches every process of the job; the job's trap

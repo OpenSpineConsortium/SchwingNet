@@ -127,8 +127,9 @@ elif command == "environment":
 elif command == "stats":
     auc = 0.9 if "raw" in value("--a") else 0.52
     word = "separable" if auc > 0.6 else "indistinguishable"
-    side = {"c2st": {"auc": auc, "low": auc - 0.05, "high": auc + 0.05}, "mmd": {"p": 0.5, "q": 0.5}}
-    null = {"c2st": {"auc": 0.5, "low": 0.45, "high": 0.55}}
+    side = {"components": 64, "c2st": {"auc": auc, "low": auc - 0.05, "high": auc + 0.05, "strata": "sample"},
+            "mmd": {"p": 0.5, "q": 0.5, "strata": "sample"}}
+    null = {"c2st": {"auc": 0.5, "low": 0.45, "high": 0.55, "strata": "subject"}, "mmd": {"p": 0.5, "q": 0.5, "strata": "subject"}}
     spaces = {space: {"a_vs_b": side, "b_split_half": null, "arm_null": null, "nulls_separable": False, "verdict": word}
               for space in value("--require-spaces").split(",")}
     report = {"seed": int(value("--seed")), "sets": {"a": {"n": 90, "subjects": 12}, "b": {"n": 48, "subjects": 12}},
@@ -177,6 +178,9 @@ class RealismFlowTest(unittest.TestCase):
             if not path.exists():
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text(f"# {name}, a stand-in\n", encoding="utf-8")
+        # The flow's tools write their caches into the checkout, as Python does on the grid, where
+        # the repository's own .gitignore keeps the tree the record calls clean.
+        (self.repo / ".gitignore").write_text("__pycache__/\n", encoding="utf-8")
         subprocess.run(self.git("init", "-q"), check=True, capture_output=True, timeout=60)
         self.commit("the stand-in")
         self.root, self.out, self.work = self.tmp / "metaflow", self.tmp / "realism", self.tmp / "work"
@@ -237,6 +241,10 @@ class RealismFlowTest(unittest.TestCase):
         record = json.loads((edit / "RECORD.json").read_text(encoding="utf-8"))
         self.assertEqual((record["study"], record["stage"], record["prereg"]), ("flux-realism", "edit", PREREG))
         self.assertNotIn("verdict", record)
+        # the commit and the clean tree, read where the run began and where it ended
+        self.assertTrue(record["clean_tree"], record)
+        self.assertEqual(len(record["where"]["commit"]), 40)
+        self.assertEqual((record["where"]["commit"], record["where"]["clean_tree"]), (record["ended_in"]["commit"], True))
         self.assertEqual(record["counts"]["renders"], 12 * 4)
         self.assertEqual(record["counts"]["edits"], 12 * 4 * 2)
         self.assertEqual(json.loads((edit / "ENDED.json").read_text(encoding="utf-8"))["verdict"], 0)
@@ -264,6 +272,7 @@ class RealismFlowTest(unittest.TestCase):
         claim, reforms = self.report_rows(stats, "claim"), self.report_rows(stats, "reforms")
         code_missing = [row["id"] for row in [*claim.values(), *reforms.values()] if row["basis"] == "code" and row["state"] == "missing"]
         self.assertEqual(code_missing, ["4b"])
+        self.assertEqual(reforms["2b"]["state"], "met", reforms["2b"])
         self.assertIn("replication: reproduced", claim["37"]["evidence"])
         self.assertIn("RealismFlow", (self.progress(said)[0] / "index.html").read_text(encoding="utf-8"))
 

@@ -528,6 +528,9 @@ class RealismToolTest(unittest.TestCase):
             (self.tmp / "truth" / "Vertebrae" / f"{subject}.nii.gz").write_bytes(b"t")
         volumes, truth = self.tool.volumes_under(self.tmp / "ct"), self.tool.truth_under(self.tmp / "truth")
         self.assertEqual(self.tool.subjects_with_poses(rows, 4), {"0001", "0004"})
+        # a sample samples.csv names twice counts once, as the draw counts it
+        twice = [self.sample(f"0005_{p}", "0005", p, *self.realism.pose_of(p)) for p in (0, 1, 2, 2)]
+        self.assertEqual(self.tool.subjects_with_poses(twice, 4), set())
         self.assertEqual(self.tool.eligible_for_draw(rows, volumes, truth, 4), ["0001"])
         self.assertEqual(self.tool.eligible_for_draw(rows, volumes, truth, 3), ["0001", "0002", "0003"])
         # the split refuses a limit it cannot fill, from the same set inputs counts
