@@ -24,7 +24,10 @@ Two copies, each pinned on its own, since the two jobs that read them move at di
   job's PYTHONPATH=$REPO/grid/bordercall imports each as the clone does; morphometry's code stamp,
   which names every run, hashes only the top-level .py files of morphometry and scanimport, so the
   copy stamps as the clone does. Its pin is the morphometry thread's (the owner's count of two CPU
-  jobs over it), and a copy of the search never moves it.
+  jobs over it), and a copy of the search never moves it. The gold tier 3 holdings package at the
+  clone's root, holdings, comes the same way for grid/bordercall-complete.sbatch, with its tests/
+  folder, since that job runs the matcher's own tests first and trusts nothing it reads where they
+  fail.
 - search, grid/autoanatomist/, what grid/autoanatomist-driver.sbatch reads through flows/autoanatomist.py:
   the auto-anatomist package, schwingcheck, whose chain and measures its naming layer imports, and
   scanimport, whose intensity levels, geometry and schemes it imports, with scanimport's phantom
@@ -49,27 +52,38 @@ HERE = Path(__file__).resolve().parent.parent
 KEEP = ("bordercall", "testdata", "README.md", "HANDOFF.md", "requirements.txt")
 # what grid/morphometry.sbatch needs: the measuring engine's packages at the clone's root
 ENGINE = ("morphometry", "scanimport", "screening")
+# what grid/bordercall-complete.sbatch needs: the gold tier 3 holdings at the clone's root, whose
+# tests the job runs before the matcher (holdings.tests.test_fullspine_complete and
+# test_fullspine_facts, which import the package's other tests), so its tests/ folder comes too
+HOLDINGS = ("holdings",)
 # what flows/autoanatomist.py needs: the search's packages at the clone's root, and its pins
 SEARCH = ("autoanatomist", "schwingcheck", "scanimport", "requirements-autoanatomist.txt")
 # the fixture files autoanatomist.phantom imports as code, copied although they lie under tests/
 SEARCH_FIXTURES = ("scanimport/tests/__init__.py", "scanimport/tests/phantom.py")
-# a package's tests never run on the grid, a cache or an output folder is nobody's record, and the
-# old package's reference papers and the renders its tables were read from are not its code
+# a package's tests never run on the grid (but the holdings', above), a cache or an output folder
+# is nobody's record, and the old package's reference papers and the renders its tables were read
+# from are not its code
 SKIP_DIRS = {"__pycache__", "figures", "out", "tests", "papers", "provenance"}
 
 
 @dataclass(frozen=True)
 class Copy:
     """One pinned copy: its name on the command line, where it lies, what it takes from the clone's
-    archive/ and from the clone's root, the files it takes although a skipped folder holds them, and
-    whether a clone without one of its root names is refused (a clone from before the engine has
-    none of the engine's packages and is still read; a search copy without its packages is nothing)."""
+    archive/ and from the clone's root, the files it takes although a skipped folder holds them, the
+    root names whose tests/ folder comes too, and whether a clone without one of its root names is
+    refused (a clone from before the engine has none of the engine's packages and is still read; a
+    search copy without its packages is nothing)."""
     name: str
     target: Path
     archive: tuple
     root: tuple
     fixtures: tuple = ()
+    tests_kept: tuple = ()
     required: bool = False
+
+    def skipped_dirs(self, folder: str) -> set:
+        """The folder names left out of the copy of the clone's folder called folder."""
+        return SKIP_DIRS - {"tests"} if folder in self.tests_kept else SKIP_DIRS
 
     @property
     def record(self) -> Path:
@@ -81,7 +95,7 @@ class Copy:
 
 
 COPIES = {
-    "engine": Copy("engine", HERE / "grid" / "bordercall", KEEP, ENGINE),
+    "engine": Copy("engine", HERE / "grid" / "bordercall", KEEP, ENGINE + HOLDINGS, tests_kept=HOLDINGS),
     "search": Copy("search", HERE / "grid" / "autoanatomist", (), SEARCH, SEARCH_FIXTURES, required=True),
 }
 
@@ -94,12 +108,14 @@ def sha256(path: Path) -> str:
     return h.hexdigest()
 
 
-def files_under(root: Path, fixtures=()):
+def files_under(root: Path, which: Copy):
+    """The copy's files under root: every file outside a skipped folder, the fixtures the copy
+    names although a skipped folder holds them, and the tests of a folder whose tests are kept."""
     for p in sorted(root.rglob("*")):
         if not p.is_file() or p.name == "VENDORED":
             continue
         rel = p.relative_to(root)
-        if rel.as_posix() in fixtures or not (set(rel.parts[:-1]) & SKIP_DIRS):
+        if rel.as_posix() in which.fixtures or not (set(rel.parts[:-1]) & which.skipped_dirs(rel.parts[0])):
             yield p
 
 
@@ -156,13 +172,13 @@ def copy(source: str, name: str = "engine") -> int:
         for n in names:
             s = folder / n
             if s.is_dir():
-                shutil.copytree(s, which.target / n, ignore=shutil.ignore_patterns(*SKIP_DIRS))
+                shutil.copytree(s, which.target / n, ignore=shutil.ignore_patterns(*which.skipped_dirs(n)))
                 drop_untracked(which.target / n, s, src, tracked)
             elif s.exists():
                 shutil.copy2(s, which.target / n)
     copy_fixtures(which, src, tracked)
     lines = ["bordercall %s OpenSpineConsortium/bordercall" % commit]
-    for p in files_under(which.target, which.fixtures):
+    for p in files_under(which.target, which):
         lines.append("%s  %s" % (sha256(p), p.relative_to(which.target).as_posix()))
     which.record.write_text("\n".join(lines) + "\n", encoding="utf-8")
     print("copied bordercall at %s into %s: %d files recorded in %s" % (commit[:7], which.shown, len(lines) - 1, which.record))
@@ -178,7 +194,7 @@ def check_one(which: Copy) -> int:
     for line in lines[1:]:
         digest, _, rel = line.partition("  ")
         recorded[rel] = digest
-    present = {p.relative_to(which.target).as_posix(): sha256(p) for p in files_under(which.target, which.fixtures)}
+    present = {p.relative_to(which.target).as_posix(): sha256(p) for p in files_under(which.target, which)}
     bad = []
     for rel, digest in recorded.items():
         if rel not in present:

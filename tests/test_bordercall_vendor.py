@@ -1,7 +1,7 @@
 """tools/bordercall_vendor.py on a made-up clone: the engine copy reads the old package from the
 clone's archive/ and the engine's packages from its root, the search copy reads the auto-anatomist's
-packages from the root with scanimport's phantom fixture, each leaves the tests behind, records every
-file in its VENDORED, and check() holds both copies to their records; morphometry's code stamp, which
+packages from the root with scanimport's phantom fixture, each leaves the tests behind but the holdings'
+(grid/bordercall-complete.sbatch runs them first), records every file in its VENDORED, and check() holds both copies to their records; morphometry's code stamp, which
 names every run on the grid, is the same over the engine copy as over the clone. The clone is a real
 git repository in a temporary folder, since copy() reads its commit and refuses a dirty tree.
 Standard library only, so the required check runs it."""
@@ -34,7 +34,8 @@ GIT_ENV = dict(os.environ, GIT_CONFIG_COUNT=str(len(QUIET)),
 GIT_ENV.update(GIT_AUTHOR_NAME="t", GIT_AUTHOR_EMAIL="t@t", GIT_COMMITTER_NAME="t", GIT_COMMITTER_EMAIL="t@t")
 
 # the clone's layout since the engine replaced the old package: the archive, the engine's three
-# packages and the search's two with their pins
+# packages, the holdings package, whose tests ride along (they import one another, as
+# test_fullspine_facts imports test_count_enhance_pet), and the search's two with their pins
 CLONE_FILES = {
     "archive/bordercall/run.py": "print('run')\n",
     "archive/bordercall/reference/table.csv": "a,b\n1,2\n",
@@ -52,6 +53,10 @@ CLONE_FILES = {
     "scanimport/tests/test_b.py": "assert True\n",
     "screening/c.py": "C = 3\n",
     "screening/tables.json": "{}\n",
+    "holdings/__init__.py": "",
+    "holdings/fullspine_complete.py": "D = 4\n",
+    "holdings/tests/__init__.py": "",
+    "holdings/tests/test_d.py": "from holdings import fullspine_complete\n",
     "autoanatomist/__init__.py": "",
     "autoanatomist/phantom.py": "from scanimport.tests.phantom import ARCH\n",
     "autoanatomist/tests/t.py": "assert True\n",
@@ -61,6 +66,8 @@ CLONE_FILES = {
 }
 ENGINE_COPY = ["HANDOFF.md", "README.md", "VENDORED",
                "bordercall/reference/table.csv", "bordercall/run.py",
+               "holdings/__init__.py", "holdings/fullspine_complete.py",
+               "holdings/tests/__init__.py", "holdings/tests/test_d.py",
                "morphometry/__init__.py", "morphometry/a.py",
                "requirements.txt",
                "scanimport/__init__.py", "scanimport/b.py",
@@ -195,6 +202,12 @@ class BordercallVendorTest(unittest.TestCase):
         self.assertEqual(rc, 1)
         self.assertIn("missing: testdata/x", said)
         (self.engine.target / "testdata" / "x").write_text("fixture\n", encoding="utf-8")
+        # the holdings' tests are part of the record, so a change there is caught as any other
+        (self.engine.target / "holdings" / "tests" / "test_d.py").write_text("", encoding="utf-8")
+        rc, said = quiet(BV.check)
+        self.assertEqual(rc, 1)
+        self.assertIn("changed: holdings/tests/test_d.py", said)
+        (self.engine.target / "holdings" / "tests" / "test_d.py").write_text("from holdings import fullspine_complete\n", encoding="utf-8")
         # the fixture is held too: a change to it, or a test file added beside it, fails the search copy
         (self.search.target / "scanimport" / "tests" / "phantom.py").write_text("ARCH = 6.0\n", encoding="utf-8")
         rc, said = quiet(BV.check)
@@ -225,6 +238,7 @@ class BordercallVendorTest(unittest.TestCase):
         self.assertEqual(rc, 0, said)
         self.assertTrue((self.engine.target / "bordercall" / "run.py").exists())
         self.assertFalse((self.engine.target / "morphometry").exists())
+        self.assertFalse((self.engine.target / "holdings").exists())
         self.assertEqual(self.recorded(self.engine)[0], "bordercall %s OpenSpineConsortium/bordercall" % commit)
 
     def test_a_clone_without_the_search_or_its_fixture_is_refused_for_the_search_copy(self):
