@@ -43,7 +43,7 @@ FAKE_HPCWORKER = ROOT / "tests" / "fakes" / "hpcworker"
 NEW_SCRIPTS = ("gate.sh", "hpcw.sh", "box.sh", "bin/pixi", "bin/train-cpu-python", "00-setup.sbatch", "00-weights.sbatch",
                "00-carmlspine.sbatch", "v1-driver.sbatch", "experiment-driver.sbatch", "run-xray-chain.sh",
                "run-platform-fetch.sh", "sweep-driver.sbatch", "v1-version.sh", "realism.sbatch", "venv.sh",
-               "drr-gap.sbatch")
+               "drr-gap.sbatch", "gold3-census.sbatch")
 ENVS = ("default", "train-cpu", "train-gpu", "telemetry")
 # What bench flexray_drr_gap's word says of a mask folder that is there: the study reads too few CTs'
 # masks as none, which its summary says, so the word says only where the folder is.
@@ -1935,6 +1935,39 @@ esac
             done = self.gate("anomaly", "select")
             self.assertEqual(done.returncode, 0, done.stdout)
             self.assertIn("- exit 0", done.stdout)
+        self.assertEqual(len(self.submitted()), 1)
+
+    def test_census_gold3_queues_one_cpu_job_once_and_never_again_without_the_owners_word(self):
+        # the owner's count of 2026-10-29 12:26 UTC is one CPU job: no id, another id and no tool are refused
+        self.assertEqual(self.gate("census").returncode, 64)
+        refused = self.gate("census", "tiers")
+        self.assertEqual(refused.returncode, 64, refused.stdout)
+        self.assertIn("census takes gold3", refused.stdout)
+        self.assertEqual(self.gate("census", "gold3").returncode, 2)
+        (self.repo / "tools" / "gold3_census.py").write_text("", encoding="utf-8")
+        done = self.gate("census", "gold3")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        lines = self.submitted()
+        # the environments are not made here, and still no setup job goes with it: the job finds its own python
+        self.assertEqual(len(lines), 1, lines)
+        self.assertIn("--class batch --name census_gold3", lines[0])
+        self.assertIn("--no-requeue", lines[0])
+        self.assertIn("gold3-census.sbatch", lines[0])
+        job = self.recorded()["census_gold3"]
+        self.live(job)
+        self.assertEqual(self.gate("census", "gold3").returncode, 75)
+        (self.fake / "queue").write_text("", encoding="utf-8")
+        # a job that ended with no report is not queued again: a second one waits for the owner's word
+        again = self.gate("census", "gold3")
+        self.assertEqual(again.returncode, 64, again.stdout)
+        self.assertIn("left no report", again.stdout)
+        report = self.repo / "grid" / "logs" / "CENSUS-gold3.md"
+        report.write_text("# census gold3: job 1 on node, commit abc1234, 2026-10-29 15:00:00 UTC\n"
+                          "- gold4: idc rows 2, admitted 1\n- exit 0 at 2026-10-30 01:00:00 UTC\n", encoding="utf-8")
+        for _ in range(2):
+            done = self.gate("census", "gold3")
+            self.assertEqual(done.returncode, 0, done.stdout)
+            self.assertIn("gold4: idc rows 2, admitted 1", done.stdout)
         self.assertEqual(len(self.submitted()), 1)
 
     def realism_inputs(self, *which):

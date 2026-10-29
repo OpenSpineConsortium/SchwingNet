@@ -129,6 +129,13 @@
 #                   cases, then full, every countable mask, which the gate takes only once the pilot's report ended
 #                   well; each queued once as one batch job, the next send printing logs/BORDERCALL-<stage>.md, and
 #                   every later one printing it again and queueing nothing
+#   census gold3    the gold tier census, one CPU job that reads only and segments nothing (the owner's tap of
+#                   2026-10-29 12:26 UTC, "Send the 1 CPU job now"; grid/gold3-census.sbatch, tools/gold3_census.py):
+#                   the older TotalSegmentator list, the autoPET match, gold 4 over the census's SPINEPS masks,
+#                   TotalSegmentator's own image extents and the held files; queued once as one batch job from a
+#                   copy of its code, so it holds no checkout, the next send printing logs/CENSUS-gold3.md and every
+#                   later one printing it again and queueing nothing; a job that left no report is not queued again
+#                   without the owner's word
 #   realism <stage> one stage of the FluXray reproduction (docs/research/flux-realism/PREREG.md; the owner's
 #                   count of 2026-10-29 02:35 UTC, two GPU jobs): edit, then stats, each one GPU job that runs
 #                   the Metaflow flow flows/realism.py through flows/launch.py (grid/realism.sbatch) once its
@@ -225,18 +232,18 @@ DRR_GAP_TASKS=16
 BENCH_RERUNS="flexray_drr_gap:40828920"
 LOGS=$REPO/grid/logs
 STATE=$LOGS/GATE_JOBS.txt
-WORDS="start status leaks v1 latency fetch explore dropzip unpack nodequota folders samples sweep bank experiment bench anomaly bordercall realism literature stop cancel"
+WORDS="start status leaks v1 latency fetch explore dropzip unpack nodequota folders samples sweep bank experiment bench anomaly bordercall census realism literature stop cancel"
 ENVS="default train-cpu train-gpu telemetry"
 
 word=${1:-}
 id=${2:-}
 # Matched whole, so one argument holding two words ("v1 latency") is refused and never runs nothing.
 case "$word" in
-  start|status|leaks|v1|latency|fetch|explore|dropzip|unpack|nodequota|folders|samples|sweep|bank|experiment|bench|anomaly|bordercall|realism|literature|stop|cancel) ;;
+  start|status|leaks|v1|latency|fetch|explore|dropzip|unpack|nodequota|folders|samples|sweep|bank|experiment|bench|anomaly|bordercall|census|realism|literature|stop|cancel) ;;
   "") echo "refusing: no word; one of: $WORDS"; exit 64 ;;
   *) echo "refusing: '$word' is not one of: $WORDS"; exit 64 ;;
 esac
-if [ "$word" = fetch ] || [ "$word" = explore ] || [ "$word" = dropzip ] || [ "$word" = unpack ] || [ "$word" = sweep ] || [ "$word" = bank ] || [ "$word" = bench ] || [ "$word" = anomaly ] || [ "$word" = bordercall ] || [ "$word" = realism ] || [ "$word" = literature ]; then
+if [ "$word" = fetch ] || [ "$word" = explore ] || [ "$word" = dropzip ] || [ "$word" = unpack ] || [ "$word" = sweep ] || [ "$word" = bank ] || [ "$word" = bench ] || [ "$word" = anomaly ] || [ "$word" = bordercall ] || [ "$word" = census ] || [ "$word" = realism ] || [ "$word" = literature ]; then
   [ $# -eq 2 ] || { echo "refusing: $word takes exactly one id"; exit 64; }
   case "$id" in ""|*[!a-z0-9_]*) echo "refusing: an id is lower-case letters, digits and _"; exit 64 ;; esac
   [ ${#id} -le 40 ] || { echo "refusing: an id is at most 40 characters"; exit 64; }
@@ -1639,6 +1646,28 @@ word_bordercall() {  # the bordercall corpus, pilot then full (the owner's count
   echo "submitted the bordercall stage $id. Send bordercall $id again once it ends to read its report, logs/BORDERCALL-$id.md."
 }
 
+word_census() {  # the gold tier census (the owner's tap of 2026-10-29 12:26 UTC, one CPU job): queued once, its report printed on every later send
+  local report=$LOGS/CENSUS-$id.md busy
+  case "$id" in
+    gold3) ;;
+    *) echo "refusing: census takes gold3"; return 64 ;;
+  esac
+  busy=$(live_of "census_$id")
+  [ -z "$busy" ] || { echo "refusing: the census $id job is still queued or running (job $busy); send census $id again once it ends"; return 75; }
+  if [ -f "$report" ]; then
+    # Kept, so the owner's count of one job holds: a report that stands queues nothing.
+    echo "## $(basename "$report") ($(date -r "$report" '+%F %T'))"
+    head -n 400 "$report" | LC_ALL=C tr -cd '\11\12\40-\176' | report_shapes | masked | head -c 40000
+    return 0
+  fi
+  if grep -q " census:$id census_$id " "$STATE" 2>/dev/null; then
+    echo "refusing: a census $id job was queued before and left no report; the owner's count was one job, so another waits for his word"
+    return 64
+  fi
+  [ -f "$REPO/tools/gold3_census.py" ] && [ -f "$REPO/grid/gold3-census.sbatch" ] || { echo "refusing: no census tool or job script at this commit"; return 2; }
+  submit "census_$id" batch --no-requeue -- gold3-census.sbatch > /dev/null || return 1
+  echo "submitted the census $id job: one CPU job that reads only and segments nothing. Send census $id again once it ends to read its report, logs/CENSUS-$id.md."
+}
 word_literature() {  # one reading list fetched onto the grid: queued once, its report printed and kept on the next send
   local report=$LOGS/LITERATURE-$id.md busy
   [ -f "$REPO/grid/literature/$id.csv" ] || { echo "refusing: no reading list grid/literature/$id.csv"; return 64; }
@@ -2096,6 +2125,7 @@ case "$word" in
   bench) word_bench ;;
   anomaly) word_anomaly ;;
   bordercall) word_bordercall ;;
+  census) word_census ;;
   realism) word_realism ;;
   literature) word_literature ;;
   samples) word_samples ;;
