@@ -182,6 +182,54 @@ class Reader(unittest.TestCase):
             np.testing.assert_array_equal(C.io_orientation(ours.affine), nib.orientations.io_orientation(theirs.affine))
 
 
+FIXTURE = ROOT / "tests/fixtures/gold3-census-grids.json"
+
+
+@unittest.skipIf(np is None, "numpy is not installed")
+class RecordedReadings(unittest.TestCase):
+    """The reader against readings recorded once from nibabel 5.4.2 and bordercall's fullspine_facts, so the
+    agreement is held on CI, where neither is installed."""
+
+    def setUp(self):
+        self.dir = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.dir)
+        self.recorded = json.loads(FIXTURE.read_text())
+
+    def test_every_crafted_header_reads_as_nibabel_read_it(self):
+        self.assertEqual(len(self.recorded["cases"]), 15)
+        for i, case in enumerate(self.recorded["cases"]):
+            with self.subTest(case["name"]):
+                qform = case["qform"]
+                if qform is not None:
+                    qform = (qform[0], qform[1], qform[2], qform[3], qform[4], qform[5])
+                path = write_nifti(self.dir / f"r{i}.nii.gz", np.zeros(case["shape"], np.int16), case["affine"],
+                                   zooms=case["zooms"], qform=qform, sform_code=case["sform_code"],
+                                   endian=case["endian"])
+                ours = C.Volume(path)
+                ours.close()
+                theirs = case["nibabel"]
+                np.testing.assert_array_equal(np.asarray(ours.affine, float), np.asarray(theirs["affine"], float))
+                self.assertEqual([float(z) for z in ours.zooms], [float(z) for z in theirs["zooms"]])
+                self.assertEqual(list(C.axcodes_of(ours.affine)), theirs["axcodes"])
+                np.testing.assert_array_equal(C.io_orientation(ours.affine), np.asarray(theirs["io_orientation"]))
+
+    def test_a_big_endian_labelled_column_gives_fullspine_facts_own_facts(self):
+        case = self.recorded["labelled"]
+        data = column(tuple(case["shape"]), case["names"], body=case["body"], gap=case["gap"]).astype(np.int16)
+        *where, label = case["stray"]
+        data[tuple(where)] = label
+        path = write_nifti(self.dir / "labelled.nii.gz", data, case["affine"], endian=case["endian"])
+        volume = C.Volume(path)
+        try:
+            points = C.voxel_points(volume)
+            self.assertEqual(C.grid_facts(volume), case["grid"])
+            self.assertEqual(C.field_facts(volume), case["field"])
+            facts = {str(n): C.label_facts(p, volume.affine, volume.shape) for n, p in points.items()}
+        finally:
+            volume.close()
+        self.assertEqual(facts, case["labels"])
+
+
 @unittest.skipIf(np is None, "numpy is not installed")
 class Grids(unittest.TestCase):
     def test_one_grid_stored_las_and_ras_is_one_canonical_grid(self):
