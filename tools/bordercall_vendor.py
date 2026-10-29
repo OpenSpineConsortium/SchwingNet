@@ -40,8 +40,9 @@ RECORD = TARGET / "VENDORED"
 KEEP = ("bordercall", "testdata", "README.md", "HANDOFF.md", "requirements.txt")
 # what grid/morphometry.sbatch needs: the measuring engine's packages at the clone's root
 ENGINE = ("morphometry", "scanimport", "screening")
-# a package's tests never run on the grid, and a cache or an output folder is nobody's record
-SKIP_DIRS = {"__pycache__", "figures", "out", "tests"}
+# a package's tests never run on the grid, a cache or an output folder is nobody's record, and the
+# old package's reference papers and the renders its tables were read from are not its code
+SKIP_DIRS = {"__pycache__", "figures", "out", "tests", "papers", "provenance"}
 
 
 def sha256(path: Path) -> str:
@@ -66,6 +67,21 @@ def archive_of(src: Path) -> Path:
     raise SystemExit("%s is not a bordercall clone (no archive/bordercall/run.py, nor bordercall/run.py)" % src)
 
 
+def tracked_files(src: Path) -> set:
+    """What the clone's git tracks, so a paper or a render left in the working tree never rides along."""
+    out = subprocess.run(["git", "-C", str(src), "ls-files", "-z"], capture_output=True, text=True, check=True).stdout
+    return {name for name in out.split("\0") if name}
+
+
+def drop_untracked(copied: Path, origin: Path, src: Path, tracked: set) -> None:
+    """Remove from the copy every file the clone's git does not track, and the folders left empty."""
+    for p in sorted(copied.rglob("*"), reverse=True):
+        if p.is_file() and (origin / p.relative_to(copied)).relative_to(src).as_posix() not in tracked:
+            p.unlink()
+        elif p.is_dir() and not any(p.iterdir()):
+            p.rmdir()
+
+
 def copy(source: str) -> int:
     src = Path(source).resolve()
     archive = archive_of(src)
@@ -78,11 +94,13 @@ def copy(source: str) -> int:
     if TARGET.exists():
         shutil.rmtree(TARGET)
     TARGET.mkdir(parents=True)
+    tracked = tracked_files(src)
     for folder, names in ((archive, KEEP), (src, ENGINE)):
         for name in names:
             s = folder / name
             if s.is_dir():
                 shutil.copytree(s, TARGET / name, ignore=shutil.ignore_patterns(*SKIP_DIRS))
+                drop_untracked(TARGET / name, s, src, tracked)
             elif s.exists():
                 shutil.copy2(s, TARGET / name)
     lines = ["bordercall %s OpenSpineConsortium/bordercall" % commit]

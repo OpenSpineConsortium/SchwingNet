@@ -1,0 +1,464 @@
+{
+ "about": "The head and foot tables of the whole-spine field rule, version 3, measured by SchwingNet tools/gold3_field.py on the gold tier 3 members own masks (ENHANCE.PET, VerSe, TotalSegmentator; every spine that draws both ends whole), copied from SchwingNet data/gold3-ct/admission.json at origin/main 28f0387 on 2026-10-29. head: for each level below C2, how far C2 top (its own row) and C2 foot (the row \"<level> to C2s foot\") lie above that level top, mm, n spines, 5th percentile (low), median, 95th (high); foot: where the sacrum top lies against each level foot-most voxel (positive above it), the last lumbar whatever its name its own row. A dataset of its own may measure its tables with python -m screening whole --measure-tables.",
+ "rule_version": 3,
+ "tables": {
+  "foot": {
+   "C1": {
+    "high": -441.0,
+    "low": -570.0,
+    "median": -515.0,
+    "n": 1678
+   },
+   "C2": {
+    "high": -425.0,
+    "low": -549.0,
+    "median": -495.0,
+    "n": 1689
+   },
+   "C3": {
+    "high": -412.3,
+    "low": -531.0,
+    "median": -480.0,
+    "n": 1713
+   },
+   "C4": {
+    "high": -398.4,
+    "low": -513.0,
+    "median": -462.5,
+    "n": 1713
+   },
+   "C5": {
+    "high": -384.0,
+    "low": -495.7,
+    "median": -447.5,
+    "n": 1727
+   },
+   "C6": {
+    "high": -370.0,
+    "low": -480.0,
+    "median": -432.5,
+    "n": 1746
+   },
+   "C7": {
+    "high": -357.5,
+    "low": -462.0,
+    "median": -417.0,
+    "n": 1766
+   },
+   "L1": {
+    "high": -72.0,
+    "low": -121.5,
+    "median": -100.0,
+    "n": 2370
+   },
+   "L2": {
+    "high": -43.5,
+    "low": -84.0,
+    "median": -66.0,
+    "n": 2376
+   },
+   "L3": {
+    "high": -18.0,
+    "low": -48.0,
+    "median": -35.0,
+    "n": 2384
+   },
+   "L4": {
+    "high": 8.8,
+    "low": -17.5,
+    "median": -7.3,
+    "n": 2387
+   },
+   "L5": {
+    "high": 37.5,
+    "low": 9.0,
+    "median": 24.0,
+    "n": 2361
+   },
+   "L6": {
+    "high": 40.2,
+    "low": 17.5,
+    "median": 30.0,
+    "n": 91
+   },
+   "T1": {
+    "high": -342.9,
+    "low": -441.0,
+    "median": -399.0,
+    "n": 1853
+   },
+   "T10": {
+    "high": -150.0,
+    "low": -219.0,
+    "median": -189.0,
+    "n": 2227
+   },
+   "T11": {
+    "high": -127.5,
+    "low": -192.5,
+    "median": -165.0,
+    "n": 2308
+   },
+   "T12": {
+    "high": -100.5,
+    "low": -159.0,
+    "median": -133.1,
+    "n": 2346
+   },
+   "T2": {
+    "high": -327.5,
+    "low": -420.7,
+    "median": -380.0,
+    "n": 1981
+   },
+   "T3": {
+    "high": -310.6,
+    "low": -400.0,
+    "median": -360.0,
+    "n": 2005
+   },
+   "T4": {
+    "high": -291.3,
+    "low": -377.4,
+    "median": -337.5,
+    "n": 2007
+   },
+   "T5": {
+    "high": -267.0,
+    "low": -347.5,
+    "median": -310.0,
+    "n": 2010
+   },
+   "T6": {
+    "high": -240.0,
+    "low": -317.5,
+    "median": -282.5,
+    "n": 2011
+   },
+   "T7": {
+    "high": -216.0,
+    "low": -290.0,
+    "median": -256.5,
+    "n": 2023
+   },
+   "T8": {
+    "high": -192.0,
+    "low": -264.0,
+    "median": -232.5,
+    "n": 2076
+   },
+   "T9": {
+    "high": -171.0,
+    "low": -240.0,
+    "median": -210.0,
+    "n": 2139
+   },
+   "last lumbar": {
+    "high": 37.5,
+    "low": 12.1,
+    "median": 24.0,
+    "n": 2417
+   }
+  },
+  "head": {
+   "C3": {
+    "high": 37.5,
+    "low": 20.0,
+    "median": 30.0,
+    "n": 1975
+   },
+   "C3 to C2's foot": {
+    "high": -5.0,
+    "low": -15.0,
+    "median": -9.0,
+    "n": 1975
+   },
+   "C4": {
+    "high": 55.0,
+    "low": 33.0,
+    "median": 45.0,
+    "n": 1967
+   },
+   "C4 to C2's foot": {
+    "high": 12.0,
+    "low": -1.9,
+    "median": 6.0,
+    "n": 1967
+   },
+   "C5": {
+    "high": 70.7,
+    "low": 43.5,
+    "median": 60.0,
+    "n": 1962
+   },
+   "C5 to C2's foot": {
+    "high": 27.5,
+    "low": 9.0,
+    "median": 20.0,
+    "n": 1962
+   },
+   "C6": {
+    "high": 87.0,
+    "low": 52.5,
+    "median": 75.0,
+    "n": 1958
+   },
+   "C6 to C2's foot": {
+    "high": 45.0,
+    "low": 18.0,
+    "median": 34.5,
+    "n": 1958
+   },
+   "C7": {
+    "high": 102.0,
+    "low": 60.8,
+    "median": 86.8,
+    "n": 1957
+   },
+   "C7 to C2's foot": {
+    "high": 60.0,
+    "low": 27.0,
+    "median": 47.5,
+    "n": 1957
+   },
+   "L1": {
+    "high": 426.0,
+    "low": 330.0,
+    "median": 382.5,
+    "n": 1710
+   },
+   "L1 to C2's foot": {
+    "high": 383.2,
+    "low": 292.4,
+    "median": 342.5,
+    "n": 1710
+   },
+   "L2": {
+    "high": 462.0,
+    "low": 357.0,
+    "median": 415.0,
+    "n": 1712
+   },
+   "L2 to C2's foot": {
+    "high": 417.9,
+    "low": 320.6,
+    "median": 375.0,
+    "n": 1712
+   },
+   "L3": {
+    "high": 497.5,
+    "low": 385.0,
+    "median": 447.5,
+    "n": 1710
+   },
+   "L3 to C2's foot": {
+    "high": 454.1,
+    "low": 350.0,
+    "median": 408.0,
+    "n": 1710
+   },
+   "L4": {
+    "high": 532.4,
+    "low": 415.0,
+    "median": 480.0,
+    "n": 1706
+   },
+   "L4 to C2's foot": {
+    "high": 487.5,
+    "low": 377.5,
+    "median": 440.0,
+    "n": 1706
+   },
+   "L5": {
+    "high": 562.5,
+    "low": 437.5,
+    "median": 507.5,
+    "n": 1660
+   },
+   "L5 to C2's foot": {
+    "high": 520.0,
+    "low": 400.0,
+    "median": 467.5,
+    "n": 1660
+   },
+   "L6": {
+    "high": 588.0,
+    "low": 461.4,
+    "median": 525.0,
+    "n": 72
+   },
+   "L6 to C2's foot": {
+    "high": 544.9,
+    "low": 423.9,
+    "median": 487.8,
+    "n": 72
+   },
+   "T1": {
+    "high": 117.4,
+    "low": 72.0,
+    "median": 100.0,
+    "n": 1945
+   },
+   "T1 to C2's foot": {
+    "high": 75.0,
+    "low": 37.5,
+    "median": 60.0,
+    "n": 1945
+   },
+   "T10": {
+    "high": 332.5,
+    "low": 252.5,
+    "median": 297.0,
+    "n": 1722
+   },
+   "T10 to C2's foot": {
+    "high": 289.9,
+    "low": 216.0,
+    "median": 257.5,
+    "n": 1722
+   },
+   "T11": {
+    "high": 362.5,
+    "low": 276.8,
+    "median": 322.5,
+    "n": 1717
+   },
+   "T11 to C2's foot": {
+    "high": 318.0,
+    "low": 240.0,
+    "median": 283.7,
+    "n": 1717
+   },
+   "T12": {
+    "high": 393.0,
+    "low": 300.0,
+    "median": 352.0,
+    "n": 1711
+   },
+   "T12 to C2's foot": {
+    "high": 350.0,
+    "low": 265.0,
+    "median": 312.5,
+    "n": 1711
+   },
+   "T13": {
+    "n": 3
+   },
+   "T13 to C2's foot": {
+    "n": 3
+   },
+   "T2": {
+    "high": 135.0,
+    "low": 85.0,
+    "median": 114.0,
+    "n": 1915
+   },
+   "T2 to C2's foot": {
+    "high": 92.5,
+    "low": 49.9,
+    "median": 75.0,
+    "n": 1915
+   },
+   "T3": {
+    "high": 157.5,
+    "low": 102.5,
+    "median": 135.0,
+    "n": 1872
+   },
+   "T3 to C2's foot": {
+    "high": 114.0,
+    "low": 65.0,
+    "median": 95.0,
+    "n": 1872
+   },
+   "T4": {
+    "high": 180.0,
+    "low": 121.4,
+    "median": 155.0,
+    "n": 1809
+   },
+   "T4 to C2's foot": {
+    "high": 137.5,
+    "low": 84.0,
+    "median": 115.0,
+    "n": 1809
+   },
+   "T5": {
+    "high": 202.5,
+    "low": 140.0,
+    "median": 175.0,
+    "n": 1750
+   },
+   "T5 to C2's foot": {
+    "high": 160.0,
+    "low": 102.5,
+    "median": 136.2,
+    "n": 1750
+   },
+   "T6": {
+    "high": 227.5,
+    "low": 161.7,
+    "median": 198.0,
+    "n": 1731
+   },
+   "T6 to C2's foot": {
+    "high": 183.0,
+    "low": 125.0,
+    "median": 159.0,
+    "n": 1731
+   },
+   "T7": {
+    "high": 252.0,
+    "low": 181.4,
+    "median": 220.5,
+    "n": 1729
+   },
+   "T7 to C2's foot": {
+    "high": 208.5,
+    "low": 145.0,
+    "median": 182.5,
+    "n": 1729
+   },
+   "T8": {
+    "high": 278.0,
+    "low": 205.0,
+    "median": 246.0,
+    "n": 1723
+   },
+   "T8 to C2's foot": {
+    "high": 235.0,
+    "low": 170.0,
+    "median": 207.0,
+    "n": 1723
+   },
+   "T9": {
+    "high": 306.0,
+    "low": 230.0,
+    "median": 271.6,
+    "n": 1722
+   },
+   "T9 to C2's foot": {
+    "high": 262.5,
+    "low": 195.0,
+    "median": 232.5,
+    "n": 1722
+   }
+  }
+ },
+ "thresholds": {
+  "child_under_years": 18,
+  "level_min_voxels": 200,
+  "level_span_mm": 40.0,
+  "min_table_spines": 20,
+  "percentiles": [
+   5,
+   95
+  ],
+  "room_pairs": 4,
+  "room_times": 1.4,
+  "s1_view_mm": 0.0,
+  "small_column_mm": 300.0,
+  "tall_label_times": 4,
+  "tilt_span_mm": 100.0
+ }
+}
