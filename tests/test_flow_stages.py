@@ -505,7 +505,38 @@ class ProgressPageTest(unittest.TestCase):
         steps = {step["name"]: step for step in view["steps"]}
         self.assertEqual(steps["start"]["state"], "cloned")
         self.assertEqual(steps["first"]["state"], "running")
-        self.assertEqual(steps["first"]["total"], 1, "a step this run has a task of shows its own, not its origin's")
+        # the row this run runs again is its own; the two its origin finished are cloned, each once
+        self.assertEqual((steps["first"]["total"], steps["first"]["counts"]["cloned"], steps["first"]["counts"]["running"]), (3, 2, 1))
+
+    def test_a_resume_of_a_resume_counts_each_row_once_from_the_newest_run_that_ran_it(self):
+        # run 1 cut in its third row; run 2 cloned the first two, ran the third and was cut in the
+        # join; run 3 cloned the whole foreach, two rows from run 1 and the third from run 2
+        graph = ["start", "fan_first", "first", "join_first", "end"]
+
+        def task(run, step, number, label, state):
+            progress.write_task(self.root, "SweepFlow", run, {"step": step, "task": str(number), "label": label, "state": state, "lines": []})
+
+        for run, origin in (("1", None), ("2", "1"), ("3", "2")):
+            progress.write_head(self.root, {"flow": "SweepFlow", "run": run, "kind": "sweep", "origin": origin})
+            progress.write_graph(self.root, "SweepFlow", run, graph)
+        task("1", "start", 1, "prepare", "done")
+        task("1", "fan_first", 2, None, "done")
+        for number, label, state in ((3, "a", "done"), (4, "b", "done"), (5, "c", "running")):
+            task("1", "first", number, label, state)
+        task("1", "join_first", 6, None, "running")
+        task("2", "first", 9, "c", "done")
+        task("2", "join_first", 10, None, "running")
+        steps = {step["name"]: step for step in progress.draw(self.root, "SweepFlow", "2")["steps"]}
+        self.assertEqual((steps["first"]["state"], steps["first"]["total"]), ("done", 3))
+        self.assertEqual((steps["first"]["counts"]["done"], steps["first"]["counts"]["cloned"]), (1, 2))
+        self.assertEqual(steps["join_first"]["total"], 1, "a step that is no foreach is this run's alone where it has run it")
+        task("3", "join_first", 20, None, "done")
+        task("3", "end", 21, "results", "running")
+        steps = {step["name"]: step for step in progress.draw(self.root, "SweepFlow", "3")["steps"]}
+        self.assertEqual([(name, steps[name]["state"], steps[name]["total"]) for name in graph],
+                         [("start", "cloned", 1), ("fan_first", "cloned", 1), ("first", "cloned", 3), ("join_first", "done", 1),
+                          ("end", "running", 1)])
+        self.assertEqual(sorted(task["label"] for task in steps["first"]["tasks"]), ["a", "b", "c"])
 
     def test_the_short_lines_read_back_into_the_view_the_page_is_drawn_from(self):
         view = a_run(self.root)

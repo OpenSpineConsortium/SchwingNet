@@ -117,8 +117,35 @@ def origins(root, flow, origin, hops=10):
 
 
 def origin_tasks(folders):
-    """The tasks of a resume's origins, so a step this run cloned shows what its origin did."""
-    return [dict(task, cloned=True) for folder in folders for task in tasks_of(folder)]
+    """The tasks of each of a resume's origins, the newest origin's first, so a step this run cloned
+    shows what its origin did."""
+    return [[dict(task, cloned=True) for task in tasks_of(folder)] for folder in folders]
+
+
+def task_key(task):
+    """What one task of a step is across a run and its origins: its label, a foreach branch's row,
+    which names the same work in every run. Metaflow gives every task of a resume a new id, so an
+    unlabelled task, one a step that is no foreach runs once, stands for the whole step."""
+    return task["step"], task.get("label") or None
+
+
+def merged_tasks(own, cloned):
+    """This run's tasks and its origins' (cloned, one list per origin, the newest first), one for
+    each step and label: this run's where it has one, else the newest origin's, since a resume
+    clones what its origin finished and runs again what it did not, and a run's own entry is newer
+    than any origin's. An unlabelled step's tasks come whole from the newest run that has any, as
+    their ids never meet across runs."""
+    merged, whole_steps = {}, set()
+    for run_tasks in (own, *cloned):
+        unlabelled = {task["step"] for task in run_tasks if task_key(task)[1] is None} - whole_steps
+        for task in run_tasks:
+            key = task_key(task)
+            if key[1] is None and key[0] in unlabelled:
+                merged.setdefault(key, []).append(task)
+            elif key[1] is not None and key not in merged:
+                merged[key] = [task]
+        whole_steps |= unlabelled
+    return [task for tasks in merged.values() for task in tasks]
 
 
 def graph_of(folder, folders):
@@ -149,16 +176,16 @@ def task_view(task):
     return {"label": label, "state": state, "line": lines[-1] if lines else ""}
 
 
-def steps_view(graph, own, cloned):
-    """Every step in the graph's order with its tasks; a step this run has no task of takes its
-    origin's, which resume cloned."""
-    names = list(graph) + sorted({task["step"] for task in own} - set(graph))
+def steps_view(graph, tasks):
+    """Every step in the graph's order with its tasks, this run's and those its origins made that
+    resume cloned (merged_tasks)."""
+    names = list(graph) + sorted({task["step"] for task in tasks} - set(graph))
     steps = []
     for name in names:
-        tasks = [task for task in own if task["step"] == name] or [task for task in cloned if task["step"] == name]
-        counts = {state: sum(1 for task in tasks if task_view(task)["state"] == state) for state in STATES}
-        steps.append({"name": name, "state": step_state(tasks), "counts": counts, "total": len(tasks),
-                      "tasks": [task_view(task) for task in tasks]})
+        tasks_of_step = [task for task in tasks if task["step"] == name]
+        counts = {state: sum(1 for task in tasks_of_step if task_view(task)["state"] == state) for state in STATES}
+        steps.append({"name": name, "state": step_state(tasks_of_step), "counts": counts, "total": len(tasks_of_step),
+                      "tasks": [task_view(task) for task in tasks_of_step]})
     return steps
 
 
@@ -191,7 +218,7 @@ def view_of_folder(root, flow, run, now=None):
     head = read_json(folder / "run.json") or {"flow": flow, "run": str(run)}
     before = origins(root, flow, head.get("origin"))
     result, launch = read_json(folder / "result.json"), read_json(folder / "launch.json")
-    steps = steps_view(graph_of(folder, before), tasks_of(folder), origin_tasks(before))
+    steps = steps_view(graph_of(folder, before), merged_tasks(tasks_of(folder), origin_tasks(before)))
     updated = newest_time(folder)
     view = {key: head.get(key) for key in ("flow", "run", "kind", "key", "commit", "code", "prereg", "prereg_sha256", "origin", "started")}
     view.update(flow=flow, run=str(run), updated=updated, steps=steps,
