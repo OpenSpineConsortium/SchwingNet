@@ -412,15 +412,19 @@ class Heartbeat:
             pass
 
     def beat_on(self):
+        """The beat first and the page after it, since the beat is what keeps another launch from
+        resuming a run still going, and the page's drawing, which reads every run's view, takes
+        longer; Page never raises, so a page that fails never stops the beat."""
         last = time.monotonic()
         while not self.stop.wait(1.0):
             named = self.record["run"] or self.named_run()
             if named != self.record["run"] or time.monotonic() - last >= BEAT_SECONDS:
-                if named != self.record["run"] and self.page:
-                    self.page.begin(named)
+                newly_named = named != self.record["run"]
                 self.record["run"] = named
                 self.write()
                 last = time.monotonic()
+                if newly_named and self.page:
+                    self.page.begin(named)
 
     def named_run(self):
         try:
@@ -443,7 +447,8 @@ class Heartbeat:
 
 class Page:
     """The run's progress page as the launcher keeps it: the head once Metaflow has named the run,
-    how the flow ended once it has; a page that cannot be written is said once, and the run goes on."""
+    how the flow ended once it has; a page that cannot be written or drawn, for whatever reason, is
+    said once, and neither the beat nor the run waits on it."""
 
     def __init__(self, root, head):
         self.root, self.head, self.run, self.said = root, head, "", False
@@ -460,9 +465,9 @@ class Page:
         try:
             writing()
             stage_progress.draw(self.root, self.head["flow"], self.run)
-        except OSError as error:
+        except Exception as error:  # a page, whatever stops it, never stops the beat or the launch
             if not self.said:
-                print(f"launch: the progress page could not be written: {error}", file=sys.stderr, flush=True)
+                print(f"launch: the progress page could not be written: {type(error).__name__}: {error}", file=sys.stderr, flush=True)
             self.said = True
 
 

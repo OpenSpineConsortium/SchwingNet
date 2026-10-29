@@ -29,8 +29,8 @@ steps run:
   numbers that are to be published (tools/report.py).
 - finish, in end: the verdict and the reports on the page, those not current first.
 
-Nothing here ever fails a step for its page: a page that cannot be written is said once on the
-step's log and the work goes on.
+Nothing here ever fails a step for its page: a page that cannot be written or drawn, for whatever
+reason, is said once on the step's log and the work goes on.
 """
 
 import json
@@ -126,35 +126,56 @@ class Beat:
         self.write()
 
     def say(self, line):
-        """A line of the work's own, the newest kept last; the page is drawn again with it."""
+        """A line of the work's own, the newest kept last; the page is drawn again with it. Whether
+        it was new, and so written."""
         if line and (not self.task["lines"] or self.task["lines"][-1] != line):
             self.task["lines"] = (self.task["lines"] + [str(line)])[-progress.LINES_KEPT:]
             self.write()
+            return True
+        return False
+
+    def tick(self, line_of):
+        """The work's line while it runs, every few seconds: kept where it is new, and the task's
+        time written again either way, since the page shows a run whose files stopped moving for
+        SILENT_SECONDS as silent, and an epoch can last longer than that with nothing new to say.
+        A line that cannot be read is said once on the step's log, and the work goes on."""
+        try:
+            line = line_of()
+        except Exception as error:  # the work's card or files, never a reason to stop the work
+            self.fault_once(error)
+            line = None
+        if not self.say(line):
+            self.write()
 
     def write(self):
-        self.task["updated"] = progress.utc_now()
         try:
+            self.task["updated"] = progress.utc_now()
             progress.write_graph(self.root, self.flow, self.run, self.steps)
             progress.write_task(self.root, self.flow, self.run, self.task)
             progress.draw(self.root, self.flow, self.run)
-        except OSError as error:
-            if not self.said:
-                print(f"{self.flow}: the progress page could not be written ({error}); the work goes on", file=sys.stderr, flush=True)
-            self.said = True
+        except Exception as error:  # a page, whatever stops it, never fails the step it shows
+            self.fault_once(error)
+
+    def fault_once(self, error):
+        if not self.said:
+            print(f"{self.flow}: the progress page could not be written ({type(error).__name__}: {error}); the work goes on",
+                  file=sys.stderr, flush=True)
+        self.said = True
 
 
 def run_watched(command, beat, line_of, every=BEAT_SECONDS, **popen):
     """A command run to its end with its output kept, the beat told line_of() every few seconds
-    while it runs and once at its end, so the page moves with the work; line_of may move the
-    step's card too. (exit code, stdout, stderr)."""
+    while it runs and once at its end, so the page moves with the work and shows it alive however
+    long it says nothing new (Beat.tick); line_of may move the step's card too. (exit code,
+    stdout, stderr)."""
     process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, **popen)
     while True:
         try:
             out, err = process.communicate(timeout=every)
             break
         except subprocess.TimeoutExpired:
-            beat.say(line_of())
-    beat.say(line_of())
+            beat.tick(line_of)
+    beat.tick(line_of)
     return process.returncode, out, err
 
 
@@ -226,8 +247,8 @@ def finish(verdict, reports, none_words=None):
     try:
         progress.write_result(root, flow, run, result)
         progress.draw(root, flow, run)
-    except OSError as error:
-        print(f"{flow}: the progress page could not be written ({error})", file=sys.stderr, flush=True)
+    except Exception as error:  # a page, whatever stops it, never fails the end step
+        print(f"{flow}: the progress page could not be written ({type(error).__name__}: {error})", file=sys.stderr, flush=True)
 
 
 def page_path():

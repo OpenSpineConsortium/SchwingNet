@@ -369,6 +369,37 @@ class LauncherPreregTest(unittest.TestCase):
         self.assertIn("the registry of flows cannot be read", done.stderr)
 
 
+@unittest.skipIf(NO_CONTRACTS, "needs the train environment (icontract missing)")
+class LauncherBeatTest(unittest.TestCase):
+    """The launcher's heartbeat names the run before its page is begun, and a page that fails, for
+    whatever reason, never stops the beat that keeps another launch from resuming a live run."""
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
+        self.launch = load(LAUNCH, "launch_beat_under_test")
+
+    def test_the_beat_goes_on_naming_the_run_whatever_its_page_does(self):
+        run_id_file = self.tmp / "run-id"
+        run_id_file.write_text("1792902585286456\n", encoding="utf-8")
+        page = self.launch.Page(self.tmp / "metaflow", {"flow": "SweepFlow", "kind": "sweep"})
+        folder, err = self.tmp / "launches", io.StringIO()
+        with mock.patch.object(self.launch.stage_progress, "draw", side_effect=RuntimeError("a view that does not hold")), \
+                mock.patch.object(self.launch, "BEAT_SECONDS", 1), redirect_stderr(err):
+            with self.launch.Heartbeat(folder, "68974c7ccabf5595", run_id_file, page) as heartbeat:
+                beats = []
+                for _ in range(40):
+                    time.sleep(0.1)
+                    if heartbeat.path.is_file():
+                        beats.append(json.loads(heartbeat.path.read_text(encoding="utf-8")))
+                self.assertTrue(heartbeat.thread.is_alive(), err.getvalue())
+        self.assertEqual(beats[-1]["run"], "1792902585286456")
+        self.assertGreaterEqual(len({beat["beat"] for beat in beats if beat["run"]}), 2, "the beat went on after the page failed")
+        self.assertEqual(page.run, "1792902585286456")
+        self.assertEqual(err.getvalue().count("launch: the progress page could not be written: RuntimeError"), 1, err.getvalue())
+        self.assertFalse(heartbeat.path.exists(), "the beat is taken away when the flow ends")
+
+
 @unittest.skipIf(NO_METAFLOW, "needs the train environment (metaflow missing)")
 class ClaimReportTest(unittest.TestCase):
     """stage.claim_report with the real tools/report.py on a run folder that holds only RUN.json, which
@@ -425,6 +456,71 @@ class ClaimReportTest(unittest.TestCase):
         ok, line = self.stage.claim_report(self.folder)
         self.assertFalse(ok, line)
         self.assertEqual(line, f"row: NOT WRITTEN at the end; why: report: {self.folder}: no RUN.json, so this is not a run folder")
+
+
+@unittest.skipIf(NO_METAFLOW, "needs the train environment (metaflow missing)")
+class BeatTest(unittest.TestCase):
+    """stage.Beat and run_watched on a page under a scratch root: a step's line stays fresh while its
+    work runs, and nothing the page does ever fails the step."""
+
+    @classmethod
+    def setUpClass(cls):
+        sys.path.insert(0, str(ROOT / "flows"))
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", DeprecationWarning)
+            cls.stage = load(ROOT / "flows" / "stage.py", "stage_beat_under_test")
+
+    @classmethod
+    def tearDownClass(cls):
+        sys.path.remove(str(ROOT / "flows"))
+
+    def setUp(self):
+        self.root = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.root, ignore_errors=True)
+
+    def beat(self):
+        """A Beat as a row's step makes one, without the Metaflow task that names it."""
+        beat = object.__new__(self.stage.Beat)
+        beat.root, beat.flow, beat.run, beat.steps, beat.said = str(self.root), "SweepFlow", "1", ["start", "first", "end"], False
+        beat.task = {"step": "first", "task": "3", "label": "row", "state": "running", "attempt": 0, "started": progress.utc_now(),
+                     "lines": []}
+        return beat
+
+    def task_file(self):
+        return json.loads((self.root / "progress" / "SweepFlow" / "1" / "tasks" / "first-3.json").read_text(encoding="utf-8"))
+
+    def test_a_line_that_does_not_change_still_keeps_the_task_fresh(self):
+        # an epoch longer than SILENT_SECONDS says the same line all along; the task is written at every tick
+        beat = self.beat()
+        with mock.patch.object(beat, "write", wraps=beat.write) as write:
+            code, out, _ = self.stage.run_watched([sys.executable, "-c", "import time; time.sleep(1.2); print('trained')"], beat,
+                                                  lambda: "Last epoch: epoch 0 of 2.", every=0.25)
+        self.assertEqual((code, out), (0, "trained\n"))
+        self.assertGreaterEqual(write.call_count, 4)
+        self.assertEqual(self.task_file()["lines"], ["Last epoch: epoch 0 of 2."])
+        beat.task["updated"] = "2026-01-01T00:00:00Z"
+        beat.tick(lambda: "Last epoch: epoch 0 of 2.")
+        updated = self.task_file()["updated"]
+        self.assertNotEqual(updated, "2026-01-01T00:00:00Z")
+        self.assertEqual(progress.view_of_folder(self.root, "SweepFlow", "1", now=progress.parse_time(updated) + 60)["state"], "running")
+
+    def test_a_page_that_cannot_be_drawn_or_a_line_that_cannot_be_read_never_fails_the_step(self):
+        beat, err = self.beat(), io.StringIO()
+        with mock.patch.object(self.stage.progress, "draw", side_effect=RuntimeError("a view that does not hold")), redirect_stderr(err):
+            beat.write()
+            beat.say("a line")
+            beat.tick(lambda: 1 / 0)
+        self.assertEqual(err.getvalue().count("the progress page could not be written"), 1, err.getvalue())
+        self.assertIn("RuntimeError: a view that does not hold", err.getvalue())
+        self.assertEqual(self.task_file()["lines"], ["a line"], "the task's own file is written before the page is drawn")
+        err = io.StringIO()
+        with mock.patch.object(self.stage, "current", mock.Mock(flow_name="SweepFlow", run_id="1")), \
+                mock.patch.dict(os.environ, {"METAFLOW_DATASTORE_SYSROOT_LOCAL": str(self.root)}), \
+                mock.patch.object(self.stage.progress, "draw", side_effect=KeyError("steps")), redirect_stderr(err):
+            self.stage.finish(1, [(False, "row: NOT CURRENT")])
+        self.assertIn("the progress page could not be written (KeyError", err.getvalue())
+        self.assertEqual(json.loads((self.root / "progress" / "SweepFlow" / "1" / "result.json").read_text(encoding="utf-8"))["lines"],
+                         ["row: NOT CURRENT"])
 
 
 def a_run(root, flow="SweepFlow", run="1792902585286456", origin=None):
