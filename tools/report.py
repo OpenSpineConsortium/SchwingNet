@@ -1463,10 +1463,11 @@ def pair_not_read(run, a, b, space):
     or a calibration line whose count of flagged nulls its names do not match, which leaves it untold."""
     names, count = flagged_of(run["body"]["spaces"].get(space, {}))
     if count is not None and count != len(names):
-        return f"the {space} space's calibration line counts {count} flagged split-half nulls and names {len(names)}, so whether the pair's contrast is read cannot be told"
+        return f"the {space} space's calibration line counts {counted(count, 'flagged split-half null')} and names {len(names)}, so whether the pair's contrast is read cannot be told"
     sides = [name for name in (a, b) if name in names]
     if sides:
-        return f"the split-half null of {' and '.join(sides)} in {space} found a difference, so its contrasts are not read (DEVIATIONS.md, item 8), the verdict pair's among them"
+        nulls, their = ("split-half null", "its") if len(sides) == 1 else ("split-half nulls", "their")
+        return f"the {nulls} of {' and '.join(sides)} in {space} found a difference, so {their} contrasts are not read (DEVIATIONS.md, item 8), the verdict pair's among them"
     return None
 
 
@@ -2063,8 +2064,8 @@ def answers_for(path, run):
     if not path.is_file():
         raise ReportError(f"{shown(path)}: the study's answers file is not there")
     for_run = json.loads(path.read_text(encoding="utf-8")).get("_run")
-    if for_run is not None and not isinstance(for_run, str):
-        raise ReportError(f"{shown(path)}: _run names a run folder and must be a string, not {for_run!r}")
+    if for_run is not None and not (isinstance(for_run, str) and for_run):
+        raise ReportError(f"{shown(path)}: _run names a run folder and must be a string that is not empty, not {for_run!r}")
     if for_run in (None, run["dir"].resolve().name):
         return study_answers(path), shown(path)
     return {}, f"{shown(path)}, whose answers are run {for_run}'s, not this run's"

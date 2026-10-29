@@ -499,8 +499,14 @@ class DesignTest(StudyFolder):
             self.assertIn("reads not replicated, but the split-half null of flexray_replica in flexray found a difference, so its contrasts are not read (DEVIATIONS.md, item 8), the verdict pair's among them", evidence, item)
             self.assertNotIn("in PREREG.md section 5's words this project's blocks", evidence, item)
         self.pair_verdict("0.70", "0.300", True)
+        self.flag(2, ["flexray_replica", "flexray_reference"])
+        self.assertIn("the split-half nulls of flexray_replica and flexray_reference in flexray found a difference, so their contrasts are not read", self.rows("claim")["30"]["evidence"])
+        self.pair_verdict("0.70", "0.300", True)
         self.flag(2, ["flexray_replica"])
         self.assertIn("the flexray space's calibration line counts 2 flagged split-half nulls and names 1, so whether the pair's contrast is read cannot be told", self.rows("claim")["30"]["evidence"])
+        self.pair_verdict("0.70", "0.300", True)
+        self.flag(1, [])
+        self.assertIn("counts 1 flagged split-half null and names 0", self.rows("claim")["30"]["evidence"])
 
     def test_the_endpoints_item_reads_the_verdict_as_the_others_do(self):
         self.pair_verdict("0.50", "0.048", False)
@@ -624,6 +630,9 @@ class AnswersForARunTest(StudyFolder):
         answers = {fact: "Fixture sentence." for fact in report.study_declared_facts(STUDY)}
         self.write_answers({"_run": 1000001, **answers})
         with self.assertRaisesRegex(report.ReportError, "_run names a run folder and must be a string"):
+            self.rows("claim")
+        self.write_answers({"_run": "", **answers})
+        with self.assertRaisesRegex(report.ReportError, "must be a string that is not empty"):
             self.rows("claim")
         self.write_answers({"_run": "1000001", **answers})
         self.addCleanup(os.chdir, os.getcwd())
