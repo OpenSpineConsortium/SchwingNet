@@ -29,7 +29,7 @@ ROOT = Path(__file__).resolve().parent.parent
 # second review's finding 4).
 PYDRV = tuple(re.findall(r"^export PYDRV=\$REPO/(\S+)$", (ROOT / "grid" / "gate.sh").read_text(encoding="utf-8"), re.M))
 ENTRIES = {"row": ("tools/flow.py",), "state": ("tools/block_sweep.py",), "sweep": ("flows/sweep.py",),
-           "bank": ("flows/bank.py", *PYDRV), "catalog": ("flows/catalog.py", *PYDRV)}
+           "bank": ("flows/bank.py", *PYDRV), "catalog": ("flows/catalog.py", *PYDRV), "realism": ("flows/realism.py",)}
 SCRIPT_WORD = re.compile(r"(?<![\w.-])((?:tools|grid|flows)/[\w.-]+\.(?:py|sh|sbatch|awk))(?![\w/-])")
 # A script that finds its neighbours from where it lies, as grid/bin/train-cpu-python does:
 # here=$(cd "$(dirname "$0")/.." && pwd), then "$here/box.sh".
