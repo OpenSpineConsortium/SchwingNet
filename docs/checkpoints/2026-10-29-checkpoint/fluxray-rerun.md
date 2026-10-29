@@ -1,0 +1,26 @@
+# Handoff: the FluXray rerun of the DRR domain-gap study, running at the checkpoint of 2026-10-29
+
+Source: the thread "Rerun FluXray" in the claude.ai project symphony_4, written at 00:45 UTC on 2026-10-29 on the owner's word of 00:38 UTC (README.md in this folder, section 1). The study itself is docs/research/drr-domain-gap/README.md; the handoff before this one is docs/checkpoints/2026-10-28-drr-comparison/HANDOFF.md, whose step 4 this file carries out.
+
+## 1. What was asked and what was sent
+
+- The owner, 2026-10-28 22:58:35 UTC: "1. The FluXray rerun: go, and which project runs it., this project can run it now". That is the go for the 18 jobs he tapped at 16:28 UTC ("Rerun, family as PREREG says"): 1 prepare, 16 shard tasks and 1 merge. It is the one exception to "nothing goes to the grid" that this thread used; nothing else was sent.
+- gate.sh would not queue a benchmark whose report stands, so #448 (merged 23:40 UTC, main 8889bd7) added BENCH_RERUNS to grid/gate.sh: `flexray_drr_gap:40828920` lets the report of run 1 (job 40828920) be queued once more from a newer commit. The new report names its own job, which the list does not hold, so every later send of the word prints the new report and queues nothing.
+- Sent once, at 23:42 UTC on 2026-10-28, request drr-gap-18-2342-m7gfac, at commit 8889bd7: prepare 40859208, array 40859209 (16 tasks, afterany prepare), merge 40859211 (afterany the array). Run 1's report was kept as BENCH-flexray_drr_gap-40828920.md on the grid. The count is spent: never send it again. A run that writes no report needs the owner's word before any resend.
+
+## 2. Where it stood at the checkpoint
+
+- 00:17 UTC: all three jobs pending, prepare waiting for a free GPU (Resources).
+- 00:35 UTC (status request fluxray-status-0035-m7gfac): prepare started as job 40859208 at 00:30:24 on alh3, computing on an NVIDIA L40S; stage render started at 00:31:17. Shards and merge wait on it. Room on the volume: 4,386.83 GB free.
+- Run 1's finished units are not reused. tools/domain_gap.py keeps an earlier chain's done units but counts one only where its stamp, the digest of the plan, the code and the heads, is the new list's; FluXray's groups and the new commit change all three, so every unit is computed again.
+- How long: run 1's render took 408 s and its 716 units 16,706 GPU-seconds summed, about 17 minutes over 16 cards once they are all running, plus 392 s of analysis in the merge. Run 2 has FluXray's groups on top. An estimate, not a measurement: the merge ends an hour or two after prepare, longer when the 16 cards are slow to free.
+
+## 3. What the next session does
+
+1. Read the run with the status word only: dispatch https://github.com/OpenSpineConsortium/symphony-template/actions/workflows/grid-accounts.yml on main with action `job`, job `schwingnet-status` and a request id of your own, then read logs/job-schwingnet-status.json on symphony-template's branch grid (`git fetch origin +refs/heads/grid:refs/remotes/origin/grid && git show origin/grid:logs/job-schwingnet-status.json`). The jobs' states are under "## the gate's newest jobs (sacct)"; the run's progress is "## bench flexray_drr_gap, progress". Run 1's stage timings, task lines and unit totals show through until run 2 rewrites each, so trust the log lines dated 2026-10-29 and the sacct lines, not the totals alone. Check no faster than every 15 minutes.
+2. Send the bench word only once sacct shows prepare 40859208, every task of 40859209 and merge 40859211 ended COMPLETED with exit 0:0. Then send `schwingnet-bench-flexray_drr_gap` once: it prints BENCH.md and summary.txt and queues nothing, since the report names 40859208. If any of the three ended FAILED, CANCELLED or TIMEOUT, send nothing and tell the owner: main has moved past 8889bd7, so under the rule of #312 a report that ended in failure on older code would be queued again by that word, and a failed bench is never resent without the owner. While a bench is live the gate does not pull main (grid/logs/HOLD); after it ends, the first word sent reads at the held commit.
+3. Record run 2 as run 1 was: docs/research/drr-domain-gap/runs/40859208/ with BENCH.md and summary.txt as the word printed them, then `python3 tools/report.py write --study drr-domain-gap --run docs/research/drr-domain-gap/runs/40859208` and `python3 tools/report.py check-recorded`.
+4. In docs/research/drr-domain-gap/README.md section 6, add the second run from its summary lines: FluXray's endpoint, the FLUX-edit pair (fluxray_raw_reference against fluxray), the verdict in both MMD families (q and q_without_nulls), what the nulls change, and why VinDr-SpineXR was skipped; set the status line to say so, and add a line to docs/memory/drr-domain-gap.md. One pull request from the thread's own branch, `bash scripts/check.sh` in a throwaway copy first, an "## Adversarial review" section in its body before it is marked ready, merged once green.
+5. Then draft the 39 CLAIM items only the owner can answer, from runs/40828920/REPORT.md's empty rows (and run 2's), and put them to him in the thread; his answers are never written into git by a session.
+
+Nothing else of this study goes to the grid without the owner's word and count.
