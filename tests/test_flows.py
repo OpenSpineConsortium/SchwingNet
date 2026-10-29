@@ -1086,6 +1086,211 @@ class SweepFlowTest(unittest.TestCase):
         self.assertEqual(calls.read_text(encoding="utf-8").splitlines(), ["row b"])
 
 
+STUB_FLOW_TOOL = '''"""A stand-in for tools/flow.py run, as V1Flow runs it: the run's folder held by its .lock and its
+RUN.json written first, an epoch line a second, the run's id and folder said before its first step,
+killed once or failing where the test says, a report of its own that is not current where the test
+says, and FINISHED.json last."""
+import json
+import os
+import signal
+import sys
+import time
+from pathlib import Path
+
+
+def value(flag):
+    return sys.argv[sys.argv.index(flag) + 1]
+
+
+def ancestor(test):
+    pid = os.getppid()
+    while pid > 1:
+        command = Path(f"/proc/{pid}/cmdline").read_bytes().replace(b"\\0", b" ").decode()
+        if test(command):
+            return pid
+        pid = int(Path(f"/proc/{pid}/stat").read_text().rsplit(")", 1)[1].split()[1])
+    return None
+
+
+def kill_the_job():
+    """As Slurm ends a job: the flow's runtime first, so nothing retries, then the task."""
+    runtime = ancestor(lambda c: "v1.py --quiet " in c and " step " not in c)
+    task = ancestor(lambda c: " step train_evaluate " in c)
+    for pid in (runtime, task):
+        if pid:
+            os.kill(pid, signal.SIGKILL)
+    sys.exit(137)
+
+
+with open(os.environ["FLOW_TEST_CALLS"], "a", encoding="utf-8") as calls:
+    calls.write(" ".join(["run", value("--epochs"), value("--seed"), Path(value("--catalog")).name]) + "\\n")
+if os.environ.get("FLOW_TEST_FAULT"):
+    print("flow: train exited 1; see the train log", file=sys.stderr)
+    sys.exit(1)
+run_dir = Path(value("--out")) / "r1"
+(run_dir / "train").mkdir(parents=True, exist_ok=True)
+(run_dir / ".lock").write_text(f"pid {os.getpid()} on testhost, since now\\n", encoding="utf-8")
+(run_dir / "RUN.json").write_text(json.dumps({"run_id": "r1", "epochs": value("--epochs")}), encoding="utf-8")
+print(json.dumps({"run_id": "r1", "run_dir": str(run_dir), "mode": "local"}), flush=True)
+marker = Path(os.environ["FLOW_TEST_MARKER"])
+with (run_dir / "train" / "metrics.jsonl").open("a", encoding="utf-8") as metrics:
+    for epoch in range(int(value("--epochs")) + 1):
+        metrics.write(json.dumps({"epoch": epoch, "train_loss": 0.5, "validation_accuracy": 0.75, "seconds": 1.0}) + "\\n")
+        metrics.flush()
+        if epoch == 1 and os.environ.get("FLOW_TEST_KILL") and not marker.exists():
+            marker.write_text("", encoding="utf-8")
+            kill_the_job()
+        time.sleep(float(os.environ.get("FLOW_TEST_EPOCH_SECONDS", "0")))
+(run_dir / "evaluate").mkdir(exist_ok=True)
+if os.environ.get("FLOW_TEST_STALE"):
+    (run_dir / "claim.json").write_text("a report the run left stale\\n", encoding="utf-8")
+if not os.environ.get("FLOW_TEST_UNFINISHED"):
+    (run_dir / "FINISHED.json").write_text(json.dumps({"run_id": "r1"}), encoding="utf-8")
+'''
+V1_PREREG = "# The test's version 1 design\n"
+
+
+@unittest.skipIf(MISSING, f"needs the train environment ({', '.join(MISSING)} missing)")
+class V1FlowTest(unittest.TestCase):
+    """V1Flow over a stub of tools/flow.py in a temporary copy of the repository's flow, so the
+    PREREG, the report, the page and the resume are tested without a GPU and in seconds."""
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
+        self.repo = self.tmp / "repo"
+        (self.repo / "flows").mkdir(parents=True)
+        (self.repo / "tools").mkdir()
+        for name in ("v1.py", "flow_tool.py", "stage.py", "stage_progress.py", "stage_registry.py", "registry.txt"):
+            shutil.copy(ROOT / "flows" / name, self.repo / "flows" / name)
+        (self.repo / "tools" / "flow.py").write_text(STUB_FLOW_TOOL, encoding="utf-8")
+        (self.repo / "tools" / "report.py").write_text(STUB_REPORT, encoding="utf-8")
+        prereg = self.repo / "docs" / "research" / "v1-demo"
+        prereg.mkdir(parents=True)
+        (prereg / "PREREG.md").write_text(V1_PREREG, encoding="utf-8")
+        (prereg / "PREREG.md.sha256").write_text(f"{hashlib.sha256(V1_PREREG.encode()).hexdigest()}  PREREG.md\n", encoding="ascii")
+        shutil.copy(ROOT / "tools" / "run_code.py", self.repo / "tools" / "run_code.py")
+        for name in load_run_code().KINDS["v1"]:
+            path = self.repo / name
+            if not path.exists():
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(f"# {name}, a stand-in\n", encoding="utf-8")
+        subprocess.run(self.git("init", "-q"), check=True, capture_output=True, timeout=60)
+        self.commit("the stub")
+        self.root, self.runs, self.work = self.tmp / "metaflow", self.tmp / "runs", self.tmp / "work"
+        self.work.mkdir()
+        self.catalog = self.tmp / "catalog-000001-abc.sqlite"
+        self.catalog.write_text("a catalog\n", encoding="utf-8")
+        self.weights = self.tmp / "resnet18.pth"
+        self.weights.write_text("weights\n", encoding="utf-8")
+
+    def git(self, *words):
+        return ["git", "-C", str(self.repo), "-c", "user.name=flow test", "-c", "user.email=flow@test", "-c", "commit.gpgsign=false",
+                "-c", "gc.auto=0", "-c", "gc.autoDetach=false", "-c", "maintenance.auto=false", "-c", "maintenance.autoDetach=false", *words]
+
+    def commit(self, message):
+        for words in (["add", "-A"], ["commit", "-q", "-m", message]):
+            subprocess.run(self.git(*words), check=True, capture_output=True, timeout=60)
+
+    def v1(self, n, **extra):
+        """One launch of version 1 over the stub, with its own call log: (code, JSON lines, output, calls)."""
+        calls = self.tmp / f"calls-{n}"
+        calls.write_text("", encoding="utf-8")
+        env = base_env(SCHWINGNET=str(self.repo), FLOW_TEST_CALLS=str(calls), FLOW_TEST_MARKER=str(self.tmp / "killed"), **extra)
+        words = ["v1", "--", "--catalog", str(self.catalog), "--out", str(self.runs), "--weights", str(self.weights),
+                 "--epochs", "3", "--seed", "1", "--environment", "train-cpu"]
+        code, said, out = launch(words, self.work, env, self.root)
+        return code, said, out, calls.read_text(encoding="utf-8").splitlines()
+
+    def progress_of(self, said):
+        folder = self.root / "progress" / "V1Flow" / said[-1]["run"].split("/")[1]
+        return folder, (folder / "PROGRESS.txt").read_text(encoding="utf-8").splitlines()
+
+    def test_version_1_runs_the_flow_tool_once_checks_its_report_and_ends_with_its_verdict_and_page(self):
+        code, said, out, calls = self.v1(1)
+        self.assertEqual(code, 0, out)
+        self.assertEqual(said[0]["decision"], "run", out)
+        self.assertEqual((said[-1]["successful"], said[-1]["verdict"]), (True, 0), out)
+        self.assertEqual(calls, ["run 3 1 catalog-000001-abc.sqlite"])
+        reports = (self.tmp / "calls-1.reports").read_text(encoding="utf-8").split()
+        self.assertEqual(reports, ["end", "write", "r1", "end", "check", "r1"])
+        page = str(self.root / "progress" / "V1Flow" / said[-1]["run"].split("/")[1] / "index.html")
+        record = json.loads((self.runs / "r1" / "METAFLOW.json").read_text(encoding="utf-8"))
+        self.assertEqual(record, {"flow": "V1Flow", "run": said[-1]["run"], "root": str(self.root), "page": page})
+        folder, lines = self.progress_of(said)
+        self.assertRegex(lines[0], rf"^flow V1Flow/{folder.name} v1: succeeded, started ")
+        self.assertRegex(lines[1], r"PREREG docs/research/v1-demo/PREREG\.md sha256 [0-9a-f]{12}$")
+        self.assertIn("task train_evaluate train and evaluate: done; run r1, folder " + str(self.runs / "r1"), lines)
+        self.assertIn("report: r1: current, written at the end since the run left none; CLAIM 2024: 20 met, 3 declared, "
+                      "2 not applicable, 4 missing; REFORMS: 20 met, 3 declared, 2 not applicable, 4 missing", lines)
+        self.assertEqual(lines[2:5], ["verdict: 0", "ended: the launcher exited 0, the flow succeeded", "reports: 1 of 1 current"])
+        self.assertIn('"run_dir": "' + str(self.runs / "r1") + '"', out)
+
+    def test_the_step_line_moves_with_the_trainers_epochs_while_it_trains(self):
+        process = start_launch(["v1", "--", "--catalog", str(self.catalog), "--out", str(self.runs), "--epochs", "3",
+                                "--environment", "train-cpu"], self.work,
+                               base_env(SCHWINGNET=str(self.repo), FLOW_TEST_CALLS=str(self.tmp / "calls"),
+                                        FLOW_TEST_MARKER=str(self.tmp / "killed"), FLOW_TEST_EPOCH_SECONDS="8"), self.root)
+        deadline, seen = time.monotonic() + TIMEOUT, ""
+        while "Training r1. Last epoch: epoch " not in seen and time.monotonic() < deadline:
+            seen = "".join(p.read_text(encoding="utf-8") for p in self.root.glob("progress/V1Flow/*/tasks/train_evaluate-*.json"))
+            time.sleep(0.5)
+        code, said, out = finish(process)
+        self.assertIn("Training r1. Last epoch: epoch ", seen, out)
+        self.assertIn(" of 3, train loss 0.5, validation accuracy 0.75", seen, out)
+        self.assertEqual(code, 0, out)
+
+    def test_a_run_whose_report_is_not_current_or_that_did_not_finish_ends_with_verdict_1(self):
+        code, said, out, _ = self.v1(1, FLOW_TEST_STALE="r1")
+        self.assertEqual((code, said[-1]["successful"], said[-1]["verdict"]), (1, True, 1), out)
+        _, lines = self.progress_of(said)
+        self.assertTrue([line for line in lines if line.startswith("report: r1: NOT CURRENT as the run wrote it, so written anew; why: ")
+                         and "REPORT.md, claim.json, reforms.json not what the run gives" in line], lines)
+        self.assertRegex(lines[0], r" v1: failed, started ")
+        shutil.rmtree(self.runs)
+        code, said, out, _ = self.v1(2, FLOW_TEST_UNFINISHED="1")
+        self.assertEqual((code, said[-1]["verdict"]), (1, 1), out)
+        _, lines = self.progress_of(said)
+        self.assertIn("report: r1: no FINISHED.json, so tools/flow.py did not finish the run", lines)
+
+    def test_a_flow_tool_that_fails_is_tried_twice_and_the_run_fails_with_its_last_line(self):
+        code, said, out, calls = self.v1(1, FLOW_TEST_FAULT="1")
+        self.assertEqual(code, 1, out)
+        self.assertEqual(said[-1]["successful"], False, out)
+        self.assertEqual(len(calls), 2, calls)
+        self.assertIn("tools/flow.py run exited 1: flow: train exited 1; see the train log", out)
+        # the page shows the step that failed with its last line, as the PREREG's section 5 says
+        _, lines = self.progress_of(said)
+        self.assertTrue([line for line in lines if line.startswith("task train_evaluate train and evaluate: failed")
+                         and "V1Fault: tools/flow.py run exited 1: flow: train exited 1; see the train log" in line], lines)
+
+    def test_a_kill_mid_training_resumes_the_step_and_a_new_catalog_runs_anew(self):
+        code, said, out, calls = self.v1(1, FLOW_TEST_KILL="1")
+        self.assertEqual(code, 137, out)
+        first_run = said[-1]["run"].split("/")[1]
+        code, said, out, calls = self.v1(2)
+        self.assertEqual(code, 0, out)
+        self.assertEqual((said[0]["decision"], said[0]["origin"]), ("resume", first_run), out)
+        self.assertEqual(calls, ["run 3 1 catalog-000001-abc.sqlite"])
+
+        (self.tmp / "killed").unlink()
+        code, said, out, _ = self.v1(3, FLOW_TEST_KILL="1")
+        self.assertEqual(code, 137, out)
+        self.catalog.write_text("the same path, other bytes\n", encoding="utf-8")
+        code, said, out, _ = self.v1(4)
+        self.assertEqual((code, said[0]["decision"], said[0]["origin"]), (0, "run", None), out)
+
+    def test_a_moved_prereg_starts_nothing(self):
+        with (self.repo / "docs" / "research" / "v1-demo" / "PREREG.md").open("a", encoding="utf-8") as prereg:
+            prereg.write("An edit after the freeze.\n")
+        self.commit("an edit to the PREREG after its freeze")
+        code, said, out, calls = self.v1(1)
+        self.assertEqual(code, 90, out)
+        self.assertIn("STOP: docs/research/v1-demo/PREREG.md changed since the freeze", out)
+        self.assertEqual((said, calls), ([], []), out)
+        self.assertIn("V1_RC=90 ", out)
+
+
 # A failed stage 2 job's log under the launcher, in the shape Metaflow 2.19.39 gave it (measured
 # 2026-10-25): every line a task printed behind "<date> <time> [<run>/<step>/<task> (pid N)] " and
 # stripped of its own leading blanks, so a traceback's frames and source lines lost their indent.
@@ -1503,6 +1708,385 @@ class StageDispatchTest(unittest.TestCase):
         self.assertEqual(build.count("--manifest "), 1, build)
         self.assertIn(f"--manifest {data_root}/carmlspine/shards/a/MANIFEST.json", build)
         self.assertIn("- manifests read: 1", out)
+
+
+# A stand-in for the body of grid/drr-gap.sbatch and of grid/drr-seg.sbatch, run by the flows' working
+# steps: what each part leaves that its flow reads, each call logged with the words and the Slurm
+# variables that reached it through the launcher, Metaflow and the step, and the flow killed once
+# mid-part, as Slurm ends a job, where FLOW_TEST_KILL names the part.
+STUB_STUDY_BODY = """\"\"\"A stand-in for the job scripts' bodies in DrrGapFlowTest and DrrSegFlowTest.\"\"\"
+import json
+import os
+import signal
+import sys
+from pathlib import Path
+
+env = os.environ
+
+
+def ancestor(test):
+    pid = os.getppid()
+    while pid > 1:
+        command = Path(f"/proc/{pid}/cmdline").read_bytes().replace(b"\\0", b" ").decode()
+        if test(command):
+            return pid
+        pid = int(Path(f"/proc/{pid}/stat").read_text().rsplit(")", 1)[1].split()[1])
+    return None
+
+
+def kill_the_job(flow, step):
+    runtime = ancestor(lambda c: f"{flow} --quiet " in c and " step " not in c)
+    task = ancestor(lambda c: f" step {step} " in c)
+    for pid in (runtime, task):
+        if pid:
+            os.kill(pid, signal.SIGKILL)
+    sys.exit(137)
+
+
+part = env.get("STEP", "segment")
+words = [part, f"task={env.get('DRR_GAP_TASK', '-')}", f"tasks={env.get('DRR_GAP_TASK_COUNT') or env.get('SHARD_TASKS') or '-'}",
+         f"prepare={env.get('PREPARE_JOB', '-')}", f"job={env.get('SLURM_JOB_ID', '-')}",
+         f"array={env.get('SLURM_ARRAY_JOB_ID', '-')}_{env.get('SLURM_ARRAY_TASK_ID', '-')}",
+         f"step={env.get('SCHWINGNET_FLOW_STEP', '-')}", f"checkout={env.get('SN_CHECKOUT', '-')}"]
+with open(env["FLOW_TEST_CALLS"], "a", encoding="utf-8") as calls:
+    calls.write(" ".join(words) + "\\n")
+if part == "segment":
+    masks = Path(env["FLOW_TEST_MASKS"])
+    masks.mkdir(parents=True, exist_ok=True)
+    (masks / "SEGMENT.json").write_text(json.dumps({"plan": {"to_run": 2}, "done": [{"id": "s0001"}]}), encoding="utf-8")
+else:
+    out = Path(env["DRR_GAP_OUT"])
+    out.mkdir(parents=True, exist_ok=True)
+    (out / "PROGRESS.txt").write_text(f"{part}: 3 of 4 units\\n", encoding="utf-8")
+marker = Path(env["FLOW_TEST_MARKER"])
+if part == env.get("FLOW_TEST_KILL") and not marker.exists():
+    marker.write_text("", encoding="utf-8")
+    kill_the_job("drr_seg.py" if part == "segment" else "drr_gap.py", "segment" if part == "segment" else "work")
+code = int(env.get("FLOW_TEST_RC", "0"))
+if part == "merge" and code == 0:
+    record = Path(env["SN_STUDY_RECORD"])
+    record.mkdir(parents=True, exist_ok=True)
+    (record / "BENCH.md").write_text("# bench flexray_drr_gap: job 4242 on node1, commit 0123456, 2026-10-29 12:00:00 UTC\\n"
+                                     "- exit 0 at 2026-10-29 13:00:00 UTC\\n", encoding="utf-8")
+    (record / "summary.txt").write_text("study drr-domain-gap; the stand-in's summary\\n", encoding="utf-8")
+print(f"- {part}: exit {code}", flush=True)
+sys.exit(code)
+"""
+# tools/report.py's study mode as the stand-in gives it: a recorded run of the study is a folder with
+# BENCH.md and summary.txt and no RUN.json, read only under --study, its report rendered from those
+# two files, so the merge's run is tested on the study's own terms whatever the training stand-in
+# above asks of a run folder.
+STUB_STUDY_REPORT = '''"""A stand-in for tools/report.py's study mode in DrrGapFlowTest."""
+import hashlib
+import json
+import os
+import sys
+from pathlib import Path
+
+action, folder = sys.argv[1], Path(sys.argv[sys.argv.index("--run") + 1])
+study = sys.argv[sys.argv.index("--study") + 1] if "--study" in sys.argv else None
+with open(os.environ["FLOW_TEST_CALLS"] + ".reports", "a", encoding="utf-8") as calls:
+    calls.write(f"{action} {folder.name} {study}\\n")
+if study != "drr-domain-gap":
+    print(f"report: {folder}: no RUN.json, so this is not a run folder", file=sys.stderr)
+    sys.exit(1)
+for name in ("BENCH.md", "summary.txt"):
+    if not (folder / name).is_file():
+        print(f"report: {folder}: no {name}, so this is not a recorded {study} run", file=sys.stderr)
+        sys.exit(1)
+digest = hashlib.sha256((folder / "BENCH.md").read_bytes() + (folder / "summary.txt").read_bytes()).hexdigest()
+tally = {"met": 18, "declared": 4, "not applicable": 5, "missing": 2}
+rendered = {"REPORT.md": f"# The report of the study run whose record is {digest}\\n"}
+for name, checklist in (("claim.json", "CLAIM 2024"), ("reforms.json", "REFORMS")):
+    rendered[name] = json.dumps({"study": study, "checklist": checklist, "record_sha256": digest, "tally": tally}) + "\\n"
+if action == "write":
+    for name, text in rendered.items():
+        (folder / name).write_text(text, encoding="utf-8")
+    sys.exit(0)
+held = {name: (folder / name).read_text(encoding="utf-8") if (folder / name).is_file() else "" for name in rendered}
+stale = [name for name, text in rendered.items() if held[name] != text]
+if stale or folder.name in os.environ.get("FLOW_TEST_STALE", "").split():
+    print(f"{folder}: {', '.join(stale) or 'REPORT.md'} not what the record gives", file=sys.stderr)
+    sys.exit(1)
+print(f"{folder}: report current")
+'''
+# The job scripts as the flows' steps run them: the body alone, the stand-in above. Their drivers,
+# which start the launcher, are tests/test_gate.py's to test, and the registry's check reads the
+# launcher's line here.
+STUB_STUDY_SCRIPT = """#!/bin/bash
+# Its driver starts flows/launch.py {kind}; the test runs the body alone.
+exec "$FLOW_TEST_PYTHON" "$(dirname "$0")/../tools/study_body_stub.py"
+"""
+# The study's PREREG as the test repository freezes it, with no Covers line, as the study's has none.
+STUDY_PREREG = "# The test's study\n\nOne design for every part.\n"
+
+
+# flows/stage.py's finish as a scratch repository can cut it: the job killed once, the runtime with
+# it, as the flow's end begins to give its verdict, where FLOW_TEST_KILL says end; appended to the
+# scratch copy alone, so both launches run the same code and the second resumes the first.
+STAGE_CUT_IN_FINISH = """
+
+import functools as _functools
+import signal as _signal
+
+
+def _cut_the_job():
+    pid = os.getppid()
+    while pid > 1:
+        command = Path(f"/proc/{pid}/cmdline").read_bytes().replace(b"\\0", b" ").decode()
+        if ".py --quiet " in command and " step " not in command:
+            os.kill(pid, _signal.SIGKILL)
+            break
+        pid = int(Path(f"/proc/{pid}/stat").read_text().rsplit(")", 1)[1].split()[1])
+    os.kill(os.getpid(), _signal.SIGKILL)
+
+
+_finish_as_it_is = finish
+
+
+@_functools.wraps(_finish_as_it_is)
+def finish(*args, **kwargs):
+    marker = Path(os.environ["FLOW_TEST_MARKER"])
+    if os.environ.get("FLOW_TEST_KILL") == "end" and not marker.exists():
+        marker.write_text("", encoding="utf-8")
+        _cut_the_job()
+    return _finish_as_it_is(*args, **kwargs)
+"""
+
+
+def drr_code_paths():
+    """What the study's prepare copies at its commit, as grid/drr-gap.sbatch lists it in CODE_PATHS."""
+    listed = re.search(r"^CODE_PATHS=\((.*?)\)$", (GRID / "drr-gap.sbatch").read_text(encoding="utf-8"), re.M | re.S)
+    return listed.group(1).split()
+
+
+class StudyRepository:
+    """A scratch repository holding the two flows as they are, the stand-ins above, the real
+    tools/run_code.py with a stand-in for every other file the two kinds name, and a frozen PREREG;
+    and the copy the study's prepare makes of it, as git archive and its COPY.txt."""
+
+    def __init__(self, tmp):
+        self.tmp, self.repo = tmp, tmp / "repo"
+        for name in ("drr_gap.py", "drr_seg.py", "stage.py", "stage_progress.py", "stage_registry.py", "registry.txt"):
+            self.write(f"flows/{name}", (ROOT / "flows" / name).read_text(encoding="utf-8"))
+        self.write("tools/run_code.py", (ROOT / "tools" / "run_code.py").read_text(encoding="utf-8"))
+        self.write("tools/report.py", STUB_STUDY_REPORT)
+        self.write("tools/study_body_stub.py", STUB_STUDY_BODY)
+        for kind, script in (("drr_gap", "drr-gap.sbatch"), ("drr_seg", "drr-seg.sbatch")):
+            self.write(f"grid/{script}", STUB_STUDY_SCRIPT.format(kind=kind))
+        self.write("docs/research/drr-domain-gap/PREREG.md", STUDY_PREREG)
+        self.write("docs/research/drr-domain-gap/PREREG.md.sha256", f"{hashlib.sha256(STUDY_PREREG.encode()).hexdigest()}  PREREG.md\n")
+        code = load_run_code()
+        for name in [*code.KINDS["drr_gap"], *code.KINDS["drr_seg"], *drr_code_paths()]:
+            folder = name.endswith("/") or (ROOT / name).is_dir()
+            path = self.repo / name / "one.json" if folder else self.repo / name
+            if not path.exists() and not (folder and (self.repo / name).is_dir()):
+                self.write(path.relative_to(self.repo).as_posix(), f"# {name}, a stand-in\n")
+        subprocess.run(self.git("init", "-q"), check=True, capture_output=True, timeout=60)
+        self.commit("the study's stand-ins")
+
+    def write(self, name, text):
+        path = self.repo / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8")
+
+    def git(self, *words):
+        return ["git", "-C", str(self.repo), "-c", "user.name=flow test", "-c", "user.email=flow@test", "-c", "commit.gpgsign=false",
+                "-c", "gc.auto=0", "-c", "gc.autoDetach=false", "-c", "maintenance.auto=false", "-c", "maintenance.autoDetach=false", *words]
+
+    def commit(self, message):
+        for words in (["add", "-A"], ["commit", "-q", "-m", message]):
+            subprocess.run(self.git(*words), check=True, capture_output=True, timeout=60)
+        return subprocess.run(self.git("rev-parse", "HEAD"), check=True, capture_output=True, text=True, timeout=60).stdout.strip()
+
+    def copy(self):
+        """The copy prepare makes at the commit: git archive of CODE_PATHS, with COPY.txt naming the
+        commit and the files, and no .git."""
+        commit = subprocess.run(self.git("rev-parse", "HEAD"), check=True, capture_output=True, text=True, timeout=60).stdout.strip()
+        code = self.tmp / f"code-{commit[:7]}"
+        code.mkdir()
+        archive = subprocess.run(self.git("archive", commit, "--", *drr_code_paths()), check=True, capture_output=True, timeout=60)
+        subprocess.run(["tar", "-x", "-C", str(code)], input=archive.stdout, check=True, timeout=60)
+        listed = subprocess.run(self.git("-c", "core.quotePath=false", "ls-tree", "-r", "--name-only", commit, "--", *drr_code_paths()),
+                                check=True, capture_output=True, text=True, timeout=60).stdout
+        (code / "COPY.txt").write_text(f"{commit}\n{listed}", encoding="utf-8")
+        return code, commit
+
+
+def page_lines(root, flow, said):
+    """The run's PROGRESS.txt, as the gate's status shows it."""
+    folder = root / "progress" / flow / said[-1]["run"].split("/")[1]
+    return (folder / "PROGRESS.txt").read_text(encoding="utf-8").splitlines()
+
+
+@unittest.skipIf(MISSING, f"needs the train environment ({', '.join(MISSING)} missing)")
+class DrrGapFlowTest(unittest.TestCase):
+    """DrrGapFlow started by the launcher from the copy of the code the study's prepare makes, its
+    parts' bodies stand-ins, so the copy's naming of the run, each part, the merge's report, a shard
+    cut and resumed and a moved PREREG are tested without a GPU and in seconds."""
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
+        self.study = StudyRepository(self.tmp)
+        self.code, self.commit = self.study.copy()
+        self.root, self.out, self.work = self.tmp / "metaflow", self.tmp / "bench" / "flexray_drr_gap", self.tmp / "work"
+        self.work.mkdir()
+        self.calls = self.tmp / "calls"
+
+    def part(self, part, *words, **extra):
+        """One launch of a part from the copy: its exit code, its JSON lines, its output and the
+        stand-in's calls it made."""
+        self.calls.write_text("", encoding="utf-8")
+        env = base_env(SCHWINGNET=str(self.code), SN_CHECKOUT=str(self.study.repo), FLOW_TEST_CALLS=str(self.calls),
+                       FLOW_TEST_MARKER=str(self.tmp / "killed"), FLOW_TEST_PYTHON=sys.executable, **extra)
+        args = ["drr_gap", "--max-workers", "1", "--", "--part", part, "--prepare-job", "4242", "--out", str(self.out), *words]
+        result = launch(args, self.work, env, self.root)
+        return (*result, self.calls.read_text(encoding="utf-8").splitlines())
+
+    def test_each_part_runs_from_the_copy_and_the_merge_writes_and_checks_the_studys_report(self):
+        code, said, out, calls = self.part("prepare", SLURM_JOB_ID="4242")
+        self.assertEqual(code, 0, out)
+        self.assertEqual((said[-1]["successful"], said[-1]["verdict"]), (True, 0), out)
+        # the copy holds no .git: the launcher names the run's commit and code from its COPY.txt, the
+        # code's digest the one the checkout gives at that commit
+        self.assertFalse((self.code / ".git").exists())
+        self.assertEqual(said[0]["code"], load_run_code().digest("drr_gap", self.study.repo), out)
+        self.assertEqual(calls, [f"prepare task=- tasks=- prepare=4242 job=4242 array=-_- step=1 checkout={self.study.repo}"])
+        lines = page_lines(self.root, "DrrGapFlow", said)
+        self.assertRegex(lines[0], r"^flow DrrGapFlow/\d+ drr_gap: succeeded, ")
+        self.assertIn(f"commit {self.commit[:7]}", lines[1])
+        self.assertRegex(lines[1], r"PREREG docs/research/drr-domain-gap/PREREG\.md sha256 [0-9a-f]{12}$")
+        self.assertTrue(any(line.startswith("task work ") and line.endswith("prepare: exit 0") for line in lines), lines)
+        self.assertTrue(any("the study's CLAIM and REFORMS report is the merge's" in line for line in lines) or
+                        any(line.startswith("report: prepare: exit 0") for line in lines), lines)
+        self.assertFalse((self.out / "runs").exists(), "a part other than the merge leaves no record")
+
+        # a shard's task and the array's count reach its body, and the Slurm variables with them
+        code, said, out, calls = self.part("shard", "--task", "1", "--tasks", "2", SLURM_JOB_ID="4244", SLURM_ARRAY_JOB_ID="4243",
+                                           SLURM_ARRAY_TASK_ID="1")
+        self.assertEqual(code, 0, out)
+        self.assertEqual(calls, [f"shard task=1 tasks=2 prepare=4242 job=4244 array=4243_1 step=1 checkout={self.study.repo}"])
+
+        code, said, out, calls = self.part("merge", "--tasks", "2", SLURM_JOB_ID="4246")
+        self.assertEqual(code, 0, out)
+        self.assertEqual((said[-1]["successful"], said[-1]["verdict"]), (True, 0), out)
+        self.assertEqual(calls, [f"merge task=- tasks=2 prepare=4242 job=4246 array=-_- step=1 checkout={self.study.repo}"])
+        record = self.out / "runs" / "4242"
+        # the record is written and checked as a recorded run of the study, under --study
+        reports = (self.tmp / "calls.reports").read_text(encoding="utf-8").splitlines()
+        self.assertEqual(sorted(reports), ["check 4242 drr-domain-gap", "write 4242 drr-domain-gap"])
+        self.assertTrue((record / "claim.json").is_file())
+        note = json.loads((record / "METAFLOW.json").read_text(encoding="utf-8"))
+        self.assertEqual((note["flow"], note["run"], note["root"]), ("DrrGapFlow", said[-1]["run"], str(self.root)))
+        lines = page_lines(self.root, "DrrGapFlow", said)
+        self.assertTrue(any(re.match(r"report: 4242: current", line) for line in lines), lines)
+        self.assertIn("verdict: 0", lines)
+
+    def test_a_shard_cut_mid_work_is_resumed_by_the_same_words_and_runs_its_body_again(self):
+        code, said, out, calls = self.part("shard", "--task", "0", "--tasks", "2", FLOW_TEST_KILL="shard")
+        self.assertEqual(code, 137, out)
+        self.assertEqual(said[-1]["successful"], False, out)
+        first = said[-1]["run"].split("/")[1]
+        self.assertEqual(len(calls), 1, calls)
+
+        # the job sent again with the same words carries the cut run on, its start cloned and the
+        # shard's body run again, which goes on from the claims the cut run left
+        code, said, out, calls = self.part("shard", "--task", "0", "--tasks", "2", FLOW_TEST_KILL="shard")
+        self.assertEqual(code, 0, out)
+        self.assertEqual((said[0]["decision"], said[0]["origin"]), ("resume", first), out)
+        self.assertEqual((said[-1]["successful"], said[-1]["verdict"]), (True, 0), out)
+        self.assertEqual(len(calls), 1, calls)
+        self.assertTrue(calls[0].startswith("shard task=0 tasks=2 "), calls)
+
+        # another task of the array is another run, never a resume of this one
+        code, said, out, calls = self.part("shard", "--task", "1", "--tasks", "2")
+        self.assertEqual((code, said[0]["decision"], said[0]["origin"]), (0, "run", None), out)
+
+    def test_a_merge_whose_study_report_is_not_current_ends_with_verdict_1(self):
+        code, said, out, calls = self.part("merge", "--tasks", "2", FLOW_TEST_STALE="4242")
+        self.assertEqual(code, 1, out)
+        self.assertEqual((said[-1]["successful"], said[-1]["verdict"]), (True, 1), out)
+        lines = page_lines(self.root, "DrrGapFlow", said)
+        self.assertTrue(any(line.startswith("report: 4242: NOT CURRENT") for line in lines), lines)
+        self.assertIn("verdict: 1", lines)
+        self.assertRegex(lines[0], r" drr_gap: failed, ")
+        self.assertIn("DRR_GAP_RC=1 ", out)
+
+    def test_a_part_whose_body_failed_ends_with_verdict_1_and_no_report(self):
+        code, said, out, calls = self.part("merge", "--tasks", "2", FLOW_TEST_RC="3")
+        self.assertEqual(code, 1, out)
+        self.assertEqual((said[-1]["successful"], said[-1]["verdict"]), (True, 1), out)
+        self.assertFalse((self.tmp / "calls.reports").exists(), "a merge that did not end 0 has no record to report")
+        self.assertIn("DrrGapFlow: merge: exit 3, as its line under analysis/steps/ says; verdict 1", out)
+
+    def test_a_copy_whose_prereg_moved_starts_no_part(self):
+        with (self.code / "docs" / "research" / "drr-domain-gap" / "PREREG.md").open("a", encoding="utf-8") as prereg:
+            prereg.write("An edit after the freeze.\n")
+        code, said, out, calls = self.part("prepare")
+        self.assertEqual(code, 90, out)
+        self.assertIn("STOP: docs/research/drr-domain-gap/PREREG.md changed since the freeze", out)
+        self.assertEqual((said, calls), ([], []), out)
+        self.assertIn("DRR_GAP_RC=90 ", out)
+
+
+@unittest.skipIf(MISSING, f"needs the train environment ({', '.join(MISSING)} missing)")
+class DrrSegFlowTest(unittest.TestCase):
+    """DrrSegFlow started by the launcher from the checkout, its body a stand-in."""
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
+        self.study = StudyRepository(self.tmp)
+        self.root, self.work, self.masks = self.tmp / "metaflow", self.tmp / "work", self.tmp / "data" / "moose"
+        self.work.mkdir()
+        self.calls = self.tmp / "calls"
+
+    def segment(self, **extra):
+        self.calls.write_text("", encoding="utf-8")
+        env = base_env(SCHWINGNET=str(self.study.repo), FLOW_TEST_CALLS=str(self.calls), FLOW_TEST_MARKER=str(self.tmp / "killed"),
+                       FLOW_TEST_PYTHON=sys.executable, FLOW_TEST_MASKS=str(self.masks), **extra)
+        args = ["drr_seg", "--max-workers", "1", "--", "--out", str(self.tmp / "bench" / "flexray_drr_seg"), "--masks", str(self.masks)]
+        result = launch(args, self.work, env, self.root)
+        return (*result, self.calls.read_text(encoding="utf-8").splitlines())
+
+    def test_a_cut_segmentation_is_resumed_and_a_failed_one_ends_with_verdict_1(self):
+        code, said, out, calls = self.segment(FLOW_TEST_KILL="segment", SLURM_JOB_ID="4250")
+        self.assertEqual(code, 137, out)
+        first = said[-1]["run"].split("/")[1]
+        self.assertEqual(calls, ["segment task=- tasks=- prepare=- job=4250 array=-_- step=1 checkout=-"])
+        code, said, out, calls = self.segment(FLOW_TEST_KILL="segment")
+        self.assertEqual(code, 0, out)
+        self.assertEqual((said[0]["decision"], said[0]["origin"]), ("resume", first), out)
+        self.assertEqual((said[-1]["successful"], said[-1]["verdict"]), (True, 0), out)
+        self.assertEqual(said[0]["code"], load_run_code().digest("drr_seg", self.study.repo), out)
+        lines = page_lines(self.root, "DrrSegFlow", said)
+        self.assertRegex(lines[1], r"PREREG docs/research/drr-domain-gap/PREREG\.md sha256 [0-9a-f]{12}$")
+        self.assertTrue(any(line.startswith("task segment ") and line.endswith("segment: exit 0") for line in lines), lines)
+        self.assertIn("DRR_SEG_RC=0 ", out)
+
+        code, said, out, calls = self.segment(FLOW_TEST_RC="2")
+        self.assertEqual((code, said[0]["decision"]), (1, "run"), out)
+        self.assertEqual((said[-1]["successful"], said[-1]["verdict"]), (True, 1), out)
+        self.assertIn("DrrSegFlow: segment: exit 2;", out)
+
+    def test_a_job_cut_in_its_end_is_resumed_with_its_segmentation_cloned_and_ends_0(self):
+        # what grid/drr-seg.sbatch's driver reads where the body left no exit and the launcher ended
+        # 0: the next send resumes a run cut after its segment step ended 0, with that step cloned,
+        # so the body runs no more, and the end gives the cut run's segmentation's verdict
+        self.study.write("flows/stage.py", (ROOT / "flows" / "stage.py").read_text(encoding="utf-8") + STAGE_CUT_IN_FINISH)
+        self.study.commit("a finish the test cuts once")
+        code, said, out, calls = self.segment(FLOW_TEST_KILL="end")
+        self.assertNotEqual(code, 0, out)
+        self.assertEqual(said[-1]["successful"], False, out)
+        self.assertEqual(len(calls), 1, calls)
+        first = said[-1]["run"].split("/")[1]
+        code, said, out, calls = self.segment(FLOW_TEST_KILL="end")
+        self.assertEqual(code, 0, out)
+        self.assertEqual((said[0]["decision"], said[0]["origin"]), ("resume", first), out)
+        self.assertEqual((said[-1]["successful"], said[-1]["verdict"]), (True, 0), out)
+        self.assertEqual(calls, [], "the resumed run's segment step is cloned, so the body runs no more")
+        self.assertIn("DRR_SEG_RC=0 ", out)
 
 
 if __name__ == "__main__":

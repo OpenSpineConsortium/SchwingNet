@@ -3,14 +3,25 @@
     python3 tools/bordercall_vendor.py copy <clone of OpenSpineConsortium/bordercall>
     python3 tools/bordercall_vendor.py check
 
-Why a copy. The grid's job (grid/bordercall.sbatch) runs bordercall's own commands over the
-SPINEPS corpus, and the gate's clone of this repository is the one tree a job can count on
-being there and at a known commit; bordercall is a private repository of its own that the
-grid has no token for. So the package, its reference tables and its selftest fixture are copied
-here at one commit, grid/bordercall/VENDORED records that commit and the sha256 of every file,
-and `check`, run by scripts/check.sh, fails when the copy drifts from the record, as
-tools/VENDORED does for the protocol library. A change to bordercall is made in bordercall and
-brought here by `copy`, never edited in the copy.
+Why a copy. The grid's jobs (grid/bordercall.sbatch, grid/morphometry.sbatch) run bordercall's
+own commands over the masks the grid holds, and the gate's clone of this repository is the one
+tree a job can count on being there and at a known commit; bordercall is a private repository
+of its own that the grid has no token for. So the parts the jobs need are copied here at one
+commit, grid/bordercall/VENDORED records that commit and the sha256 of every file, and `check`,
+run by scripts/check.sh, fails when the copy drifts from the record, as tools/VENDORED does for
+the protocol library. A change to bordercall is made in bordercall and brought here by `copy`,
+never edited in the copy.
+
+What is copied, from a clone whose root is given. The old package, its reference tables, its
+selftest fixture and its notes live under the clone's archive/ since the measuring engine
+replaced it, and come here as grid/bordercall/bordercall, testdata, README.md, HANDOFF.md and
+requirements.txt, the layout grid/bordercall.sbatch reads (BC=$REPO/grid/bordercall/bordercall);
+a clone from before that move, with bordercall/run.py at its root, is read the same way. The
+engine's packages at the clone's root, morphometry, scanimport and screening, come beside them
+as grid/bordercall/<name>, without their tests/ folders, so that a job's
+PYTHONPATH=$REPO/grid/bordercall imports each as the clone does; morphometry's code stamp, which
+names every run, hashes only the top-level .py files of morphometry and scanimport, so the copy
+stamps as the clone does.
 """
 from __future__ import annotations
 
@@ -24,9 +35,14 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent.parent
 TARGET = HERE / "grid" / "bordercall"
 RECORD = TARGET / "VENDORED"
-# what the job needs: the package, its reference tables and the selftest's fixture
+# what grid/bordercall.sbatch needs: the old package, its reference tables and the selftest's
+# fixture, under the clone's archive/ (or at its root, before the move)
 KEEP = ("bordercall", "testdata", "README.md", "HANDOFF.md", "requirements.txt")
-SKIP_DIRS = {"__pycache__", "figures", "out"}
+# what grid/morphometry.sbatch needs: the measuring engine's packages at the clone's root
+ENGINE = ("morphometry", "scanimport", "screening")
+# a package's tests never run on the grid, a cache or an output folder is nobody's record, and the
+# old package's reference papers and the renders its tables were read from are not its code
+SKIP_DIRS = {"__pycache__", "figures", "out", "tests", "papers", "provenance"}
 
 
 def sha256(path: Path) -> str:
@@ -43,10 +59,32 @@ def files_under(root: Path):
             yield p
 
 
+def archive_of(src: Path) -> Path:
+    """Where the old package sits in the clone: archive/ since the engine replaced it, the root before."""
+    for folder in (src / "archive", src):
+        if (folder / "bordercall" / "run.py").exists():
+            return folder
+    raise SystemExit("%s is not a bordercall clone (no archive/bordercall/run.py, nor bordercall/run.py)" % src)
+
+
+def tracked_files(src: Path) -> set:
+    """What the clone's git tracks, so a paper or a render left in the working tree never rides along."""
+    out = subprocess.run(["git", "-C", str(src), "ls-files", "-z"], capture_output=True, text=True, check=True).stdout
+    return {name for name in out.split("\0") if name}
+
+
+def drop_untracked(copied: Path, origin: Path, src: Path, tracked: set) -> None:
+    """Remove from the copy every file the clone's git does not track, and the folders left empty."""
+    for p in sorted(copied.rglob("*"), reverse=True):
+        if p.is_file() and (origin / p.relative_to(copied)).relative_to(src).as_posix() not in tracked:
+            p.unlink()
+        elif p.is_dir() and not any(p.iterdir()):
+            p.rmdir()
+
+
 def copy(source: str) -> int:
     src = Path(source).resolve()
-    if not (src / "bordercall" / "run.py").exists():
-        raise SystemExit("%s is not a bordercall clone (no bordercall/run.py)" % src)
+    archive = archive_of(src)
     commit = subprocess.run(["git", "-C", str(src), "rev-parse", "HEAD"], capture_output=True,
                             text=True, check=True).stdout.strip()
     dirty = subprocess.run(["git", "-C", str(src), "status", "--porcelain"], capture_output=True,
@@ -56,12 +94,15 @@ def copy(source: str) -> int:
     if TARGET.exists():
         shutil.rmtree(TARGET)
     TARGET.mkdir(parents=True)
-    for name in KEEP:
-        s = src / name
-        if s.is_dir():
-            shutil.copytree(s, TARGET / name, ignore=shutil.ignore_patterns(*SKIP_DIRS))
-        elif s.exists():
-            shutil.copy2(s, TARGET / name)
+    tracked = tracked_files(src)
+    for folder, names in ((archive, KEEP), (src, ENGINE)):
+        for name in names:
+            s = folder / name
+            if s.is_dir():
+                shutil.copytree(s, TARGET / name, ignore=shutil.ignore_patterns(*SKIP_DIRS))
+                drop_untracked(TARGET / name, s, src, tracked)
+            elif s.exists():
+                shutil.copy2(s, TARGET / name)
     lines = ["bordercall %s OpenSpineConsortium/bordercall" % commit]
     for p in files_under(TARGET):
         lines.append("%s  %s" % (sha256(p), p.relative_to(TARGET).as_posix()))

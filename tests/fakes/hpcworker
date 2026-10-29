@@ -5,7 +5,8 @@
 # line of HPCW_LOG: its class and name, its --after list in sbatch's words as job submit turns it
 # into them, its other options and script, then the job's environment the tests look at. Ids count
 # from HPCW_FIRST (101). --check queues nothing and logs nothing. A call whose line holds the text
-# of HPCW_REFUSE's file is refused, as a busy controller refuses one. `job log` prints
+# of HPCW_REFUSE's file is refused, as a busy controller refuses one, and one that holds the text of
+# HPCW_LOSSY's file is queued and refused, as one whose answer was lost. `job log` prints
 # HPCW_LOGS/<id>.out, or <id>_<task>.out for an array task, as the ledger would find it. `job version`
 # names framework HPCW_FRAMEWORK (27).
 set -uo pipefail
@@ -27,11 +28,17 @@ submit() {
   done
   case "$class" in cpu|batch|gpu) ;; *) echo "the class is cpu, batch or gpu" >&2; exit 1 ;; esac
   line="--class $class --name $name${after:+ --dependency=$after --kill-on-invalid-dep=yes}${opts[*]+ ${opts[*]}} $*"
-  line="$line | DEPEND=${DEPEND:-} FETCH_ARGS=${FETCH_ARGS:-} DATA_ROOT=${DATA_ROOT:-} PART=${PART:-} RUN=${RUN:-} CATALOG=${CATALOG:-} THREADS=${THREADS:-} SWEEPS=${SWEEPS:-} RUNS=${RUNS:-} WEIGHTS=${WEIGHTS:-} MODELS=${MODELS:-} ID=${ID:-} EXPLORE_ID=${EXPLORE_ID:-} EXPLORE_RAW=${EXPLORE_RAW:-} EXPLORE_AGAINST=${EXPLORE_AGAINST:-} DROPZIP_ID=${DROPZIP_ID:-} DROPZIP_RAW=${DROPZIP_RAW:-} UNPACK_ID=${UNPACK_ID:-} UNPACK_RAW=${UNPACK_RAW:-} REQUEST=${REQUEST:-} ISSUE=${ISSUE:-} VOLUME=${VOLUME:-} FOLDERS_DB=${FOLDERS_DB:-} BENCH=${BENCH:-} PLAN=${PLAN:-} SMOKE=${SMOKE:-} ONLY=${ONLY:-} BANK_NEED=${BANK_NEED:-} STAGE=${STAGE:-} STEP=${STEP:-} INDEX=${INDEX:-} BENCH_ROOT=${BENCH_ROOT:-} PREPARE_JOB=${PREPARE_JOB:-} SHARD_TASKS=${SHARD_TASKS:-} LIST_ID=${LIST_ID:-}"
+  line="$line | DEPEND=${DEPEND:-} FETCH_ARGS=${FETCH_ARGS:-} DATA_ROOT=${DATA_ROOT:-} PART=${PART:-} RUN=${RUN:-} CATALOG=${CATALOG:-} THREADS=${THREADS:-} SWEEPS=${SWEEPS:-} RUNS=${RUNS:-} WEIGHTS=${WEIGHTS:-} MODELS=${MODELS:-} ID=${ID:-} EXPLORE_ID=${EXPLORE_ID:-} EXPLORE_RAW=${EXPLORE_RAW:-} EXPLORE_AGAINST=${EXPLORE_AGAINST:-} DROPZIP_ID=${DROPZIP_ID:-} DROPZIP_RAW=${DROPZIP_RAW:-} UNPACK_ID=${UNPACK_ID:-} UNPACK_RAW=${UNPACK_RAW:-} REQUEST=${REQUEST:-} ISSUE=${ISSUE:-} VOLUME=${VOLUME:-} FOLDERS_DB=${FOLDERS_DB:-} BENCH=${BENCH:-} PLAN=${PLAN:-} SMOKE=${SMOKE:-} ONLY=${ONLY:-} BANK_NEED=${BANK_NEED:-} STAGE=${STAGE:-} STEP=${STEP:-} INDEX=${INDEX:-} BENCH_ROOT=${BENCH_ROOT:-} PREPARE_JOB=${PREPARE_JOB:-} SHARD_TASKS=${SHARD_TASKS:-} DRR_GAP_OUT=${DRR_GAP_OUT:-} LIST_ID=${LIST_ID:-} SET=${SET:-} CENSUS_COMMIT=${CENSUS_COMMIT:-}"
   if [ -n "${HPCW_REFUSE:-}" ] && [ -s "$HPCW_REFUSE" ] && [[ $line == *"$(cat "$HPCW_REFUSE")"* ]]; then
     echo "HPCW-JOB refused $name reqp/requeue: Socket timed out"; exit 1
   fi
   [ $check = 0 ] || { echo "HPCW-JOB would-run $name reqp/requeue: ok"; exit 0; }
+  # A call whose line holds the text of HPCW_LOSSY's file is queued and then refused, as a controller
+  # that times out after it took the job answers.
+  if [ -n "${HPCW_LOSSY:-}" ] && [ -s "$HPCW_LOSSY" ] && [[ $line == *"$(cat "$HPCW_LOSSY")"* ]]; then
+    echo "$line" >> "$HPCW_LOG"
+    echo "HPCW-JOB refused $name reqp/requeue: Socket timed out"; exit 1
+  fi
   n=$(( $(wc -l < "$HPCW_LOG" 2>/dev/null || echo 0) + ${HPCW_FIRST:-101} ))
   echo "$line" >> "$HPCW_LOG"
   echo "HPCW-JOB submitted $n $name reqp/requeue log /state/jobs/schwingnet/logs/${name}_$n.out"
