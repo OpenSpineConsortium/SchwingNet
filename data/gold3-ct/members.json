@@ -167,7 +167,7 @@
  },
  "completion": {
   "rule": "The levels from C2 to the sacrum an admitted study's release does not draw (admission.json, complete) are drawn by SPINEPS from the masks the census already holds on the grid, never re-run and never TotalSegmentator (the owner's science rule), kept as a machine arm of their own beside the release's masks, recorded by segmenter, version and sha256, never pooled with the release's masks and never raising a tier.",
-  "state": "the grid arm is the gate word bordercall complete (grid/bordercall-complete.sbatch, tools/gold3_complete_grid.py, bordercall's holdings/fullspine_complete.py vendored under grid/bordercall/holdings/), one CPU job on the owner's count of 2026-10-29 15:22 UTC, not yet sent; the container arm (SPINEPS 2.1.2, a cloud thread, SchwingNet #458) drew 13 of the 34 VerSe and TotalSegmentator studies; ENHANCE.PET 1379 has no census mask and no fetched CT; no count is recorded here until a job's report is read"
+  "state": "the grid arm is the gate word bordercall complete (grid/bordercall-complete.sbatch, tools/gold3_complete_grid.py, bordercall's holdings/fullspine_complete.py vendored under grid/bordercall/holdings/), one CPU job on the owner's count of 2026-10-29 15:22 UTC, sent once as job 40870822 on 2026-10-29 at 19:35 UTC from commit 5d7842d, queued after the runs that held the checkout; the container arm (SPINEPS 2.1.2, a cloud thread, SchwingNet #458) drew 13 of the 34 VerSe and TotalSegmentator studies; ENHANCE.PET 1379 has no census mask and no fetched CT; no count is recorded here until a job's report is read"
  },
  "auto_anatomist": {
   "spines": "VerSe, TotalSegmentator and ENHANCE.PET (the owner, 2026-10-28 23:03 UTC: \"i meant verse+totalsegmentator+PET\")",
