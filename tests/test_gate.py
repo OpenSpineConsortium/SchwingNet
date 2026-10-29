@@ -43,7 +43,7 @@ FAKE_HPCWORKER = ROOT / "tests" / "fakes" / "hpcworker"
 NEW_SCRIPTS = ("gate.sh", "hpcw.sh", "box.sh", "bin/pixi", "bin/train-cpu-python", "00-setup.sbatch", "00-weights.sbatch",
                "00-carmlspine.sbatch", "v1-driver.sbatch", "experiment-driver.sbatch", "run-xray-chain.sh",
                "run-platform-fetch.sh", "sweep-driver.sbatch", "v1-version.sh", "realism.sbatch", "venv.sh",
-               "drr-gap.sbatch", "drr-seg.sbatch", "bordercall-complete.sbatch")
+               "drr-gap.sbatch", "drr-seg.sbatch", "morphometry.sbatch", "bordercall-complete.sbatch")
 ENVS = ("default", "train-cpu", "train-gpu", "telemetry")
 # What bench flexray_drr_gap's word says of a mask folder that is there: the study reads too few CTs'
 # masks as none, which its summary says, so the word says only where the folder is.
@@ -2171,6 +2171,112 @@ esac
         lines = self.submitted()
         self.assertEqual(len(lines), 1, lines)
         self.assertIn("--class gpu --name realism_edit", lines[0])
+
+    def morphometry_inputs(self, *which):
+        """The data root as the fetches the morphometry sets read leave it, each named set landed by
+        one file, and engine, the pinned copy's morphometry package under the test's grid/."""
+        markers = {"truth": ("aws_enhance_pet_labels", "raw", "Vertebrae", "0001.nii.gz"),
+                   "verse": ("verse_masks_2026_10_29", "raw", "verse004.nii.gz"),
+                   "totalseg": ("totalsegmentator_v300", "raw", "Totalsegmentator_dataset_v300.zip")}
+        for name in which:
+            if name == "engine":
+                path = self.repo / "grid" / "bordercall" / "morphometry" / "__main__.py"
+            else:
+                path = self.data.joinpath(*markers[name])
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("", encoding="utf-8")
+
+    def test_morphometry_refuses_a_set_it_does_not_know_and_names_each_missing_input_in_turn(self):
+        # no set, two sets and a set that is not one of the count's two are refused before anything is read
+        self.assertEqual(self.gate("morphometry").returncode, 64)
+        self.assertEqual(self.gate("morphometry", "enhance", "verse").returncode, 64)
+        refused = self.gate("morphometry", "spineps")
+        self.assertEqual(refused.returncode, 64, refused.stdout)
+        self.assertIn("enhance or verse", refused.stdout)
+        self.environments_ready()
+        # the pinned copy must carry the engine, whatever has landed; the checkout's grid/ carries it,
+        # so the test's copy drops it first
+        shutil.rmtree(self.repo / "grid" / "bordercall" / "morphometry", ignore_errors=True)
+        self.morphometry_inputs("truth", "verse", "totalseg")
+        for which in ("enhance", "verse"):
+            refused = self.gate("morphometry", which)
+            self.assertEqual(refused.returncode, 2, refused.stdout)
+            self.assertIn("no vendored morphometry under grid/bordercall/", refused.stdout)
+        # then each set's inputs, named in turn
+        shutil.rmtree(self.data)
+        self.data.mkdir()
+        self.morphometry_inputs("engine")
+        refused = self.gate("morphometry", "enhance")
+        self.assertEqual(refused.returncode, 2, refused.stdout)
+        self.assertIn("fetch aws_enhance_pet_labels first", refused.stdout)
+        steps = (((), "fetch verse_masks_2026_10_29 first"), (("verse",), "fetch totalsegmentator_v300 first"))
+        for landed, said in steps:
+            self.morphometry_inputs(*landed)
+            refused = self.gate("morphometry", "verse")
+            self.assertEqual(refused.returncode, 2, refused.stdout)
+            self.assertIn(said, refused.stdout)
+        self.assertEqual(self.submitted(), [])
+
+    def test_morphometry_queues_each_set_once_as_one_batch_job_and_then_prints_its_report(self):
+        self.environments_ready()
+        self.morphometry_inputs("engine", "truth", "verse", "totalseg")
+        done = self.gate("morphometry", "enhance")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        lines = self.submitted()
+        self.assertEqual(len(lines), 1, lines)
+        self.assertIn("--class batch --name morphometry_enhance", lines[0])
+        self.assertIn("SET=enhance", lines[0])
+        self.assertIn("--no-requeue", lines[0])
+        self.assertIn("--time 24:00:00", lines[0])
+        self.assertIn("morphometry.sbatch", lines[0])
+        self.assertIn("submitted the morphometry job for enhance", done.stdout)
+        # one job at a time: the other set waits while this one is live
+        job = self.recorded()["morphometry_enhance"]
+        self.live(job)
+        for which in ("enhance", "verse"):
+            refused = self.gate("morphometry", which)
+            self.assertEqual(refused.returncode, 75, refused.stdout)
+            self.assertIn(f"job {job}", refused.stdout)
+        (self.fake / "queue").write_text("", encoding="utf-8")
+        logs = self.repo / "grid" / "logs"
+        report = logs / "MORPHOMETRY-enhance.md"
+        report.write_text("# morphometry enhance: job 4242 on node, commit 0000000, 2026-10-29 16:00:00 UTC\n"
+                          "- ENHANCE.PET: 1561 masks linked; 1561 studies chosen, 1561 to measure, code 81e732f142d3aa16\n"
+                          "- exit 0 at 2026-10-29 20:00:00 UTC\n", encoding="utf-8")
+        for _ in range(2):
+            done = self.gate("morphometry", "enhance")
+            self.assertEqual(done.returncode, 0, done.stdout)
+            self.assertIn("## MORPHOMETRY-enhance.md", done.stdout)
+            self.assertIn("1561 studies chosen", done.stdout)
+            self.assertIn("- exit 0", done.stdout)
+        self.assertEqual(len(self.submitted()), 1)
+        # the second set is its own job
+        done = self.gate("morphometry", "verse")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        lines = self.submitted()
+        self.assertEqual(len(lines), 2, lines)
+        self.assertIn("--class batch --name morphometry_verse", lines[1])
+        self.assertIn("SET=verse", lines[1])
+        # a set that failed on older code is queued once more, its report kept under its job's number
+        report.write_text("# morphometry enhance: job 4242 on node, commit 0000000, 2026-10-29 16:00:00 UTC\n"
+                          "- FAILED at run: boom\n- exit 1 at 2026-10-29 16:10:00 UTC\n", encoding="utf-8")
+        done = self.gate("morphometry", "enhance")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("ended in failure on older code: queueing the set again", done.stdout)
+        self.assertFalse(report.exists())
+        self.assertTrue((logs / "MORPHOMETRY-enhance-4242.md").exists())
+        self.assertEqual(len(self.submitted()), 3)
+
+    def test_the_morphometry_job_refuses_a_set_it_does_not_know_before_touching_anything(self):
+        for which in ("", "bogus", "spineps"):
+            env = dict(os.environ, SCHWINGNET=str(self.repo), DATA_ROOT=str(self.data), LAB_VOLUME=str(self.tmp), SET=which)
+            done = subprocess.run(["bash", str(self.repo / "grid" / "morphometry.sbatch")], cwd=self.repo / "grid", env=env,
+                                  capture_output=True, text=True, timeout=60)
+            self.assertEqual(done.returncode, 64, done.stdout + done.stderr)
+            self.assertIn("SN_MORPHOMETRY_RC=64", done.stdout)
+            self.assertIn("enhance or verse", done.stdout)
+        self.assertFalse((self.repo / "grid" / "logs").exists())
+        self.assertFalse(list((self.tmp).glob("**/MORPHOMETRY-*")))
 
     def test_the_realism_job_refuses_a_stage_it_does_not_know_before_touching_anything(self):
         for stage in ("", "train", "lora", "eval"):
