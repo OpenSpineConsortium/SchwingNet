@@ -1,0 +1,17 @@
+{
+ "name": "SPINEPS",
+ "version": "2.1.2",
+ "models": {
+  "semantic": {"name": "ct", "folder": "CT_semantic_v2.0.0", "weights_sha256": {"fold_all/checkpoint_final.pth": "3e4fb736dc4063f8e9a7a0f25e889bc687507ac4500dcf12709a6bf8c6e69407"}},
+  "instance": {"name": "ct_instance", "folder": "CT_instance_v2.0.0", "weights_sha256": {"checkpoints/epoch=150-step=75500-val_diceFG=0.9936_valdiceFG-weights.ckpt": "a1e9141531777961f13f4c4d1e7832edf46c7aa1e91cc0ef39c7222918b848f7"}},
+  "labeling": {"name": "ct_labeling", "folder": "CT_labeling_v1.4.0", "weights_sha256": {"checkpoints/epoch=57-step=109794-val_f1=0.9879_valf1-weights.ckpt": "1d26f77914f01ec4f4bedbf782c4b9caf539910e4e0c58f67081e0152e2f007e"}},
+  "crop": {"name": "TPTBox VIBESeg-100 (Dataset100, nnUNetTrainerNoMirroring__nnUNetPlannerResEncL__3d_fullres, folds 0 to 2)", "weights_sha256": {"fold_0": "9c1db7eb8eb38e86724508541fef3c6732c261f13af1bc7056a6aa70d923cb47", "fold_1": "cda0b1c546f2349c0de18c67b6fe76565aef64148e4796ecb95e8ba2d016c6f8", "fold_2": "424c6d1883244ea4472f63819ff96883fa0aa08d53a4cd7b227be34f7d1aadef"}}
+ },
+ "weights_from": "fetched by SPINEPS 2.1.2's own spineps.get_models (its GitHub releases) and TPTBox's install",
+ "packages": {"spineps": "2.1.2", "TPTBox": "1.1.0", "torch": "2.6.0+cpu", "nnunetv2": "2.8.1", "numpy": "2.3.5", "nibabel": "5.4.2", "monai": "1.5.2", "scipy": "1.15.3", "python": "3.12"},
+ "run": "SpinepsPipeline('ct', 'ct_instance', 'ct_labeling', use_cpu=True), segment(..., instance=InstanceConfig(batch_size=1)), 4 torch threads",
+ "input": "the CT as published where SPINEPS takes its grid (TPTBox get_plane 'iso'); else the CT resampled to 1 mm isotropic with cubic interpolation, and SPINEPS's masks resampled back to the CT's grid nearest-neighbour",
+ "where": "the cloud container of the thread 'Read the rest of VerSe's masks' of the project symphony_4, CPU only; nothing went to the grid",
+ "date": "2026-10-29",
+ "asked": "the owner, 2026-10-29 03:32 UTC: \"I want you to fucking segment the c2 and sacrums which are on ct volumes they just lack the masks and convert them all to gold tier 3 data\"; and his choice at 04:23 UTC of 'Run SPINEPS here now' over waiting for the grid's census masks"
+}

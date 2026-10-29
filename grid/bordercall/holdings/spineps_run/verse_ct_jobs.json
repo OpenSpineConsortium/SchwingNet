@@ -1,0 +1,258 @@
+[
+{
+"id": "verse018",
+"release": "verse20",
+"name": "verse018_CT-sag.nii.gz",
+"size": 66546131,
+"url": "https://osf.io/download/2xwjz/",
+"mask": "verse018_CT-sag_seg.nii.gz"
+},
+{
+"id": "verse033",
+"release": "verse20",
+"name": "verse033.nii.gz",
+"size": 45992431,
+"url": "https://osf.io/download/48kwf/",
+"mask": "verse033_seg.nii.gz"
+},
+{
+"id": "verse108",
+"release": "verse20",
+"name": "verse108_CT-iso.nii.gz",
+"size": 482821120,
+"url": "https://osf.io/download/qrztp/",
+"mask": "verse108_CT-iso_seg.nii.gz"
+},
+{
+"id": "verse236",
+"release": "verse20",
+"name": "verse236_CT-iso.nii.gz",
+"size": 377804317,
+"url": "https://osf.io/download/ydh82/",
+"mask": "verse236_CT-iso_seg.nii.gz"
+},
+{
+"id": "verse255",
+"release": "verse20",
+"name": "verse403_verse255_CT-sag.nii.gz",
+"size": 151876301,
+"url": "https://osf.io/download/hf4qg/",
+"mask": "verse403_verse255_CT-sag_seg.nii.gz"
+},
+{
+"id": "verse531",
+"release": "verse20",
+"name": "verse531_CT-sag.nii.gz",
+"size": 118226971,
+"url": "https://osf.io/download/wa69s/",
+"mask": "verse531_CT-sag_seg.nii.gz"
+},
+{
+"id": "verse547",
+"release": "verse20",
+"name": "verse547_CT-iso.nii.gz",
+"size": 377107667,
+"url": "https://osf.io/download/q8643/",
+"mask": "verse547_CT-iso_seg.nii.gz"
+},
+{
+"id": "verse549",
+"release": "verse20",
+"name": "verse549_CT-iso.nii.gz",
+"size": 620119023,
+"url": "https://osf.io/download/jbp68/",
+"mask": "verse549_CT-iso_seg.nii.gz"
+},
+{
+"id": "verse558",
+"release": "verse20",
+"name": "verse558_CT-sag.nii.gz",
+"size": 120807749,
+"url": "https://osf.io/download/3fxr2/",
+"mask": "verse558_CT-sag_seg.nii.gz"
+},
+{
+"id": "verse559",
+"release": "verse20",
+"name": "verse559_CT-sag.nii.gz",
+"size": 258320333,
+"url": "https://osf.io/download/72yks/",
+"mask": "verse559_CT-sag_seg.nii.gz"
+},
+{
+"id": "verse561",
+"release": "verse20",
+"name": "verse561_CT-sag.nii.gz",
+"size": 132535649,
+"url": "https://osf.io/download/hdbpw/",
+"mask": "verse561_CT-sag_seg.nii.gz"
+},
+{
+"id": "verse563",
+"release": "verse20",
+"name": "verse563_CT-iso.nii.gz",
+"size": 1017059785,
+"url": "https://osf.io/download/e9afr/",
+"mask": "verse563_CT-iso_seg.nii.gz"
+},
+{
+"id": "verse573",
+"release": "verse20",
+"name": "verse573_CT-iso.nii.gz",
+"size": 714554768,
+"url": "https://osf.io/download/8sjtf/",
+"mask": "verse573_CT-iso_seg.nii.gz"
+},
+{
+"id": "verse581",
+"release": "verse20",
+"name": "verse581_CT-iso.nii.gz",
+"size": 451696080,
+"url": "https://osf.io/download/5mg98/",
+"mask": "verse581_CT-iso_seg.nii.gz"
+},
+{
+"id": "verse585",
+"release": "verse20",
+"name": "verse585_CT-sag.nii.gz",
+"size": 210532949,
+"url": "https://osf.io/download/k2cfx/",
+"mask": "verse585_CT-sag_seg.nii.gz"
+},
+{
+"id": "verse588",
+"release": "verse20",
+"name": "verse588_CT-sag.nii.gz",
+"size": 249785788,
+"url": "https://osf.io/download/fexp7/",
+"mask": "verse588_CT-sag_seg.nii.gz"
+},
+{
+"id": "verse593",
+"release": "verse20",
+"name": "verse593_CT-sag.nii.gz",
+"size": 141447059,
+"url": "https://osf.io/download/q4gxu/",
+"mask": "verse593_CT-sag_seg.nii.gz"
+},
+{
+"id": "verse602",
+"release": "verse20",
+"name": "verse602_CT-iso.nii.gz",
+"size": 733481980,
+"url": "https://osf.io/download/fwpr6/",
+"mask": "verse602_CT-iso_seg.nii.gz"
+},
+{
+"id": "verse607",
+"release": "verse20",
+"name": "verse607_CT-sag.nii.gz",
+"size": 248047460,
+"url": "https://osf.io/download/bt62d/",
+"mask": "verse607_CT-sag_seg.nii.gz"
+},
+{
+"id": "verse623",
+"release": "verse20",
+"name": "verse623_CT-sag.nii.gz",
+"size": 95690381,
+"url": "https://osf.io/download/nt9xu/",
+"mask": "verse623_CT-sag_seg.nii.gz"
+},
+{
+"id": "verse631",
+"release": "verse20",
+"name": "verse631_CT-sag.nii.gz",
+"size": 203169209,
+"url": "https://osf.io/download/8yfg9/",
+"mask": "verse631_CT-sag_seg.nii.gz"
+},
+{
+"id": "verse644",
+"release": "verse20",
+"name": "verse644_CT-sag.nii.gz",
+"size": 176854171,
+"url": "https://osf.io/download/ndjp5/",
+"mask": "verse644_CT-sag_seg.nii.gz"
+},
+{
+"id": "verse649",
+"release": "verse20",
+"name": "verse649_CT-sag.nii.gz",
+"size": 226045240,
+"url": "https://osf.io/download/g6n2d/",
+"mask": "verse649_CT-sag_seg.nii.gz"
+},
+{
+"id": "verse758",
+"release": "verse20",
+"name": "verse758_CT-sag.nii.gz",
+"size": 255642000,
+"url": "https://osf.io/download/es8mn/",
+"mask": "verse758_CT-sag_seg.nii.gz"
+},
+{
+"id": "verse759",
+"release": "verse20",
+"name": "verse759_CT-sag.nii.gz",
+"size": 44800127,
+"url": "https://osf.io/download/v8kuw/",
+"mask": "verse759_CT-sag_seg.nii.gz"
+},
+{
+"id": "verse766",
+"release": "verse20",
+"name": "verse766_CT-ax.nii.gz",
+"size": 257323659,
+"url": "https://osf.io/download/9jfdh/",
+"mask": "verse766_CT-ax_seg.nii.gz"
+},
+{
+"id": "verse809",
+"release": "verse20",
+"name": "verse809_CT-iso.nii.gz",
+"size": 593564258,
+"url": "https://osf.io/download/7rs8x/",
+"mask": "verse809_CT-iso_seg.nii.gz"
+},
+{
+"id": "verse823",
+"release": "verse20",
+"name": "verse823_CT-iso.nii.gz",
+"size": 681843743,
+"url": "https://osf.io/download/xvupe/",
+"mask": "verse823_CT-iso_seg.nii.gz"
+},
+{
+"id": "verse007",
+"release": "verse19",
+"name": "verse007.nii.gz",
+"size": 7858553,
+"url": "https://osf.io/download/au6kq/",
+"mask": "verse007_seg.nii.gz"
+},
+{
+"id": "verse012",
+"release": "verse19",
+"name": "verse012.nii.gz",
+"size": 5928916,
+"url": "https://osf.io/download/r3uk5/",
+"mask": "verse012_seg.nii.gz"
+},
+{
+"id": "verse277",
+"release": "verse20",
+"name": "verse417_verse277_CT-sag.nii.gz",
+"size": 12740379,
+"url": "https://osf.io/download/3c5gy/",
+"mask": "verse417_verse277_CT-sag_seg.nii.gz"
+},
+{
+"id": "verse754",
+"release": "verse20",
+"name": "verse754_CT-sag.nii.gz",
+"size": 39721684,
+"url": "https://osf.io/download/7xnu9/",
+"mask": "verse754_CT-sag_seg.nii.gz"
+}
+]

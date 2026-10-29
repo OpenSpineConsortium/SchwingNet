@@ -20,6 +20,20 @@
 # RUN is the run directory tools/flow.py made (RUN.json, train/best.pt); CATALOG the catalog it
 # was trained from. Every output lands in the run directory: onnx/, latency/<arm>.json,
 # evaluate/latency.json and sweep/<name>/. Nothing is downloaded; the node needs no internet.
+#
+# The three parts that run the network are launched flows, as every deep learning job on the grid
+# is (the owner's rule of 2026-10-29, flows/registry.txt): each job, and each task of the sweep
+# array, starts its own run of flows/launch.py latency with its part and the run directory, which
+# refuses it with exit 90 unless docs/research/latency-and-sweep/PREREG.md is the one frozen and
+# covers the part, resumes the newest run of the same words, code, checkpoint, catalog and sweep
+# input that did not finish, and whose LatencyFlow runs the same tools in the same order as this
+# script did, checks the parity rule again from the run directory's files, checks the run's CLAIM
+# 2024 and REFORMS report and draws the run's progress page under the datastore's progress/ folder.
+# The job's exit is the launcher's: the flow's verdict, 0 only where the part ran to its end, its
+# parity rule held and the report is current. The probe runs no network and stays as it was.
+# Each network part's report is logs/latency-<part>-STAGE-REPORT.md (latency-sweep-<task>- for a
+# sweep task): the run directory, the GPU, the launcher's decision, the flow's checks, the
+# Metaflow run and the launcher's exit.
 set -euo pipefail
 REPO=${SCHWINGNET:-$HOME/SchwingNet}
 PART=${PART:?PART is gpu, cpu, sweep or probe}
@@ -28,8 +42,10 @@ FRAMES=${FRAMES:-300}
 cd "$REPO"
 export PYTHONNOUSERSITE=1
 echo "SN_LATENCY $PART start $(date '+%F %T') on $(hostname) job ${SLURM_JOB_ID:-} task ${SLURM_ARRAY_TASK_ID:-} commit $(git rev-parse --short HEAD)"
-py() { pixi run --locked -e "$1" python "${@:2}"; }
 
+# The launcher's words for a network part, and the environment its python comes from: train-gpu
+# on the GPU, train-cpu for the CPU arms, as each tool ran before.
+env=train-gpu label=$PART words=()
 case "$PART" in
   probe)
     # Counts, suffixes, sizes and image dimensions only: the raw sweeps are DICOM whose headers
@@ -75,43 +91,84 @@ for case in cases:
         print("  frames with meta:", sum(os.path.isfile(os.path.join(bank, "meta", os.path.basename(i)[:-4] + ".json")) for i in images))
 PY
     ;;
-  gpu)
-    # Each arm stands alone: a parity that fails stops that arm's timing (tools/latency.py refuses
-    # it) and not the others'; the job exits 1 at the end when any step failed, and says which.
-    : "${RUN:?RUN is the run directory}" "${CATALOG:?CATALOG is the run's catalog}"
-    py train-gpu tools/latency.py export --run "$RUN"
-    failed=""
-    for arm in "onnxruntime cpu" "onnxruntime cuda" "torch cuda"; do
-      set -- $arm
-      py train-gpu tools/latency.py parity --run "$RUN" --catalog "$CATALOG" --runtime "$1" --device "$2" --threads "$THREADS" || failed="$failed parity-$1-$2"
-    done
-    for runtime in torch onnxruntime; do
-      py train-gpu tools/latency.py measure --run "$RUN" --catalog "$CATALOG" --runtime "$runtime" --device cuda --frames "$FRAMES" || failed="$failed measure-$runtime-cuda"
-    done
-    [ -z "$failed" ] || { echo "SN_LATENCY gpu failed:$failed"; exit 1; }
-    ;;
-  cpu)
-    : "${RUN:?RUN is the run directory}" "${CATALOG:?CATALOG is the run's catalog}"
-    failed=""
-    for runtime in torch onnxruntime; do
-      py train-cpu tools/latency.py measure --run "$RUN" --catalog "$CATALOG" --runtime "$runtime" --device cpu --threads "$THREADS" --frames "$FRAMES" || failed="$failed measure-$runtime-cpu"
-    done
-    [ -z "$failed" ] || { echo "SN_LATENCY cpu failed:$failed"; exit 1; }
+  gpu|cpu)
+    : "${RUN:?RUN is the run directory}" "${CATALOG:?CATALOG is the catalog the run was trained from}"
+    [ "$PART" = gpu ] || env=train-cpu
+    words=(--part "$PART" --run-dir "$RUN" --catalog "$CATALOG" --threads "$THREADS" --frames "$FRAMES")
     ;;
   sweep)
     : "${RUN:?RUN is the run directory}" "${SWEEPS:?SWEEPS lists name:frames:boxes}"
     read -r -a sweeps <<< "$SWEEPS"
     one=${sweeps[${SLURM_ARRAY_TASK_ID:-0}]}
-    IFS=: read -r name frames boxes <<< "$one"
-    if [ "${frames#bank=}" != "$frames" ]; then
-      # name:bank=<folder>: the case's frames and boxes from a bank in the builders' format
-      input="$RUN/sweep-input/$name"
-      py train-gpu tools/sweep.py from-bank --bank "${frames#bank=}" --case "$name" --out "$input"
-      frames=$input/frames boxes=$input/boxes.jsonl
-    fi
-    py train-gpu tools/sweep.py run --run "$RUN" --frames "$frames" --boxes "$boxes" --name "$name" \
-      --runtime "${SWEEP_RUNTIME:-onnxruntime}" --device cuda --box-source "${BOX_SOURCE:-truth}"
+    label=sweep-${SLURM_ARRAY_TASK_ID:-0}
+    words=(--part sweep --run-dir "$RUN" --sweep "$one" --sweep-runtime "${SWEEP_RUNTIME:-onnxruntime}"
+           --box-source "${BOX_SOURCE:-truth}")
     ;;
   *) echo "PART must be gpu, cpu, sweep or probe, not $PART"; exit 64 ;;
 esac
+if [ "$PART" = probe ]; then
+  echo "SN_LATENCY $PART end $(date '+%F %T')"
+  exit 0
+fi
+
+mkdir -p "$REPO/grid/logs"
+REPORT=$REPO/grid/logs/latency-$label-STAGE-REPORT.md
+report() { echo "- $*" | tee -a "$REPORT"; }
+echo "# Latency $label: $(date '+%F %T'), job ${SLURM_JOB_ID:-none} on $(hostname), commit $(git rev-parse --short HEAD 2>/dev/null)" > "$REPORT"
+report "run directory: $RUN"
+[ "$PART" != sweep ] || report "sweep: ${one%%:*}"
+[ "$env" != train-gpu ] || report "GPU: $(nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv,noheader 2>/dev/null | head -n 1 || echo 'nvidia-smi gave nothing')"
+out=$(mktemp "$REPO/grid/logs/latency-flow-${SLURM_JOB_ID:-$$}${SLURM_ARRAY_TASK_ID:+-$SLURM_ARRAY_TASK_ID}.XXXXXX")
+started_at=$(git rev-parse HEAD 2>/dev/null || true)
+# The Metaflow datastore is the launcher's default on the grid; the paths are absolute, as
+# grid/run-latency-sweep.sh passes them, so the flow's steps read them wherever Metaflow runs them.
+# The launcher runs in the background and is waited on, as grid/sweep-driver.sbatch's is, so job
+# submit's TERM two minutes before the limit, or a person's INT, is heard at once: a shell holds a
+# trapped signal while a command runs in its foreground. The trap passes TERM on to the launcher,
+# which passes it to every process of its flow, closes the run's page and exits 143, and the
+# pipeline is waited on again; tee ignores both signals, so the launcher's last lines reach $out.
+# set -e would end the wait's subshell at the launcher's own failing exit before it is written down,
+# so from here every exit is read and reported rather than raised.
+set +e
+launcher_pid=$(mktemp) launcher_rc=$(mktemp)
+stopped="" signalled=""
+stop_launcher() {
+  local pid
+  stopped=1 signalled=1
+  pid=$(cat "$launcher_pid" 2>/dev/null)
+  [ -z "$pid" ] || kill -TERM "$pid" 2>/dev/null
+}
+trap stop_launcher TERM INT
+{
+  pixi run --locked -e "$env" python flows/launch.py latency --max-workers 1 -- "${words[@]}" &
+  echo "$!" > "$launcher_pid"
+  wait "$!"
+  echo "$?" > "$launcher_rc"
+} 2>&1 | (trap '' TERM INT; exec tee "$out") &
+piped=$!
+again=1
+while [ -n "$again" ]; do
+  signalled=""
+  wait "$piped"
+  again=$signalled
+done
+trap 'exit 143' TERM
+trap - INT
+rc=$(cat "$launcher_rc" 2>/dev/null)
+# No status where the launcher's own shell was killed, which only Slurm's TERM to the whole job does.
+[ -n "$rc" ] || { [ -n "$stopped" ] && rc=143 || rc=1; }
+rm -f "$launcher_pid" "$launcher_rc"
+decision=$(grep -m 1 '"decision":' "$out")
+report "launcher: ${decision:-it printed no decision line}"
+grep -h 'LatencyFlow: end: ' "$out" | while IFS= read -r line; do report "${line#*LatencyFlow: end: }"; done
+run=$(grep '"successful":' "$out" | tail -n 1)
+report "Metaflow: ${run:-the launcher named no run}"
+report "launcher exited $rc"
+ended_at=$(git rev-parse HEAD 2>/dev/null)
+if [ "$ended_at" != "$started_at" ]; then
+  report "FAILED: the checkout moved from ${started_at:0:7} to ${ended_at:0:7} during the part, so a tool may have run the newer code while the launcher's key names the older; these files are not used, and the word runs the part again"
+  [ "$rc" != 0 ] || rc=3
+fi
 echo "SN_LATENCY $PART end $(date '+%F %T')"
+echo "SN_LATENCY_RC=$rc"
+exit "$rc"

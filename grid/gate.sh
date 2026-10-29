@@ -131,13 +131,29 @@
 #                   tools/bordercall_corpus.py, the copy under grid/bordercall/): pilot, the first few hundred countable
 #                   cases, then full, every countable mask, which the gate takes only once the pilot's report ended
 #                   well; each queued once as one batch job, the next send printing logs/BORDERCALL-<stage>.md, and
-#                   every later one printing it again and queueing nothing
-#   census <stage>  the owner's gold and silver tiers (2026-10-27), case by case: tiers, one CPU job
+#                   every later one printing it again and queueing nothing; and complete, the gold tier 3
+#                   completion (the owner's count of 2026-10-29 15:22 UTC, one CPU job; grid/bordercall-complete.sbatch,
+#                   tools/gold3_complete_grid.py, the matcher under grid/bordercall/holdings/): bordercall's matcher
+#                   over the census's existing SPINEPS masks, nothing segmented, queued once with no pilot before
+#                   it, the next send printing logs/BORDERCALL-complete.md and every later one printing it again;
+#                   a job that left no report is not queued again without the owner's word
+#   census tiers    the owner's gold and silver tiers (2026-10-27), case by case, one CPU job
 #                   (grid/census.sbatch, tools/corpus_tiers.py) that reads every SPINEPS mask the
 #                   transitional census lists, as the bordercall corpus reads them, and says whether
 #                   it reaches from C2 to the sacrum; annotation and pairing come from the committed
-#                   data/corpus-tiers/sources.json; queued once, the next send printing
-#                   logs/CENSUS-<stage>.md and every later one printing it again and queueing nothing
+#                   data/corpus-tiers/sources.json; queued once, holding the checkout while it runs, the
+#                   next send printing logs/CENSUS-tiers.md, or the unfinished .part a job stopped before
+#                   its end left, and every later one printing it again and queueing nothing; a second
+#                   job only where CENSUS_RERUNS, committed by pull request, carries the owner's word for it
+#   census gold3    the gold tier census, one CPU job that reads only and segments nothing (the owner's tap of
+#                   2026-10-29 12:26 UTC, "Send the 1 CPU job now"; grid/gold3-census.sbatch, tools/gold3_census.py):
+#                   the older TotalSegmentator list, the autoPET match, gold 4 over the census's SPINEPS masks,
+#                   TotalSegmentator's own image extents and the held files; queued once as one batch job, requeueable
+#                   (a preemption starts the same job again where it stopped), from git's copy of its code at the
+#                   gate's commit, so it holds no checkout; refused while a root it reads is not on the volume;
+#                   the next send printing logs/CENSUS-gold3.md, or the unfinished .part a job killed outright
+#                   left, and every later one printing it again and queueing nothing; a second job only where
+#                   CENSUS_RERUNS, committed by pull request, carries the owner's word for it
 #   morphometry <set>  bordercall's morphometry engine (the packages morphometry, scanimport and screening,
 #                   pinned under grid/bordercall/ beside the archived package) over one gold tier 3 set
 #                   (the thread "Extract morphometrics from gold tier 3 CT"; the owner's count of 2026-10-29
@@ -167,11 +183,12 @@
 #   cancel <job>    cancel one of the gate's own live jobs and every other live job its word queued
 #                   with it (a fetch's bank and catalog, the DRR domain-gap study's three jobs), and nothing else
 #
-# While a version 1 run, a sweep, an experiment run, a benchmark, an anomaly stage, a bordercall stage, the census, a
+# While a version 1 run, a sweep, an experiment run, a benchmark, an anomaly stage, a bordercall stage, census tiers, a
 # realism stage or a morphometry set lasts, grid/logs/HOLD names its job and commit (grid/v1-driver.sbatch,
 # grid/sweep-driver.sbatch, grid/experiment-driver.sbatch, grid/bench.sbatch, grid/drr-seg.sbatch, grid/anomaly.sbatch,
-# grid/bordercall.sbatch, grid/census.sbatch, grid/realism.sbatch, grid/morphometry.sbatch; not the DRR domain-gap
-# study's steps, grid/drr-gap.sbatch, which run from a copy of their code); the gate's side skips its fast-forward
+# grid/bordercall.sbatch, grid/bordercall-complete.sbatch, grid/census.sbatch, grid/realism.sbatch,
+# grid/morphometry.sbatch; not the DRR domain-gap study's steps, grid/drr-gap.sbatch, nor census gold3,
+# grid/gold3-census.sbatch, which run from a copy of their code); the gate's side skips its fast-forward
 # while the file is there, and every word but a refused one
 # clears a hold whose job Slurm no longer holds, so the run's later steps run the code it
 # recorded. One file holds one job, so each run that takes it waits afterany on every other one
@@ -252,6 +269,10 @@ DRR_GAP_FOLDER=flexray_drr_gap_run3
 # before it, flexray_drr_gap:40828920, was his tap of 2026-10-28 16:28 UTC and his go of 22:58 UTC,
 # spent by the second run, prepare 40859208.
 BENCH_RERUNS="flexray_drr_gap:40859208"
+# The owner's word for one more census job, <id>:<job of the report or the record it replaces>, or
+# <id>:lost-<the mark's time as digits, which the refusal prints> for a submission whose answer was
+# lost, the id tiers or gold3; one word, one more job of that id alone (census_may_queue).
+CENSUS_RERUNS=""
 LOGS=$REPO/grid/logs
 STATE=$LOGS/GATE_JOBS.txt
 WORDS="start status leaks v1 latency fetch explore dropzip unpack nodequota folders samples sweep bank experiment bench anomaly bordercall census realism morphometry literature stop cancel"
@@ -307,8 +328,23 @@ record() {  # record ID WHAT: one line of the gate's own job list, the word with
   echo "$1 $word${id:+:$id} $2 $(date -u '+%FT%TZ')" >> "$STATE"
   echo "  $2: job $1"
 }
+# Every deep learning job on the grid starts through flows/launch.py (the owner's rule of 2026-10-29):
+# a GPU job's script must be one flows/registry.txt names in its fourth column, the job script that
+# starts the launcher, so a word not yet moved onto a flow is refused here before anything is queued.
+launched_script() {  # launched_script SCRIPT: status 0 where flows/registry.txt names SCRIPT as a flow's job script
+  awk -v script="$1" '$1 !~ /^#/ && NF == 5 && $4 == script { found = 1 } END { exit !found }' "$REPO/flows/registry.txt" 2>/dev/null
+}
+script_of() {  # script_of ARGS...: the word after --, the job script a submit names
+  while [ $# -gt 1 ] && [ "$1" != "--" ]; do shift; done
+  [ "${1:-}" = "--" ] && echo "${2:-}"
+}
 submit() {  # submit WHAT CLASS [K=V...] [job submit options...] -- SCRIPT: the job id on stdout, the record on stderr
-  local what=$1 out
+  local what=$1 out script
+  script=$(script_of "$@")
+  if [ "$2" = gpu ] && ! launched_script "$script"; then
+    echo "  refusing: $what is a GPU job whose script ${script:-(none)} flows/registry.txt does not name, and every GPU job starts through flows/launch.py; it waits for its flow (flows/README.md); nothing was queued" >&2
+    return 90
+  fi
   out=$(hpcw_submit "$@" 2>&1) || { echo "  $out" >&2; return 1; }
   record "$out" "$what" >&2
   echo "$out"
@@ -397,7 +433,7 @@ chain() {  # chain DEPEND [run-xray-chain.sh arguments...]: the X-ray chain afte
   record "$XR_FETCH" xr_fetch; record "$(value_of bank "$after")" xr_bank; record "$XR_CATALOG" xr_catalog
 }
 checkout_holders() {  # afterany:<job> for every live job of the gate's that holds the checkout while it runs, comma-joined
-  # A version 1 run, a sweep, an experiment run, a benchmark, an anomaly, bordercall or realism stage, the census and a morphometry set each write grid/logs/HOLD, one file
+  # A version 1 run, a sweep, an experiment run, a benchmark, an anomaly, bordercall or realism stage, census tiers and a morphometry set each write grid/logs/HOLD, one file
   # naming one job, and the first of two side by side to end would clear it while the other still
   # runs, whose end check then finds the checkout moved and throws the run away; so each waits for
   # the others, a sweep sent while a benchmark lasts up to its 12 hours among them. The DRR domain-gap
@@ -406,7 +442,7 @@ checkout_holders() {  # afterany:<job> for every live job of the gate's that hol
   # the study's one job before: bench flexray_drr_seg among them, which writes the masks it reads.
   local job waits=""
   [ -f "$STATE" ] || return 0
-  for job in $(awk '$3 == "v1_driver" || $3 == "sweep" || $3 ~ /^experiment_[0-9]+$/ || $3 ~ /^bench_[a-z_]+$/ || $3 ~ /^anomaly_[a-z_]+$/ || $3 ~ /^bordercall_[a-z]+$/ || $3 ~ /^census_[a-z]+$/ || $3 ~ /^realism_[a-z]+$/ || $3 ~ /^morphometry_[a-z]+$/ { print $1 }' "$STATE" | sort -u); do
+  for job in $(awk '$3 == "v1_driver" || $3 == "sweep" || $3 ~ /^experiment_[0-9]+$/ || $3 ~ /^bench_[a-z_]+$/ || $3 ~ /^anomaly_[a-z_]+$/ || $3 ~ /^bordercall_[a-z]+$/ || $3 == "census_tiers" || $3 ~ /^realism_[a-z]+$/ || $3 ~ /^morphometry_[a-z]+$/ { print $1 }' "$STATE" | sort -u); do
     case "$QUEUED" in *" $job "*) waits=$(joined "$waits" "afterany:$job") ;; esac
   done
   echo "$waits"
@@ -1701,9 +1737,10 @@ word_bordercall() {  # the bordercall corpus, pilot then full (the owner's count
   case "$id" in
     pilot) wall=12:00:00 ;;
     full) wall=36:00:00 ;;
-    *) echo "refusing: bordercall takes pilot or full"; return 64 ;;
+    complete) word_bordercall_complete; return ;;
+    *) echo "refusing: bordercall takes pilot, full or complete"; return 64 ;;
   esac
-  busy=$( { live_of bordercall_pilot; live_of bordercall_full; } | tr '\n' ' ')
+  busy=$( { live_of bordercall_pilot; live_of bordercall_full; live_of bordercall_complete; } | tr '\n' ' ')
   [ -z "${busy// /}" ] || { echo "refusing: a bordercall stage is still queued or running (job $busy); send bordercall $id again once it ends"; return 75; }
   if [ -f "$report" ]; then
     # Kept, so the owner's count of one job a stage holds: a report that stands queues nothing.
@@ -1728,33 +1765,153 @@ word_bordercall() {  # the bordercall corpus, pilot then full (the owner's count
   submit "bordercall_$id" batch STAGE="$id" ${opts[@]+"${opts[@]}"} --no-requeue --time "$wall" -- bordercall.sbatch > /dev/null || return 1
   echo "submitted the bordercall stage $id. Send bordercall $id again once it ends to read its report, logs/BORDERCALL-$id.md."
 }
-
-word_census() {  # the owner's tiers over every SPINEPS mask the census lists, one CPU job: queued once, its report printed on every later send
-  local report=$LOGS/CENSUS-$id.md busy holds opts setup
-  case "$id" in
-    tiers) ;;
-    *) echo "refusing: census takes tiers"; return 64 ;;
-  esac
-  busy=$(live_of "census_$id" | tr '\n' ' ')
-  [ -z "${busy// /}" ] || { echo "refusing: the census is still queued or running (job $busy); send census $id again once it ends"; return 75; }
+word_bordercall_complete() {  # the gold tier 3 completion (the owner's count of 2026-10-29 15:22 UTC, one CPU job): queued once, its report printed on every later send
+  local report=$LOGS/BORDERCALL-complete.md busy holds job opts=()
+  busy=$( { live_of bordercall_pilot; live_of bordercall_full; live_of bordercall_complete; } | tr '\n' ' ')
+  [ -z "${busy// /}" ] || { echo "refusing: a bordercall stage is still queued or running (job $busy); send bordercall complete again once it ends"; return 75; }
   if [ -f "$report" ]; then
-    # Kept, so the one job the owner counts holds: a report that stands queues nothing.
+    # Kept, so the owner's count of one job holds: a report that stands queues nothing, failed or not,
+    # since a second job is a second count and waits for his word.
     echo "## $(basename "$report") ($(date -r "$report" '+%F %T'))"
     head -n 200 "$report" | LC_ALL=C tr -cd '\11\12\40-\176' | masked | head -c 30000
-    bench_failed_on_older_code "$report" || return 0
-    mv "$report" "$LOGS/CENSUS-$id-$(bench_job_of "$report").md" || return 1
-    echo "  the report above ended in failure on older code: queueing the census again at $commit"
+    return 0
   fi
-  [ -f "$REPO/data/corpus-tiers/sources.json" ] || { echo "refusing: no data/corpus-tiers/sources.json at this commit"; return 2; }
-  setup=$(setup_dependency) || return 1
-  [ -z "$setup" ] || echo "  the environments: after the setup job that rebuilds them (${setup#afterok:})"
+  job=$(awk '$3 == "bordercall_complete" { job = $1 } END { print job }' "$STATE" 2>/dev/null)
+  if [ -n "$job" ]; then
+    [ ! -f "$report.part" ] || { echo "## $(basename "$report").part, unfinished: what job $job wrote before it ended"; head -n 200 "$report.part" | LC_ALL=C tr -cd '\11\12\40-\176' | masked | head -c 30000; }
+    echo "refusing: a bordercall complete job was queued before (job $job) and left no report; the owner's count was one job, so another waits for his word"
+    return 64
+  fi
+  [ -f "$REPO/grid/bordercall/holdings/fullspine_complete.py" ] || { echo "refusing: no vendored matcher under grid/bordercall/holdings/ at this commit (tools/bordercall_vendor.py copy)"; return 2; }
+  [ -f "$REPO/grid/bordercall-complete.sbatch" ] && [ -f "$REPO/tools/gold3_complete_grid.py" ] || { echo "refusing: no completion job script or tool at this commit"; return 2; }
+  # The job runs in the SPINEPS environment's python, not the pixi environments, so no setup job goes
+  # with it; it holds the checkout as a benchmark does, so it waits for the live runs that hold it.
   holds=$(checkout_holders)
   [ -z "$holds" ] || echo "  the checkout: after the live runs that hold it ($holds)"
-  depend_on "$(joined "$setup" "$holds")" || return 1
-  submit "census_$id" batch STAGE="$id" ${opts[@]+"${opts[@]}"} --no-requeue -- census.sbatch > /dev/null || return 1
-  echo "submitted the census $id. Send census $id again once it ends to read its report, logs/CENSUS-$id.md."
+  depend_on "$holds" || return 1
+  submit bordercall_complete batch ${opts[@]+"${opts[@]}"} --no-requeue --time 08:00:00 -- bordercall-complete.sbatch > /dev/null || return 1
+  echo "submitted the bordercall complete job: one CPU job that reads the census's SPINEPS masks and segments nothing. Send bordercall complete again once it ends to read its report, logs/BORDERCALL-complete.md."
 }
 
+word_census() {  # two censuses, each one CPU job: tiers, the owner's gold and silver tiers (waiting for his count), and gold3, the gold tier census (his count of 2026-10-29 12:26 UTC)
+  case "$id" in
+    tiers) word_census_tiers ;;
+    gold3) word_census_gold3 ;;
+    *) echo "refusing: census takes tiers or gold3"; return 64 ;;
+  esac
+}
+word_census_tiers() {  # the owner's tiers over every SPINEPS mask the transitional census lists, one CPU job: queued once, its report printed on every later send
+  local busy holds opts again="" stop=0
+  busy=$(live_of "census_$id" | tr '\n' ' ')
+  [ -z "${busy// /}" ] || { echo "refusing: the census $id job is still queued or running (job $busy); send census $id again once it ends"; return 75; }
+  census_may_queue || return "$stop"
+  [ -f "$REPO/data/corpus-tiers/sources.json" ] || { echo "refusing: no data/corpus-tiers/sources.json at this commit"; return 2; }
+  # The job reads the masks with the SPINEPS environment's python (grid/census.sbatch), not the pixi
+  # environments, so no setup job goes with it; it holds the checkout, so it waits for the live runs
+  # that hold it, as bordercall complete does.
+  holds=$(checkout_holders)
+  [ -z "$holds" ] || echo "  the checkout: after the live runs that hold it ($holds)"
+  depend_on "$holds" || return 1
+  # The job's shape, its dependencies with it, is asked before the submission is marked, so a refused
+  # shape marks nothing.
+  hpcw_check "census_$id" batch STAGE="$id" ${opts[@]+"${opts[@]}"} --no-requeue -- census.sbatch || return 1
+  [ -z "$again" ] || echo "  the census $again"
+  census_submit STAGE="$id" ${opts[@]+"${opts[@]}"} --no-requeue -- census.sbatch || return 1
+  echo "submitted the census $id job: one CPU job that reads the masks and segments nothing. Send census $id again once it ends to read its report, logs/CENSUS-$id.md."
+}
+word_census_gold3() {  # the gold tier census (the owner's tap of 2026-10-29 12:26 UTC, one CPU job): queued once, its report printed on every later send
+  local busy missing again="" stop=0
+  busy=$(live_of "census_$id")
+  [ -z "$busy" ] || { echo "refusing: the census $id job is still queued or running (job $busy); send census $id again once it ends"; return 75; }
+  census_may_queue || return "$stop"
+  [ -f "$REPO/tools/gold3_census.py" ] && [ -f "$REPO/grid/gold3-census.sbatch" ] || { echo "refusing: no census tool or job script at this commit"; return 2; }
+  missing=$(census_inputs_missing)
+  [ -z "$missing" ] || { echo "refusing: the census would read nothing from $missing; the one job is not spent on an empty root"; return 2; }
+  # The job's shape is asked before the submission is marked, so a refused shape marks nothing.
+  hpcw_check "census_$id" batch -- gold3-census.sbatch || return 1
+  [ -z "$again" ] || echo "  the census $again"
+  census_submit CENSUS_COMMIT="$(git -C "$REPO" rev-parse HEAD 2>/dev/null || echo "")" -- gold3-census.sbatch || return 1
+  echo "submitted the census $id job: one CPU job that reads only and segments nothing. Send census $id again once it ends to read its report, logs/CENSUS-$id.md."
+}
+census_may_queue() {  # whether census $id may queue its one job now (0), else 1 with the code its word ends on in the caller's stop; the caller's again says why where the owner's word lets one more through
+  local report=$LOGS/CENSUS-$id.md sent=$LOGS/CENSUS-$id.sent job lost
+  if [ -f "$report" ]; then
+    # Kept, so the owner's count of one job holds: a report that stands queues nothing, failed or not,
+    # unless the owner's word for one more job names the report's job in CENSUS_RERUNS.
+    census_show "$report" ""
+    job=$(census_job_of "$report")
+    census_rerun_allowed "$job" || return 1
+    mv "$report" "$LOGS/CENSUS-$id-$job.md" || { stop=1; return 1; }
+    again="is job $job's, which CENSUS_RERUNS lets the owner's count run once more"
+    return 0
+  fi
+  # A job that ended past its trap (the wall time, a preemption, a cancel, a node lost) leaves the parts it finished here.
+  [ ! -f "$report.part" ] || census_show "$report.part" ", unfinished: what the job wrote before it ended"
+  if [ -f "$sent" ]; then
+    # A submission whose answer was lost (the controller timed out after it queued the job) leaves no
+    # record and no live job the gate knows. The mark is taken off only once a job id has come back,
+    # so it is newer than every job recorded and is asked first, and the owner's word names it by its
+    # time, so one word lets one more job through and a second lost answer needs a word of its own.
+    lost=$(census_lost_key "$sent")
+    census_rerun_allowed "$lost" || {
+      echo "refusing: a census $id job was submitted at $(cat "$sent") and no job id came back, so it may be queued or ended under Slurm's name schwingnet-census_$id; another waits for the owner's word, committed as CENSUS_RERUNS=$id:$lost in grid/gate.sh"
+      stop=64; return 1
+    }
+    census_keep_part "$lost" || { stop=1; return 1; }
+    again="follows a submission whose answer was lost, which CENSUS_RERUNS lets the owner's count run once more"
+    return 0
+  fi
+  job=$(awk -v what="census_$id" '$3 == what { job = $1 } END { print job }' "$STATE" 2>/dev/null)
+  [ -n "$job" ] || return 0
+  census_rerun_allowed "$job" || {
+    echo "refusing: a census $id job was queued before (job $job) and left no report; the owner's count is one job, so another waits for his word, committed as CENSUS_RERUNS=$id:$job in grid/gate.sh"
+    stop=64; return 1
+  }
+  census_keep_part "$job" || { stop=1; return 1; }
+  again="is job $job's, which CENSUS_RERUNS lets the owner's count run once more"
+}
+census_show() {  # census_show FILE NOTE: a census report or its .part, as status shows a stage report, its paths cut
+  echo "## $(basename "$1")$2 ($(date -r "$1" '+%F %T'))"
+  head -n 400 "$1" | LC_ALL=C tr -cd '\11\12\40-\176' | report_shapes | masked | head -c 40000
+}
+census_keep_part() {  # census_keep_part WHOSE: the unfinished .part kept under the job its first line names, else WHOSE, so the next job starts from none
+  local part=$LOGS/CENSUS-$id.md.part named
+  [ -f "$part" ] || return 0
+  named=$(census_job_of "$part")
+  mv "$part" "$LOGS/CENSUS-$id-${named:-$1}.part"
+}
+census_lost_key() {  # census_lost_key SENT: lost-<the mark's UTC time as digits>, the key of one submission whose answer was lost
+  local stamp
+  stamp=$(head -n 1 "$1" | sed -n 's/^\([0-9][0-9-]*\) \([0-9][0-9:]*\) UTC.*/\1\2/p' | tr -d ':-')
+  echo "lost${stamp:+-$stamp}"
+}
+census_submit() {  # census_submit [K=V...] [job submit options...] -- SCRIPT: census $id queued, marked until its job id comes back
+  local sent=$LOGS/CENSUS-$id.sent
+  echo "$(date -u '+%F %T') UTC at commit $commit" > "$sent"
+  submit "census_$id" batch "$@" > /dev/null || return 1
+  rm -f "$sent"
+}
+census_job_of() {  # the job number a census report's first line names
+  head -n 1 "$1" | sed -n 's/^# census [a-z0-9]*: job \([0-9][0-9]*\) .*/\1/p'
+}
+census_rerun_allowed() {  # census_rerun_allowed JOB: CENSUS_RERUNS names JOB beside the census's id
+  # A report or a part whose first line names no job is let through by no entry, a stray "<id>:" among them.
+  [ -n "$1" ] || return 1
+  case " $CENSUS_RERUNS " in *" $id:$1 "*) return 0 ;; esac
+  return 1
+}
+census_inputs_missing() {  # what the census would find no file of, one line, or nothing
+  # Each root the parts read, tested on the login node as the data root holds them, so the one job is
+  # never spent on a root that moved: every part counts a missing root as zero and ends 0.
+  local what="" root
+  lacks() { what="${what:+$what; }$1"; }
+  [ -f "$VOLUME/go2432/ruleclass/tiers/tier1.tsv" ] && [ -f "$VOLUME/go2432/ruleclass/tiers/tier2.tsv" ] \
+    || lacks "the census tier lists under the lab volume's go2432/ruleclass/tiers"
+  for root in totalsegmentator_v300 aws_enhance_pet_labels/raw aws_enhance_pet_ct/raw tcia_fdg_pet_ct_lesions versefusion/raw/VerSeFusion_data/raw; do
+    [ -d "$DATA_ROOT/$root" ] || lacks "$DATA_ROOT/$root"
+  done
+  echo "$what"
+}
 morphometry_inputs_missing() {  # what morphometry $id still lacks on the data root, one line, or nothing
   case "$id" in
     enhance)
@@ -2207,7 +2364,7 @@ word_cancel() {  # the job named, if the gate's and live, with every live job of
   "$SCANCEL" $cancel && echo "cancelled ($from): $cancel"
 }
 
-release_hold() {  # a run's hold (grid/v1-driver.sbatch, grid/sweep-driver.sbatch, grid/experiment-driver.sbatch, grid/bench.sbatch, grid/drr-seg.sbatch, grid/anomaly.sbatch, grid/bordercall.sbatch, grid/census.sbatch, grid/realism.sbatch, grid/morphometry.sbatch) is cleared once Slurm no longer holds its job
+release_hold() {  # a run's hold (grid/v1-driver.sbatch, grid/sweep-driver.sbatch, grid/experiment-driver.sbatch, grid/bench.sbatch, grid/drr-seg.sbatch, grid/anomaly.sbatch, grid/bordercall.sbatch, grid/bordercall-complete.sbatch, grid/census.sbatch, grid/realism.sbatch, grid/morphometry.sbatch) is cleared once Slurm no longer holds its job
   local job
   [ -f "$LOGS/HOLD" ] || return 0
   job=$(awk '{ print $1; exit }' "$LOGS/HOLD")

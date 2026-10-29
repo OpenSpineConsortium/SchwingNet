@@ -58,8 +58,8 @@
    "grid": {
     "root": "$DATA_ROOT/aws_enhance_pet_labels/raw",
     "held": "not_held",
-    "note": "the existing word `fetch aws_enhance_pet_labels` lands the whole ground-truth prefix on the owner's word; held says whether it has, set by the grid session once the vertebra and rib masks hash to SHA256SUMS (docs/checkpoints/2026-10-28-gold3-ct-grid/HANDOFF.md), and FACTS.json says where the facts were read and read again. autoPET's CTs are held as FDG-PET-CT-Lesions (/rs/rs_grp_oschome/go2432/data/tcia_fdg_pet_ct_lesions) but no mask has been matched to its CT yet (shape and affine, the scanner columns breaking ties); Leipzig's and Careggi's CTs are not held.",
-    "held_note": "the masks were read from the public bucket; `fetch aws_enhance_pet_labels` has not run, autoPET's CTs are on the grid as FDG-PET-CT-Lesions but no mask is matched to its CT, and Leipzig's and Careggi's CTs are not on the grid"
+    "note": "`fetch aws_enhance_pet_labels` landed the whole ground-truth prefix on 2026-10-29; held says whether its files are the ones recorded, set by the grid session once the vertebra and rib masks hash to SHA256SUMS (docs/checkpoints/2026-10-28-gold3-ct-grid/HANDOFF.md), and FACTS.json says where the facts were read and read again. autoPET's CTs are held as FDG-PET-CT-Lesions (/rs/rs_grp_oschome/go2432/data/tcia_fdg_pet_ct_lesions) but no mask has been matched to its CT yet (shape and affine, the scanner columns breaking ties); Leipzig's and Careggi's CTs are not held.",
+    "held_note": "the masks were read from the public bucket; the labels and the CTs of all three sites were fetched to the data root for the FluXray reproduction (`fetch aws_enhance_pet_labels` and `fetch aws_enhance_pet_ct`, jobs 40860402 and 40860413, landed by 02:56 UTC on 2026-10-29), and held waits for the census job (`census gold3`) to compare their sums with SHA256SUMS and the bucket's listing; autoPET's CTs are on the grid as FDG-PET-CT-Lesions too, which the same job matches to the masks"
    },
    "repair_record": "the Claude project's files, folder enhance-pet-repair (README, SHA256SUMS, repaired/<id>.nii.gz)",
    "persons_by_records": [865, 1479],
@@ -167,7 +167,7 @@
  },
  "completion": {
   "rule": "The levels from C2 to the sacrum an admitted study's release does not draw (admission.json, complete) are drawn by SPINEPS from the masks the census already holds on the grid, never re-run and never TotalSegmentator (the owner's science rule), kept as a machine arm of their own beside the release's masks, recorded by segmenter, version and sha256, never pooled with the release's masks and never raising a tier.",
-  "state": "waits for one CPU grid job and the owner's word and count; nothing sent"
+  "state": "the grid arm is the gate word bordercall complete (grid/bordercall-complete.sbatch, tools/gold3_complete_grid.py, bordercall's holdings/fullspine_complete.py vendored under grid/bordercall/holdings/), one CPU job on the owner's count of 2026-10-29 15:22 UTC, not yet sent; the container arm (SPINEPS 2.1.2, a cloud thread, SchwingNet #458) drew 13 of the 34 VerSe and TotalSegmentator studies; ENHANCE.PET 1379 has no census mask and no fetched CT; no count is recorded here until a job's report is read"
  },
  "auto_anatomist": {
   "spines": "VerSe, TotalSegmentator and ENHANCE.PET (the owner, 2026-10-28 23:03 UTC: \"i meant verse+totalsegmentator+PET\")",
