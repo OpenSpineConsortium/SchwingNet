@@ -11,6 +11,7 @@ scancel and df on PATH answer for Slurm; nothing reaches a scheduler. Standard l
 required check runs it."""
 
 import hashlib
+import importlib.util
 import io
 import json
 import os
@@ -26,6 +27,17 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 GRID = ROOT / "grid"
+
+
+def load_module(path, name):
+    """A module of the repository by its file, as the flows' own progress writer is loaded to lay out
+    what status reads."""
+    spec = importlib.util.spec_from_file_location(name, path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 FAKE_HPCWORKER = ROOT / "tests" / "fakes" / "hpcworker"
 NEW_SCRIPTS = ("gate.sh", "hpcw.sh", "box.sh", "bin/pixi", "bin/train-cpu-python", "00-setup.sbatch", "00-weights.sbatch",
                "00-carmlspine.sbatch", "v1-driver.sbatch", "experiment-driver.sbatch", "run-xray-chain.sh",
@@ -188,6 +200,8 @@ class GateTest(unittest.TestCase):
         env["VOLUME"] = str(self.tmp)
         # the benchmarks' run folders, where the DRR domain-gap study's PROGRESS.txt is read from
         env["BENCH_ROOT"] = str(self.tmp / "go2432" / "bench")
+        # the Metaflow datastore, where every launched flow keeps its progress page (flows/stage_progress.py)
+        env["SCHWINGNET_METAFLOW"] = str(self.flow_root())
         # the size rule reads these fakes only where a test says so, and waits no minute here (#180)
         env.update(SIZE_RULE_STAND_INS="yes", SIZE_RULE_SETTLE="0")
         return env
@@ -2846,6 +2860,136 @@ esac
         self.assertLess(out.index("## bench flexray_drr_gap, progress"), out.index("no job submitted by the gate yet"))
         self.assertNotIn("not shown, for want of room", out)
 
+    def flow_root(self):
+        return self.tmp / "go2432" / "metaflow"
+
+    def flow_run(self, run, lines, kind="sweep", state="running"):
+        """A launched flow's progress folder with its PROGRESS.txt as flows/stage_progress.py writes it,
+        updated now, as a live run's is."""
+        folder = self.flow_root() / "progress" / "SweepFlow" / run
+        folder.mkdir(parents=True, exist_ok=True)
+        updated = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
+        head = f"flow SweepFlow/{run} {kind}: {state}, started 2026-10-29 03:00:00 UTC, updated {updated} UTC"
+        (folder / "PROGRESS.txt").write_text("\n".join([head, *lines]) + "\n", encoding="utf-8")
+        return folder / "PROGRESS.txt"
+
+    def test_status_shows_the_newest_launched_flows_progress_its_quotes_judged_as_a_reports(self):
+        # the owner's rule of 2026-10-29: every launched flow keeps a progress page; status shows the
+        # newest runs' short lines under a heading tools/progress_page.py reads back into the page
+        # each file moved within the last few minutes, so none is judged silent
+        moved = int(time.time()) - 200
+        for n in range(6):
+            progress = self.flow_run(f"17929025852864{n:02d}", ["run: key 68974c7ccabf5595, commit 35a4b6f"])
+            os.utime(progress, (moved + n, moved + n))
+        # the lines in the order flows/stage_progress.py writes them, how the run ended first; a file
+        # longer than FLOW_PROGRESS_LINES, which the writer never makes, is cut there all the same
+        newest = self.flow_run("1792902585286499", [
+            "run: key 68974c7ccabf5595, commit 35a4b6f, code 0123456789ab, PREREG docs/research/block-smoke/PREREG.md sha256 5779e79a2a7c",
+            "verdict: 1",
+            "ended: the launcher exited 1, the flow succeeded",
+            "reports: 0 of 1 current, 1 not current or not written",
+            "report: resnet34-32px-b2928840: NOT CURRENT, why: REPORT.md not what the run gives for Doe_John/IM0007.dcm",
+            "step start: done",
+            f"task start prepare: done; state {self.smoke}/real/1a2b3c4d-5e6f7a8b, 20 rows first, 2 warm starts after",
+            "step first: running; 1 done, 1 failed of 2",
+            "task first resnet18-64px-3d291b87: failed; fault, why: SweepFault: block_sweep row exited 2: no frame case134_19650312.png",
+            "task first resnet34-32px-b2928840: done; Outcome: ran, matched the check."] + [f"task first row{n}: done" for n in range(60)])
+        os.utime(newest, (moved + 100, moved + 100))
+        odd = self.flow_root() / "progress" / "SweepFlow" / "not a run"
+        odd.mkdir(parents=True)
+        (odd / "PROGRESS.txt").write_text("flow SweepFlow/x sweep: running\n", encoding="utf-8")
+        os.utime(odd / "PROGRESS.txt", (moved - 100, moved - 100))
+        done = self.gate("status")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        out = done.stdout
+        self.assertEqual(out.count("## flow sweep "), 4, out)
+        self.assertRegex(out, r"## flow sweep 1792902585286499, progress \(\d{4}-\d\d-\d\d \d\d:\d\d UTC\)\n  flow SweepFlow/1792902585286499 sweep: running, ")
+        self.assertLess(out.index("## flow sweep 1792902585286499"), out.index("## flow sweep 1792902585286405"))
+        self.assertNotIn("## flow sweep 1792902585286401", out)
+        self.assertIn("  run: key 68974c7ccabf5595, commit 35a4b6f, code 0123456789ab, PREREG docs/research/block-smoke/PREREG.md sha256 5779e79a2a7c\n", out)
+        self.assertIn("  task start prepare: done; state <path>, 20 rows first, 2 warm starts after\n", out)
+        self.assertIn("  task first resnet18-64px-3d291b87: failed; fault, why: <reason withheld: it can quote a value; the whole report stays on the grid>\n", out)
+        self.assertIn("  report: resnet34-32px-b2928840: NOT CURRENT, why: <reason withheld", out)
+        self.assertIn("  verdict: 1\n  ended: the launcher exited 1, the flow succeeded\n  reports: 0 of 1 current, 1 not current or not written\n", out)
+        # at most the first FLOW_PROGRESS_LINES lines of the file, 40, its head among them
+        self.assertIn("  task first row28: done\n", out)
+        self.assertNotIn("row29", out)
+        for value in ("case134", "19650312", "Doe_John", "not a run"):
+            self.assertNotIn(value, out)
+        self.assertLess(out.index("## space on the lab volume"), out.index("## flow sweep"))
+        self.assertLess(out.index("## flow sweep"), out.index("no job submitted by the gate yet"))
+
+    def test_status_shows_how_a_whole_plans_run_ended_as_the_flows_own_writer_lays_it_out(self):
+        # a smoke plan of 27 rows drawn by flows/stage_progress.py itself: the verdict, how the
+        # launcher saw the flow end and the report not current all come inside the lines status keeps
+        progress = load_module(ROOT / "flows" / "stage_progress.py", "stage_progress_for_the_gate")
+        flow, run = "SweepFlow", "1792902585286456"
+        progress.write_head(self.flow_root(), {"flow": flow, "run": run, "kind": "sweep", "key": "0" * 16, "started": progress.utc_now()})
+        progress.write_graph(self.flow_root(), flow, run, ["start", "fan_first", "first", "join_first", "middle", "fan_second", "second",
+                                                         "join_second", "end"])
+        rows = [("first", f"row{n:02d}") for n in range(25)] + [("second", "warm0"), ("second", "warm1")]
+        for number, (step, label) in enumerate(rows, 10):
+            progress.write_task(self.flow_root(), flow, run, {"step": step, "task": str(number), "label": label, "state": "done",
+                                                            "lines": ["Outcome: ran, matched the check."]})
+        progress.write_result(self.flow_root(), flow, run, {
+            "verdict": 1, "reports": 27, "not_current": 1,
+            "lines": ["row03: NOT CURRENT as the run wrote it, so written anew; why: claim.json not what the run gives for Doe_John"]
+                     + [f"{label}: current as the run wrote it" for _, label in rows if label != "row03"]})
+        progress.write_launch(self.flow_root(), flow, run, {"words": "the launcher exited 1, the flow succeeded"})
+        progress.draw(self.flow_root(), flow, run)
+        done = self.gate("status")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        section = done.stdout.split(f"## flow sweep {run}, progress (", 1)[1].split("\n## ", 1)[0]
+        self.assertIn("\n  verdict: 1\n  ended: the launcher exited 1, the flow succeeded\n"
+                      "  reports: 26 of 27 current, 1 not current or not written\n"
+                      "  report: row03: NOT CURRENT as the run wrote it, so written anew; why: <reason withheld", section)
+        self.assertIn("  step first: done; 25 done of 25\n", section)
+        self.assertIn("  step end: waiting\n", section)
+        self.assertNotIn("Doe_John", done.stdout)
+
+    def test_status_shows_a_running_run_whose_file_has_not_moved_for_ten_minutes_as_silent(self):
+        # a job Slurm killed draws nothing more, so its file still says running: status judges it by
+        # the file's age as it prints it, and says so in a line tools/progress_page.py reads back
+        long_ago = int(time.time()) - 25 * 60
+        dead = self.flow_run("1792902585286401", ["run: key 68974c7ccabf5595"] + [f"task first row{n}: done" for n in range(60)])
+        os.utime(dead, (long_ago, long_ago))
+        ended = self.flow_run("1792902585286402", ["run: key 68974c7ccabf5595", "verdict: 0"], state="succeeded")
+        os.utime(ended, (long_ago - 1, long_ago - 1))
+        live = self.flow_run("1792902585286403", ["run: key 68974c7ccabf5595"])
+        done = self.gate("status")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        out = done.stdout
+        dead_section = out.split("## flow sweep 1792902585286401, progress (", 1)[1].split("\n## ", 1)[0].splitlines()[1:]
+        self.assertRegex(dead_section[0], r"^  flow SweepFlow/1792902585286401 sweep: silent, started ")
+        self.assertRegex(dead_section[1], r"^  silent: no file of this run has moved for 2[56] minutes by this status; ")
+        self.assertEqual(dead_section[2], "  run: key 68974c7ccabf5595")
+        self.assertEqual(len(dead_section), 40, "the line status adds keeps the run inside the lines it shows")
+        self.assertIn("  flow SweepFlow/1792902585286402 sweep: succeeded, started ", out)
+        self.assertIn("  flow SweepFlow/1792902585286403 sweep: running, started ", out)
+        self.assertEqual(out.count("  silent: "), 1, out)
+        answer, page = self.tmp / "status.txt", self.tmp / "page.html"
+        answer.write_text(out, encoding="utf-8")
+        drawn = subprocess.run([sys.executable, str(ROOT / "tools" / "progress_page.py"), str(answer), "--run", "1792902585286401",
+                                "--out", str(page)], capture_output=True, text=True, timeout=60)
+        self.assertEqual(drawn.returncode, 0, drawn.stderr)
+        html = page.read_text(encoding="utf-8")
+        self.assertIn('<span class="badge silent">silent</span>', html)
+        self.assertIn('<p class="silent">no file of this run has moved for ', html)
+
+    def test_the_status_answer_draws_the_flows_page_off_the_grid(self):
+        self.flow_run("1792902585286499", ["run: key 68974c7ccabf5595, commit 35a4b6f", "step start: done", "step first: running; 1 done, 1 running of 2",
+                                           "task first resnet18-64px-3d291b87: running; Last epoch: epoch 1 of 2."])
+        done = self.gate("status")
+        answer, page = self.tmp / "status.txt", self.tmp / "page.html"
+        answer.write_text(done.stdout, encoding="utf-8")
+        drawn = subprocess.run([sys.executable, str(ROOT / "tools" / "progress_page.py"), str(answer), "--out", str(page)],
+                               capture_output=True, text=True, timeout=60)
+        self.assertEqual(drawn.returncode, 0, drawn.stderr)
+        html = page.read_text(encoding="utf-8")
+        self.assertIn("SweepFlow 1792902585286499", html)
+        self.assertIn("Last epoch: epoch 1 of 2.", html)
+        self.assertIn('<span class="badge running">running</span>', html)
+
     def drr_gap_box(self):
         """A stand-in box.sh for the study's steps: every call logged with whether the checkout was held,
         the threads each worker may take and the scratch folder; prepare marks the analysis prepared
@@ -3822,7 +3966,72 @@ esac
         folder = self.repo / "grid" / "sweeps"
         folder.mkdir(parents=True, exist_ok=True)
         (folder / f"{name}.json").write_text(json.dumps(record, indent=1, sort_keys=True) + "\n", encoding="utf-8")
+        self.cover_plans()
         return folder / f"{name}.json"
+
+    def cover_plans(self, *uncovered, by_name=()):
+        """The registry's sweep line and the sweep's PREREG frozen as the Lab Recipe says, covering
+        every plan under the test's grid/sweeps/ by its bytes, but those uncovered and those it
+        covers by name alone, as the word reads them before it queues anything."""
+        (self.repo / "flows").mkdir(exist_ok=True)
+        shutil.copy(ROOT / "flows" / "registry.txt", self.repo / "flows" / "registry.txt")
+        entries = []
+        for plan in sorted((self.repo / "grid" / "sweeps").glob("*.json")):
+            if plan.stem in by_name:
+                entries.append(plan.stem)
+            elif plan.stem not in uncovered:
+                entries.append(f"{plan.stem}={hashlib.sha256(plan.read_bytes()).hexdigest()}")
+        prereg = self.repo / "docs" / "research" / "block-smoke"
+        prereg.mkdir(parents=True, exist_ok=True)
+        text = f"# The test's design\n\nCovers: {', '.join(entries)}\n"
+        (prereg / "PREREG.md").write_text(text, encoding="utf-8")
+        (prereg / "PREREG.md.sha256").write_text(f"{hashlib.sha256(text.encode()).hexdigest()}  PREREG.md\n", encoding="ascii")
+        return prereg / "PREREG.md"
+
+    def test_sweep_refuses_a_plan_its_frozen_prereg_does_not_cover_before_anything_is_queued(self):
+        # the launcher refuses such a plan with exit 90 too, but only once the job holds a GPU and the
+        # catalog is built; the word reads the same Covers line first and queues nothing
+        self.environments_ready()
+        self.plan("synthetic", "synthetic")
+        self.plan("trials", "synthetic")
+        self.cover_plans("trials")
+        done = self.gate("sweep", "trials")
+        self.assertEqual(done.returncode, 90, done.stdout)
+        self.assertIn("refusing: docs/research/block-smoke/PREREG.md does not cover the plan trials, which waits for a PREREG "
+                      "of its own, frozen before it runs; nothing was queued", done.stdout)
+        # a plan edited since the freeze, under the same name, is another design
+        plan = self.repo / "grid" / "sweeps" / "synthetic.json"
+        frozen = hashlib.sha256(plan.read_bytes()).hexdigest()
+        plan.write_text(plan.read_text(encoding="utf-8").replace('"epochs": 3', '"epochs": 4'), encoding="utf-8")
+        done = self.gate("sweep", "synthetic")
+        self.assertEqual(done.returncode, 90, done.stdout)
+        self.assertIn(f"covers synthetic as the bytes of sha256 {frozen[:16]}, and grid/sweeps/synthetic.json's are "
+                      f"{hashlib.sha256(plan.read_bytes()).hexdigest()[:16]}: a plan changed since the freeze is another design", done.stdout)
+        # a PREREG edited since its freeze covers nothing
+        prereg = self.cover_plans()
+        with prereg.open("a", encoding="utf-8") as text:
+            text.write("A hypothesis added after the data were seen.\n")
+        done = self.gate("sweep", "synthetic")
+        self.assertEqual(done.returncode, 90, done.stdout)
+        self.assertIn("refusing: STOP: docs/research/block-smoke/PREREG.md is not frozen as its PREREG.md.sha256 says", done.stdout)
+        self.assertEqual(self.submitted(), [])
+        # an entry that names the plan alone covers it whatever its bytes, as the launcher reads it
+        self.cover_plans(by_name=("synthetic",))
+        done = self.gate("sweep", "synthetic")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertEqual(len(self.line_of("sweep-driver.sbatch")), 1)
+
+    def test_the_repositorys_own_prereg_covers_its_smoke_plans_and_not_the_trials(self):
+        self.environments_ready()
+        (self.repo / "flows").mkdir()
+        shutil.copy(ROOT / "flows" / "registry.txt", self.repo / "flows" / "registry.txt")
+        shutil.copytree(ROOT / "docs" / "research" / "block-smoke", self.repo / "docs" / "research" / "block-smoke")
+        done = self.gate("sweep", "trials")
+        self.assertEqual(done.returncode, 90, done.stdout)
+        self.assertIn("does not cover the plan trials", done.stdout)
+        done = self.gate("sweep", "synthetic")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertEqual(len(self.line_of("sweep-driver.sbatch")), 1)
 
     def test_sweep_and_bank_each_take_exactly_one_plain_id(self):
         for words in (("sweep",), ("sweep", "a", "b"), ("sweep", "Real"), ("sweep", "../real"), ("bank",),
@@ -4753,7 +4962,8 @@ esac
         there, names the state folder as block_sweep's state does with $FAKE/code, else c0dec0de,
         for the code's part, and answers for the launcher as flows/launch.py does, its exit code
         $FAKE/launch_rc, after a commit to the checkout that leaves the code $FAKE/move names where
-        that file is there."""
+        that file is there; while $FAKE/launch_holds is there it runs until a TERM comes, says it
+        came in $FAKE/stopped and ends as the launcher ends then, with 143."""
         (self.repo / "grid" / "box.sh").write_text(r"""#!/bin/bash
 echo "$* hold=$(cat "$SCHWINGNET/grid/logs/HOLD" 2>/dev/null)" >> "$FAKE/box.log"
 case "$*" in
@@ -4769,6 +4979,12 @@ case "$*" in
       cp "$FAKE/move" "$FAKE/code"
     fi
     echo '{"decision": "run", "flow": "sweep", "key": "0123456789abcdef", "origin": null, "root": "/m"}'
+    if [ -f "$FAKE/launch_holds" ]; then
+      sleep 60 & flow=$!
+      trap 'kill "$flow"; echo TERM >> "$FAKE/stopped"; echo "{\"flow\": \"sweep\", \"run\": \"SweepFlow/12\", \"successful\": false, \"verdict\": null}"; exit 143' TERM
+      touch "$FAKE/launch_held"
+      wait "$flow"
+    fi
     echo "a row ran"
     echo '{"flow": "sweep", "run": "SweepFlow/12", "successful": true, "verdict": 0}'
     exit "$(cat "$FAKE/launch_rc" 2>/dev/null || echo 0)" ;;
@@ -4844,6 +5060,38 @@ esac
         self.assertEqual(done.returncode, 1)
         self.assertIn("FAILED: the split check of version 1 failed; no sweep reads it", done.stdout)
         self.assertFalse([line for line in self.boxed() if "flows/launch.py" in line])
+
+    def test_job_submits_early_term_reaches_the_launcher_at_once_and_the_report_still_says_how_it_ended(self):
+        # job submit sends TERM to the batch shell alone two minutes before the limit; a shell
+        # running the launcher in its foreground held it until the launcher ended, so the launcher
+        # heard only Slurm's own TERM at the limit
+        self.git_repo()
+        self.sweep_box()
+        self.plan("synthetic", "synthetic")
+        catalog = self.synthetic_catalog()
+        (self.fake / "launch_holds").write_text("", encoding="utf-8")
+        env = dict(os.environ, SCHWINGNET=str(self.repo), DATA_ROOT=str(self.data), SMOKE=str(self.smoke), FAKE=str(self.fake),
+                   MODELS=str(self.models), PLAN="synthetic", SLURM_JOB_ID="777", FAKE_CATALOG=str(catalog))
+        for name in ("STORE", "WEIGHTS"):
+            env.pop(name, None)
+        driver = subprocess.Popen(["bash", str(self.repo / "grid" / "sweep-driver.sbatch")], cwd=self.repo / "grid", env=env,
+                                  stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        self.addCleanup(driver.kill)
+        for _ in range(300):
+            if (self.fake / "launch_held").exists():
+                break
+            time.sleep(0.1)
+        began = time.monotonic()
+        driver.send_signal(signal.SIGTERM)
+        out, _ = driver.communicate(timeout=60)
+        self.assertLess(time.monotonic() - began, 30, "the TERM reached the launcher before its flow ended on its own")
+        self.assertEqual(driver.returncode, 143, out)
+        self.assertEqual((self.fake / "stopped").read_text(encoding="utf-8"), "TERM\n")
+        self.assertIn("SN_SWEEP_RC=143", out)
+        report = (self.repo / "grid" / "logs" / "sweep-synthetic-STAGE-REPORT.md").read_text(encoding="utf-8")
+        self.assertIn('- Metaflow: {"flow": "sweep", "run": "SweepFlow/12", "successful": false', report)
+        self.assertIn("- launcher exited 143\n", report)
+        self.assertFalse((self.repo / "grid" / "logs" / "HOLD").exists())
 
     def test_a_sweep_whose_checkout_moved_is_used_only_where_the_code_its_rows_run_stayed_the_same(self):
         # The state folder is named by the code the rows run (#252, finding 27), so a merge that

@@ -3,7 +3,8 @@
 # on the grid, so a cut at the page's end once took the newest jobs, every failed job's log and
 # every stage report, which come after the space, the sweeps and the sample manifest. Each section
 # is made whole first and then handed lines and bytes in the order a reader needs them: the space,
-# the sweeps' progress and the benchmarks' (the DRR domain-gap study's PROGRESS.txt), the newest
+# the sweeps' progress, the benchmarks' (the DRR domain-gap study's PROGRESS.txt) and the launched
+# flows' (flows/stage_progress.py), the newest
 # jobs, the failed jobs' logs newest first, the newest run's latency, the stage reports newest first
 # with the sample manifest among them by its date, the newest run and the latency probe. Every
 # section keeps its place on the page. One handed fewer
@@ -22,6 +23,7 @@ function kind_of(heading) {
   if (heading ~ /^## space on the lab volume/) return "space"
   if (heading ~ /^## sweep [a-z0-9_]*, /) return "sweep"
   if (heading ~ /^## bench [a-z0-9_]*, progress \(/) return "bench"
+  if (heading ~ /^## flow [a-z0-9_]+ [A-Za-z0-9_.-]+, progress \(/) return "flow"
   if (heading ~ /^## the gate's newest jobs/ || heading ~ /^no job submitted by the gate/) return "jobs"
   if (heading ~ /^## [0-9]/) return "failed"
   if (heading ~ /^## latency of the newest run/) return "latency"
@@ -31,10 +33,11 @@ function kind_of(heading) {
 }
 # The order the kinds are handed room in; a failed job's log goes newest first, the reverse of the
 # page's id order, and the stage reports as the page shows them, newest first. A benchmark's
-# progress is a live view as a sweep's is, so it is handed room at the sweeps' rank.
+# progress is a live view as a sweep's is, so it is handed room at the sweeps' rank, and so is a
+# launched flow's progress page in short lines.
 function rank_of(kind) {
   if (kind == "space") return 1
-  if (kind == "sweep" || kind == "bench") return 2
+  if (kind == "sweep" || kind == "bench" || kind == "flow") return 2
   if (kind == "jobs") return 3
   if (kind == "failed") return 4
   if (kind == "latency") return 5
