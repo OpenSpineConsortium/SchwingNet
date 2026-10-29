@@ -2,13 +2,17 @@
 
 Usage (inside grid/realism.sbatch's throwaway environment, which holds diffusers, flexray and the
 trainer; every subcommand but the GPU ones runs on numpy alone):
-    python tools/realism.py poses --samples <FluXray samples.csv> --out <poses.json>
-    python tools/realism.py split --poses <poses.json> --out <dir> [--limit N] [--train-fraction 0.7]
-    python tools/realism.py render --ct <CT dir> --truth <ground-truth dir> --poses <poses.json> --out <dir> [--only <file>]
+    python tools/realism.py inputs --samples <csv> --db <ThunderDB> --ct <dir> --truth <dir> --klein <dir> --bundle <dir> --imagenet <pth> --out <json>
+    python tools/realism.py environment --bundle <FleXray bundle> --imagenet <resnet18 .pth> --out <json> [--no-pins]
+    python tools/realism.py poses --samples <FluXray samples.csv> --out <poses.json> [--inputs <inputs.json>]
+    python tools/realism.py split --poses <poses.json> --out <dir> [--eligible <inputs.json>] [--limit N] [--shard-size N]
+    python tools/realism.py render --ct <CT dir> --truth <ground-truth dir> --poses <poses.json> --out <dir> [--only <file>] [--per-subject N]
     python tools/realism.py edit --raw <render dir> --weights <klein dir> --out <dir> [--model klein-9b] [--lora <file>] [--arms 1]
+    python tools/realism.py score --raw <render dir> --edited <edit dir> --weights <FleXray bundle> --out <csv> [--only <file>]
+    python tools/realism.py keep --scores <dir of csv> --edited <edit dir> --out <dir>
     python tools/realism.py filter --raw <render dir> --edited <edit dir> --weights <FleXray bundle> --out <dir>
-    python tools/realism.py fluxray-export --db <FluXray thunder_dbs/1.0> --out <dir> [--split test] [--limit N]
-    python tools/realism.py stats --a <dir> --b <dir> --out <dir> [--real <dir>] [--weights <bundle>] [--imagenet-weights <pth>]
+    python tools/realism.py fluxray-export --db <FluXray thunder_dbs/1.0> --out <dir> [--samples <render dir>] [--subjects <file>]
+    python tools/realism.py stats --a <dir> --b <dir> --out <dir> [--index <render dir>] [--weights <bundle>] [--imagenet-weights <pth>]
     python tools/realism.py pairs --control <render dir> --target <dir> --out <pairs dir> [--only <file>]
     python tools/realism.py lora-config --pairs <pairs dir> --out <file> [--base klein-base-4b] [--rank 16] [--seed N]
     python tools/realism.py measure --masks <render dir> --out <dir>
@@ -25,8 +29,15 @@ radiographer would read (the intensity histogram, the radial power spectrum, gra
 local contrast), FleXray's own reading (the flux000 member's channel probabilities), and an
 ImageNet ResNet-18's pooled features. Each space gives a two-sample classifier's AUC with its
 bootstrap interval over subjects, an RBF MMD with its permutation p-value, and Frechet and
-kernel distances on 64 principal components; the second set's split halves give the null every
-number is read against, and realism.verdict turns the interval and the p-value into one word.
+kernel distances on 64 principal components, or as many as the space has where it has fewer; the
+permutations shuffle the labels among each sample's images where the two sets hold the same
+samples, and by whole subjects where they share none; the second set's split halves give the null
+every number is read against, and realism.verdict turns the interval and the p-value into one word.
+
+A run cut short is resumed in its own folder: every .npy is written whole under a temporary name
+and moved into place, a render counts as done only with its manifest row and both its files and an
+edit only with its row in edits.jsonl and its file, and anything else a cut left of a sample is
+removed and done again.
 """
 
 import sys
@@ -41,6 +52,7 @@ if str(ROOT / "vendor" / "beethoven-qa" / "src") not in sys.path:
 
 import argparse  # noqa: E402
 import csv  # noqa: E402
+import io  # noqa: E402
 import json  # noqa: E402
 import math  # noqa: E402
 import os  # noqa: E402
@@ -48,18 +60,23 @@ import struct  # noqa: E402
 import time  # noqa: E402
 import zlib  # noqa: E402
 
+from collections import Counter  # noqa: E402
+
 from schwingnet import realism  # noqa: E402
 
-PHYSICS_BINS = 32
-RADIAL_BANDS = 16
-PCA_COMPONENTS = 64
-KNN = 5
-BOOTSTRAPS = 200
-PERMUTATIONS = 200
-KID_SUBSET = 100
-KID_REPEATS = 10
-CANVAS = 256
-PERCENTILES = (0.5, 99.5)
+# Every size the statistics and the render use is the frozen plan's (schwingnet.realism.REPLICATION,
+# docs/research/flux-realism/PREREG.md), named here once for the functions below.
+PLAN = realism.REPLICATION
+PHYSICS_BINS = PLAN.physics_bins
+RADIAL_BANDS = PLAN.radial_bands
+PCA_COMPONENTS = PLAN.pca_components
+KNN = PLAN.knn
+BOOTSTRAPS = PLAN.bootstraps
+PERMUTATIONS = PLAN.permutations
+KID_SUBSET = PLAN.kid_subset
+KID_REPEATS = PLAN.kid_repeats
+CANVAS = PLAN.canvas
+PERCENTILES = (PLAN.percentile_low, PLAN.percentile_high)
 # ENHANCE.PET's ground-truth folders that FleXray's MOOSE labels are packed from, with the key of
 # each in the bucket's labels.json, and the two names the two tables spell differently.
 TRUTH_FOLDERS = {
@@ -69,8 +86,8 @@ TRUTH_FOLDERS = {
 }
 NAME_FIXES = {"fingers_left": "phalange_left", "fingers_right": "phalange_right",
               "toes_left": "toe_left", "toes_right": "toe_right"}
-HU_LOW, HU_HIGH, AIR_CLAMP_HU = -1000.0, 2000.0, -900.0
-RAY_SAMPLES = 500
+HU_LOW, HU_HIGH, AIR_CLAMP_HU = PLAN.hu_low, PLAN.hu_high, PLAN.air_clamp_hu
+RAY_SAMPLES = PLAN.ray_samples
 LUMBAR = ("vertebra_l1", "vertebra_l2", "vertebra_l3", "vertebra_l4", "vertebra_l5")
 # ENHANCE.PET 1.6k's label dictionary, a verbatim copy of the public bucket's labels.json (sha256
 # 19e319b8f73aaec8a956d741fc30bb1ccff4be1d65cdba5f0c418c4ed8d29459), so a render needs no file
@@ -85,13 +102,40 @@ class Refused(Exception):
 
 # --- small files -------------------------------------------------------------------------------------
 
+# A file being written lies under its own name with this ending until it is whole, which no reader
+# here lists (images_in and the globs take .npy, .png and .csv), so a cut never leaves half a file
+# under the name a resume takes for done.
+PART = ".part"
+
+
+def write_whole(path, data):
+    """Bytes written whole or not at all: to a temporary name in the same folder, flushed to the
+    disk, then moved into place, so a kill leaves the file as it was or whole and never truncated."""
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    part = path.with_name(path.name + PART)
+    with open(part, "wb") as handle:
+        handle.write(data)
+        handle.flush()
+        os.fsync(handle.fileno())
+    os.replace(part, path)
+
+
+def save_npy(path, array):
+    """One array as a .npy file, written whole (write_whole)."""
+    import numpy as np
+
+    buffer = io.BytesIO()
+    np.save(buffer, array)
+    write_whole(path, buffer.getvalue())
+
+
 def read_json(path):
     return json.loads(Path(path).read_text(encoding="utf-8"))
 
 
 def write_json(path, data):
-    Path(path).parent.mkdir(parents=True, exist_ok=True)
-    Path(path).write_text(json.dumps(data, indent=1, sort_keys=True) + "\n", encoding="utf-8")
+    write_whole(path, (json.dumps(data, indent=1, sort_keys=True) + "\n").encode("utf-8"))
 
 
 def read_rows(path):
@@ -100,11 +144,43 @@ def read_rows(path):
 
 
 def write_rows(path, rows, columns):
-    Path(path).parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "w", newline="", encoding="utf-8") as handle:
-        writer = csv.DictWriter(handle, fieldnames=columns)
-        writer.writeheader()
-        writer.writerows(rows)
+    text = io.StringIO(newline="")
+    writer = csv.DictWriter(text, fieldnames=columns)
+    writer.writeheader()
+    writer.writerows(rows)
+    write_whole(path, text.getvalue().encode("utf-8"))
+
+
+def json_lines(path):
+    """The rows of a JSON-lines log, a line a cut tore off midway passed over: its sample was never
+    finished, so it is not done and is done again."""
+    rows = []
+    path = Path(path)
+    if not path.is_file():
+        return rows
+    for line in path.read_text(encoding="utf-8").splitlines():
+        try:
+            row = json.loads(line)
+        except ValueError:
+            continue
+        if isinstance(row, dict):
+            rows.append(row)
+    return rows
+
+
+def open_log(path):
+    """A JSON-lines log opened to append on a line of its own, so a row a cut tore off midway stays
+    on its own line, which json_lines passes over, and never runs into the next row."""
+    path = Path(path)
+    torn = False
+    if path.is_file() and path.stat().st_size:
+        with open(path, "rb") as handle:
+            handle.seek(-1, os.SEEK_END)
+            torn = handle.read(1) != b"\n"
+    log = open(path, "a", encoding="utf-8")
+    if torn:
+        log.write("\n")
+    return log
 
 
 def write_png(path, array):
@@ -120,8 +196,7 @@ def write_png(path, array):
 
     header = struct.pack(">IIBBBBB", width, height, 8, 0, 0, 0, 0)
     data = b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", header) + chunk(b"IDAT", zlib.compress(raw, 9)) + chunk(b"IEND", b"")
-    Path(path).parent.mkdir(parents=True, exist_ok=True)
-    Path(path).write_bytes(data)
+    write_whole(path, data)
 
 
 def read_png(path):
@@ -195,17 +270,119 @@ def subject_filter(path):
     return found
 
 
-def spread(items, count):
-    """count items taken evenly through a list, the first always among them, so each subject's few poses
-    span the grid instead of crowding one corner of it."""
-    if count <= 0 or count >= len(items):
-        return list(items)
-    return [items[(i * len(items)) // count] for i in range(count)]
-
-
 def subject_of(stem):
-    """The subject a sample's name begins with: <subject>_<pose>[_a<arm>], as FluXray names them."""
+    """The subject a sample's name begins with, <subject>_<pose>, where no index of the samples says
+    it; the run's own sets are read through their index (sample_index), which names it."""
     return stem.split("_")[0]
+
+
+# An edit's name is its sample's and the seed arm's: <sample_id>__a<arm>.
+ARM_MARK = "__a"
+
+
+def edit_name(sample_id, arm):
+    return f"{sample_id}{ARM_MARK}{arm}"
+
+
+def arm_of(stem):
+    """The seed arm an edit's name ends with, or None for an image that is no edit."""
+    head, mark, tail = stem.rpartition(ARM_MARK)
+    return int(tail) if mark and head and tail.isascii() and tail.isdigit() and len(tail) <= 4 else None
+
+
+def sample_of(stem):
+    """The sample an image is of: its name, less the arm where it is an edit."""
+    return stem.rpartition(ARM_MARK)[0] if arm_of(stem) is not None else stem
+
+
+def manifest_rows(render_dir):
+    """The render's manifest, one row per sample, the last written for a sample kept, since a
+    shard run again after a cut appends what it renders again."""
+    return {row["sample_id"]: row for row in json_lines(Path(render_dir) / "manifest.jsonl") if "sample_id" in row}
+
+
+def rendered(render_dir, rows, sample_id):
+    """Whether a sample's render is whole: its manifest row, which is written last, and both of its
+    files, the raw image and the masks."""
+    folder = Path(render_dir)
+    return (sample_id in rows and (folder / "raw" / f"{sample_id}.npy").is_file()
+            and (folder / "masks" / f"{sample_id}.npy").is_file())
+
+
+def clear_render(render_dir, sample_id):
+    """What a cut left of one sample's render, its raw image and masks and their temporary files,
+    removed so the sample is rendered again; no other file is touched."""
+    for folder in ("raw", "masks"):
+        for name in (f"{sample_id}.npy", f"{sample_id}.npy{PART}"):
+            (Path(render_dir) / folder / name).unlink(missing_ok=True)
+
+
+def edit_rows(edit_dir):
+    """The (sample, arm) of every edit the edit's log says it finished; the log's row is written
+    after the edit's file, so a row names an edit that was written whole."""
+    return {(row["sample_id"], int(row["arm"])) for row in json_lines(Path(edit_dir) / "edits.jsonl")
+            if "sample_id" in row and "arm" in row}
+
+
+def clear_edit(edit_dir, name):
+    """What a cut left of one edit, its file, its PNG and their temporary files, removed so it is
+    edited again; no other file is touched."""
+    for folder, suffix in (("edited", ".npy"), ("png", ".png")):
+        for ending in (suffix, suffix + PART):
+            (Path(edit_dir) / folder / f"{name}{ending}").unlink(missing_ok=True)
+
+
+def sample_index(path):
+    """sample_id -> subject_id from a render manifest (a folder holding manifest.jsonl, or the
+    file) or a CSV with those two columns; None where no index is named."""
+    if not path:
+        return None
+    path = Path(path)
+    if path.is_dir() or path.suffix == ".jsonl":
+        rows = manifest_rows(path if path.is_dir() else path.parent)
+        return {sample: row["subject_id"] for sample, row in rows.items()}
+    return {row["sample_id"]: row["subject_id"] for row in read_rows(path)}
+
+
+def subject_in(index, stem):
+    """An image's subject: by the index where one is named, else by its name."""
+    if index is None:
+        return subject_of(sample_of(stem))
+    sample = sample_of(stem)
+    if sample not in index:
+        raise Refused(f"{stem} is of no sample the index names")
+    return index[sample]
+
+
+def file_sha256(path):
+    import hashlib
+
+    with open(path, "rb") as handle:
+        return hashlib.file_digest(handle, "sha256").hexdigest()
+
+
+def volumes_under(root):
+    """Every .nii.gz under a folder by its name less .nii.gz, as the fetch lands ENHANCE.PET's keys
+    (images/CT/<subject>.nii.gz) however deep; a name found twice is refused, since which of the
+    two a render read would be a guess."""
+    found = {}
+    for path in sorted(Path(root).rglob("*.nii.gz")):
+        name = path.name[:-len(".nii.gz")]
+        if name in found:
+            raise Refused(f"{name}.nii.gz is under {root} twice ({found[name]} and {path})")
+        found[name] = path
+    return found
+
+
+def truth_under(root):
+    """ENHANCE.PET's ground truth by (folder, subject), the folder the nearest of TRUTH_FOLDERS
+    above the file, however deep the fetch landed the ground-truth prefix."""
+    found = {}
+    for path in sorted(Path(root).rglob("*.nii.gz")):
+        folder = next((part for part in reversed(path.parent.parts) if part in TRUTH_FOLDERS), None)
+        if folder is not None:
+            found[(folder, path.name[:-len(".nii.gz")])] = path
+    return found
 
 
 # --- the canvas ---------------------------------------------------------------------------------------
@@ -440,77 +617,140 @@ def auc_of(scores, labels):
     return float((ranks[labels == 1].sum() - positives * (positives + 1) / 2.0) / (positives * negatives))
 
 
-def knn_scores(features, labels, groups, k=KNN):
-    """Each sample's share of class-1 neighbours among its k nearest from other groups (leave one
-    subject out), the two-sample classifier the AUC is read from."""
+def nearest_elsewhere(features, subjects, k=KNN):
+    """Each sample's k nearest neighbours among the samples of other subjects. A subject is left out
+    whole, in both sets, since the edit, the raw DRR and FluXray's image of one CT are one person:
+    a neighbour of the same CT in the other set would tell the classifier nothing about the sets."""
     import numpy as np
 
     squared = (features ** 2).sum(axis=1)
     distances = squared[:, None] + squared[None, :] - 2.0 * features @ features.T
-    same = groups[:, None] == groups[None, :]
-    distances[same] = np.inf
-    nearest = np.argsort(distances, axis=1)[:, :k]
-    return labels[nearest].mean(axis=1)
+    distances[subjects[:, None] == subjects[None, :]] = np.inf
+    return np.argsort(distances, axis=1)[:, :k]
 
 
-def c2st(a, b, groups_a, groups_b, seed, bootstraps=BOOTSTRAPS, permutations=PERMUTATIONS):
-    """The classifier two-sample test: the AUC, its bootstrap interval over subjects, and the
-    permutation p-value with subjects permuted whole."""
+def strata(labels, subjects):
+    """How the labels may be shuffled when the two sets are alike: the samples of a subject seen in
+    both sets among themselves, and the subjects seen in one set only whole, among each other."""
+    import numpy as np
+
+    mixed, single = [], []
+    for subject in np.unique(subjects):
+        where = np.flatnonzero(subjects == subject)
+        (mixed if labels[where].min() != labels[where].max() else single).append(where)
+    return mixed, single
+
+
+def sample_strata(labels, samples):
+    """How the labels may be shuffled when the two sets hold the same samples: the images of one
+    sample (an edit's seed arms with FluXray's image of that sample) among themselves, and a sample
+    in one set only keeping its label. Every sample is one CT at one pose, and the observed labels
+    are balanced pose by pose, so a shuffle across a subject's poses would add the anatomy of
+    different views to the null and to no observed statistic, piling its p at 1."""
+    import numpy as np
+
+    mixed = []
+    for sample in np.unique(samples):
+        where = np.flatnonzero(samples == sample)
+        if labels[where].min() != labels[where].max():
+            mixed.append(where)
+    return mixed, []
+
+
+def permutation_strata(labels, subjects, samples=None):
+    """The strata the permutation tests shuffle within, and their name for the record: by sample
+    where the two sets share a sample's name (sample_strata), else by subject (strata), as FluXray's
+    split halves, which share no subject, are shuffled."""
+    if samples is not None:
+        paired = sample_strata(labels, samples)
+        if paired[0]:
+            return paired, "sample"
+    return strata(labels, subjects), "subject"
+
+
+def pooled_names(names_a, names_b):
+    """Two sets' sample names as one array in the order the sets are pooled; None where either set
+    names none."""
+    import numpy as np
+
+    if names_a is None or names_b is None:
+        return None
+    return np.concatenate([np.asarray(names_a, dtype=str), np.asarray(names_b, dtype=str)])
+
+
+def permuted_labels(labels, layers, rng):
+    """One shuffle of the labels within the strata: the permutation test's draw under the null."""
+    mixed, single = layers
+    permuted = labels.copy()
+    for where in mixed:
+        permuted[where] = labels[where][rng.permutation(len(where))]
+    if single:
+        shuffled = [single[i] for i in rng.permutation(len(single))]
+        for where, source in zip(single, shuffled):
+            permuted[where] = labels[source[0]]
+    return permuted
+
+
+def c2st(a, b, groups_a, groups_b, seed, bootstraps=BOOTSTRAPS, permutations=PERMUTATIONS,
+         samples_a=None, samples_b=None):
+    """The classifier two-sample test: the AUC of a k-nearest-neighbour vote with each sample's own
+    subject left out in both sets, its bootstrap interval over subjects, and the permutation
+    p-value with the labels shuffled within the strata (permutation_strata: by sample where the
+    sets name the same samples, else by subject). The neighbours do not depend on the labels, so
+    they are found once and every permutation only votes again."""
     import numpy as np
 
     rng = np.random.default_rng(seed)
     features = np.concatenate([a, b])
     labels = np.concatenate([np.zeros(len(a), dtype=int), np.ones(len(b), dtype=int)])
-    groups = np.concatenate([["a:" + g for g in groups_a], ["b:" + g for g in groups_b]])
-    group_ids = np.unique(groups, return_inverse=True)[1]
-    scores = knn_scores(features, labels, group_ids)
+    subjects = np.concatenate([np.asarray(groups_a, dtype=str), np.asarray(groups_b, dtype=str)])
+    nearest = nearest_elsewhere(features, subjects)
+    scores = labels[nearest].mean(axis=1)
     auc = auc_of(scores, labels)
-    unique = np.unique(group_ids)
-    members = [np.flatnonzero(group_ids == g) for g in unique]
+    members = [np.flatnonzero(subjects == s) for s in np.unique(subjects)]
     draws = []
     for _ in range(bootstraps):
-        chosen = rng.integers(0, len(unique), len(unique))
-        index = np.concatenate([members[c] for c in chosen])
+        index = np.concatenate([members[c] for c in rng.integers(0, len(members), len(members))])
         draws.append(auc_of(scores[index], labels[index]))
     low, high = np.percentile(draws, [2.5, 97.5])
-    group_label = np.array([labels[m[0]] for m in members])
+    layers, by = permutation_strata(labels, subjects, pooled_names(samples_a, samples_b))
     beaten = 0
     for _ in range(permutations):
-        shuffled = group_label[rng.permutation(len(unique))]
-        permuted = np.empty_like(labels)
-        for g, m in enumerate(members):
-            permuted[m] = shuffled[g]
-        beaten += auc_of(knn_scores(features, permuted, group_ids), permuted) >= auc
-    return {"auc": auc, "low": float(low), "high": float(high), "p": (beaten + 1) / (permutations + 1)}
+        permuted = permuted_labels(labels, layers, rng)
+        beaten += auc_of(permuted[nearest].mean(axis=1), permuted) >= auc
+    return {"auc": auc, "low": float(low), "high": float(high), "p": (beaten + 1) / (permutations + 1), "strata": by}
 
 
-def rbf_mmd(a, b, bandwidth):
+def mmd_of_kernel(kernel, labels):
+    """The unbiased squared RBF MMD between the samples labelled 0 and 1, from the kernel of all of
+    them, whose diagonal is 1."""
     import numpy as np
 
-    def kernel(x, y):
-        sq_x, sq_y = (x ** 2).sum(axis=1), (y ** 2).sum(axis=1)
-        return np.exp(-(sq_x[:, None] + sq_y[None, :] - 2.0 * x @ y.T) / (2.0 * bandwidth ** 2))
-
-    kaa, kbb, kab = kernel(a, a), kernel(b, b), kernel(a, b)
-    n, m = len(a), len(b)
-    return float((kaa.sum() - np.trace(kaa)) / (n * (n - 1)) + (kbb.sum() - np.trace(kbb)) / (m * (m - 1)) - 2.0 * kab.mean())
+    x, y = (labels == 0).astype(np.float64), (labels == 1).astype(np.float64)
+    n, m = x.sum(), y.sum()
+    kx, ky = kernel @ x, kernel @ y
+    return float((x @ kx - n) / (n * (n - 1)) + (y @ ky - m) / (m * (m - 1)) - 2.0 * (x @ ky) / (n * m))
 
 
-def mmd_test(a, b, seed, permutations=PERMUTATIONS):
-    """The RBF maximum mean discrepancy at the median-distance bandwidth, with its permutation p-value."""
+def mmd_test(a, b, groups_a, groups_b, seed, permutations=PERMUTATIONS, samples_a=None, samples_b=None):
+    """The RBF maximum mean discrepancy at the median-distance bandwidth, with its permutation
+    p-value, the labels shuffled within the strata as the classifier's are."""
     import numpy as np
 
     rng = np.random.default_rng(seed)
     pooled = np.concatenate([a, b])
+    labels = np.concatenate([np.zeros(len(a), dtype=int), np.ones(len(b), dtype=int)])
+    subjects = np.concatenate([np.asarray(groups_a, dtype=str), np.asarray(groups_b, dtype=str)])
     squared = (pooled ** 2).sum(axis=1)
     distances = np.sqrt(np.maximum(squared[:, None] + squared[None, :] - 2.0 * pooled @ pooled.T, 0.0))
     bandwidth = max(float(np.median(distances[np.triu_indices(len(pooled), 1)])), 1e-6)
-    statistic = rbf_mmd(a, b, bandwidth)
+    kernel = np.exp(-(distances ** 2) / (2.0 * bandwidth ** 2))
+    statistic = mmd_of_kernel(kernel, labels)
+    layers, by = permutation_strata(labels, subjects, pooled_names(samples_a, samples_b))
     beaten = 0
     for _ in range(permutations):
-        order = rng.permutation(len(pooled))
-        beaten += rbf_mmd(pooled[order[:len(a)]], pooled[order[len(a):]], bandwidth) >= statistic
-    return {"mmd2": statistic, "bandwidth": bandwidth, "p": (beaten + 1) / (permutations + 1)}
+        beaten += mmd_of_kernel(kernel, permuted_labels(labels, layers, rng)) >= statistic
+    return {"mmd2": statistic, "bandwidth": bandwidth, "p": (beaten + 1) / (permutations + 1), "strata": by}
 
 
 def frechet(a, b):
@@ -548,17 +788,22 @@ def kid(a, b, seed, subset=KID_SUBSET, repeats=KID_REPEATS):
     return float(np.mean(values))
 
 
-def compare(a, b, groups_a, groups_b, seed):
-    """Every test of one feature space between two sets, standardised together."""
+def compare(a, b, groups_a, groups_b, seed, samples_a=None, samples_b=None):
+    """Every test of one feature space between two sets, standardised together, with the number of
+    principal components the MMD, FD and KID ran on (principal: 64, or fewer where the space has
+    fewer dimensions), since a space of 57 features is read on 57. The keys frechet64 and kid64
+    keep their names for the readers of earlier files; components says what they were read on."""
     za, zb = standardise(a, b)
     pa, pb = principal(za, zb)
-    out = {"n_a": int(len(a)), "n_b": int(len(b)), "c2st": c2st(za, zb, groups_a, groups_b, seed),
-           "mmd": mmd_test(pa, pb, seed), "frechet64": frechet(pa, pb), "kid64": kid(pa, pb, seed)}
-    return out
+    return {"n_a": int(len(a)), "n_b": int(len(b)), "components": int(pa.shape[1]),
+            "c2st": c2st(za, zb, groups_a, groups_b, seed, samples_a=samples_a, samples_b=samples_b),
+            "mmd": mmd_test(pa, pb, groups_a, groups_b, seed, samples_a=samples_a, samples_b=samples_b),
+            "frechet64": frechet(pa, pb), "kid64": kid(pa, pb, seed)}
 
 
 def split_half(features, groups, seed):
-    """One set against itself: its subjects dealt into two halves, the null every comparison is read against."""
+    """One set against itself: its subjects dealt into two halves, the null every comparison is read
+    against. The halves share no subject and so no sample, and their labels move by whole subjects."""
     import numpy as np
 
     rng = np.random.default_rng(seed)
@@ -605,17 +850,19 @@ def summarise_pairs(rows):
 
 # --- stats ---------------------------------------------------------------------------------------------------
 
-def load_set(folder, size, limit=None, only=None):
-    """A folder's images on the canvas, with their stems and subjects, in name order."""
+def load_set(folder, size, limit=None, only=None, index=None):
+    """A folder's images on the canvas, with their stems and subjects, in name order; the subjects
+    by the index of the samples where one is named (sample_index)."""
     import numpy as np
 
     found = images_in(folder)
-    stems = sorted(stem for stem in found if only is None or subject_of(stem) in only)
+    subjects = {stem: subject_in(index, stem) for stem in found}
+    stems = sorted(stem for stem in found if only is None or subjects[stem] in only)
     stems = stems[:limit] if limit else stems
     if len(stems) < 4:
         raise Refused(f"{folder} holds {len(stems)} images; the tests need at least 4")
     images = np.stack([canvas(read_grey(found[stem]), size) for stem in stems])
-    return stems, [subject_of(stem) for stem in stems], images
+    return stems, [subjects[stem] for stem in stems], images
 
 
 def feature_spaces(args, sets):
@@ -651,81 +898,341 @@ def worst(verdicts):
     return max(verdicts, key=lambda word: order[word]) if verdicts else "undecided"
 
 
+def arm_comparisons(matrices, stems_a, groups_a, groups_b, seed, samples_b=None):
+    """Where set a holds edits in several seed arms: each arm alone against set b, and the first two
+    arms against each other, the second null, which says how far the edit's own noise moves a set.
+    Both are paired by sample, as the pooled comparison is."""
+    import numpy as np
+
+    arms = sorted({arm_of(stem) for stem in stems_a} - {None})
+    if len(arms) < 2:
+        return None, None
+    samples_a = np.array([sample_of(stem) for stem in stems_a], dtype=str)
+    masks = {arm: np.array([arm_of(stem) == arm for stem in stems_a]) for arm in arms}
+    each = {f"a{arm}": compare(matrices["a"][mask], matrices["b"], groups_a[mask], groups_b, seed, samples_a[mask], samples_b)
+            for arm, mask in masks.items()}
+    first, second = masks[arms[0]], masks[arms[1]]
+    null = compare(matrices["a"][first], matrices["a"][second], groups_a[first], groups_a[second], seed,
+                   samples_a[first], samples_a[second])
+    return each, null
+
+
+def paired_with(sets):
+    """Set a's images paired with set b's of the same sample, an edit's arm set aside, as PSNR, SSIM
+    and shift; None where no sample is in both."""
+    stems_b = {stem: i for i, stem in enumerate(sets["b"][0])}
+    pairs = [(i, stems_b[sample_of(stem)]) for i, stem in enumerate(sets["a"][0]) if sample_of(stem) in stems_b]
+    if not pairs:
+        return None
+    return summarise_pairs(paired_metrics([sets["a"][2][i] for i, _ in pairs], [sets["b"][2][j] for _, j in pairs]))
+
+
 def run_stats(args):
     import numpy as np
 
+    index = sample_index(args.index)
     only = subject_filter(args.only)
-    sets = {"a": load_set(args.a, args.size, args.limit, only), "b": load_set(args.b, args.size, args.limit, only)}
-    if args.real:
-        sets["real"] = load_set(args.real, args.size, args.limit, only)
+    sets = {"a": load_set(args.a, args.size, args.limit, only, index), "b": load_set(args.b, args.size, args.limit, only, index)}
     spaces = feature_spaces(args, sets)
+    absent = [name for name in args.require_spaces.split(",") if name and name not in spaces]
+    if absent:
+        raise Refused(f"the spaces {', '.join(absent)} were asked for and could not be read (their weights not named)")
     report = {"size": args.size, "seed": args.seed, "sets": {name: {"n": len(stems), "subjects": len(set(groups))}
-                                                           for name, (stems, groups, _) in sets.items()}, "spaces": {}}
+                                                           for name, (stems, groups, _) in sets.items()},
+              "spaces": {}}
     groups_a, groups_b = np.array(sets["a"][1]), np.array(sets["b"][1])
+    samples_a, samples_b = (np.array([sample_of(stem) for stem in sets[name][0]], dtype=str) for name in ("a", "b"))
     for space, matrices in spaces.items():
-        entry = {"a_vs_b": compare(matrices["a"], matrices["b"], groups_a, groups_b, args.seed),
+        entry = {"a_vs_b": compare(matrices["a"], matrices["b"], groups_a, groups_b, args.seed, samples_a, samples_b),
                  "b_split_half": split_half(matrices["b"], groups_b, args.seed)}
-        if "real" in matrices:
-            groups_r = np.array(sets["real"][1])
-            entry["a_vs_real"] = compare(matrices["a"], matrices["real"], groups_a, groups_r, args.seed)
-            entry["b_vs_real"] = compare(matrices["b"], matrices["real"], groups_b, groups_r, args.seed)
-            entry["real_split_half"] = split_half(matrices["real"], groups_r, args.seed)
+        each, null = arm_comparisons(matrices, sets["a"][0], groups_a, groups_b, args.seed, samples_b)
+        if each:
+            entry["arms"], entry["arm_null"] = each, null
         report["spaces"][space] = entry
+    report["rules"] = stats_rules(report["spaces"])
     report["verdict"] = worst(judge_spaces(report["spaces"]))
-    shared = sorted(set(sets["a"][0]) & set(sets["b"][0]))
-    if shared:
-        index_a = {s: i for i, s in enumerate(sets["a"][0])}
-        index_b = {s: i for i, s in enumerate(sets["b"][0])}
-        report["paired"] = summarise_pairs(paired_metrics([sets["a"][2][index_a[s]] for s in shared],
-                                                          [sets["b"][2][index_b[s]] for s in shared]))
+    report["paired"] = paired_with(sets)
     write_json(Path(args.out) / "stats.json", report)
     (Path(args.out) / "stats.md").write_text(stats_markdown(report), encoding="utf-8")
     print(stats_markdown(report))
 
 
+# How the tests treat subjects, written into every stats.json so the report quotes the run's own
+# file for it (PREREG.md, section 3).
+COMPONENTS_RULE = (f"k principal components ({PCA_COMPONENTS}, or fewer where the space's dimension or the pooled "
+                   "images are fewer)")
+STATS_RULES = {
+    "neighbours": f"{KNN} nearest neighbours, every image of the sample's own subject left out in both sets",
+    "auc_interval": f"{BOOTSTRAPS}-draw bootstrap over subjects, 95 percent",
+    "permutation": f"{PERMUTATIONS} permutations; where the two sets hold the same samples (the kept edits or the raw "
+                   "renders against FluXray, one seed arm against the other), labels shuffled only among the images of "
+                   "each sample, a sample in one set only keeping its label; where they share none (FluXray's split "
+                   "halves), whole subjects moved among each other; each test records its strata",
+    "mmd": f"unbiased, Gaussian kernel at the median distance, on {COMPONENTS_RULE}, p from the same permutations",
+    "distances": f"FD and KID on {COMPONENTS_RULE}, KID over {KID_REPEATS} subsets of {KID_SUBSET}",
+    "multiplicity": "Benjamini-Hochberg over the spaces, for the pooled comparison and for each seed arm",
+    "nulls": "the second set's subjects split in halves; the first two seed arms against each other",
+}
+
+
+def components_used(spaces):
+    """Each space's k as its pooled comparison recorded it, in words: physics 57, flexray 64."""
+    return ", ".join(f"{name} {entry['a_vs_b']['components']}" for name, entry in spaces.items())
+
+
+def strata_used(spaces):
+    """What the permutations shuffled within, comparison by comparison, as the tests recorded it."""
+    entry = next(iter(spaces.values()), {})
+    comparisons = (("a_vs_b", "a against b and each arm" if entry.get("arms") else "a against b"),
+                   ("b_split_half", "b's split halves"), ("arm_null", "the arm null"))
+    said = [f"{(entry[key].get('c2st') or {}).get('strata', 'subject')} for {words}"
+            for key, words in comparisons if entry.get(key)]
+    return ", ".join(said) or "nothing"
+
+
+def stats_rules(spaces):
+    """STATS_RULES as a run writes them, the k of each space said from the number its comparison
+    recorded, so the record never says 64 of a space read on fewer."""
+    rules = dict(STATS_RULES)
+    used = components_used(spaces)
+    for key in ("mmd", "distances"):
+        rules[key] = f"{rules[key]}; k here: {used}"
+    return rules
+
+
+def word_of(entry, q, reference_high):
+    """One comparison's word from its classifier interval and its MMD q (schwingnet.realism.verdict)."""
+    entry["mmd"]["q"] = round(q, 4)
+    c = entry["c2st"]
+    entry["verdict"] = realism.verdict(c["low"], c["high"], q, reference_high)
+    return entry["verdict"]
+
+
 def judge_spaces(spaces):
-    """Each space's verdict, MMD read at its Benjamini-Hochberg q over the spaces; written into the entries."""
+    """Each space's verdict, MMD read at its Benjamini-Hochberg q over the spaces, written into the
+    entries. Where the edits come in seed arms, each arm alone is judged too, with its own q over the
+    spaces, and a space whose arms disagree is undecided (schwingnet.realism.arm_verdict), as is
+    one whose split-half null or arm null is itself separable (schwingnet.realism.through_nulls)."""
     names = list(spaces)
     qs = benjamini_hochberg([spaces[name]["a_vs_b"]["mmd"]["p"] for name in names])
+    arm_keys = sorted(spaces[names[0]].get("arms", {})) if names else []
+    arm_qs = {key: benjamini_hochberg([spaces[name]["arms"][key]["mmd"]["p"] for name in names]) for key in arm_keys}
     words = []
-    for name, q in zip(names, qs):
+    for position, (name, q) in enumerate(zip(names, qs)):
         entry = spaces[name]
-        entry["a_vs_b"]["mmd"]["q"] = round(q, 4)
         null = entry["b_split_half"]
         reference_high = null["c2st"]["high"] if null else realism.CHANCE_AUC
-        c = entry["a_vs_b"]["c2st"]
-        entry["verdict"] = realism.verdict(c["low"], c["high"], q, reference_high)
+        pooled = word_of(entry["a_vs_b"], q, reference_high)
+        per_arm = [word_of(entry["arms"][key], arm_qs[key][position], reference_high) for key in arm_keys]
+        null_lows = [n["c2st"]["low"] for n in (null, entry.get("arm_null")) if n]
+        entry["nulls_separable"] = any(low > realism.INDISTINGUISHABLE_AUC for low in null_lows)
+        entry["verdict"] = realism.through_nulls(realism.arm_verdict(pooled, per_arm), null_lows)
         words.append(entry["verdict"])
     return words
 
 
 def stats_markdown(report):
     lines = [f"## realism stats at {report['size']} px: {report['verdict']}", ""]
-    lines.append("| space | AUC (95% interval) | null AUC high | MMD p | MMD q | FD64 | KID64 | verdict |")
-    lines.append("| --- | --- | --- | --- | --- | --- | --- | --- |")
+    lines.append("| space | AUC (95% interval) | null AUC high | MMD p | MMD q | k | FD | KID | arms | arm null AUC | verdict |")
+    lines.append("| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |")
     for space, entry in report["spaces"].items():
         c, m = entry["a_vs_b"]["c2st"], entry["a_vs_b"]["mmd"]
         null = entry["b_split_half"]["c2st"]["high"] if entry["b_split_half"] else float("nan")
+        arms = ", ".join(f"{key} {value['verdict']}" for key, value in sorted(entry.get("arms", {}).items())) or "-"
+        arm_null = f"{entry['arm_null']['c2st']['auc']:.3f}" if entry.get("arm_null") else "-"
         lines.append(f"| {space} | {c['auc']:.3f} ({c['low']:.3f} to {c['high']:.3f}) | {null:.3f} | {m['p']:.3f} | "
-                     f"{m.get('q', m['p']):.3f} | {entry['a_vs_b']['frechet64']:.3f} | "
-                     f"{entry['a_vs_b']['kid64']:.4f} | {entry['verdict']} |")
+                     f"{m.get('q', m['p']):.3f} | {entry['a_vs_b']['components']} | {entry['a_vs_b']['frechet64']:.3f} | "
+                     f"{entry['a_vs_b']['kid64']:.4f} | {arms} | {arm_null} | {entry['verdict']}"
+                     f"{' (a null is separable)' if entry.get('nulls_separable') else ''} |")
+    lines += ["", f"The MMD, FD and KID on {COMPONENTS_RULE}: {components_used(report['spaces'])}; the permutations "
+              f"shuffle by {strata_used(report['spaces'])}."]
     if report.get("paired"):
         p = report["paired"]
-        lines += ["", f"paired ({p['pairs']} names in both): PSNR median {p['psnr_median']:.2f} dB, SSIM median "
+        lines += ["", f"paired ({p['pairs']} images of a sample in both): PSNR median {p['psnr_median']:.2f} dB, SSIM median "
                   f"{p['ssim_median']:.3f}, shift median {p['shift_px_median']:.1f} px, p90 {p['shift_px_p90']:.1f} px"]
     sets = ", ".join(f"{name} {v['n']} images of {v['subjects']} subjects" for name, v in report["sets"].items())
     lines += ["", f"sets: {sets}; seed {report['seed']}", ""]
     return "\n".join(lines)
 
 
-# --- poses, render, edit, filter, export -------------------------------------------------------------------------
+# --- inputs, poses, the draw, render, edit, filter, export ---------------------------------------------------------
+
+def folder_files(folder):
+    """A folder's files with their bytes and sha256, read once at the start of a run, so the record
+    names the weights and the data the run read and not only where they lay."""
+    folder = Path(folder)
+    return [{"path": str(path.relative_to(folder)), "bytes": path.stat().st_size, "sha256": file_sha256(path)}
+            for path in sorted(folder.rglob("*")) if path.is_file()]
+
+
+def folder_digest(files):
+    """One sha256 over a folder's files, each by its path and its own sha256."""
+    import hashlib
+
+    lines = "".join(f"{f['path']}\t{f['sha256']}\n" for f in files)
+    return hashlib.sha256(lines.encode("utf-8")).hexdigest()
+
+
+def thunder_ids(db_root):
+    """Every FluXray sample in its ThunderDB with its subject and split, by FleXray's own reader of
+    each split (the reader the DRR study read FluXray through, tools/domain_gap.py)."""
+    from fxr.datasets._thunderdb import open_thunderdb
+    from fxr.datasets.storage import SplitThunderDBStorageBackend
+
+    found = {}
+    db = open_thunderdb(db_root)
+    for split in sorted(db["_splits"].keys()):
+        backend = None
+        for grouping in ("subject", "sample"):
+            try:
+                backend = SplitThunderDBStorageBackend(db, dataset_name="FluXray", modality="xray", split=split,
+                                                       label_key=None, affine_key=None, spacing_key=None,
+                                                       subject_grouping=grouping, lazy_payload_refs=True, owns_database=False)
+                break
+            except (KeyError, ValueError, TypeError):
+                continue
+        if backend is None:
+            raise Refused(f"FleXray's reader could not open split {split} of the FluXray ThunderDB {db_root}")
+        for record in backend.records:
+            found[record.data_id] = {"subject_id": record.subject_id or "", "split": split, "backend": backend,
+                                     "record": record}
+    return found
+
+
+def eligible_subjects(sample_rows, volumes, truth):
+    """The subjects FluXray holds whose CT and vertebra truth both landed, which the draw is made from."""
+    return sorted({row["subject_id"] for row in sample_rows
+                   if row["subject_id"] in volumes and ("Vertebrae", row["subject_id"]) in truth})
+
+
+# The columns of FluXray's samples.csv that poses_from_samples reads a sample's pose from.
+POSE_COLUMNS = ("sample_id", "subject_id", "pose_id", "y", "z", "alpha_deg")
+
+
+def subjects_with_poses(sample_rows, per_subject):
+    """The subjects with at least per_subject distinct samples at a pose on the paper's grid, by
+    poses_from_samples' rule, which the draw takes its poses from (drawn_samples); a sample
+    samples.csv names twice counts once, as the draw counts it."""
+    named = {(sample["subject_id"], sample["sample_id"]) for sample in poses_from_samples(sample_rows)["samples"]}
+    counts = Counter(subject for subject, _ in named)
+    return {subject for subject, count in counts.items() if count >= per_subject}
+
+
+def eligible_for_draw(sample_rows, volumes, truth, per_subject):
+    """The subjects the draw may take, as PREREG.md section 2 and the draw read eligibility: the
+    plan's poses per subject among its samples in the ThunderDB at the paper's grid, and a landed CT
+    and vertebra truth, so the count refused before any GPU work is the count the split draws from."""
+    posed = subjects_with_poses(sample_rows, per_subject)
+    return eligible_subjects([row for row in sample_rows if row["subject_id"] in posed], volumes, truth)
+
+
+def environment_record():
+    """The versions the run's python holds, each pinned package against its pin, torch and the GPU."""
+    from importlib import metadata
+
+    found, wrong = {}, []
+    for pin in realism.PINS:
+        name, _, wanted = pin.partition("==")
+        try:
+            found[name] = metadata.version(name)
+        except metadata.PackageNotFoundError:
+            found[name] = "absent"
+        if found[name] != wanted:
+            wrong.append(f"{name} {found[name]}, pinned {wanted}")
+    try:
+        import torch
+
+        found["torch"] = torch.__version__
+        found["cuda"] = torch.version.cuda or "none"
+        found["gpu"] = torch.cuda.get_device_name(0) if torch.cuda.is_available() else "none"
+    except ImportError:
+        found["torch"] = "absent"
+    return found, wrong
+
+
+def pinned_environment(no_pins):
+    """environment_record, refused where a pin differs unless no_pins asks for the difference to be
+    recorded instead (a test, never a run of the count)."""
+    environment, wrong = environment_record()
+    if wrong and not no_pins:
+        raise Refused("the environment differs from the frozen pins: " + "; ".join(wrong))
+    return environment, wrong
+
+
+def require_weights(bundle, imagenet):
+    """The FleXray bundle (its ensemble.json) and the ResNet-18 weights, refused where either is missing."""
+    for path in (Path(bundle) / "ensemble.json", Path(imagenet)):
+        if not path.is_file():
+            raise Refused(f"no {path}")
+
+
+def run_inputs(args):
+    """Every input checked before a GPU second is spent, and recorded: the pins, the klein the recipe
+    names and no other, FluXray's samples against its ThunderDB, the CTs and truth that landed, the
+    FleXray bundle and the ImageNet weights, each with its sha256."""
+    environment, wrong = pinned_environment(args.no_pins)
+    model = realism.FLUXRAY.model
+    if not (Path(args.klein) / "model_index.json").is_file():
+        raise Refused(f"no model_index.json in {args.klein}: the recipe's {model} has not landed, and no other klein stands in")
+    rows = read_rows(args.samples)
+    ids = thunder_ids(args.db)
+    unknown = [row["sample_id"] for row in rows if row["sample_id"] not in ids]
+    if len(unknown) == len(rows):
+        raise Refused(f"no sample of samples.csv is in the ThunderDB (samples.csv names {rows[0]['sample_id'] if rows else 'nothing'}, "
+                      f"the ThunderDB {next(iter(ids), 'nothing')}), so FluXray's image of a drawn sample could not be read")
+    absent = [column for column in POSE_COLUMNS if column not in rows[0]]
+    if absent:
+        raise Refused(f"samples.csv has no column {', '.join(absent)}, so no sample's pose can be checked against the paper's grid")
+    moved = [row["sample_id"] for row in rows if row["sample_id"] in ids and ids[row["sample_id"]]["subject_id"] not in ("", row["subject_id"])]
+    if moved:
+        raise Refused(f"{len(moved)} samples have another subject in the ThunderDB than in samples.csv, {moved[0]} among them")
+    volumes, truth = volumes_under(args.ct), truth_under(args.truth)
+    plan = realism.REPLICATION
+    eligible = eligible_for_draw([row for row in rows if row["sample_id"] in ids], volumes, truth, plan.poses_per_subject)
+    if len(eligible) < plan.subjects:
+        raise Refused(f"{len(eligible)} FluXray subjects have {plan.poses_per_subject} samples in the ThunderDB at the paper's "
+                      f"poses and a landed CT and vertebra truth, fewer than the {plan.subjects} the plan draws (FluXray names "
+                      f"{rows[0]['subject_id']}, the CTs {next(iter(volumes), 'none')})")
+    require_weights(args.bundle, args.imagenet)
+    klein, bundle, thunder = folder_files(args.klein), folder_files(args.bundle), folder_files(args.db)
+    record = {"model": model, "klein": str(args.klein), "klein_sha256": folder_digest(klein), "klein_files": klein,
+              "bundle": str(args.bundle), "bundle_sha256": folder_digest(bundle), "db_sha256": folder_digest(thunder),
+              "imagenet": str(args.imagenet), "imagenet_sha256": file_sha256(args.imagenet),
+              "samples": str(args.samples), "samples_sha256": file_sha256(args.samples), "db": str(args.db),
+              "samples_rows": len(rows), "samples_not_in_db": len(unknown), "not_in_db": sorted(unknown),
+              "ct": str(args.ct), "truth": str(args.truth),
+              "eligible": eligible, "environment": environment, "pins_differ": wrong}
+    write_json(args.out, record)
+    print(f"inputs: {model} ({len(klein)} files), {len(rows)} FluXray samples ({len(unknown)} not in the ThunderDB), "
+          f"{len(eligible)} subjects with {plan.poses_per_subject} poses on the grid, CT and truth; "
+          f"environment as pinned: {'no' if wrong else 'yes'}")
+
+
+def run_environment(args):
+    """The stats stage's own record of what it runs with, as inputs records the edit's: the pinned
+    packages, torch and the GPU of this job, and the FleXray bundle and ResNet-18 weights its
+    feature spaces read, each by its sha256."""
+    environment, wrong = pinned_environment(args.no_pins)
+    require_weights(args.bundle, args.imagenet)
+    record = {"environment": environment, "pins_differ": wrong,
+              "bundle": str(args.bundle), "bundle_sha256": folder_digest(folder_files(args.bundle)),
+              "imagenet": str(args.imagenet), "imagenet_sha256": file_sha256(args.imagenet)}
+    write_json(args.out, record)
+    print(f"environment as pinned: {'no' if wrong else 'yes'}; GPU {environment.get('gpu', 'none')}; FleXray bundle "
+          f"{record['bundle_sha256'][:16]}, ResNet-18 {record['imagenet_sha256'][:16]}")
+
 
 def split_subjects(subjects, limit, seed, train_fraction=TRAIN_FRACTION):
-    """The subjects taken, up to a limit in sorted order, and dealt by seed into a training and an
-    evaluation split by subject, never by image, so no person is on both sides of the LoRA."""
+    """The subjects drawn, limit of them by the seed (schwingnet.realism.draw, so neither the order of
+    the names nor which others landed decides who is in), in the order drawn, and dealt by the same
+    seed into a training and an evaluation split by subject, never by image, so no person is on both
+    sides of the LoRA."""
     import numpy as np
 
-    taken = sorted(subjects)[:limit] if limit else sorted(subjects)
+    if limit and len(set(subjects)) < limit:
+        raise Refused(f"{len(set(subjects))} eligible subjects, fewer than the {limit} the draw takes: the frozen sample is "
+                      "drawn whole or not at all")
+    taken = realism.draw(sorted(subjects), limit, seed, "subject") if limit else sorted(subjects)
     if len(taken) < 2:
         raise Refused(f"{len(taken)} subject(s); a split needs at least 2")
     order = list(np.random.default_rng(seed).permutation(len(taken)))
@@ -734,40 +1241,55 @@ def split_subjects(subjects, limit, seed, train_fraction=TRAIN_FRACTION):
     return taken, train, sorted(set(taken) - set(train))
 
 
+def shards_of(taken, size):
+    """The drawn subjects in runs of size, in the order drawn: the flow's foreach, one GPU task each."""
+    return [taken[i:i + size] for i in range(0, len(taken), size)]
+
+
 def run_split(args):
-    taken, train, evaluation = split_subjects(read_json(args.poses)["subjects"], args.limit, args.seed, args.train_fraction)
+    subjects = read_json(args.poses)["subjects"]
+    if args.eligible:
+        allowed = set(read_json(args.eligible)["eligible"])
+        subjects = [s for s in subjects if s in allowed]
+    taken, train, evaluation = split_subjects(subjects, args.limit, args.seed, args.train_fraction)
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     for name, rows in (("all", taken), ("train", train), ("eval", evaluation)):
         (out / f"{name}.txt").write_text("".join(f"{s}\n" for s in rows), encoding="utf-8")
-    write_json(out / "split.json", {"seed": args.seed, "train_fraction": args.train_fraction, "all": len(taken),
-                                    "train": len(train), "eval": len(evaluation)})
-    print(f"{len(taken)} subjects: {len(train)} train, {len(evaluation)} eval (seed {args.seed})")
+    shards = shards_of(taken, args.shard_size) if args.shard_size else []
+    for number, shard in enumerate(shards):
+        (out / "shards").mkdir(exist_ok=True)
+        (out / "shards" / f"{number:03d}.txt").write_text("".join(f"{s}\n" for s in shard), encoding="utf-8")
+    write_json(out / "split.json", {"seed": args.seed, "train_fraction": args.train_fraction, "from": len(subjects),
+                                    "all": len(taken), "train": len(train), "eval": len(evaluation), "shards": len(shards)})
+    print(f"{len(taken)} of {len(subjects)} subjects drawn (seed {args.seed}): {len(train)} train, {len(evaluation)} eval, "
+          f"{len(shards)} shards")
 
 
 def run_poses(args):
-    found = poses_from_samples(read_rows(args.samples))
+    rows = read_rows(args.samples)
+    absent = set(read_json(args.inputs)["not_in_db"]) if args.inputs else set()
+    found = poses_from_samples([row for row in rows if row["sample_id"] not in absent])
+    found["not_in_db"] = sum(row["sample_id"] in absent for row in rows)
     write_json(args.out, found)
     print(f"{len(found['samples'])} samples of {len(found['subjects'])} subjects at the paper's poses; "
-          f"{len(found['mismatches'])} rows at other poses left out")
+          f"{len(found['mismatches'])} rows at other poses and {found['not_in_db']} not in the ThunderDB left out")
 
 
-def load_subject(ct_dir, truth_dir, subject, mapping):
-    """One ENHANCE.PET study: the clamped CT, its affine and FleXray's dense labels."""
+def load_subject(ct_path, truth_paths, mapping):
+    """One ENHANCE.PET study: the clamped CT, its affine and FleXray's dense labels from the truth
+    files by folder."""
     import nibabel
     import numpy as np
 
-    image = nibabel.load(str(Path(ct_dir) / f"{subject}.nii.gz"))
+    image = nibabel.load(str(ct_path))
     volume = np.asarray(image.dataobj, dtype=np.float32)
     while volume.ndim > 3 and volume.shape[-1] == 1:
         volume = volume[..., 0]
     np.clip(volume, HU_LOW, HU_HIGH, out=volume)
     volume[volume <= AIR_CLAMP_HU] = HU_LOW
     dense = np.zeros(volume.shape, dtype=np.uint8)
-    for folder in TRUTH_FOLDERS:
-        path = Path(truth_dir) / folder / f"{subject}.nii.gz"
-        if not path.exists():
-            continue
+    for folder, path in truth_paths.items():
         labels = np.asarray(nibabel.load(str(path)).dataobj).astype(np.int32)
         if labels.shape != volume.shape:
             raise Refused(f"{path.name} in {folder} is {labels.shape}, the CT {volume.shape}")
@@ -806,6 +1328,24 @@ def render_one(volume, affine, dense, pose, recipe, targets, channels, device):
     return image.astype(np.float16), masks
 
 
+def drawn_samples(poses, subjects, per_subject, seed):
+    """Each subject's samples, per_subject of them drawn by the seed among the subject's recorded
+    poses (schwingnet.realism.draw), so the poses rendered span the grid across subjects rather than
+    the same few positions in every subject's list."""
+    by_subject = {}
+    for sample in poses["samples"]:
+        by_subject.setdefault(sample["subject_id"], {})[sample["sample_id"]] = sample
+    chosen = {}
+    for subject in subjects:
+        rows = by_subject.get(subject, {})
+        if per_subject and len(rows) < per_subject:
+            raise Refused(f"{subject} was drawn with {len(rows)} samples at the paper's poses, fewer than the {per_subject} "
+                          "the plan draws of each subject")
+        names = realism.draw(sorted(rows), per_subject, seed, f"pose|{subject}") if per_subject else sorted(rows)
+        chosen[subject] = [rows[name] for name in names]
+    return chosen
+
+
 def run_render(args):
     import numpy as np
     import yaml
@@ -831,30 +1371,46 @@ def run_render(args):
     only = subject_filter(args.only)
     subjects = [s for s in poses["subjects"] if only is None or s in only]
     subjects = subjects[:args.limit] if args.limit else subjects
-    by_subject = {}
-    for sample in sorted(poses["samples"], key=lambda r: (r["subject_id"], r["pose_id"])):
-        by_subject.setdefault(sample["subject_id"], []).append(sample)
-    by_subject = {subject: spread(rows, args.per_subject) for subject, rows in by_subject.items()}
+    chosen = drawn_samples(poses, subjects, args.per_subject, args.draw_seed)
+    volumes, truth = volumes_under(args.ct), truth_under(args.truth)
+    done = manifest_rows(out)
     rows, started = [], time.time()
-    with open(out / "manifest.jsonl", "a", encoding="utf-8") as manifest:
+    with open_log(out / "manifest.jsonl") as manifest:
         for subject in subjects:
-            try:
-                volume, affine, dense = load_subject(args.ct, args.truth, subject, mapping)
-            except (OSError, Refused) as error:
-                print(f"{subject}: passed over ({type(error).__name__}: {error})")
+            todo = renders_to_do(out, done, chosen[subject])
+            if not todo:
                 continue
-            for sample in by_subject.get(subject, []):
-                if (out / "raw" / f"{sample['sample_id']}.npy").exists():
-                    continue
+            if subject not in volumes or ("Vertebrae", subject) not in truth:
+                raise Refused(f"{subject} was drawn but its CT or vertebra truth is not under the data root")
+            truth_paths = {folder: truth[(folder, subject)] for folder in TRUTH_FOLDERS if (folder, subject) in truth}
+            volume, affine, dense = load_subject(volumes[subject], truth_paths, mapping)
+            digests = {"ct_sha256": file_sha256(volumes[subject]),
+                       "truth_sha256": {folder: file_sha256(path) for folder, path in truth_paths.items()}}
+            for sample in todo:
                 tick = time.time()
                 image, masks = render_one(volume, affine, dense, (sample["y"], sample["z"], sample["alpha"]), recipe, targets,
                                           len(label_names), args.device)
-                np.save(out / "raw" / f"{sample['sample_id']}.npy", image)
-                np.save(out / "masks" / f"{sample['sample_id']}.npy", np.packbits(masks, axis=-1))
-                row = dict(sample, pixels=args.pixels, seconds=round(time.time() - tick, 3))
-                manifest.write(json.dumps(row) + "\n")
+                row = dict(sample, pixels=args.pixels, seconds=round(time.time() - tick, 3), **digests)
+                write_render(out, manifest, row, image, np.packbits(masks, axis=-1))
                 rows.append(row)
     print(f"rendered {len(rows)} views of {len(subjects)} subjects in {time.time() - started:.0f} s to {out}")
+
+
+def renders_to_do(out, done, samples):
+    """The samples whose render is not whole (rendered), what a cut left of each removed first."""
+    todo = [sample for sample in samples if not rendered(out, done, sample["sample_id"])]
+    for sample in todo:
+        clear_render(out, sample["sample_id"])
+    return todo
+
+
+def write_render(out, manifest, row, image, packed_masks):
+    """One sample's render on disk in the order a resume reads it by: the masks, then the raw image,
+    each written whole, then the manifest row, so a row names only a render whose files are whole."""
+    save_npy(out / "masks" / f"{row['sample_id']}.npy", packed_masks)
+    save_npy(out / "raw" / f"{row['sample_id']}.npy", image)
+    manifest.write(json.dumps(row, sort_keys=True) + "\n")
+    manifest.flush()
 
 
 def run_edit(args):
@@ -867,38 +1423,60 @@ def run_edit(args):
     problems = realism.recipe_problems(recipe)
     if problems:
         raise Refused("; ".join(problems))
-    dtype = {"bfloat16": torch.bfloat16, "float16": torch.float16, "float32": torch.float32}[recipe.dtype]
-    pipe = Flux2KleinPipeline.from_pretrained(args.weights, torch_dtype=dtype).to(args.device)
-    if args.lora:
-        pipe.load_lora_weights(args.lora)
+    samples = manifest_rows(args.raw)
     found = images_in(Path(args.raw) / "raw")
     only = subject_filter(args.only)
-    stems = sorted(stem for stem in found if only is None or subject_of(stem) in only)
+    stems = sorted(stem for stem in found if rendered(args.raw, samples, stem)
+                   and (only is None or samples[stem]["subject_id"] in only))
     stems = stems[:args.limit] if args.limit else stems
     out = Path(args.out)
     (out / "edited").mkdir(parents=True, exist_ok=True)
     write_json(out / "recipe.json", dict(realism.as_record(recipe), weights=str(args.weights), arms=args.arms))
-    with open(out / "edits.jsonl", "a", encoding="utf-8") as log:
-        for stem in stems:
+    todo = edits_to_do(out, stems, args.arms)
+    if not todo:
+        print(f"edited 0 raw DRRs: all {len(stems)} were edited in {args.arms} arm(s) before")
+        return
+    dtype = {"bfloat16": torch.bfloat16, "float16": torch.float16, "float32": torch.float32}[recipe.dtype]
+    pipe = Flux2KleinPipeline.from_pretrained(args.weights, torch_dtype=dtype).to(args.device)
+    if args.lora:
+        pipe.load_lora_weights(args.lora)
+    with open_log(out / "edits.jsonl") as log:
+        for stem, arm in todo:
             raw = read_grey(found[stem])
-            for arm in range(args.arms):
-                name = f"{stem}_a{arm}"
-                if (out / "edited" / f"{name}.npy").exists():
-                    continue
-                pose_id = int(stem.split("_")[1]) if stem.count("_") >= 1 and stem.split("_")[1].isdigit() else 0
-                seed = realism.seed_for(subject_of(stem), pose_id % 90, arm)
-                tick = time.time()
-                picture = Image.fromarray(np.clip(np.rint(raw * 255), 0, 255).astype(np.uint8)).convert("RGB")
-                result = pipe(image=picture, prompt=recipe.prompt, height=raw.shape[0], width=raw.shape[1],
-                              num_inference_steps=recipe.steps, guidance_scale=recipe.guidance,
-                              generator=torch.Generator(args.device).manual_seed(seed)).images[0]
-                edited = np.asarray(result.convert("L"), dtype=np.float32) / 255.0
-                edited[raw < recipe.foreground_floor] = 0.0
-                np.save(out / "edited" / f"{name}.npy", edited.astype(np.float16))
-                if args.png:
-                    write_png(out / "png" / f"{name}.png", edited)
-                log.write(json.dumps({"sample_id": stem, "arm": arm, "seed": seed, "seconds": round(time.time() - tick, 3)}) + "\n")
-    print(f"edited {len(stems)} raw DRRs, {args.arms} arm(s) each, to {out}")
+            sample = samples[stem]
+            seed = realism.seed_for(sample["subject_id"], int(sample["grid_pose"]), arm)
+            tick = time.time()
+            picture = Image.fromarray(np.clip(np.rint(raw * 255), 0, 255).astype(np.uint8)).convert("RGB")
+            result = pipe(image=picture, prompt=recipe.prompt, height=raw.shape[0], width=raw.shape[1],
+                          num_inference_steps=recipe.steps, guidance_scale=recipe.guidance,
+                          generator=torch.Generator(args.device).manual_seed(seed)).images[0]
+            edited = np.asarray(result.convert("L"), dtype=np.float32) / 255.0
+            edited[raw < recipe.foreground_floor] = 0.0
+            row = {"sample_id": stem, "arm": arm, "seed": seed, "seconds": round(time.time() - tick, 3)}
+            write_edit(out, log, row, edited, args.png)
+    print(f"edited {len(todo)} views ({len(stems)} raw DRRs, {args.arms} arm(s) each) to {out}")
+
+
+def edits_to_do(out, stems, arms):
+    """The (sample, arm) pairs whose edit is not done, its row in edits.jsonl and its file both
+    there, what a cut left of each removed first."""
+    done = edit_rows(out)
+    todo = [(stem, arm) for stem in stems for arm in range(arms)
+            if not ((stem, arm) in done and (Path(out) / "edited" / f"{edit_name(stem, arm)}.npy").is_file())]
+    for stem, arm in todo:
+        clear_edit(out, edit_name(stem, arm))
+    return todo
+
+
+def write_edit(out, log, row, edited, png):
+    """One edit on disk in the order a resume reads it by: its file, and its PNG where asked, each
+    written whole, then its row in edits.jsonl, so a row names only an edit whose file is whole."""
+    name = edit_name(row["sample_id"], row["arm"])
+    save_npy(Path(out) / "edited" / f"{name}.npy", edited.astype("float16"))
+    if png:
+        write_png(Path(out) / "png" / f"{name}.png", edited)
+    log.write(json.dumps(row) + "\n")
+    log.flush()
 
 
 def soft_dice(probabilities, truth):
@@ -930,43 +1508,83 @@ def filter_rows(scores):
     return out
 
 
-def run_filter(args):
+SCORE_COLUMNS = ["sample_id", "subject_id", "pose_id", "raw_soft_dice", "flux_soft_dice"]
+
+
+def score_edits(args, only):
+    """The flux000 member's soft Dice of each edit and of its raw DRR against the exact masks at
+    FleXray's 256 pixels, the pose group the filter compares within being the grid pose the render
+    recorded."""
     import numpy as np
     import torch
     from fxr import FleXraySegmenter
 
     segmenter = FleXraySegmenter.from_pretrained(args.weights, subfolder=args.member, device=args.device)
+    samples = manifest_rows(args.raw)
     raw_found = images_in(Path(args.raw) / "raw")
     edited_found = images_in(Path(args.edited) / "edited")
     masks_dir = Path(args.raw) / "masks"
     scores = []
     for name in sorted(edited_found):
-        stem = name.rsplit("_a", 1)[0]
-        if stem not in raw_found or not (masks_dir / f"{stem}.npy").exists():
+        stem = sample_of(name)
+        if stem not in raw_found or stem not in samples or not (masks_dir / f"{stem}.npy").exists():
+            continue
+        if only is not None and samples[stem]["subject_id"] not in only:
             continue
         raw, edited = read_grey(raw_found[stem]), read_grey(edited_found[name])
-        packed = np.load(masks_dir / f"{stem}.npy")
-        truth = np.unpackbits(packed, axis=-1)[:, :raw.shape[0], :raw.shape[1]].astype(bool)
+        truth = np.unpackbits(np.load(masks_dir / f"{stem}.npy"), axis=-1)[:, :raw.shape[0], :raw.shape[1]].astype(bool)
         factor = raw.shape[0] // CANVAS
         truth_small = np.stack([block_majority(channel, factor) for channel in truth]) if factor > 1 else truth
         with torch.inference_mode():
             raw_p = segmenter.predict(raw).probabilities[0].float().cpu().numpy()
             flux_p = segmenter.predict(edited).probabilities[0].float().cpu().numpy()
-        pose_id = int(stem.split("_")[1]) if stem.split("_")[1].isdigit() else 0
-        scores.append({"sample_id": name, "subject_id": subject_of(stem), "pose_id": pose_id,
+        scores.append({"sample_id": name, "subject_id": samples[stem]["subject_id"], "pose_id": int(samples[stem]["grid_pose"]),
                        "raw_soft_dice": soft_dice(raw_p, truth_small), "flux_soft_dice": soft_dice(flux_p, truth_small)})
+    return scores
+
+
+def run_score(args):
+    scores = score_edits(args, subject_filter(args.only))
+    write_rows(args.out, scores, SCORE_COLUMNS)
+    print(f"scored {len(scores)} edits against their raw DRRs")
+
+
+def keep_scores(scores, edited_dir, out):
+    """The paired filter over every score at once, since a pose group spans subjects and arms."""
+    edited_found = images_in(Path(edited_dir) / "edited")
     rows = filter_rows([s for s in scores if not math.isnan(s["raw_soft_dice"])])
-    columns = ["sample_id", "subject_id", "pose_id", "raw_soft_dice", "flux_soft_dice", "delta", "bound", "kept"]
-    write_rows(Path(args.out) / "filter_kept.csv", [r for r in rows if r["kept"]], columns)
-    write_rows(Path(args.out) / "filter_dropped.csv", [r for r in rows if not r["kept"]], columns)
-    link_kept(Path(args.out) / "kept", {r["sample_id"]: edited_found[r["sample_id"]] for r in rows if r["kept"]})
+    columns = [*SCORE_COLUMNS, "delta", "bound", "kept"]
+    write_rows(Path(out) / "filter_kept.csv", [r for r in rows if r["kept"]], columns)
+    write_rows(Path(out) / "filter_dropped.csv", [r for r in rows if not r["kept"]], columns)
+    link_kept(Path(out) / "kept", {r["sample_id"]: edited_found[r["sample_id"]] for r in rows if r["kept"]})
+    return rows
+
+
+def run_keep(args):
+    scores = []
+    for path in sorted(Path(args.scores).glob("*.csv")):
+        for row in read_rows(path):
+            scores.append(dict(row, pose_id=int(row["pose_id"]), raw_soft_dice=float(row["raw_soft_dice"]),
+                               flux_soft_dice=float(row["flux_soft_dice"])))
+    rows = keep_scores(scores, args.edited, args.out)
+    kept = sum(r["kept"] for r in rows)
+    print(f"{kept} of {len(rows)} edits kept ({100.0 * kept / max(len(rows), 1):.1f}%); the paper kept about 96%")
+
+
+def run_filter(args):
+    rows = keep_scores(score_edits(args, None), args.edited, args.out)
     kept = sum(r["kept"] for r in rows)
     print(f"{kept} of {len(rows)} edits kept ({100.0 * kept / max(len(rows), 1):.1f}%); the paper kept about 96%")
 
 
 def link_kept(folder, found):
-    """The kept edits as one folder of links, so stats reads the filtered set as it reads any other."""
+    """The kept edits as one folder of links, so stats reads the filtered set as it reads any other.
+    The links an earlier filter made are removed first, so the folder holds exactly this filter's
+    kept edits and no edit an earlier run kept and this one dropped."""
     folder.mkdir(parents=True, exist_ok=True)
+    for old in folder.iterdir():
+        if old.is_symlink():
+            old.unlink()
     for stem, path in found.items():
         link = folder / path.name
         if link.is_symlink() or link.exists():
@@ -976,28 +1594,31 @@ def link_kept(folder, found):
 
 
 def run_fluxray_export(args):
+    """FluXray's images of exactly the samples rendered (the render's manifest), so the comparison
+    holds the CT and the pose the same on both sides; or, with no manifest, every sample of the
+    subjects named."""
     import numpy as np
-    from fxr.datasets._thunderdb import open_thunderdb
 
+    ids = thunder_ids(args.db)
+    if args.samples:
+        wanted = sorted(manifest_rows(args.samples) if Path(args.samples).is_dir() else subject_filter(args.samples))
+    else:
+        subjects = subject_filter(args.subjects) if args.subjects else None
+        wanted = sorted(s for s, row in ids.items() if subjects is None or row["subject_id"] in subjects)
+    missing = [s for s in wanted if s not in ids]
+    if missing:
+        raise Refused(f"{len(missing)} of {len(wanted)} samples are not in the ThunderDB, {missing[0]} among them")
     out = Path(args.out)
     (out / "img").mkdir(parents=True, exist_ok=True)
     rows = []
-    with open_thunderdb(args.db) as db:
-        samples = list(db["_splits"][args.split]) if args.split else list(db["_samples"])
-        if args.subjects:
-            wanted = subject_filter(args.subjects) if Path(args.subjects).is_file() else set(args.subjects.split(","))
-            samples = [s for s in samples if subject_of(s) in wanted]
-        for sample_id in samples[:args.limit] if args.limit else samples:
-            payload = db[sample_id]
-            image = np.asarray(payload["img"]).astype(np.float16)
-            while image.ndim > 2:
-                image = image[0]
-            np.save(out / "img" / f"{sample_id}.npy", image)
-            if args.masks:
-                (out / "masks").mkdir(exist_ok=True)
-                np.save(out / "masks" / f"{sample_id}.npy", np.packbits(np.asarray(payload["seg"]) > 0, axis=-1))
-            rows.append({"sample_id": sample_id, "subject_id": subject_of(sample_id), "pixels": image.shape[-1]})
-    write_rows(out / "index.csv", rows, ["sample_id", "subject_id", "pixels"])
+    for sample_id in wanted[:args.limit] if args.limit else wanted:
+        entry = ids[sample_id]
+        image = np.asarray(entry["backend"].load(entry["record"], "image"), dtype=np.float32).squeeze()
+        if image.ndim != 2:
+            raise Refused(f"FluXray's {sample_id} is {image.shape}, not one grey image")
+        save_npy(out / "img" / f"{sample_id}.npy", image.astype(np.float16))
+        rows.append({"sample_id": sample_id, "subject_id": entry["subject_id"], "split": entry["split"], "pixels": image.shape[-1]})
+    write_rows(out / "index.csv", rows, ["sample_id", "subject_id", "split", "pixels"])
     print(f"exported {len(rows)} FluXray samples to {out}")
 
 
@@ -1031,7 +1652,7 @@ def run_pairs(args):
             target_dir = target_dir / sub
             break
     target = images_in(target_dir)
-    target = {stem.rsplit("_a", 1)[0] if "_a" in stem else stem: path for stem, path in target.items()}
+    target = {sample_of(stem): path for stem, path in target.items()}
     only = subject_filter(args.only)
     if only is not None:
         control = {stem: path for stem, path in control.items() if subject_of(stem) in only}
@@ -1136,16 +1757,29 @@ def measure_markdown(summary):
 def parser():
     top = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     sub = top.add_subparsers(dest="command", required=True)
+    p = sub.add_parser("inputs", help="every input checked and recorded with its sha256 before a GPU second is spent")
+    for name in ("--samples", "--db", "--ct", "--truth", "--klein", "--bundle", "--imagenet", "--out"):
+        p.add_argument(name, required=True)
+    p.add_argument("--no-pins", action="store_true", help="record pins that differ instead of refusing, for a test")
+    p.set_defaults(run=run_inputs)
+    p = sub.add_parser("environment", help="the stats stage's pins, GPU and weights recorded with their sha256")
+    for name in ("--bundle", "--imagenet", "--out"):
+        p.add_argument(name, required=True)
+    p.add_argument("--no-pins", action="store_true", help="record pins that differ instead of refusing, for a test")
+    p.set_defaults(run=run_environment)
     p = sub.add_parser("poses", help="FluXray's samples.csv checked against the paper's pose grid")
     p.add_argument("--samples", required=True)
     p.add_argument("--out", required=True)
+    p.add_argument("--inputs", default="", help="the inputs record, whose samples missing from the ThunderDB are left out")
     p.set_defaults(run=run_poses)
     p = sub.add_parser("split", help="the subjects dealt into a training and an evaluation split, by subject")
     p.add_argument("--poses", required=True)
     p.add_argument("--out", required=True)
-    p.add_argument("--limit", type=int, default=0, help="subjects, in sorted order")
-    p.add_argument("--seed", type=int, default=realism.LoraPlan().seed)
+    p.add_argument("--eligible", default="", help="the inputs record, whose eligible subjects the draw is made from")
+    p.add_argument("--limit", type=int, default=0, help="subjects drawn by the seed; 0 takes every one")
+    p.add_argument("--seed", type=int, default=PLAN.draw_seed)
     p.add_argument("--train-fraction", type=float, default=TRAIN_FRACTION)
+    p.add_argument("--shard-size", type=int, default=0, help="subjects a shard; 0 writes no shards")
     p.set_defaults(run=run_split)
     p = sub.add_parser("render", help="raw DRRs at the recorded poses from ENHANCE.PET CTs, with exact masks")
     for name in ("--ct", "--truth", "--poses", "--out", "--weights"):
@@ -1154,7 +1788,8 @@ def parser():
     p.add_argument("--member", default="members/flux000")
     p.add_argument("--pixels", type=int, default=1024)
     p.add_argument("--limit", type=int, default=0, help="subjects")
-    p.add_argument("--per-subject", type=int, default=0, help="poses rendered per subject; 0 renders every recorded one")
+    p.add_argument("--per-subject", type=int, default=0, help="poses drawn per subject; 0 renders every recorded one")
+    p.add_argument("--draw-seed", type=int, default=PLAN.draw_seed, help="the seed the poses are drawn by")
     p.add_argument("--only", default="", help="a file of subject ids to keep")
     p.add_argument("--device", default="cuda")
     p.set_defaults(run=run_render)
@@ -1171,31 +1806,42 @@ def parser():
     p.add_argument("--png", action="store_true")
     p.add_argument("--device", default="cuda")
     p.set_defaults(run=run_edit)
-    p = sub.add_parser("filter", help="FluXray's paired soft-Dice filter with the flux000 member")
+    p = sub.add_parser("filter", help="FluXray's paired soft-Dice filter with the flux000 member: score, then keep")
     for name in ("--raw", "--edited", "--weights", "--out"):
         p.add_argument(name, required=True)
     p.add_argument("--member", default="members/flux000")
     p.add_argument("--device", default="cuda")
     p.set_defaults(run=run_filter)
+    p = sub.add_parser("score", help="the flux000 soft Dice of each edit and its raw DRR, one shard's, as a CSV")
+    for name in ("--raw", "--edited", "--weights", "--out"):
+        p.add_argument(name, required=True)
+    p.add_argument("--only", default="", help="a file of subject ids to keep")
+    p.add_argument("--member", default="members/flux000")
+    p.add_argument("--device", default="cuda")
+    p.set_defaults(run=run_score)
+    p = sub.add_parser("keep", help="the paired filter over every shard's scores at once, since a pose group spans them")
+    for name in ("--scores", "--edited", "--out"):
+        p.add_argument(name, required=True)
+    p.set_defaults(run=run_keep)
     p = sub.add_parser("fluxray-export", help="FluXray's images out of its ThunderDB as .npy")
     p.add_argument("--db", required=True)
     p.add_argument("--out", required=True)
-    p.add_argument("--split", default="")
-    p.add_argument("--subjects", default="")
+    p.add_argument("--samples", default="", help="a render folder (its manifest) or a file of sample ids: exactly those")
+    p.add_argument("--subjects", default="", help="with no --samples, a file of subject ids: every sample of theirs")
     p.add_argument("--limit", type=int, default=0)
-    p.add_argument("--masks", action="store_true")
     p.set_defaults(run=run_fluxray_export)
     p = sub.add_parser("stats", help="the metric suite between two image folders, with the second's split-half null")
     for name in ("--a", "--b", "--out"):
         p.add_argument(name, required=True)
-    p.add_argument("--real", default="")
     p.add_argument("--weights", default="", help="FleXray's bundle, for the flexray feature space")
     p.add_argument("--member", default="members/flux000")
     p.add_argument("--imagenet-weights", default="", help="torchvision's resnet18 .pth, for the imagenet space")
     p.add_argument("--size", type=int, default=CANVAS)
     p.add_argument("--limit", type=int, default=0)
     p.add_argument("--only", default="", help="a file of subject ids to keep, in every set")
-    p.add_argument("--seed", type=int, default=0)
+    p.add_argument("--index", default="", help="the render folder whose manifest names each sample's subject")
+    p.add_argument("--require-spaces", default="", help="comma-separated spaces whose absence refuses the run")
+    p.add_argument("--seed", type=int, default=PLAN.stats_seed)
     p.add_argument("--device", default="cuda")
     p.set_defaults(run=run_stats)
     p = sub.add_parser("pairs", help="control/ and target/ folders for the trainer from two image folders")

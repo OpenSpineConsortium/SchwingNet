@@ -12,3 +12,4 @@
 bank       BankFlow      XR_BANK_RC     02-bank-ingest.sbatch   -
 catalog    CatalogFlow   XR_CATALOG_RC  03-catalog.sbatch       -
 sweep      SweepFlow     SWEEP_RC       sweep-driver.sbatch     docs/research/block-smoke/PREREG.md
+realism    RealismFlow   REALISM_RC     realism.sbatch          docs/research/flux-realism/PREREG.md

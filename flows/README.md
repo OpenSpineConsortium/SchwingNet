@@ -42,6 +42,27 @@ Metaflow's own resume rather than by anything written around it.
   own, and so is a plan made again with other rows. grid/gate.sh's word `sweep <plan>` reads the
   same Covers line in bash and refuses such a plan with 90 before it queues anything, since the
   launcher's own refusal comes only once the job holds a GPU and its catalog is built.
+- `realism.py`, RealismFlow: the FluXray reproduction (docs/research/flux-realism/PREREG.md), one
+  run per stage on the owner's count of 2026-10-29 (two GPU jobs, edit and then stats; grid word
+  `realism <stage>`, grid/realism.sbatch). start holds the run to the PREREG and to its frozen block,
+  which must equal schwingnet.realism.frozen_lines(), and checks every input (`tools/realism.py
+  inputs`) before a GPU second is spent. For edit, prepare draws the subjects by the frozen seed into
+  shards, a foreach runs `render`, `edit` and `score` per shard (`@retry(times=1)`; a shard that
+  still fails fails the run, and a later launch of the same key resumes it from that shard, every
+  sample already whole skipped and a half-written one redone), and join_shards runs `keep`,
+  `fluxray-export` and `measure` over all of them;
+  for stats, a foreach runs `stats` on the kept edits and on the raw renders, and join_comparisons
+  reads the replication's word and the geometry's; the stats start records its own environment and
+  the weights' sha256 (`tools/realism.py environment`). Each run works in
+  <out>/<stage>-<run key>-<run id>, a resume in the folder its first run made and a new run of the
+  same key in an empty one; end writes RECORD.json (with where, the run that made the folder, and
+  ended_in, the run that ended it, each with the commit and whether the tree was clean) and
+  SUMMARY.md, checks the run's CLAIM 2024 and REFORMS report (`tools/report.py --study
+  flux-realism`, tools/realism_report.py), and, for an edit with verdict 0, writes <out>/edit.json,
+  the one way the stats stage finds its edit. The verdict is 1 where the report is not current or an
+  edit made fewer renders, edits or FluXray images than its own draw holds, so the stats, which
+  refuse an edit whose verdict was not 0 or whose PREREG differs, never read a sample short of the
+  PREREG's. lora and eval are refused until they have a count and a PREREG of their own.
 
 Every flow's end step sets an int artifact `verdict`, 0 when all went well and 1 otherwise.
 

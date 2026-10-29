@@ -129,11 +129,14 @@
 #                   cases, then full, every countable mask, which the gate takes only once the pilot's report ended
 #                   well; each queued once as one batch job, the next send printing logs/BORDERCALL-<stage>.md, and
 #                   every later one printing it again and queueing nothing
-#   realism <stage> one stage of the Flux realism programme (docs/research/flux-realism/README.md; no count
-#                   given yet, each stage waits for the owner's word): edit, stats, lora or eval, each one GPU
-#                   job (grid/realism.sbatch, tools/realism.py) once its inputs have landed and the stage before
-#                   it has finished; the next send prints logs/REALISM-<stage>.md, and every later one prints it
-#                   again and queues nothing
+#   realism <stage> one stage of the FluXray reproduction (docs/research/flux-realism/PREREG.md; the owner's
+#                   count of 2026-10-29 02:35 UTC, two GPU jobs): edit, then stats, each one GPU job that runs
+#                   the Metaflow flow flows/realism.py through flows/launch.py (grid/realism.sbatch) once its
+#                   inputs have landed and the stage before it has finished; the next send prints
+#                   logs/REALISM-<stage>.md, or the .part a job ended before its exit left, and every later
+#                   one prints it again and queues nothing, a failed or unfinished one queued once more only
+#                   once a fix has moved the checkout; lora and eval are refused until they have a count and
+#                   a PREREG of their own
 #   literature <list>  one reading list's papers fetched onto the grid (the owner's word of 2026-10-27
 #                   23:00 UTC; grid/literature.sbatch, grid/literature_fetch.py, the list grid/literature/<list>.csv):
 #                   PMC's open-access copies, Elsevier's through its API with the key and institutional token
@@ -365,7 +368,7 @@ chain() {  # chain DEPEND [run-xray-chain.sh arguments...]: the X-ray chain afte
   record "$XR_FETCH" xr_fetch; record "$(value_of bank "$after")" xr_bank; record "$XR_CATALOG" xr_catalog
 }
 checkout_holders() {  # afterany:<job> for every live job of the gate's that holds the checkout while it runs, comma-joined
-  # A version 1 run, a sweep, an experiment run, a benchmark, an anomaly stage and a bordercall stage each write grid/logs/HOLD, one file
+  # A version 1 run, a sweep, an experiment run, a benchmark, an anomaly, bordercall or realism stage each write grid/logs/HOLD, one file
   # naming one job, and the first of two side by side to end would clear it while the other still
   # runs, whose end check then finds the checkout moved and throws the run away; so each waits for
   # the others, a sweep sent while a benchmark lasts up to its 12 hours among them. The DRR domain-gap
@@ -374,7 +377,7 @@ checkout_holders() {  # afterany:<job> for every live job of the gate's that hol
   # the study's one job before: bench flexray_drr_seg among them, which writes the masks it reads.
   local job waits=""
   [ -f "$STATE" ] || return 0
-  for job in $(awk '$3 == "v1_driver" || $3 == "sweep" || $3 ~ /^experiment_[0-9]+$/ || $3 ~ /^bench_[a-z_]+$/ || $3 ~ /^anomaly_[a-z_]+$/ || $3 ~ /^bordercall_[a-z]+$/ { print $1 }' "$STATE" | sort -u); do
+  for job in $(awk '$3 == "v1_driver" || $3 == "sweep" || $3 ~ /^experiment_[0-9]+$/ || $3 ~ /^bench_[a-z_]+$/ || $3 ~ /^anomaly_[a-z_]+$/ || $3 ~ /^bordercall_[a-z]+$/ || $3 ~ /^realism_[a-z]+$/ { print $1 }' "$STATE" | sort -u); do
     case "$QUEUED" in *" $job "*) waits=$(joined "$waits" "afterany:$job") ;; esac
   done
   echo "$waits"
@@ -1380,9 +1383,13 @@ bench_job_of() {  # the job number a benchmark report's first line names
   sed -n '1s/.*: job \([0-9][0-9]*\) .*/\1/p' "$1"
 }
 bench_failed_on_older_code() {  # a report whose last line is a nonzero exit, from a commit not the checkout's
-  local last began
+  local last
   last=$(tail -n 1 "$1")
   [[ "$last" =~ ^-\ exit\ [1-9][0-9]*\  ]] || return 1
+  began_on_older_code "$1"
+}
+began_on_older_code() {  # a report whose first line names its job and a commit not the checkout's
+  local began
   began=$(sed -n '1s/.*, commit \([0-9a-f]*\|unknown\),.*/\1/p' "$1")
   [ -n "$began" ] && [ -n "$(bench_job_of "$1")" ] && [ "$began" != "${commit:0:7}" ]
 }
@@ -1657,9 +1664,9 @@ word_literature() {  # one reading list fetched onto the grid: queued once, its 
   echo "submitted one job. It lands a byte only once the size rule admits it; send literature $id again once it ends to read its report, logs/LITERATURE-$id.md."
 }
 
-realism_class() {  # the job class a stage of the realism programme runs as, else nothing
+realism_class() {  # the job class a stage of the reproduction runs as, else nothing
   case "$1" in
-    edit|stats|lora|eval) echo gpu ;;
+    edit|stats) echo gpu ;;
   esac
 }
 realism_report_ok() {  # a stage's report that ends in exit 0, so the stage after it may run
@@ -1672,8 +1679,9 @@ klein_landed() {  # klein_landed <4b|9b|base-4b|base-9b>: that FLUX.2 klein's di
 realism_inputs_missing() {  # what realism $id still lacks on the data root or in the reports, one line, or nothing
   case "$id" in
     edit)
-      klein_landed 9b || klein_landed 4b \
-        || { echo "FLUX.2 klein weights (fetch hf_flux2_klein_4b, or hf_flux2_klein_9b once the owner has accepted its licence on the hub)"; return; }
+      # The recipe's klein-9B and no other (PREREG.md, section 2): a klein-4B on the data root stands in for nothing.
+      klein_landed 9b || { echo "FLUX.2 klein-9B's weights (fetch hf_flux2_klein_9b first)"; return; }
+      weights_ready || { echo "ResNet-18's ImageNet weights at $WEIGHTS, which the imagenet space reads (the weights job makes them)"; return; }
       find "$DATA_ROOT/hf_flexray_weights/raw" -maxdepth 3 -name ensemble.json -print -quit 2>/dev/null | grep -q . \
         || { echo "FleXray's weights (fetch hf_flexray_weights first)"; return; }
       find "$DATA_ROOT/hf_flexray_data/raw" -path '*FluXray*' -name samples.csv -print -quit 2>/dev/null | grep -q . \
@@ -1684,17 +1692,15 @@ realism_inputs_missing() {  # what realism $id still lacks on the data root or i
         || echo "ENHANCE.PET's truth (fetch aws_enhance_pet_labels first)" ;;
     stats)
       realism_report_ok edit || echo "the edit stage's report ending in exit 0 (send realism edit first)" ;;
-    lora)
-      realism_report_ok edit || { echo "the edit stage's report ending in exit 0 (send realism edit first)"; return; }
-      klein_landed base-4b || echo "FLUX.2 klein-base-4b weights (fetch hf_flux2_klein_base_4b first)" ;;
-    eval)
-      realism_report_ok lora || echo "the lora stage's report ending in exit 0 (send realism lora first)" ;;
   esac
 }
 word_realism() {  # one stage of the Flux realism programme: queued once, its report printed on every later send
   local report=$LOGS/REALISM-$id.md class busy missing holds opts setup
   class=$(realism_class "$id")
-  [ -n "$class" ] || { echo "refusing: realism takes edit, stats, lora or eval, one stage at a time, in that order"; return 64; }
+  case "$id" in
+    lora|eval) echo "refusing: realism $id waits for a count and a PREREG of its own; the count of 2026-10-29 is edit, then stats"; return 64 ;;
+  esac
+  [ -n "$class" ] || { echo "refusing: realism takes edit or stats, one stage at a time, in that order"; return 64; }
   busy=$(live_of "realism_$id")
   [ -z "$busy" ] || { echo "refusing: the realism stage $id is still queued or running (job $busy); send realism $id again once it ends"; return 75; }
   if [ -f "$report" ]; then
@@ -1706,6 +1712,18 @@ word_realism() {  # one stage of the Flux realism programme: queued once, its re
     # more, its report kept under its job's number, as a benchmark's is; the same commit queues nothing.
     mv "$report" "$LOGS/REALISM-$id-$(bench_job_of "$report").md" || return 1
     echo "  the report above ended in failure on older code: queueing the stage again at $commit"
+  fi
+  if [ -f "$report.part" ]; then
+    # A job ended past its own trap (its time, a cancel, memory or a node's failure) leaves its
+    # report unfinished and decided nothing, so it stands as a failed report does: printed on every
+    # send, and queued again only once a fix has moved the checkout, its record kept under its job's
+    # number, since a new job at the same commit would be one the count never gave and would write
+    # over that record.
+    echo "## $(basename "$report") unfinished: the job ended before it wrote its exit ($(date -r "$report.part" '+%F %T'))"
+    head -n 200 "$report.part" | LC_ALL=C tr -cd '\11\12\40-\176' | masked | head -c 30000
+    began_on_older_code "$report.part" || return 0
+    mv "$report.part" "$LOGS/REALISM-$id-$(bench_job_of "$report.part")-unfinished.md" || return 1
+    echo "  the unfinished report above began on older code: queueing the stage again at $commit"
   fi
   missing=$(realism_inputs_missing)
   [ -z "$missing" ] || { echo "refusing: realism $id needs $missing"; return 2; }
