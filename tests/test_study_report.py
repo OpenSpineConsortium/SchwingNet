@@ -576,6 +576,18 @@ class CheckTest(StudyFolder):
             report.render_study(STUDY, self.run)
 
 
+class AnswersForARunTest(StudyFolder):
+    def test_answers_written_for_another_run_answer_nothing_here(self):
+        answers = {fact: "Fixture sentence." for fact in report.study_declared_facts(STUDY)}
+        self.write_answers({"_run": "1000001", **answers})
+        self.assertEqual(self.rows("claim")["1"]["state"], "declared")
+        self.write_answers({"_run": "2000002", **answers})
+        title = self.rows("claim")["1"]
+        self.assertEqual(title["state"], "missing")
+        self.assertIn("whose answers are run 2000002's, not this run's", title["evidence"])
+        self.assertEqual(quiet(report.check, self.run, True, STUDY), 1)
+
+
 class StudyRulesTest(unittest.TestCase):
     def test_every_item_a_training_run_answers_by_code_has_a_study_answer(self):
         for key, checklist in report.checklists().items():

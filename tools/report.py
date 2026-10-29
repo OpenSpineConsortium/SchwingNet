@@ -1923,14 +1923,15 @@ def study_declared_facts(study):
     return {study_basis(key, item, study)[1] for key in lists for item in lists[key]["items"] if study_basis(key, item, study)[0] == "declared"}
 
 
-def study_answered(key, checklist, run, answers):
+def study_answered(key, checklist, run, answers, where=None):
+    where = where or shown(run["config"]["answers"])
     rows = []
     for item in checklist["items"]:
         basis, fact = study_basis(key, item, run["name"])
         if basis == "code":
             state, evidence = STUDY_FACTS[fact](run) if fact in STUDY_FACTS else missing(f"needs a study fact \"{fact}\" in tools/report.py: none answers it yet")
         else:
-            state, evidence = declared(fact, answers, shown(run["config"]["answers"]))
+            state, evidence = declared(fact, answers, where)
         rows.append({"id": item["id"], "section": item["section"], "asks": item["asks"], "basis": basis, "fact": fact, "state": state, "evidence": evidence})
     return rows
 
@@ -2024,13 +2025,23 @@ def fenced(lines):
     return [f"{fence}text", *lines, fence]
 
 
+def answers_for(path, run):
+    """The owner's answers that hold for this run, and where the report says they are: every field
+    where the file names no run, and none where its _run names another, since an abstract written
+    from one run's numbers is not another run's."""
+    for_run = json.loads(path.read_text(encoding="utf-8")).get("_run")
+    if for_run in (None, run["dir"].name):
+        return study_answers(path), shown(path)
+    return {}, f"{shown(path)}, whose answers are run {for_run}'s, not this run's"
+
+
 def render_study(name, run_dir):
     """The three files of a recorded study run's report, from its folder and the study's answers."""
     run = load_study(name, run_dir)
     answers_path = Path(run["config"]["answers"])
-    lists, answers = checklists(), study_answers(answers_path)
-    claim_rows = study_answered("claim", lists["claim"], run, answers)
-    reforms_rows = study_answered("reforms", lists["reforms"], run, answers)
+    lists, (answers, where) = checklists(), answers_for(answers_path, run)
+    claim_rows = study_answered("claim", lists["claim"], run, answers, where)
+    reforms_rows = study_answered("reforms", lists["reforms"], run, answers, where)
     answers_sha = hashlib.sha256(answers_path.read_bytes()).hexdigest()
 
     def document(checklist, rows):

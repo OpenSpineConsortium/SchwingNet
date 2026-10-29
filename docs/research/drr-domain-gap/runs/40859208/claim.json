@@ -3,12 +3,12 @@
  "run_id": "40859208",
  "checklist": "CLAIM 2024",
  "source": "Tejani et al., Checklist for Artificial Intelligence in Medical Imaging (CLAIM): 2024 Update, Radiology: Artificial Intelligence 2024, doi 10.1148/ryai.240300; the short item texts as its checklist table gives them",
- "study_sha256": "f201a519596453871e78236de81f80f55605c433dafa6b80d716712df27e7624",
+ "study_sha256": "349e215dfc828f43cd0c4d1051ecda61d284165386da4d8fc3aaca9e979f0daa",
  "tally": {
   "met": 24,
-  "declared": 0,
-  "not applicable": 10,
-  "missing": 10
+  "declared": 9,
+  "not applicable": 11,
+  "missing": 0
  },
  "items": [
   {
@@ -17,8 +17,8 @@
    "asks": "Identification as a study of AI methodology, specifying the category of technology used (eg, deep learning)",
    "basis": "declared",
    "fact": "title",
-   "state": "missing",
-   "evidence": "needs the owner's answer under \"title\" in data/reporting/studies/drr-domain-gap.json"
+   "state": "declared",
+   "evidence": "Measuring the gap between synthetic and real X-rays with deep convolutional features and two-sample tests: a pre-registered comparison of digitally reconstructed radiographs made by FleXray's recipe, and of its FluXray edits, with real fluoroscopy and plain film, and a replication test of the recipe's renderer."
   },
   {
    "id": "2",
@@ -26,8 +26,8 @@
    "asks": "Summary of study design, methods, results, and conclusions",
    "basis": "declared",
    "fact": "abstract",
-   "state": "missing",
-   "evidence": "needs the owner's answer under \"abstract\" in data/reporting/studies/drr-domain-gap.json"
+   "state": "declared",
+   "evidence": "In a pre-registered study of existing images, 10,127 images in 21 groups (11 synthetic, 3 fluoroscopy, 7 plain film; 20 groups tested, the one-person hip phantom plotted only) were decoded one way and embedded in FleXray's own encoder and an ImageNet ResNet-18, read inversion-invariant. Groups were compared by person-grouped classifier two-sample tests (logistic AUC with a person-cluster bootstrap interval and a permutation p), the unbiased MMD with person-level permutations and Benjamini-Hochberg q, FD64 and PRDC, calibrated by split-half nulls and real-against-real baselines. Each of the seven synthetic sets whose family contrasts the summary prints was told apart from real fluoroscopy and from film. For the primary endpoints, against fluoroscopy and then film: this project's render of FleXray's recipe with the attenuation randomisation off gave AUC 0.94 [0.89, 0.98] and 0.96 [0.94, 0.98]; the same physics from the CT alone gave 0.89 [0.83, 0.94] and 0.93 [0.90, 0.96]; FluXray gave 1.00 [0.99, 1.00] and 0.95 [0.94, 0.96]. The split-half nulls flagged nothing (median AUC 0.49 in FleXray's space). No primary endpoint read \"indistinguishable\". Every one read \"closer than two real corpora\", a word at its ceiling here, because two real corpora were told apart at least as surely (median AUC 1.00, least 0.97, over 36 pairs). Rendering the same recipe through this project's blocks and through FleXray's own code read \"not replicated\": MMD q 0.046 (0.043 without the nulls) with an AUC of 0.50 [0.50, 0.50]. That word rests on the MMD alone, its q 0.004 under the bar and within the permutations' Monte Carlo margin, and under it every comparison through the blocks is of this project's renders, not FleXray's."
   },
   {
    "id": "3",
@@ -35,8 +35,8 @@
    "asks": "Scientific and/or clinical background, including the intended use and role of the AI approach",
    "basis": "declared",
    "fact": "background",
-   "state": "missing",
-   "evidence": "needs the owner's answer under \"background\" in data/reporting/studies/drr-domain-gap.json"
+   "state": "declared",
+   "evidence": "SchwingNet names vertebral levels on intraoperative fluoroscopy. There, real frames exist but their level labels are the cost, so DRRs rendered from CT are a candidate source of training data. In the record, a detector trained on renders alone found 71.67 percent of vertebral bodies on real film. One trained on film found 97.6, 99.14 or 99.2 percent: three readings of the same three misses in 243 that the record has not settled. FleXray is a segmenter trained on CT-projected labels and FluXray's FLUX.2-edited renders, with real radiographs only of the limbs (arXiv 2609.26756v2). Given C-ArmLSpine's truth boxes, it named 99.14 percent of them. It is zero-shot on those frames by its configs, though not yet confirmed by file (audit item 6). This study measures how far such synthetic images lie from real fluoroscopy and film, compared with the distance between two real corpora. It also asks whether this project's render blocks reproduce FleXray's own renders. It informs the FleXray audit (#391, items 6 to 11). Its AI is an instrument: frozen pretrained encoders and two-sample classifiers that measure a distribution gap. No model is built for any clinical use."
   },
   {
    "id": "4",
@@ -53,8 +53,8 @@
    "asks": "Prospective or retrospective study",
    "basis": "declared",
    "fact": "study_design",
-   "state": "missing",
-   "evidence": "needs the owner's answer under \"study_design\" in data/reporting/studies/drr-domain-gap.json"
+   "state": "declared",
+   "evidence": "Retrospective: no person was imaged or enrolled for this study. The real groups are image corpora the project already held, which the sample index lists (PREREG.md section 2); the seven render groups are rendered in the job from held CTs; and the other synthetic groups are sets made before the study, FluXray's from the FleXray data fetched on 2026-10-26. The analysis was pre-registered: PREREG.md froze it on 2026-10-27, before any number of the study was read (its section 7)."
   },
   {
    "id": "6",
@@ -107,8 +107,8 @@
    "asks": "De-identification methods",
    "basis": "declared",
    "fact": "deidentification",
-   "state": "missing",
-   "evidence": "needs the owner's answer under \"deidentification\" in data/reporting/studies/drr-domain-gap.json"
+   "state": "declared",
+   "evidence": "The study added no de-identification step of its own. The real corpora are their publishers' releases, read from the grid's copies and banks (C-ArmLSpine through the project's PNG bank). The record states de-identification only for KUB-StoneX, whose record says every image is de-identified (IRB REC-FSIT-2025/No: 12732). C-ArmLSpine's record notes that case134's headers carry a real PatientID, never printed; case134 is a frozen test person, left out of every group. The renders are of public CTs (TotalSegmentator v2.0.1, CC BY 4.0). Wayne State IRB determination HPR 2026-269 covers de-identified public datasets that download without an agreement. Its supplement HPR 2026-330 covers VinDr-SpineXR, which this run did not read. No file that names an image or a person left the grid: results.json, the plan and render-subjects.json stay in the run folder under umask 077. Only BENCH.md and summary.txt, through grid/redact.sed, were copied out."
   },
   {
    "id": "12",
@@ -125,8 +125,8 @@
    "asks": "Image acquisition protocol",
    "basis": "declared",
    "fact": "acquisition",
-   "state": "missing",
-   "evidence": "needs the owner's answer under \"acquisition\" in data/reporting/studies/drr-domain-gap.json"
+   "state": "declared",
+   "evidence": "The render groups' images were made in the job from 26 held TotalSegmentator v2.0.1 CTs (27 chosen, 26 kept by every group) by FleXray's released MOOSE recipe, through this project's render blocks or FleXray's own code, each group changing the blocks the groups table names: flexray_drr (MOOSE labels, attenuation randomisation off), flexray_drr_ct (no labels, FleXray's axial crops drawn uniformly, each aimed at its own centre, attenuation off), flexray_replica (MOOSE labels) and flexray_reference (the same through FleXray's own code), flexray_spineps (SPINEPS labels), and fluxray_raw and fluxray_raw_reference (the paper's raw recipe: whole volume, FluXray's pose grid, cone projection, attenuation off, min-max scaling, 4 views at 1,024 pixels, through the blocks and through FleXray's code). FluXray's images were made by its authors: by the paper (README section 2.3), FLUX.2 klein 9B edited each raw render (4 steps, bfloat16, guidance 1), pixels whose raw DRR was below 0.05 were set to 0, a paired-difference filter dropped about 4 percent of the edits per pose, and the release resized the 1,024-pixel edits to 512, where the project's notes record the stored images at 256. The other synthetic sets are the project's own earlier renders and styled images. The real corpora were acquired by their publishers under their own protocols, which this study does not record beyond what it notes of them: C-ArmLSpine's AP and lateral spot frames of one mobile C-arm, narrow and centred on the lumbar spine; DeepFluoro's vendor fluoroscopy of cadaver pelves, six specimens and two phantoms; a resin hip phantom's fluoroscopy; and plain films (lumbar, whole-spine, cervical, abdominal and cephalometric) from their releases, as JPEG re-exports, 16-bit scans or DICOM."
   },
   {
    "id": "14",
@@ -332,8 +332,8 @@
    "asks": "Demographic and clinical characteristics of cases in each partition",
    "basis": "declared",
    "fact": "characteristics",
-   "state": "missing",
-   "evidence": "needs the owner's answer under \"characteristics\" in data/reporting/studies/drr-domain-gap.json"
+   "state": "not applicable",
+   "evidence": "Not applicable: the study compares sets of images and records no person's age, sex, pathology or device; what it records of each group, its family, what one of its persons is and how many it holds, is in CLAIM 35 and REFORMS 3a."
   },
   {
    "id": "37",
@@ -377,8 +377,8 @@
    "asks": "Implications for practice, including intended use and/or clinical role",
    "basis": "declared",
    "fact": "implications",
-   "state": "missing",
-   "evidence": "needs the owner's answer under \"implications\" in data/reporting/studies/drr-domain-gap.json"
+   "state": "declared",
+   "evidence": "The study has no clinical role and supports no diagnostic use. It is a measurement that informs the FleXray audit's items 6 to 11. On the record, none of the seven synthetic sets whose family contrasts the summary prints is indistinguishable from real fluoroscopy or film in these feature spaces. Those seven include this project's renders of FleXray's recipe and FluXray's released FLUX-edited images, so none passes for real frames by this test. Because the replication read \"not replicated\", every comparison made through this project's render blocks is of this project's renders, not FleXray's (PREREG.md section 5). Separability alone does not predict that a network trained on such images fails on real frames. FleXray, trained with no real spine frame by its configs, named 99.14 percent of C-ArmLSpine's truth boxes when given the boxes."
   },
   {
    "id": "42",
@@ -395,8 +395,8 @@
    "asks": "Statement about the availability of software, trained model, and/or data",
    "basis": "declared",
    "fact": "availability",
-   "state": "missing",
-   "evidence": "needs the owner's answer under \"availability\" in data/reporting/studies/drr-domain-gap.json"
+   "state": "declared",
+   "evidence": "No model was trained, so none is released. The code and the study's records are in a private repository and are confidential; nothing of them goes public before the provisional patent is filed. The code is tools/domain_gap.py, tools/domain_gap_stats.py, tools/flexray_render.py, tools/render_blocks.py, and src/schwingnet/domain_gap.py, render_blocks.py and segmenters.py. results.json, the figures and the plan stay on Wayne State's grid; only BENCH.md and summary.txt left it. The real images and FluXray are third-party corpora under their own terms, several non-commercial or held by agreement: DeepFluoro and FluXray under CC BY-NC 4.0, BUU-LSPINE under its end-user agreement, AASCE by request form, and IEEE DataPort's set by subscription. They are not redistributed and are available from their publishers. The project's own synthetic sets and renders stay on the grid."
   },
   {
    "id": "44",
@@ -404,8 +404,8 @@
    "asks": "Sources of funding and other support; role of funders",
    "basis": "declared",
    "fact": "funding",
-   "state": "missing",
-   "evidence": "needs the owner's answer under \"funding\" in data/reporting/studies/drr-domain-gap.json"
+   "state": "declared",
+   "evidence": "No funding source for this study is recorded in the repository. Its computing ran on Wayne State University's research grid."
   }
  ]
 }

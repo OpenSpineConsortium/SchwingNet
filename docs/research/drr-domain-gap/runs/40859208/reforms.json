@@ -3,12 +3,12 @@
  "run_id": "40859208",
  "checklist": "REFORMS",
  "source": "Kapoor et al., REFORMS: consensus-based recommendations for machine-learning-based science, arXiv 2308.07832; the item list and the code-or-declared split of artifacts/reforms-compliance-checklist-bpzdoi",
- "study_sha256": "f201a519596453871e78236de81f80f55605c433dafa6b80d716712df27e7624",
+ "study_sha256": "349e215dfc828f43cd0c4d1051ecda61d284165386da4d8fc3aaca9e979f0daa",
  "tally": {
   "met": 27,
-  "declared": 0,
+  "declared": 3,
   "not applicable": 2,
-  "missing": 3
+  "missing": 0
  },
  "items": [
   {
@@ -188,8 +188,8 @@
    "asks": "Why these model types",
    "basis": "declared",
    "fact": "model_rationale",
-   "state": "missing",
-   "evidence": "needs the owner's answer under \"model_rationale\" in data/reporting/studies/drr-domain-gap.json"
+   "state": "declared",
+   "evidence": "The two two-sample classifiers are of different kinds: logistic regression after scaling and PCA to 64, a linear boundary, and 15 nearest neighbours after the same, a local non-parametric one. The unbiased MMD with a Gaussian kernel at the median distance gives a test with an exact person-level permutation null. FD64 and KID64 are the generative-model distances, taken at 64 components so every space is compared at one dimension with a stable covariance. PRDC (Naeem et al. 2020) separates fidelity from coverage. The first encoder is FleXray's flagship member flux0375, a network trained on CT renders of FleXray's recipe and on FluXray's edits. It is read at the input of its last instance norm, because the norm's output has one spatial mean for every image. The second is torchvision's ImageNet ResNet-18, the conventional FID-style space."
   },
   {
    "id": "5c",
@@ -287,8 +287,8 @@
    "asks": "External validity",
    "basis": "declared",
    "fact": "external_validity",
-   "state": "missing",
-   "evidence": "needs the owner's answer under \"external_validity\" in data/reporting/studies/drr-domain-gap.json"
+   "state": "declared",
+   "evidence": "The findings hold for these corpora, these renders and these readings: images decoded at 256 pixels after a centre crop, the feature spaces read, the 26 TotalSegmentator v2.0.1 CTs rendered under FleXray's pose profile or FluXray's fixed poses, and one spine fluoroscopy device. Each held corpus enters as a group of its own, so no external set is held back to test the claim on. Because the real corpora are themselves told apart almost perfectly, the study cannot say whether a synthetic set is closer to fluoroscopy in general than to these corpora."
   },
   {
    "id": "8b",
@@ -296,8 +296,8 @@
    "asks": "Where the findings will not hold",
    "basis": "declared",
    "fact": "non_generalization",
-   "state": "missing",
-   "evidence": "needs the owner's answer under \"non_generalization\" in data/reporting/studies/drr-domain-gap.json"
+   "state": "declared",
+   "evidence": "The findings do not carry to:\n- other renderers, recipes or realism edits;\n- FleXray's own dataset (ENHANCE-PET CTs labelled by an unstated moosez version);\n- other fluoroscopy devices, fields of view, or cine video (only a cine's middle frame is read);\n- other resolutions or encoders.\nThey also say nothing of how a network trained on these images performs on real frames, since separability in feature space is not task failure. FleXray, trained with no real spine frame by its configs, named 99.14 percent of C-ArmLSpine's truth boxes when given the boxes. The replication verdict concerns one recipe on 26 CTs at one seed."
   }
  ]
 }

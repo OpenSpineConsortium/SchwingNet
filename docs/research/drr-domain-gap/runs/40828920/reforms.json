@@ -3,7 +3,7 @@
  "run_id": "40828920",
  "checklist": "REFORMS",
  "source": "Kapoor et al., REFORMS: consensus-based recommendations for machine-learning-based science, arXiv 2308.07832; the item list and the code-or-declared split of artifacts/reforms-compliance-checklist-bpzdoi",
- "study_sha256": "f201a519596453871e78236de81f80f55605c433dafa6b80d716712df27e7624",
+ "study_sha256": "349e215dfc828f43cd0c4d1051ecda61d284165386da4d8fc3aaca9e979f0daa",
  "tally": {
   "met": 27,
   "declared": 0,
@@ -189,7 +189,7 @@
    "basis": "declared",
    "fact": "model_rationale",
    "state": "missing",
-   "evidence": "needs the owner's answer under \"model_rationale\" in data/reporting/studies/drr-domain-gap.json"
+   "evidence": "needs the owner's answer under \"model_rationale\" in data/reporting/studies/drr-domain-gap.json, whose answers are run 40859208's, not this run's"
   },
   {
    "id": "5c",
@@ -288,7 +288,7 @@
    "basis": "declared",
    "fact": "external_validity",
    "state": "missing",
-   "evidence": "needs the owner's answer under \"external_validity\" in data/reporting/studies/drr-domain-gap.json"
+   "evidence": "needs the owner's answer under \"external_validity\" in data/reporting/studies/drr-domain-gap.json, whose answers are run 40859208's, not this run's"
   },
   {
    "id": "8b",
@@ -297,7 +297,7 @@
    "basis": "declared",
    "fact": "non_generalization",
    "state": "missing",
-   "evidence": "needs the owner's answer under \"non_generalization\" in data/reporting/studies/drr-domain-gap.json"
+   "evidence": "needs the owner's answer under \"non_generalization\" in data/reporting/studies/drr-domain-gap.json, whose answers are run 40859208's, not this run's"
   }
  ]
 }

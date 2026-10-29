@@ -3,7 +3,7 @@
  "run_id": "40828920",
  "checklist": "CLAIM 2024",
  "source": "Tejani et al., Checklist for Artificial Intelligence in Medical Imaging (CLAIM): 2024 Update, Radiology: Artificial Intelligence 2024, doi 10.1148/ryai.240300; the short item texts as its checklist table gives them",
- "study_sha256": "f201a519596453871e78236de81f80f55605c433dafa6b80d716712df27e7624",
+ "study_sha256": "349e215dfc828f43cd0c4d1051ecda61d284165386da4d8fc3aaca9e979f0daa",
  "tally": {
   "met": 24,
   "declared": 0,
@@ -18,7 +18,7 @@
    "basis": "declared",
    "fact": "title",
    "state": "missing",
-   "evidence": "needs the owner's answer under \"title\" in data/reporting/studies/drr-domain-gap.json"
+   "evidence": "needs the owner's answer under \"title\" in data/reporting/studies/drr-domain-gap.json, whose answers are run 40859208's, not this run's"
   },
   {
    "id": "2",
@@ -27,7 +27,7 @@
    "basis": "declared",
    "fact": "abstract",
    "state": "missing",
-   "evidence": "needs the owner's answer under \"abstract\" in data/reporting/studies/drr-domain-gap.json"
+   "evidence": "needs the owner's answer under \"abstract\" in data/reporting/studies/drr-domain-gap.json, whose answers are run 40859208's, not this run's"
   },
   {
    "id": "3",
@@ -36,7 +36,7 @@
    "basis": "declared",
    "fact": "background",
    "state": "missing",
-   "evidence": "needs the owner's answer under \"background\" in data/reporting/studies/drr-domain-gap.json"
+   "evidence": "needs the owner's answer under \"background\" in data/reporting/studies/drr-domain-gap.json, whose answers are run 40859208's, not this run's"
   },
   {
    "id": "4",
@@ -54,7 +54,7 @@
    "basis": "declared",
    "fact": "study_design",
    "state": "missing",
-   "evidence": "needs the owner's answer under \"study_design\" in data/reporting/studies/drr-domain-gap.json"
+   "evidence": "needs the owner's answer under \"study_design\" in data/reporting/studies/drr-domain-gap.json, whose answers are run 40859208's, not this run's"
   },
   {
    "id": "6",
@@ -108,7 +108,7 @@
    "basis": "declared",
    "fact": "deidentification",
    "state": "missing",
-   "evidence": "needs the owner's answer under \"deidentification\" in data/reporting/studies/drr-domain-gap.json"
+   "evidence": "needs the owner's answer under \"deidentification\" in data/reporting/studies/drr-domain-gap.json, whose answers are run 40859208's, not this run's"
   },
   {
    "id": "12",
@@ -126,7 +126,7 @@
    "basis": "declared",
    "fact": "acquisition",
    "state": "missing",
-   "evidence": "needs the owner's answer under \"acquisition\" in data/reporting/studies/drr-domain-gap.json"
+   "evidence": "needs the owner's answer under \"acquisition\" in data/reporting/studies/drr-domain-gap.json, whose answers are run 40859208's, not this run's"
   },
   {
    "id": "14",
@@ -333,7 +333,7 @@
    "basis": "declared",
    "fact": "characteristics",
    "state": "missing",
-   "evidence": "needs the owner's answer under \"characteristics\" in data/reporting/studies/drr-domain-gap.json"
+   "evidence": "needs the owner's answer under \"characteristics\" in data/reporting/studies/drr-domain-gap.json, whose answers are run 40859208's, not this run's"
   },
   {
    "id": "37",
@@ -378,7 +378,7 @@
    "basis": "declared",
    "fact": "implications",
    "state": "missing",
-   "evidence": "needs the owner's answer under \"implications\" in data/reporting/studies/drr-domain-gap.json"
+   "evidence": "needs the owner's answer under \"implications\" in data/reporting/studies/drr-domain-gap.json, whose answers are run 40859208's, not this run's"
   },
   {
    "id": "42",
@@ -396,7 +396,7 @@
    "basis": "declared",
    "fact": "availability",
    "state": "missing",
-   "evidence": "needs the owner's answer under \"availability\" in data/reporting/studies/drr-domain-gap.json"
+   "evidence": "needs the owner's answer under \"availability\" in data/reporting/studies/drr-domain-gap.json, whose answers are run 40859208's, not this run's"
   },
   {
    "id": "44",
@@ -405,7 +405,7 @@
    "basis": "declared",
    "fact": "funding",
    "state": "missing",
-   "evidence": "needs the owner's answer under \"funding\" in data/reporting/studies/drr-domain-gap.json"
+   "evidence": "needs the owner's answer under \"funding\" in data/reporting/studies/drr-domain-gap.json, whose answers are run 40859208's, not this run's"
   }
  ]
 }
