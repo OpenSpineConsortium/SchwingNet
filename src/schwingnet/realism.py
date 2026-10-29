@@ -728,21 +728,26 @@ def frozen_lines() -> list[str]:
     return lines
 
 
+def _frozen_block(text: str) -> list[str] | None:
+    """The non-blank lines between ```frozen and the next ```, stripped; None with no ```frozen."""
+    block: list[str] | None = None
+    for line in (raw.strip() for raw in text.splitlines()):
+        if line == "```frozen":
+            block = []
+        elif block is not None and line == "```":
+            break
+        elif block is not None and line:
+            block.append(line)
+    return block
+
+
 @beartype
 @ensure(lambda result: all(isinstance(line, str) and line for line in result), "each in words")
 def frozen_block_problems(text: str) -> list[str]:
     """How the frozen block of a PREREG.md (the lines between ```frozen and the next ```) differs
     from frozen_lines(), in words; empty when they are the same lines in the same order."""
-    block: list[str] = []
-    inside = False
-    for line in text.splitlines():
-        if line.strip() == "```frozen":
-            inside, block = True, []
-        elif inside and line.strip() == "```":
-            break
-        elif inside and line.strip():
-            block.append(line.strip())
-    if not inside:
+    block = _frozen_block(text)
+    if block is None:
         return ["PREREG.md has no ```frozen block"]
     expected = frozen_lines()
     if block == expected:
