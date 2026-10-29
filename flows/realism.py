@@ -68,6 +68,8 @@ from schwingnet import realism  # noqa: E402
 TOOL = REPO / "tools" / "realism.py"
 KIND = "realism"
 STUDY = "flux-realism"
+# What end writes once the record is written, and the record: none of it is the run's work.
+END_WRITES = ("RECORD.json", "ENDED.json", *stage.REPORT_OUTPUTS)
 REFRESH = 15
 COMPARISONS = ("kept", "raw")
 # What the stats stage copies of the edit's folder into its own, under edit/: every file the
@@ -451,7 +453,7 @@ class RealismFlow(FlowSpec):
 
     def record(self):
         files = [path for path in Path(self.folder).rglob("*") if path.is_file() and path.stat().st_size < (64 << 20)
-                 and path.suffix in (".json", ".jsonl", ".csv", ".txt", ".md") and path.name != "RECORD.json"]
+                 and path.suffix in (".json", ".jsonl", ".csv", ".txt", ".md") and not self.ends_own(path)]
         return {"study": STUDY, "stage": self.which, "run": self.where["run"], "key": self.key,
                 "commit": self.commit, "clean_tree": self.where.get("clean_tree") is True and self.ended["clean_tree"],
                 "prereg": self.prereg_path, "prereg_sha256": self.prereg_sha256, "frozen": realism.frozen_lines(),
@@ -464,6 +466,19 @@ class RealismFlow(FlowSpec):
                 "files": {str(path.relative_to(self.folder)): file_sha256(path) for path in sorted(files)},
                 "progress_page": str(stage.page_path())}
 
+    def ends_own(self, path):
+        """Whether a file at the folder's top is one end writes after RECORD.json, or RECORD.json
+        itself: the record names the work, never the report or the verdict that follow from it."""
+        return Path(path).parent == Path(self.folder) and Path(path).name in END_WRITES
+
+    def clear_earlier_end(self):
+        """An end that failed after it wrote the report, killed or faulted, left a report the record
+        about to be written makes stale; a resume's end writes its own, so the earlier one goes first
+        and the check reads only this end's."""
+        for name in END_WRITES:
+            if name != "RECORD.json":
+                Path(self.folder, name).unlink(missing_ok=True)
+
     @card(type="blank")
     @step
     def end(self):
@@ -472,6 +487,7 @@ class RealismFlow(FlowSpec):
         never reads, and for an edit that ended well the pointer the stats stage reads it through."""
         with self.beat("the record and the report") as beat:
             stage.still_held(self, KIND)
+            self.clear_earlier_end()
             self.ended, self.short = self.ended_in(), self.shortfalls()
             lines = self.summary_lines() + [f"- short of the draw: {', '.join(self.short)}"] * bool(self.short)
             Path(self.path("SUMMARY.md")).write_text("\n".join(lines) + "\n", encoding="utf-8")

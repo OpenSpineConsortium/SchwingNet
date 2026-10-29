@@ -353,9 +353,18 @@ class RealismFlowTest(unittest.TestCase):
         self.assertNotEqual(code, 0, out)
         self.assertEqual(calls.count("render 001"), 2, calls)  # retried once, then the run fails
         self.assertFalse((self.out / "edit.json").exists())
+        # an end that failed after it wrote its report, killed or faulted, leaves that report behind,
+        # which a RECORD.json written anew makes stale: the resumed end writes its own, and ends well
+        failed = next(self.out.glob("edit-*"))
+        for name in ("REPORT.md", "claim.json", "reforms.json", "ENDED.json"):
+            (failed / name).write_text("{\"stale\": \"an earlier end's\"}\n", encoding="utf-8")
         code, said, out, calls = self.run_stage("edit", 2)
         self.assertEqual(code, 0, out)
         self.assertEqual(said[0]["decision"], "resume", out)
+        self.assertEqual(said[-1]["verdict"], 0, out)
+        self.assertNotIn("an earlier end's", (failed / "REPORT.md").read_text(encoding="utf-8"))
+        record = json.loads((failed / "RECORD.json").read_text(encoding="utf-8"))
+        self.assertFalse({"REPORT.md", "claim.json", "reforms.json", "ENDED.json"} & set(record["files"]), record["files"])
         self.assertEqual(calls, ["render 001", "edit 001", "score 001", "keep", "fluxray-export", "measure"])
         self.assertEqual(len(list((self.out).glob("edit-*"))), 1)
         # the resume clones start, so the folder and where name the run that failed; the record and

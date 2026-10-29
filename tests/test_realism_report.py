@@ -364,6 +364,15 @@ class StatsRunTest(RealismFolder):
         self.assertEqual(code["state"], "met")
         self.assertIn("commit aaaaaaa, resumed to its end on commit ccccccc of the same run key, each from a clean tree, key", code["evidence"])
 
+    def test_one_run_whose_checkout_moved_under_it_leaves_the_code_missing(self):
+        # the same run at both ends on two commits is no resume, which the run key holds to one code
+        moved = {"commit": "c" * 40}
+        edit = self.make_edit(self.another("edit-0000000000000001-1140"), ended_in=moved)
+        code = self.rows(edit, "reforms")["2b"]
+        self.assertEqual(code["state"], "missing")
+        self.assertIn("began on commit aaaaaaa and ended on commit ccccccc in the same run RealismFlow/1140, the checkout moved "
+                      "under it", code["evidence"])
+
     def test_a_resume_outside_slurm_is_not_taken_for_the_job_that_began_it(self):
         # no Slurm job on either side says nothing of whether the resume ran where the start did
         alone = {"slurm_job": "none", "host": "edit-node"}

@@ -340,6 +340,11 @@ def runs_said(record):
     return f"started by run {started} and, resumed, ended by run {ended}"
 
 
+def resumed(where, ended):
+    """Whether the run that ended the folder is another than the one that began it, both named."""
+    return bool(where.get("run")) and bool(ended.get("run")) and where.get("run") != ended.get("run")
+
+
 def same_job(where, ended):
     """Whether the run that ended the folder ran in the job that began it: the one run, or a resume
     in the same Slurm job on the same host. A job named none, run outside Slurm, says nothing of
@@ -704,6 +709,12 @@ def fact_code_state(run):
                   if not place.get("commit") or place.get("clean_tree") is not True]
         if unsure:
             problems.append(f"the {stage['name']} job ({file}) {' and '.join(unsure)}")
+            continue
+        if where["commit"] != ended["commit"] and not resumed(where, ended):
+            # Only a resume is held to the same code by its run key, which the launcher reads anew;
+            # one run whose checkout moved under it may have run the newer code in its later steps.
+            problems.append(f"the {stage['name']} job ({file}) began on commit {str(where['commit'])[:7]} and ended on commit "
+                            f"{str(ended['commit'])[:7]} in the same run {said(where.get('run'))}, the checkout moved under it")
             continue
         commits = f"commit {str(where['commit'])[:7]} from a clean tree" if where["commit"] == ended["commit"] else \
             f"commit {str(where['commit'])[:7]}, resumed to its end on commit {str(ended['commit'])[:7]} of the same run key, each from a clean tree"
