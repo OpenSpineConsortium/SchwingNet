@@ -62,7 +62,7 @@ class StudyFolder(unittest.TestCase):
         self.replace_line("record: study ", self.lines()[0].replace("PREREG 2222-2222-2222-2222", f"PREREG {self.prereg}"))
         config = report.STUDIES[STUDY]
         self.addCleanup(config.update, dict(config))
-        config.update(answers=self.answers, runs=root / "runs", prereg=prereg)
+        config.update(answers=self.answers, runs=root / "runs", prereg=prereg, design=self.prereg)
         self.addCleanup(setattr, report, "LICENCES", report.LICENCES)
         report.LICENCES = register
 
@@ -160,7 +160,7 @@ class MissingRecordLineTest(StudyFolder):
     def test_without_the_study_line_its_items_are_missing_never_not_applicable(self):
         self.replace_line("record: study", None)
         claim = self.rows("claim")
-        for item in ("7", "9", "19", "26", "33", "38"):
+        for item in ("4", "7", "9", "14", "19", "26", "33", "34", "38"):
             self.assertEqual(claim[item]["state"], "missing", item)
             self.assertIn("'record: study ...' (absent)", claim[item]["evidence"], item)
         self.assertEqual(claim["35"]["state"], "met")
@@ -253,7 +253,7 @@ class RunLogTest(StudyFolder):
 class NotApplicableTest(StudyFolder):
     def test_what_the_design_leaves_out_says_why_and_names_the_run(self):
         claim, reforms = self.rows("claim"), self.rows("reforms")
-        for row in (claim["26"], claim["33"], claim["38"], reforms["5d"]):
+        for row in (*(claim[item] for item in ("14", "15", "16", "17", "18", "26", "33", "34", "38", "39")), reforms["5d"], reforms["5e"]):
             self.assertEqual(row["state"], "not applicable", row["id"])
             self.assertTrue(row["evidence"].startswith("Not applicable: the study "), row["id"])
             self.assertIn("study drr-domain-gap, commit 0000000, code 3333-3333-3333-3333", row["evidence"])
@@ -263,7 +263,7 @@ class NotApplicableTest(StudyFolder):
     def test_a_record_naming_another_pre_registration_answers_nothing_that_reads_it(self):
         self.replace_line("record: study ", self.lines()[0].replace(f"PREREG {self.prereg}", "PREREG 2222-2222-2222-2222"))
         claim, reforms = self.rows("claim"), self.rows("reforms")
-        for row in (claim["26"], reforms["5d"], reforms["2d"]):
+        for row in (claim["4"], claim["26"], claim["42"], reforms["1a"], reforms["5d"], reforms["2d"]):
             self.assertEqual(row["state"], "missing", row["id"])
             self.assertIn("the record names PREREG 2222-2222-2222-2222, which is not the frozen ", row["evidence"])
 
@@ -272,6 +272,67 @@ class NotApplicableTest(StudyFolder):
         for row in rows.values():
             if row["state"] == "not applicable":
                 self.assertEqual(row["basis"], "code", row["id"])
+
+
+class DesignTest(StudyFolder):
+    """The answers that restate the frozen design hold only for a run whose record names it, and the
+    answers that read the table or the summary quote them."""
+
+    DESIGN = {"claim": ("4", "5", "6", "8", "21", "30", "31", "34", "39", "40", "42"),
+              "reforms": ("1a", "1b", "1c", "3b", "3c", "3g", "5b", "5e", "5f", "6c", "7c")}
+
+    def design_rows(self):
+        return [row for key, items in self.DESIGN.items() for row in map(self.rows(key).get, items)]
+
+    def test_the_design_answers_hold_for_the_design_the_record_names(self):
+        for row in self.design_rows():
+            self.assertIn(row["state"], ("met", "not applicable"), row["id"])
+            self.assertEqual(row["basis"], "code", row["id"])
+
+    def test_a_design_other_than_the_one_the_answers_restate_leaves_them_missing(self):
+        report.STUDIES[STUDY]["design"] = "4444-4444-4444-4444"
+        for row in self.design_rows():
+            self.assertEqual(row["state"], "missing", row["id"])
+            self.assertIn(f"the record names PREREG {self.prereg}, and these answers restate PREREG.md 4444-4444-4444-4444", row["evidence"], row["id"])
+        self.assertEqual(self.rows("claim")["14"]["state"], "not applicable")
+
+    def test_a_record_naming_no_pre_registration_leaves_the_design_answers_missing(self):
+        self.replace_line("record: study ", self.lines()[0].replace(f"PREREG {self.prereg}", "PREREG none"))
+        for row in self.design_rows():
+            self.assertEqual(row["state"], "missing", row["id"])
+            self.assertIn("the record names none (PREREG none)", row["evidence"], row["id"])
+
+    def test_what_the_table_answers_is_missing_without_it(self):
+        (self.run / "groups.json").unlink()
+        claim, reforms = self.rows("claim"), self.rows("reforms")
+        for row in (claim["8"], claim["13"], claim["21"], claim["36"], reforms["1a"], reforms["3b"], reforms["3g"]):
+            self.assertEqual(row["state"], "missing", row["id"])
+            self.assertIn("needs the groups table the record names", row["evidence"], row["id"])
+
+    def test_the_table_and_the_summary_are_quoted(self):
+        claim, reforms = self.rows("claim"), self.rows("reforms")
+        self.assertIn("flexray_drr_ct (synthetic) 10 persons (the count of flexray_drr), a person its CT subject", claim["36"]["evidence"])
+        self.assertIn("fluxray (synthetic) skipped (not on the data root in this fixture), a person its record subject", claim["36"]["evidence"])
+        self.assertIn("fixture_film (film) 41 persons, a person one file", claim["36"]["evidence"])
+        self.assertIn("flexray_drr (no block changed)", claim["13"]["evidence"])
+        self.assertIn("fixture_fluoro, fixture fluoroscopy", claim["13"]["evidence"])
+        self.assertIn("the spaces flexray dim 8; flexray_as_stored dim 8; physics dim 4; imagenet not run (no ImageNet weights in this fixture)", claim["30"]["evidence"])
+        self.assertIn("groups skipped, fluxray (not on the data root in this fixture); persons by file in fixture_film", claim["40"]["evidence"])
+        self.assertIn("split-half nulls flagged: flexray none; physics none", claim["40"]["evidence"])
+        self.assertIn("render fixture_cts: 10 CTs chosen of 10", claim["21"]["evidence"])
+        self.assertIn("the records of its ThunderDB as FleXray's reader lists them: fluxray", reforms["3b"]["evidence"])
+        self.assertIn("salt fixture-salt", reforms["3b"]["evidence"])
+        self.assertIn("synthetic, flexray_drr, flexray_drr_ct, fluxray; fluoroscopy, fixture_fluoro; film, fixture_film", reforms["1a"]["evidence"])
+        self.assertIn("in the spaces flexray, physics", reforms["5f"]["evidence"])
+
+    def test_a_flagged_null_is_named_where_the_design_s_failures_are(self):
+        calibration = " calibration split-half auc median 0.33 range 0.32 to 0.34 over 1, mmd flagged 0, auc interval above half 0"
+        lines = self.lines()
+        at = lines.index(calibration)
+        self.write_lines(lines[:at] + [calibration.replace("mmd flagged 0", "mmd flagged 1"), " calibration flagged flexray_drr"] + lines[at + 1:])
+        claim = self.rows("claim")
+        for item in ("39", "40"):
+            self.assertIn("flexray flexray_drr; physics none", claim[item]["evidence"], item)
 
 
 class TableAndLicenceTest(StudyFolder):
@@ -354,6 +415,13 @@ class StudyRulesTest(unittest.TestCase):
                 self.assertIn(basis, ("code", "declared"), item["id"])
                 if basis == "code":
                     self.assertIn(fact, report.STUDY_FACTS, item["id"])
+
+    def test_the_owner_answers_only_what_no_file_of_the_study_says(self):
+        self.assertEqual(report.study_declared_facts(STUDY), {"title", "abstract", "background", "deidentification", "implications", "availability", "funding", "external_validity", "non_generalization"})
+
+    def test_the_design_the_answers_restate_is_the_frozen_pre_registration(self):
+        prereg = ROOT / "docs" / "research" / "drr-domain-gap" / "PREREG.md"
+        self.assertEqual(hashlib.sha256(prereg.read_bytes()).hexdigest()[:16], report.undashed(report.STUDIES[STUDY]["design"]))
 
     def test_the_study_s_answers_file_holds_every_fact_its_owner_answers(self):
         path = ROOT / "data" / "reporting" / "studies" / f"{STUDY}.json"

@@ -3,12 +3,12 @@
  "run_id": "40859208",
  "checklist": "CLAIM 2024",
  "source": "Tejani et al., Checklist for Artificial Intelligence in Medical Imaging (CLAIM): 2024 Update, Radiology: Artificial Intelligence 2024, doi 10.1148/ryai.240300; the short item texts as its checklist table gives them",
- "study_sha256": "b5b110d8ec9683c0a1edd72b5528e3310103dc3857a2b56b4de908d880db89e9",
+ "study_sha256": "b2ed7e9cdf15988577a9dbf272412c33614ed1be056e7d4d2f5416738334a83e",
  "tally": {
-  "met": 16,
+  "met": 27,
   "declared": 0,
-  "not applicable": 3,
-  "missing": 25
+  "not applicable": 10,
+  "missing": 7
  },
  "items": [
   {
@@ -42,28 +42,28 @@
    "id": "4",
    "section": "Introduction",
    "asks": "Study aims, objectives, and hypotheses",
-   "basis": "declared",
+   "basis": "code",
    "fact": "aims",
-   "state": "missing",
-   "evidence": "needs the owner's answer under \"aims\" in data/reporting/studies/drr-domain-gap.json"
+   "state": "met",
+   "evidence": "the question, PREREG.md section 1: how far FleXray's synthetic DRRs are from real X-rays, plain film and intra-operative fluoroscopy, whether that distance is larger than the distance between two real corpora, and whether this project's rendering of FleXray's recipe reproduces FleXray's own; the hypotheses and their bars, its section 4: the logistic C2ST AUC of flexray_drr, flexray_drr_ct, fluxray against pooled fluoroscopy and pooled film in the flexray space, inversion-invariant, each with its interval and its gap ratio, worded indistinguishable where the AUC's lower bound is at most 0.6, closer than two real corpora where it is below the median AUC of the family's real pairs and separable otherwise; and the replication verdict, replicated where flexray_replica against flexray_reference has a lower bound of at most 0.6 and an MMD q of at least 0.05"
   },
   {
    "id": "5",
    "section": "Methods: study design",
    "asks": "Prospective or retrospective study",
-   "basis": "declared",
-   "fact": "study_design",
-   "state": "missing",
-   "evidence": "needs the owner's answer under \"study_design\" in data/reporting/studies/drr-domain-gap.json"
+   "basis": "code",
+   "fact": "design",
+   "state": "met",
+   "evidence": "retrospective: every real image comes from a corpus the project already held, and every synthetic one is rendered in the job from held CTs or read from a held set (PREREG.md section 2), so no image was acquired for the study; the design was frozen before any number of the study was read (its section 7)"
   },
   {
    "id": "6",
    "section": "Methods: study design",
    "asks": "Study goal",
-   "basis": "declared",
-   "fact": "study_goal",
-   "state": "missing",
-   "evidence": "needs the owner's answer under \"study_goal\" in data/reporting/studies/drr-domain-gap.json"
+   "basis": "code",
+   "fact": "goal",
+   "state": "met",
+   "evidence": "a measurement under pre-registered hypotheses: the primary endpoints and the replication verdict of PREREG.md section 4, every other number read as description (its section 6); the study trains no network and builds no model for use"
   },
   {
    "id": "7",
@@ -78,10 +78,10 @@
    "id": "8",
    "section": "Methods: data",
    "asks": "Inclusion and exclusion criteria",
-   "basis": "declared",
-   "fact": "inclusion_exclusion",
-   "state": "missing",
-   "evidence": "needs the owner's answer under \"inclusion_exclusion\" in data/reporting/studies/drr-domain-gap.json"
+   "basis": "code",
+   "fact": "inclusion",
+   "state": "met",
+   "evidence": "in: the 23 groups of the table (data/domain_gap/groups.json, version 1, sha256 92a1-640b-70f1-b6c6 as the record names it), each at most its cap of images chosen person by person, with the five frozen test persons of data/splits/test-persons.json left out of every group; out before the run, each with its reason in README section 2, the corpora PREREG.md section 2 names: fluoro_video_clips, fluorocap, carmlspine_sweeps, spinesac, mendeley_5jdfdgp762, COBRA, ljubljana_2d3d_gs, the undecodable videos and the archives never unpacked; in the run, a group with fewer than 20 decoded images is left out and one with fewer than five persons is plotted and never tested; summary.txt: 2 groups skipped, vindr_spinexr (20932 index rows, none kept: format 10466, modality 10466); lumos (no folder lumos/bank under the data root)"
   },
   {
    "id": "9",
@@ -123,55 +123,55 @@
    "id": "13",
    "section": "Methods: data",
    "asks": "Image acquisition protocol",
-   "basis": "declared",
+   "basis": "code",
    "fact": "acquisition",
-   "state": "missing",
-   "evidence": "needs the owner's answer under \"acquisition\" in data/reporting/studies/drr-domain-gap.json"
+   "state": "met",
+   "evidence": "the render groups' images are made in the job from held CTs by the recipe DEFAULT, FleXray's released MOOSE recipe with segmenter spineps, changed by the blocks the table names (README sections 2.2 and 2.3; data/domain_gap/groups.json, version 1, sha256 92a1-640b-70f1-b6c6 as the record names it): flexray_drr (segmenter=moose, attenuation=off; engine blocks); flexray_drr_ct (segmenter=none, crop_sampler=uniform, isocentre=volume-centre, attenuation=off; engine blocks); flexray_replica (segmenter=moose; engine blocks); flexray_reference (segmenter=moose; engine flexray-runtime); flexray_spineps (no block changed; engine blocks); fluxray_raw (segmenter=none, crop=whole, crop_sampler=uniform, pose=fluxray-grid, isocentre=volume-centre, projection=cone, attenuation=off, scale=minmax, views=4, detector=1024; engine blocks); fluxray_raw_reference (segmenter=none, crop=whole, crop_sampler=uniform, pose=fluxray-grid, isocentre=volume-centre, projection=cone, attenuation=off, scale=minmax, views=4, detector=1024; engine flexray-runtime); every other group is a held set, made or acquired before the study, under a protocol the study does not record beyond the table's label of it: fluxray, FluXray (FleXray's FLUX-edited DRRs); ts_drr_project, SchwingNet DRRs (TotalSegmentator, rare_class); devcorpus, SchwingNet device-pose DRRs, styled (devcorpus); fluorogen, SchwingNet SDXL-styled synthetic (fluorogen); carmlspine_spots, C-ArmLSpine spot frames; deepfluoro, DeepFluoro vendor fluoroscopy (cadaver); geneva_hip, Geneva hip phantom fluoroscopy; vindr_spinexr, VinDr-SpineXR radiographs; buu_lspine, BUU lumbar spine radiographs; aasce, AASCE scoliosis radiographs; nhanes2, NHANES II scanned films; csxa, CSXA cervical radiographs; kub_stonex, KUB abdominal films; ieee_lateral, IEEE DataPort lateral whole-spine films; lumos, LUMOS lumbar radiographs; aariz, Aariz cephalograms (skull, C2-C4)"
   },
   {
    "id": "14",
    "section": "Methods: reference standard",
    "asks": "Definition of method(s) used to obtain reference standard",
-   "basis": "declared",
-   "fact": "reference_standard",
-   "state": "missing",
-   "evidence": "needs the owner's answer under \"reference_standard\" in data/reporting/studies/drr-domain-gap.json"
+   "basis": "code",
+   "fact": "no_reference_standard",
+   "state": "not applicable",
+   "evidence": "Not applicable: the study has no reference standard: the one label its tests read is which group or pooled family an image belongs to, known for every image by construction from the groups table, and no image is scored against a clinical truth (summary.txt record: study drr-domain-gap, commit 6e908e6, code e2ac-c706-01bb-c897)"
   },
   {
    "id": "15",
    "section": "Methods: reference standard",
    "asks": "Rationale for choosing the reference standard",
-   "basis": "declared",
-   "fact": "reference_standard_rationale",
-   "state": "missing",
-   "evidence": "needs the owner's answer under \"reference_standard_rationale\" in data/reporting/studies/drr-domain-gap.json"
+   "basis": "code",
+   "fact": "no_reference_standard",
+   "state": "not applicable",
+   "evidence": "Not applicable: the study has no reference standard: the one label its tests read is which group or pooled family an image belongs to, known for every image by construction from the groups table, and no image is scored against a clinical truth (summary.txt record: study drr-domain-gap, commit 6e908e6, code e2ac-c706-01bb-c897)"
   },
   {
    "id": "16",
    "section": "Methods: reference standard",
    "asks": "Source of reference standard annotations",
-   "basis": "declared",
-   "fact": "annotation_source",
-   "state": "missing",
-   "evidence": "needs the owner's answer under \"annotation_source\" in data/reporting/studies/drr-domain-gap.json"
+   "basis": "code",
+   "fact": "no_annotation",
+   "state": "not applicable",
+   "evidence": "Not applicable: the study annotates no image, in its test sets or anywhere: the label every test reads is the image's group, which the groups table sets, and no person reads an image (summary.txt record: study drr-domain-gap, commit 6e908e6, code e2ac-c706-01bb-c897)"
   },
   {
    "id": "17",
    "section": "Methods: reference standard",
    "asks": "Annotation of test set",
-   "basis": "declared",
-   "fact": "test_annotation",
-   "state": "missing",
-   "evidence": "needs the owner's answer under \"test_annotation\" in data/reporting/studies/drr-domain-gap.json"
+   "basis": "code",
+   "fact": "no_annotation",
+   "state": "not applicable",
+   "evidence": "Not applicable: the study annotates no image, in its test sets or anywhere: the label every test reads is the image's group, which the groups table sets, and no person reads an image (summary.txt record: study drr-domain-gap, commit 6e908e6, code e2ac-c706-01bb-c897)"
   },
   {
    "id": "18",
    "section": "Methods: reference standard",
    "asks": "Measures of inter- and intrarater variability of features described by the annotators",
-   "basis": "declared",
-   "fact": "rater_variability",
-   "state": "missing",
-   "evidence": "needs the owner's answer under \"rater_variability\" in data/reporting/studies/drr-domain-gap.json"
+   "basis": "code",
+   "fact": "no_raters",
+   "state": "not applicable",
+   "evidence": "Not applicable: the study has no rater, so no inter- or intrarater variability: no person reads an image, and the words beside the numbers are computed from them by src/schwingnet/domain_gap.py and printed by the summary, so no reader chooses them (summary.txt record: study drr-domain-gap, commit 6e908e6, code e2ac-c706-01bb-c897)"
   },
   {
    "id": "19",
@@ -195,10 +195,10 @@
    "id": "21",
    "section": "Methods: testing data",
    "asks": "Intended sample size",
-   "basis": "declared",
-   "fact": "intended_sample_size",
-   "state": "missing",
-   "evidence": "needs the owner's answer under \"intended_sample_size\" in data/reporting/studies/drr-domain-gap.json"
+   "basis": "code",
+   "fact": "intended_size",
+   "state": "met",
+   "evidence": "the design fixes caps, not a target: each group at most its cap of images (1000, 100) and at most 1 to 100 a person by group, 300 images from each testable real group in a pooled family, at most 600 a group in the maps, and a group tested only with at least 20 decoded images and five persons (PREREG.md sections 2 and 3; data/domain_gap/groups.json, version 1, sha256 92a1-640b-70f1-b6c6 as the record names it); the render groups were planned on 250 CTs and stand on the CTs the segmentation job covered (DEVIATIONS.md, item 1), summary.txt: render totalsegmentator_v201: 27 CTs chosen of 27 with every mask of 1228 CTs (moose 27, spineps 27); 26 kept by every group; no file of the study records a power calculation for any size, and the bar of 0.6 is by the design's own account neither a published value nor a power calculation's (PREREG.md section 4)"
   },
   {
    "id": "22",
@@ -276,19 +276,19 @@
    "id": "30",
    "section": "Methods: evaluation",
    "asks": "Robustness or sensitivity analysis",
-   "basis": "declared",
+   "basis": "code",
    "fact": "robustness",
-   "state": "missing",
-   "evidence": "needs the owner's answer under \"robustness\" in data/reporting/studies/drr-domain-gap.json"
+   "state": "met",
+   "evidence": "no finding rests on one view: PREREG.md section 3 reads every contrast in three feature spaces, flexray, imagenet and physics, FleXray's both inversion-invariant and as stored, by two classifiers, logistic regression and 15 nearest neighbours, beside the MMD, FD64, KID64 and PRDC, and calibrates every space by its split-half nulls; summary.txt carries the spaces flexray dim 1024; imagenet dim 512, a space it does not name being given up to its line budget (README section 4); and its verdict lines print each worded pair's MMD q with the split-half nulls in its family and without them (DEVIATIONS.md, item 11)"
   },
   {
    "id": "31",
    "section": "Methods: evaluation",
    "asks": "Methods for explainability or interpretability",
-   "basis": "declared",
+   "basis": "code",
    "fact": "explainability",
-   "state": "missing",
-   "evidence": "needs the owner's answer under \"explainability\" in data/reporting/studies/drr-domain-gap.json"
+   "state": "met",
+   "evidence": "no per-image explanation, no saliency or attribution map, is made; what the study shows of how the groups differ is description (PREREG.md section 3): the maps, PCA, t-SNE, UMAP and LDA, each but LDA with its trustworthiness; the silhouette, each group's neighbour purity and its neighbours' share in each family; the nearest real corpus that a classifier of the real corpora alone calls each synthetic group; and PRDC; and the physics space's features are named measures, the intensity histogram, the radial power spectrum's shape, the gradient histogram, the noise, the local contrast, the shares near black and white and the share of strong edges (README section 3)"
   },
   {
    "id": "32",
@@ -312,10 +312,10 @@
    "id": "34",
    "section": "Methods: evaluation",
    "asks": "Clinical trial registration",
-   "basis": "declared",
-   "fact": "trial_registration",
-   "state": "missing",
-   "evidence": "needs the owner's answer under \"trial_registration\" in data/reporting/studies/drr-domain-gap.json"
+   "basis": "code",
+   "fact": "no_trial",
+   "state": "not applicable",
+   "evidence": "Not applicable: the study is no clinical trial and is in no trial registry; its design is registered inside the project as PREREG.md 3ca1-b6b7-aea6-0f00, frozen on 2026-10-27 before any number of the study was read (its section 7), the pre-registration this record names (summary.txt record: study drr-domain-gap, commit 6e908e6, code e2ac-c706-01bb-c897)"
   },
   {
    "id": "35",
@@ -330,10 +330,10 @@
    "id": "36",
    "section": "Results: data",
    "asks": "Demographic and clinical characteristics of cases in each partition",
-   "basis": "declared",
+   "basis": "code",
    "fact": "characteristics",
-   "state": "missing",
-   "evidence": "needs the owner's answer under \"characteristics\" in data/reporting/studies/drr-domain-gap.json"
+   "state": "met",
+   "evidence": "the study reads and records no demographic or clinical characteristic of any person or image; what it records of each group is its family, what one of its persons is (the table's rule) and how many it holds (summary.txt): flexray_drr (synthetic) 26 persons, a person its CT subject; flexray_drr_ct (synthetic) 26 persons (the count of flexray_drr), a person its CT subject; flexray_replica (synthetic) 26 persons (the count of flexray_drr), a person its CT subject; flexray_reference (synthetic) 26 persons (the count of flexray_drr), a person its CT subject; flexray_spineps (synthetic) 26 persons (the count of flexray_drr), a person its CT subject; fluxray_raw (synthetic) 26 persons, a person its CT subject; fluxray_raw_reference (synthetic) 26 persons (the count of fluxray_raw), a person its CT subject; fluxray (synthetic) 1000 persons, a person its record subject; ts_drr_project (synthetic) 19 persons, a person by the rule regex:(?P<person>s[0-9]{4}); devcorpus (synthetic) 142 persons, a person by the rule regex:(?P<person>s[0-9]{4}); fluorogen (synthetic) 1000 persons, a person one file; carmlspine_spots (fluoroscopy) 144 persons, a person by the rule regex:(?P<person>case[0-9]+); deepfluoro (fluoroscopy) 14 persons, a person by the rule dicom:patient; geneva_hip (fluoroscopy) 1 person, a person by the rule regex:(?P<person>[.][A-Za-z]+)$; vindr_spinexr (film) skipped (20932 index rows, none kept: format 10466, modality 10466), a person by the rule dicom:patient; buu_lspine (film) 1000 persons, a person by the rule regex:(?P<person>[0-9]{4})-[FM]-[0-9]{3}Y; aasce (film) 294 persons, a person one file; nhanes2 (film) 1000 persons, a person one file; csxa (film) 1000 persons, a person one file; kub_stonex (film) 1000 persons, a person one file; ieee_lateral (film) 236 persons, a person one file; lumos (film) skipped (no folder lumos/bank under the data root), a person by the rule regex:lumos_x_(?P<person>[0-9]{3})_[0-9]+[.]png$; aariz (film) 841 persons, a person one file"
   },
   {
    "id": "37",
@@ -357,19 +357,19 @@
    "id": "39",
    "section": "Results: model performance",
    "asks": "Failure analysis of incorrectly classified cases",
-   "basis": "declared",
+   "basis": "code",
    "fact": "failure_analysis",
-   "state": "missing",
-   "evidence": "needs the owner's answer under \"failure_analysis\" in data/reporting/studies/drr-domain-gap.json"
+   "state": "not applicable",
+   "evidence": "Not applicable: the study classifies no case against a truth, so no case is incorrectly classified; the failures its design defines are PREREG.md section 5's, of the pipeline (a flagged split-half null, whose contrasts are then not read), of the replication (the verdict not replicated) and of realism (a primary endpoint worded separable), reported in CLAIM 37 and, for the nulls, by summary.txt's calibration lines: flagged flexray none; imagenet none (summary.txt record: study drr-domain-gap, commit 6e908e6, code e2ac-c706-01bb-c897)"
   },
   {
    "id": "40",
    "section": "Discussion",
    "asks": "Study limitations",
-   "basis": "declared",
+   "basis": "code",
    "fact": "limitations",
-   "state": "missing",
-   "evidence": "needs the owner's answer under \"limitations\" in data/reporting/studies/drr-domain-gap.json"
+   "state": "met",
+   "evidence": "the limits known before the run are README section 5's eight, as PREREG.md section 6 names them: the corpora differ in more than their realism, in anatomy, devices, eras and formats; the renders follow their own pose profiles where the real spot frames are narrow and centred; the replication's CTs are TotalSegmentator v2.0.1's, not the ENHANCE-PET volumes of FleXray's dataset; its MOOSE masks are merged in this project's own precedence; the SPINEPS masks are matched by name in a layout not recorded; flexray_drr_ct aims at the crop's centre and draws its crops uniformly; persons are files in seven groups; DeepFluoro has six specimens; every departure from the design is in DEVIATIONS.md, dated with its reason; of this run, summary.txt: groups skipped, vindr_spinexr (20932 index rows, none kept: format 10466, modality 10466); lumos (no folder lumos/bank under the data root); persons by file in fluorogen, aasce, nhanes2, csxa, kub_stonex, ieee_lateral, aariz; split-half nulls flagged: flexray none; imagenet none"
   },
   {
    "id": "41",
@@ -384,10 +384,10 @@
    "id": "42",
    "section": "Other information",
    "asks": "Provide a reference to the full study protocol or to additional technical details",
-   "basis": "declared",
+   "basis": "code",
    "fact": "protocol",
-   "state": "missing",
-   "evidence": "needs the owner's answer under \"protocol\" in data/reporting/studies/drr-domain-gap.json"
+   "state": "met",
+   "evidence": "the full protocol is the pre-registration docs/research/drr-domain-gap/PREREG.md, sha256 3ca1-b6b7-aea6-0f00 as this record names it, frozen before any number, which restates README sections 1 to 5 at commit 6658f3a as the full text; DEVIATIONS.md beside it records every departure, and README section 7 the commands that run the study"
   },
   {
    "id": "43",
