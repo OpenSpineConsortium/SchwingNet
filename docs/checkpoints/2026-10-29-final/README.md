@@ -2,6 +2,8 @@
 
 Source: the thread "Write the next account's handoff" in the claude.ai project symphony_4, written at about 17:45 UTC on 2026-10-29 on the owner's words of 17:36 UTC (section 1) and the coordinator's list of every thread's pull request. It is the entry point for the next account. It builds on docs/checkpoints/2026-10-29-checkpoint/README.md and docs/checkpoints/2026-10-28-final/README.md, which hold the owner's seven decisions of 2026-10-28 20:40 UTC and what he answered on the night of 2026-10-28; where they and this file differ, this file holds. Confidential: it stays in SchwingNet. No secret, token or credential is in it.
 
+The threads of the project symphony_2, written at 23:15 UTC, are indexed in [symphony-2/README.md](symphony-2/README.md), with the owner's standing rules in symphony-2/memory/.
+
 ## 0. Read this first
 
 1. Read this file, then the handoff of each piece of work you are given (section 3). Each handoff, or the pull request description where no file is named, says what is done, what is left and in what order.
