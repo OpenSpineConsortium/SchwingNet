@@ -60,7 +60,7 @@ As of this pull request only the sweep keeps it. These words of grid/gate.sh sti
 job that trains or runs a network, each to be moved onto a flow listed in registry.txt, one pull
 request each, under a PREREG of its own:
 
-- `start`, version 1's training and evaluation (grid/v1-driver.sbatch);
+- `start` and `v1`, version 1's training and evaluation (grid/v1-driver.sbatch);
 - `experiment <issue>`, one combination of blocks from the experiments panel
   (grid/experiment-driver.sbatch);
 - `bench <id>`, a public model's benchmark (grid/bench.sbatch), and among its ids
