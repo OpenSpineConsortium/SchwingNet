@@ -10,16 +10,14 @@
 #   flexray_deepfluoro  FleXray's Dice on DeepFluoro against its published 0.916
 #   xvr_deepfluoro      xvr's published DeepFluoro models through xvr's own register and evaluate scripts,
 #                       against its published 1.1 mm median mTRE
-#   flexray_drr_seg     the DRR domain-gap study's choice of CTs (tools/domain_gap.py plan, rendering
-#                       nothing) and MOOSE on exactly those (tools/flexray_render.py segment, moosez's
-#                       Python entry on the fetched model zips, never a download), written under the data
-#                       root's moose in moosez's own layout; sent before flexray_drr_gap, whose MOOSE
-#                       groups read them
 #
-# flexray_drr_gap, the study itself, is no longer run here: the owner cancelled its one job here
-# (Slurm 40802322) on 2026-10-27 to have it sharded on the H200 nodes, and grid/drr-gap.sbatch runs it
-# in three steps (prepare, an array of shards, merge), which the same gate word queues; a BENCH of
-# flexray_drr_gap that reaches this script is refused with exit 64.
+# The DRR domain-gap study's two words are no longer run here. flexray_drr_gap, the study itself:
+# the owner cancelled its one job here (Slurm 40802322) on 2026-10-27 to have it sharded on the
+# H200 nodes, and grid/drr-gap.sbatch runs it in three steps (prepare, an array of shards, merge),
+# which the same gate word queues. flexray_drr_seg, MOOSE's masks for the study's CTs: since the
+# owner's rule of 2026-10-29 that every deep learning job on the grid runs on a launched flow, it
+# is grid/drr-seg.sbatch, which starts flows/launch.py drr_seg. A BENCH of either that reaches this
+# script is refused with exit 64.
 #
 # The public package goes into a throwaway virtual environment on the lab volume, made from the
 # train-gpu environment with its site packages (torch among them) and kept for a rerun under a name
@@ -40,17 +38,11 @@ BENCH=${BENCH:-}
 FLEXRAY_PIN="flexray==1.0.2 h5py"
 XVR_COMMIT=1abc2af07efa5b5a6c3576525a79de1f9b3e9f81
 XVR_PIN="git+https://github.com/eigenvivek/xvr.git@$XVR_COMMIT pandas click tqdm"
-# moosez's newest release on PyPI when this line was written (2026-10-26); its README calls it MOOSE 3.2.
-MOOSE_PIN="moosez==3.2.2"
-# The segmentation job runs MOOSE but chooses its CTs through tools/flexray_render.py, which loads
-# tools/render_blocks.py, and that imports fxr.drr at the top; fxr.drr imports nanodrr, which
-# flexray keeps among its train extras. With MOOSE alone the plan stopped at the import
-# (job 40790826), so the job's environment carries both, pinned as grid/drr-gap.sbatch's DRR_GAP_PIN pins them.
-SEG_PIN="$MOOSE_PIN flexray==1.0.2 nanodrr==0.1.5"
 case "$BENCH" in
-  flexray_carmlspine|flexray_deepfluoro|xvr_deepfluoro|flexray_drr_seg) ;;
+  flexray_carmlspine|flexray_deepfluoro|xvr_deepfluoro) ;;
   flexray_drr_gap) echo "bench: flexray_drr_gap runs as grid/drr-gap.sbatch's three steps (prepare, shard, merge), which grid/gate.sh's word bench flexray_drr_gap queues"; echo "SN_BENCH_RC=64"; exit 64 ;;
-  *) echo "bench: BENCH is one of flexray_carmlspine, flexray_deepfluoro, xvr_deepfluoro, flexray_drr_seg"; echo "SN_BENCH_RC=64"; exit 64 ;;
+  flexray_drr_seg) echo "bench: flexray_drr_seg runs as grid/drr-seg.sbatch on a launched flow, which grid/gate.sh's word bench flexray_drr_seg queues"; echo "SN_BENCH_RC=64"; exit 64 ;;
+  *) echo "bench: BENCH is one of flexray_carmlspine, flexray_deepfluoro, xvr_deepfluoro"; echo "SN_BENCH_RC=64"; exit 64 ;;
 esac
 REPORT=$REPO/grid/logs/BENCH-$BENCH.md
 OUT=$BENCH_ROOT/$BENCH
@@ -94,34 +86,7 @@ failure_of() {  # the first compiler or linker error in a log, else its last lin
 weights_dir() {  # the FleXray bundle the fetch landed: the folder that holds ensemble.json
   dirname "$(find "$DATA/hf_flexray_weights/raw" -maxdepth 3 -name ensemble.json -print -quit 2>/dev/null)"
 }
-moose_zip_missing() {  # the first of MOOSE's model zips not whole under the data root's moose_weights/raw, by the fetch row's URLs: "<name> missing", "<name> part", "<name> damaged", or "row" where the row was not read
-  local urls url file whole
-  urls=$(bash grid/run-platform-fetch.sh --args moose_weights 2>/dev/null)
-  [ -n "$urls" ] || { echo row; return; }
-  for url in $urls; do
-    file=$DATA/moose_weights/raw/${url##*/}
-    [ -s "$file" ] || { echo "${url##*/} missing"; return; }
-    whole=0; zip_whole "$file" || whole=$?
-    case "$whole" in 0) ;; 2) echo "${url##*/} damaged"; return ;; *) echo "${url##*/} part"; return ;; esac
-  done
-}
-zip_whole() {  # zip_whole FILE: 0 where the file ends in a whole end-of-central-directory record, read as Python's zipfile.is_zipfile reads it, and unzip finds every member whole where the node has unzip; 2 where only unzip's test fails
-  # grid/gate.sh's check again, where the job runs, since the gate's may be hours old by the time
-  # the job starts: the url route lands each zip under its final name while curl resumes it and
-  # leaves a part there when a download is cut short (grid/platform-fetch.sbatch, fetch_url), which
-  # [ -s ] passes and the unpack would die on. The node may have no python3, so awk and coreutils
-  # read the record; unzip, where it is there, tests every member's CRC too, which tells a zip
-  # resumed across two uploads of the asset, whole by its record, from a sound one.
-  local size from
-  size=$(stat -c %s "$1" 2>/dev/null) && [ "$size" -ge 22 ] || return 1
-  from=$(( size > 65558 ? size - 65558 : 0 ))
-  tail -c +"$((from + 1))" "$1" | od -An -v -tx1 -w1 | awk '
-    function hex(s,  i, v) { v = 0; for (i = 1; i <= length(s); i++) v = v * 16 + index("0123456789abcdef", substr(s, i, 1)) - 1; return v }
-    { bytes[NR] = $1 }
-    END { for (i = NR - 21; i >= 1; i--) if (bytes[i] bytes[i + 1] bytes[i + 2] bytes[i + 3] == "504b0506" && i + 21 + hex(bytes[i + 21] bytes[i + 20]) == NR) exit 0; exit 1 }' || return 1
-  ! command -v unzip > /dev/null 2>&1 || unzip -tq "$1" > /dev/null 2>&1 || return 2
-}
-tail_lines=12  # how much of what the tool said the report carries: its last lines, or the segment's one summary line
+tail_lines=12  # how much of what the tool said the report carries: its last lines
 case "$BENCH" in
   flexray_carmlspine|flexray_deepfluoro)
     venv=$(venv_for "$FLEXRAY_PIN") || { report "FAILED: the environment for $FLEXRAY_PIN could not be made"; finish 1; }
@@ -165,41 +130,6 @@ case "$BENCH" in
         --main "$OUT/registration.csv" --device cuda ) > "$OUT/evaluate.log" 2>&1 \
       || { report "FAILED: xvr's evaluate.py ($(tail -n 1 "$OUT/evaluate.log" | cut -c1-160))"; finish 1; }
     said=$(bash grid/box.sh "$venv/bin/python" tools/bench_public.py xvr-summary --csv "$OUT/registration.csv" --out "$OUT" 2>&1) || rc=1 ;;
-  flexray_drr_seg)
-    # MOOSE's masks for the CTs the study will render, so that flexray_drr_gap reads existing masks
-    # for both segmenters and runs no segmenter itself. The inputs first, since the gate's check
-    # may be hours old by the time the job starts; the weights are the fetched zips, read in place,
-    # and a zip not there fails the job by name rather than let moosez download it.
-    [ -d "$DATA/totalsegmentator_v201" ] || { report "FAILED: no totalsegmentator_v201 under $DATA, the CTs the render groups draw"; finish 2; }
-    [ -d "$DATA/spineps" ] || { report "FAILED: no spineps under $DATA, the masks the choice of CTs is made among"; finish 2; }
-    zip=$(moose_zip_missing)
-    case "$zip" in
-      "") ;;
-      row) report "FAILED: the row moose_weights of grid/run-platform-fetch.sh was not read, so no zip can be named"; finish 2 ;;
-      *" part") report "FAILED: ${zip% part} under $DATA/moose_weights/raw is not a whole zip (a part still landing or cut short, which a resend of fetch moose_weights resumes)"; finish 2 ;;
-      *" damaged") report "FAILED: ${zip% damaged} under $DATA/moose_weights/raw is whole by its record but unzip finds a member damaged (a download resumed across two uploads of the asset, say): delete it in the grid's shell and resend fetch moose_weights, which lands it again"; finish 2 ;;
-      *) report "FAILED: no ${zip% missing} under $DATA/moose_weights/raw (fetch moose_weights first)"; finish 2 ;;
-    esac
-    venv=$(venv_for "$SEG_PIN") || { report "FAILED: the environment for $SEG_PIN could not be made"; finish 1; }
-    report "environment: $SEG_PIN; weights: $DATA/moose_weights/raw; CTs: $DATA/totalsegmentator_v201; masks: $DATA/moose"
-    # The choice of CTs, made as the study makes it but before any MOOSE mask exists, to
-    # render-subjects.json in this job's own folder (the plan's log stays there too, under umask 077
-    # as the study's does, though it names TotalSegmentator subjects alone).
-    ( umask 077; chmod 700 "$OUT"
-      bash grid/box.sh "$venv/bin/python" tools/domain_gap.py plan --groups data/domain_gap/groups.json --data-root "$DATA" \
-        --out "$OUT" --frozen data/splits/test-persons.json --spineps "$DATA/spineps" --moose "$DATA/moose" > "$OUT/plan.log" 2>&1 ); rc=$?
-    [ "$rc" = 0 ] || { report "FAILED: domain_gap.py plan ended $rc ($(tail -n 1 "$OUT/plan.log" | sed -r -f grid/redact.sed | cut -c1-160))"; finish "$rc"; }
-    [ -s "$OUT/render-subjects.json" ] || { report "FAILED: domain_gap.py plan wrote no render-subjects.json under $OUT"; finish 2; }
-    # MOOSE on exactly those CTs, through the segment subcommand's own plan (which subjects still
-    # lack masks, which models), the masks landing under the data root's moose in moosez's layout.
-    said=$(bash grid/box.sh "$venv/bin/python" tools/flexray_render.py segment --segmenter moose --ct-root "$DATA/totalsegmentator_v201" \
-      --subjects "$OUT/render-subjects.json" --weights "$DATA/moose_weights/raw" --out "$DATA/moose" 2>&1 | sed -r -f grid/redact.sed); rc=$?
-    # The segment subcommand prints its plan and its record as JSON (every subject, the data root's
-    # paths, each zip's bytes) and ends with one plain line, the subjects run, the models, the files
-    # found and not found and where they were written: the report carries that line alone, since the
-    # JSON's last lines are closing brackets, and the whole stays in the job's log; a run that failed
-    # keeps its last lines, the refusal or the traceback's end.
-    [ "$rc" != 0 ] || tail_lines=1 ;;
 esac
 echo "$said"
 report "results: $OUT"

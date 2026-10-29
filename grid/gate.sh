@@ -108,7 +108,10 @@
 #                   for the FleXray replication, SPINEPS for production): the study's choice of CTs
 #                   (tools/domain_gap.py plan) and MOOSE on exactly those (tools/flexray_render.py segment),
 #                   once the TotalSegmentator CTs, the SPINEPS masks and the five model zips of
-#                   `fetch moose_weights` are there; it writes the masks under the data root's moose
+#                   `fetch moose_weights` are there; it writes the masks under the data root's moose.
+#                   Both run on launched flows (the owner's rule of 2026-10-29): each of the study's
+#                   jobs, and each task of its array, starts flows/launch.py drr_gap from prepare's copy
+#                   of the code, and flexray_drr_seg's job (grid/drr-seg.sbatch) flows/launch.py drr_seg
 #   anomaly <stage> one stage of the SPINEPS to FleXray anomaly route (#398, the owner's word and count of
 #                   2026-10-25 21:22 UTC: seven jobs, two CPU and five GPU, docs/research/spineps-anomaly-route.md),
 #                   queued once as one job (grid/anomaly.sbatch, tools/anomaly_route.py) once the stage's code has
@@ -156,9 +159,9 @@
 #
 # While a version 1 run, a sweep, an experiment run, a benchmark, an anomaly stage, a bordercall stage, the census or a
 # realism stage lasts, grid/logs/HOLD names its job and commit (grid/v1-driver.sbatch, grid/sweep-driver.sbatch,
-# grid/experiment-driver.sbatch, grid/bench.sbatch, grid/anomaly.sbatch, grid/bordercall.sbatch, grid/census.sbatch,
-# grid/realism.sbatch; not the DRR domain-gap study's steps, grid/drr-gap.sbatch, which run from a copy of their
-# code); the gate's side skips its fast-forward while the file is there, and every word but a refused one
+# grid/experiment-driver.sbatch, grid/bench.sbatch, grid/drr-seg.sbatch, grid/anomaly.sbatch, grid/bordercall.sbatch,
+# grid/census.sbatch, grid/realism.sbatch; not the DRR domain-gap study's steps, grid/drr-gap.sbatch, which run from a
+# copy of their code); the gate's side skips its fast-forward while the file is there, and every word but a refused one
 # clears a hold whose job Slurm no longer holds, so the run's later steps run the code it
 # recorded. One file holds one job, so each run that takes it waits afterany on every other one
 # still live (checkout_holders) rather than run beside it.
@@ -214,6 +217,14 @@ NETRC=${NETRC:-$HOME/.netrc}
 # each on whichever of its partitions frees first (the owner's words of 2026-10-28 00:23 UTC, "shard
 # it to more gpus like 16" and "drop the requirement for h200 unless its a memory problem").
 DRR_GAP_TASKS=16
+# The study's folder under BENCH_ROOT, where its three steps write everything they compute and keep
+# (grid/drr-gap.sbatch, DRR_GAP_OUT): a committed name changed by pull request, as DRR_GAP_TASKS is.
+# The study keeps whatever an earlier run left in its folder under the same stamps (its plan, the
+# images, features and heads keyed by it, and every unit done), so a run in a folder of its own
+# computes every render, plan, image, feature, head and unit again from the same inputs, and the
+# folder of the run before it is left as it was. Run 3 (docs/research/drr-domain-gap/DEVIATIONS.md,
+# item 12) is such a run, the owner's count of 2026-10-29 12:51 UTC; runs 1 and 2 used flexray_drr_gap.
+DRR_GAP_FOLDER=flexray_drr_gap_run3
 # The benchmarks the owner's word and count let run once more although a report of theirs stands,
 # each as <id>:<the job that report's first line names>: a committed list changed by pull request,
 # as DRR_GAP_TASKS is, since a gate word carries no option. A send of bench <id> whose standing
@@ -223,12 +234,13 @@ DRR_GAP_TASKS=16
 # every later send prints the new report and queues nothing. A run that writes no report (its merge
 # cut short, or its prepare never started) leaves none standing, and the next send queues the
 # benchmark again, as it does wherever no report stands, so that send waits for the owner's word.
-# flexray_drr_gap:40828920 is the owner's
-# tap of 2026-10-28 16:28 UTC, "Rerun, family as PREREG says", one more run of the DRR domain-gap
-# study's 18 jobs (prepare, 16 shards, the merge) once FluXray's reader was fixed (#441) and the
-# family set (#442), and his word of 22:58 UTC that day, "The FluXray rerun: go, and which project
-# runs it., this project can run it now".
-BENCH_RERUNS="flexray_drr_gap:40828920"
+# flexray_drr_gap:40859208 is the owner's word of 2026-10-29 12:45 UTC, "rerun on grid when u can",
+# and his count tapped at 12:51 UTC, one more run of the DRR domain-gap study's 18 jobs (prepare, 16
+# shards, the merge), each on its launched flow (the owner's rule of 02:39 UTC that day), and one
+# bench flexray_drr_seg only where MOOSE's masks are missing (DEVIATIONS.md, item 12). The entry
+# before it, flexray_drr_gap:40828920, was his tap of 2026-10-28 16:28 UTC and his go of 22:58 UTC,
+# spent by the second run, prepare 40859208.
+BENCH_RERUNS="flexray_drr_gap:40859208"
 LOGS=$REPO/grid/logs
 STATE=$LOGS/GATE_JOBS.txt
 WORDS="start status leaks v1 latency fetch explore dropzip unpack nodequota folders samples sweep bank experiment bench anomaly bordercall census realism literature stop cancel"
@@ -804,13 +816,16 @@ bench_progress() {  # every benchmark under BENCH_ROOT that keeps a PROGRESS.txt
     name=$(basename "$folder")
     # A benchmark's folder is named by its id; any other name is no benchmark's and is passed over.
     case "$name" in ""|*[!a-z0-9_]*) continue ;; esac
+    # The DRR study's folder is DRR_GAP_FOLDER; an earlier run's folder keeps its last PROGRESS.txt,
+    # which is no live view, and is passed over.
+    case "$name" in flexray_drr_gap|flexray_drr_gap_run*) [ "$name" = "$DRR_GAP_FOLDER" ] || continue ;; esac
     bench_progress_of "$name"
   done
 }
 
 # Every run flows/launch.py starts keeps its progress page, and the page in short lines, PROGRESS.txt,
 # under FLOW_ROOT/progress/<Flow>/<run>/ (flows/stage_progress.py, the owner's rule of 2026-10-29).
-# Status shows the newest FLOW_RUNS_SHOWN runs' lines, each under a heading that names the run's kind
+# Status shows FLOW_RUNS_SHOWN runs' lines (flow_runs_chosen says which), each under a heading naming the run's kind
 # and id, which tools/progress_page.py reads back into the same page off the grid. The page's own
 # lines are the flow's words; a task's last line and a report's can quote a path or a value, so those
 # are judged as a stage report's lines are (report_shapes), and every line is masked. The writer puts
@@ -847,7 +862,8 @@ flow_lines() {  # flow_lines FILE: its first FLOW_PROGRESS_LINES lines, a runnin
 }
 flow_progress() {  # the newest runs of every launched flow, each its PROGRESS.txt as status shows it
   local progress run kind
-  ls -1t "$FLOW_ROOT"/progress/*/*/PROGRESS.txt 2>/dev/null | head -n "$FLOW_RUNS_SHOWN" | while read -r progress; do
+  flow_runs_chosen
+  printf '%s\n' ${FLOW_SHOWN[@]+"${FLOW_SHOWN[@]}"} | while read -r progress; do
     [ -f "$progress" ] || continue
     run=$(basename "$(dirname "$progress")")
     kind=$(head -n 1 "$progress" | awk '$1 == "flow" { sub(/:$/, "", $3); print $3 }')
@@ -856,6 +872,58 @@ flow_progress() {  # the newest runs of every launched flow, each its PROGRESS.t
     echo "## flow $kind $run, progress ($(date -u -r "$progress" '+%F %H:%M') UTC)"
     flow_lines "$progress" | LC_ALL=C tr -cd '\11\12\40-\176' | flow_shapes | masked | sed 's/^/  /'
   done
+  flow_kinds_left
+}
+
+# Which runs status shows: the newest run of each kind, the kinds whose newest run moved last first,
+# then the newest of the rest, FLOW_RUNS_SHOWN in all and shown newest first, so that the DRR
+# domain-gap study's 18 runs a chain (prepare, 16 shard tasks, the merge), whose own PROGRESS.txt
+# the bench progress shows, never push another kind's newest run out. A kind whose newest run has
+# no room among them is named on one line of its own under "## flow kinds not shown", which the page
+# hands room after the job list and the failed jobs' logs (grid/status-page.awk), so the flows'
+# sections stay FLOW_RUNS_SHOWN however many kinds have run. The files are read by the shell alone,
+# with no process for each run, since the progress folder keeps every run there has been.
+FLOW_HEAD='^flow [^ ]+ ([^ ]+): ([a-z]+)'
+FLOW_KIND="" FLOW_STATE="" FLOW_SHOWN=() FLOW_LEFT=()
+flow_kind_of() {  # flow_kind_of PROGRESS: the kind and the state its first line names, into FLOW_KIND and FLOW_STATE, each unknown where it names none
+  local first=""
+  FLOW_KIND=unknown FLOW_STATE=unknown
+  read -r first 2>/dev/null < "$1"
+  [[ "$first" =~ $FLOW_HEAD ]] || return 0
+  case "${BASH_REMATCH[1]}" in *[!a-z0-9_]*) ;; *) FLOW_KIND=${BASH_REMATCH[1]} ;; esac
+  FLOW_STATE=${BASH_REMATCH[2]}
+}
+flow_runs_chosen() {  # the PROGRESS.txt files status shows into FLOW_SHOWN, newest first, and a line for each kind left out into FLOW_LEFT
+  local files=() kinds=() chosen=() seen=" " count=0 i run
+  FLOW_SHOWN=() FLOW_LEFT=()
+  mapfile -t files < <(ls -1t "$FLOW_ROOT"/progress/*/*/PROGRESS.txt 2>/dev/null)
+  for i in ${files[@]+"${!files[@]}"}; do
+    run=${files[$i]%/PROGRESS.txt}; run=${run##*/}
+    [ -f "${files[$i]}" ] || continue
+    case "$run" in ""|*[!A-Za-z0-9_.-]*) continue ;; esac
+    flow_kind_of "${files[$i]}"
+    kinds[$i]=$FLOW_KIND
+    case "$seen" in *" $FLOW_KIND "*) continue ;; esac
+    seen="$seen$FLOW_KIND "
+    if [ "$count" -lt "$FLOW_RUNS_SHOWN" ]; then
+      chosen[$i]=1
+      count=$((count + 1))
+    else
+      FLOW_LEFT+=("$FLOW_KIND $run: $FLOW_STATE ($(date -u -r "${files[$i]}" '+%F %H:%M') UTC)")
+    fi
+  done
+  for i in ${kinds[@]+"${!kinds[@]}"}; do
+    [ "$count" -lt "$FLOW_RUNS_SHOWN" ] || break
+    [ -z "${chosen[$i]:-}" ] || continue
+    chosen[$i]=1
+    count=$((count + 1))
+  done
+  for i in ${chosen[@]+"${!chosen[@]}"}; do FLOW_SHOWN+=("${files[$i]}"); done
+}
+flow_kinds_left() {  # one line for each kind whose newest run flow_runs_chosen had no room for, its run, its state and when its file last moved
+  [ "${#FLOW_LEFT[@]}" -gt 0 ] || return 0
+  echo "## flow kinds not shown, for want of room among the newest $FLOW_RUNS_SHOWN: each kind's newest run, its state and when it last moved"
+  printf '%s\n' "${FLOW_LEFT[@]}" | masked | sed 's/^/  /'
 }
 
 word_leaks() {
@@ -1376,7 +1444,7 @@ zip_whole() {  # zip_whole FILE: the file ends in a whole end-of-central-directo
   # The record's signature PK\5\6 within the last 65557 bytes, 18 bytes after it and then a comment
   # of the length the record states, up to the file's end: a zip cut short anywhere, in its last
   # bytes included, fails this, a whole one passes. awk and coreutils alone, since the login node
-  # runs no python; grid/bench.sbatch's copy adds unzip's test of every member where the node has it.
+  # runs no python; grid/drr-seg.sbatch's copy adds unzip's test of every member where the node has it.
   local size from
   size=$(stat -c %s "$1" 2>/dev/null) && [ "$size" -ge 22 ] || return 1
   from=$(( size > 65558 ? size - 65558 : 0 ))
@@ -1434,7 +1502,8 @@ drr_gap_jobs() {  # drr_gap_jobs [WAIT...]: the study's three jobs (grid/drr-gap
   # its part, so each waits afterany; the shards and the merge are handed prepare's job, so neither
   # reads a step file an earlier chain left, and the merge the array's count, so it names each task.
   local waits=("$@") study prepare shards merge opts
-  study=(BENCH="$id" DATA_ROOT="$DATA_ROOT" INDEX="$(samples_index)" MODELS="$MODELS" BENCH_ROOT="$BENCH_ROOT")
+  study=(BENCH="$id" DATA_ROOT="$DATA_ROOT" INDEX="$(samples_index)" MODELS="$MODELS" BENCH_ROOT="$BENCH_ROOT"
+         DRR_GAP_OUT="$BENCH_ROOT/$DRR_GAP_FOLDER")
   prepare=$(submit bench_flexray_drr_gap gpu "${study[@]}" STEP=prepare ${waits[@]+"${waits[@]}"} \
     --cpus 16 --mem 64G --time 12:00:00 --no-requeue -- drr-gap.sbatch) || return 1
   # Both or neither, as grid/run-leaks.sh queues its array and join: a prepare whose shards were
@@ -1452,11 +1521,11 @@ drr_gap_jobs() {  # drr_gap_jobs [WAIT...]: the study's three jobs (grid/drr-gap
   echo "  the study: prepare $prepare, then the shard array $shards ($DRR_GAP_TASKS tasks, afterany $prepare), then the merge $merge (afterany $shards), each on the first card of the gpu class that frees"
 }
 drr_gap_progress() {  # the study's PROGRESS.txt, masked, as a send while it lasts prints it, or that it has none yet
-  [ -f "$BENCH_ROOT/flexray_drr_gap/PROGRESS.txt" ] || { echo "  the study has written no PROGRESS.txt yet: prepare starts it once it runs"; return 0; }
-  bench_progress_of flexray_drr_gap
+  [ -f "$BENCH_ROOT/$DRR_GAP_FOLDER/PROGRESS.txt" ] || { echo "  the study has written no PROGRESS.txt yet in $DRR_GAP_FOLDER: prepare starts it once it runs"; return 0; }
+  bench_progress_of "$DRR_GAP_FOLDER"
 }
 word_bench() {  # one public model's benchmark (#287): queued once, its report printed on every later send
-  local report=$LOGS/BENCH-$id.md busy missing holds opts setup again=""
+  local report=$LOGS/BENCH-$id.md busy missing holds opts setup again="" script
   case "$id" in
     flexray_carmlspine|flexray_deepfluoro|xvr_deepfluoro|flexray_drr_gap|flexray_drr_seg) ;;
     *) echo "refusing: bench takes flexray_carmlspine, flexray_deepfluoro, xvr_deepfluoro, flexray_drr_gap or flexray_drr_seg"; return 64 ;;
@@ -1508,7 +1577,7 @@ word_bench() {  # one public model's benchmark (#287): queued once, its report p
   # on, rather than by 'start', which would queue the whole pipeline (the owner's choice, 2026-10-25).
   setup=$(setup_dependency) || return 1
   [ -z "$setup" ] || echo "  the environments: after the setup job that rebuilds them (${setup#afterok:})"
-  # The job holds the checkout while it runs (grid/bench.sbatch), so it is queued after every other
+  # The job holds the checkout while it runs (grid/bench.sbatch, grid/drr-seg.sbatch), so it is queued after every other
   # run that holds it, as a sweep is, rather than refused; the study's prepare waits for them too,
   # bench flexray_drr_seg among them, whose MOOSE masks it reads.
   holds=$(checkout_holders)
@@ -1519,7 +1588,11 @@ word_bench() {  # one public model's benchmark (#287): queued once, its report p
     echo "submitted the study. 'status' shows its progress while it runs; send bench $id again once its merge ends to read its report, logs/BENCH-$id.md."
     return 0
   fi
-  submit "bench_$id" gpu BENCH="$id" DATA_ROOT="$DATA_ROOT" ${opts[@]+"${opts[@]}"} --no-requeue -- bench.sbatch > /dev/null || return 1
+  # MOOSE's masks for the study run on a launched flow (grid/drr-seg.sbatch, flows/drr_seg.py), under the
+  # same job name, so the holders and the report's name are as they were; the public benchmarks stay here.
+  script=bench.sbatch
+  [ "$id" != flexray_drr_seg ] || script=drr-seg.sbatch
+  submit "bench_$id" gpu BENCH="$id" DATA_ROOT="$DATA_ROOT" ${opts[@]+"${opts[@]}"} --no-requeue -- "$script" > /dev/null || return 1
   echo "submitted the benchmark. Send bench $id again once it ends to read its report, logs/BENCH-$id.md."
 }
 
@@ -2079,7 +2152,7 @@ word_cancel() {  # the job named, if the gate's and live, with every live job of
   "$SCANCEL" $cancel && echo "cancelled ($from): $cancel"
 }
 
-release_hold() {  # a run's hold (grid/v1-driver.sbatch, grid/sweep-driver.sbatch, grid/experiment-driver.sbatch, grid/bench.sbatch, grid/anomaly.sbatch, grid/bordercall.sbatch, grid/census.sbatch) is cleared once Slurm no longer holds its job
+release_hold() {  # a run's hold (grid/v1-driver.sbatch, grid/sweep-driver.sbatch, grid/experiment-driver.sbatch, grid/bench.sbatch, grid/drr-seg.sbatch, grid/anomaly.sbatch, grid/bordercall.sbatch, grid/census.sbatch) is cleared once Slurm no longer holds its job
   local job
   [ -f "$LOGS/HOLD" ] || return 0
   job=$(awk '{ print $1; exit }' "$LOGS/HOLD")
