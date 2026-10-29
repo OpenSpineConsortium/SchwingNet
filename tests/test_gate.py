@@ -1988,11 +1988,13 @@ esac
         refused = self.gate("bordercall", "tune")
         self.assertEqual(refused.returncode, 64, refused.stdout)
         self.assertIn("pilot, full or complete", refused.stdout)
-        # with no vendored matcher, or no job script or tool, nothing is queued
+        # with no vendored matcher (the checkout's copy carries one, so it is taken away first), or no
+        # job script or tool, nothing is queued
+        matcher = self.repo / "grid" / "bordercall" / "holdings" / "fullspine_complete.py"
+        matcher.unlink(missing_ok=True)
         missing = self.gate("bordercall", "complete")
         self.assertEqual(missing.returncode, 2, missing.stdout)
         self.assertIn("no vendored matcher", missing.stdout)
-        matcher = self.repo / "grid" / "bordercall" / "holdings" / "fullspine_complete.py"
         matcher.parent.mkdir(parents=True, exist_ok=True)
         matcher.write_text("", encoding="utf-8")
         self.assertEqual(self.gate("bordercall", "complete").returncode, 2)
