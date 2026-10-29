@@ -19,6 +19,10 @@ The source cuts that keep a strict part of the labelled crops run on the synthet
 
 The synthetic catalog is built by `tools/block_sweep.py synthetic` under `/rs/rs_grp_oschome/go2432/smoke/synthetic/catalog/`, each build in a folder of its own under `builds/`, which `SYNTHETIC.json` names once the build is whole. The record holds the arguments and the hashes of the tools, rules, split files and registry entries that make the catalog, so `sweep synthetic` finds the catalog again while they are the same and builds it afresh, removing the folder it replaces, when any of them differs; a build cut short leaves a folder no record names, which the next build removes.
 
+## Its PREREG
+
+PREREG.md in this folder, frozen on 2026-10-29 by PREREG.md.sha256 before any sweep of the smoke ran, writes the design above in the Lab Recipe's seven parts, as the owner's rule of that day asks of every deep learning job on the grid (flows/README.md). It covers the plans synthetic, real and two_source by their names and the sha256 of their bytes; the gate's word, the launcher and the sweep's start refuse any other plan, the six trials among them, and any of the three made again with other bytes, until a PREREG of their own is frozen. A departure goes in DEVIATIONS.md beside it. Each sweep's run checks the CLAIM 2024 and REFORMS report of every row that ran and keeps a progress page under the Metaflow datastore's progress/ folder.
+
 ## How the argument is made
 
 docs/research/experiment-framework.md, section 7: a static check decides every named combination from the catalog's facts and trains nothing, and a covering set of runs checks on the GPU that each run does what the check predicted. A row that does not match is a bug.
