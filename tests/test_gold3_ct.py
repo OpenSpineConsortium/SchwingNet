@@ -968,9 +968,21 @@ class FieldRows(Scratch):
         locations = [r[0] for r in db.execute("SELECT ct_location FROM item WHERE member = 'totalsegmentator'")]
         self.assertTrue(locations and not any("<root>" in place for place in locations))
 
-    def test_a_border_case_of_the_field_test_is_provisional_silver_3(self):
+    def test_a_c2_the_field_holds_the_foot_of_is_provisional_gold_3_and_no_class_share(self):
         # 0034's field reaches 20 mm above C3's top: past C2's foot in every spine, short of C2's top in most.
+        # Rule 3 asks for C2's foot alone, so the study is gold 3 while a segmenter adds C2, and its class,
+        # which needs C2 drawn, is no share's.
         facts = [r for r in synthetic_facts() if r["id"] != "0034"] + [facts_row("0034", NORMAL[2:], top=-80.0, top_slice_mm=-60.0)]
+        db = self.built(mini_repo(self.tmp / "repo", sorted(facts, key=lambda r: r["id"])))
+        row = db.execute("SELECT item.tier, item.provisional, anomaly.class FROM item JOIN anomaly ON anomaly.item = item.item"
+                         " WHERE item.item = 'enhance_pet:0034'").fetchone()
+        self.assertEqual(tuple(row), ("gold3", 1, "not_whole"))
+        gold = db.execute("SELECT COUNT(*) FROM item WHERE member = 'enhance_pet' AND tier = 'gold3'").fetchone()[0]
+        self.assertEqual(gold3.class_shares(db, "enhance_pet")[0], gold - 1)
+
+    def test_a_border_case_of_the_field_test_is_provisional_silver_3(self):
+        # 0034's field reaches 5 mm above C4's top: past where C2's foot lies in some spines, short of it in others.
+        facts = [r for r in synthetic_facts() if r["id"] != "0034"] + [facts_row("0034", NORMAL[3:], top=-80.0, top_slice_mm=-75.0)]
         db = self.built(mini_repo(self.tmp / "repo", sorted(facts, key=lambda r: r["id"])))
         row = db.execute("SELECT tier, provisional FROM item WHERE item = 'enhance_pet:0034'").fetchone()
         self.assertEqual(tuple(row), ("silver3", 1))

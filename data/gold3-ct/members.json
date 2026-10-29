@@ -1,16 +1,22 @@
 {
- "about": "The gold tier 3 CT dataset's members: CT studies whose field holds the whole spine, C2 to the sacrum, with a person's annotation (the owner's tiers of 2026-10-27; a machine mask never raises a tier), admitted by the field test of rule version 2 (whole_rule; data/gold3-ct/admission.json). tools/gold3_ct.py reads this file, builds the dataset's index from it and the files it names, and holds it to its shape. Confidential, like the rest of SchwingNet: nothing here goes to a public place.",
+ "about": "The gold tier 3 CT dataset's members: CT studies whose field holds the whole spine, C2 to the sacrum, with a person's annotation (the owner's tiers of 2026-10-27; a machine mask never raises a tier), admitted by the field test of rule version 3 (whole_rule; data/gold3-ct/admission.json). tools/gold3_ct.py reads this file, builds the dataset's index from it and the files it names, and holds it to its shape. Confidential, like the rest of SchwingNet: nothing here goes to a public place.",
  "asked": "the owner, 2026-10-27 22:49 UTC: \"i want all the gold tier 3 CT data as its own dataset, with a indexable database, an artefact, and anything i need to use it in the workflow, including anomaly statistics, and quality assurance they are true anomalies\"",
  "tiers": "gold = C2 to the sacrum in one study; silver = partial. 1 = a real CT and X-ray pair with a person's annotation, 2 = the pair without, 3 = one modality with a person's annotation, 4 = one modality without. Machine masks never raise a tier.",
  "whole_rule": {
-  "version": 2,
-  "rule": "A CT is admitted when its field holds C2 and the top of the sacrum, whatever its masks hold. A level is drawn at 200 voxels or more. C2 drawn is in view unless the field's top cuts the level below it too; the sacrum drawn is in view when the field holds 20 mm of it below its top; a sacrum the field's foot cuts short of that makes the end out when the foot-most level above it is cut too, and a border case otherwise, as is a sacrum in view beside a level above it that runs on to the field's foot. One not drawn is placed from the nearest drawn level by tables measured on the members' own whole spines (the 5th and 95th percentiles), with 20 mm of S1 asked below the sacrum's top. The field is measured over the column, and at the image's own edge over the column where a TotalSegmentator grid is padded. A study at neither end clearly in or out is a border case, silver 3 until a person's look. A level the release does not draw is completed by a segmenter, kept as a machine mask of its own and never raising a tier; one name the column skips between levels whose centres stand no farther apart than the study's own spacing of neighbours allows is a count variant, never a level to add. ENHANCE.PET's verdicts, each study judged once on its repaired mask where it has one, match version 1's tiers study for study.",
-  "asked": "the owner, 2026-10-28 22:58 UTC (#443's question): \"if the full spune is in view in the volume, and just missing a mask or two, that should just be completed using a segmentation software of choice ... i dont think i should leave out any spines that have ct volumes with the full spine in view\"",
+  "version": 3,
+  "rule": "Rule 2 with the owner's two ends of 2026-10-29: a CT is admitted when its field holds the foot of C2 and the top of the sacrum, whatever its masks hold. A level is drawn at 200 voxels or more. C2 drawn is in view unless the field's top cuts the level below it too; one not drawn is in view when the field's top lies above where C2's foot lies in 95 of 100 spines, counted from the head-most drawn level. The sacrum drawn is in view however little of it the field holds, a level above it that runs on to the field's foot flagged (level_past_sacrum_top); one not drawn is in view when the field's foot lies below where the sacrum's top lies in 95 of 100 spines, from the foot-most drawn level. The tables are measured on the members' own whole spines (the 5th and 95th percentiles). The field is measured over the column, and at the image's own edge over the column where a TotalSegmentator grid is padded. A study at neither end clearly in or out is a border case, silver 3 until a person's look. A level the release does not draw is completed by a segmenter, kept as a machine mask of its own and never raising a tier; one name the column skips between levels whose centres stand no farther apart than the study's own spacing of neighbours allows is a count variant, never a level to add. ENHANCE.PET's verdicts match version 1's tiers study for study but 1379, whose masks draw no C2 and whose field holds C2's foot: gold 3 while a segmenter adds C2.",
+  "asked": "the owner, 2026-10-28 22:58 UTC (#443's question): \"if the full spune is in view in the volume, and just missing a mask or two, that should just be completed using a segmentation software of choice ... i dont think i should leave out any spines that have ct volumes with the full spine in view\"; and for version 3, 2026-10-29 12:58 UTC: \"If the top of the sacrum is visible that is acceptable, which I believe is all of them but check\" and \"Same for the bottom c2\"",
   "source": "tools/gold3_field.py (the rule, its thresholds and checks); docs/research/gold3-ct/ADMISSION.md (every count); docs/research/gold3-ct/README.md section 2 (why)",
   "previous": {
-   "version": 1,
-   "rule": "C2 and the sacrum each hold at least 200 voxels; every level from C2 to T12 is labelled; no space wider than 20 mm lies between consecutive labels above T12. A lumbar label missing or extra never drops a spine (the owner, 2026-10-27 17:10 UTC); an absent L5 is the common case and is reported as a variant, and any other lumbar gap is whole and listed for a look.",
-   "source": "bordercall holdings/count_enhance_pet.py (MIN_VOXELS, UNLABELLED_GAP_MM, LUMBAR_SPACE_FROM, class_of), the rule of the TotalSegmentator count before it"
+   "version": 2,
+   "rule": "A CT is admitted when its field holds C2 and the top of the sacrum, whatever its masks hold. A level is drawn at 200 voxels or more. C2 drawn is in view unless the field's top cuts the level below it too; the sacrum drawn is in view when the field holds 20 mm of it below its top; a sacrum the field's foot cuts short of that makes the end out when the foot-most level above it is cut too, and a border case otherwise, as is a sacrum in view beside a level above it that runs on to the field's foot. One not drawn is placed from the nearest drawn level by tables measured on the members' own whole spines (the 5th and 95th percentiles), with 20 mm of S1 asked below the sacrum's top. The field is measured over the column, and at the image's own edge over the column where a TotalSegmentator grid is padded. A study at neither end clearly in or out is a border case, silver 3 until a person's look. A level the release does not draw is completed by a segmenter, kept as a machine mask of its own and never raising a tier; one name the column skips between levels whose centres stand no farther apart than the study's own spacing of neighbours allows is a count variant, never a level to add. ENHANCE.PET's verdicts, each study judged once on its repaired mask where it has one, match version 1's tiers study for study.",
+   "asked": "the owner, 2026-10-28 22:58 UTC (#443's question): \"if the full spune is in view in the volume, and just missing a mask or two, that should just be completed using a segmentation software of choice ... i dont think i should leave out any spines that have ct volumes with the full spine in view\"",
+   "source": "tools/gold3_field.py (the rule, its thresholds and checks); docs/research/gold3-ct/ADMISSION.md (every count); docs/research/gold3-ct/README.md section 2 (why)",
+   "previous": {
+    "version": 1,
+    "rule": "C2 and the sacrum each hold at least 200 voxels; every level from C2 to T12 is labelled; no space wider than 20 mm lies between consecutive labels above T12. A lumbar label missing or extra never drops a spine (the owner, 2026-10-27 17:10 UTC); an absent L5 is the common case and is reported as a variant, and any other lumbar gap is whole and listed for a look.",
+    "source": "bordercall holdings/count_enhance_pet.py (MIN_VOXELS, UNLABELLED_GAP_MM, LUMBAR_SPACE_FROM, class_of), the rule of the TotalSegmentator count before it"
+   }
   }
  },
  "person_key": {
@@ -25,10 +31,10 @@
    "rows": "data/gold3-ct/enhance-pet/facts.jsonl",
    "rows_made_by": "bordercall holdings/enhance_facts.py from the published masks, on the owner's word, in the thread's container or on the grid (docs/checkpoints/2026-10-28-gold3-ct-grid/HANDOFF.md), the three repaired rows from the repair record in the thread's container; FACTS.json beside the rows records where (read_on), the tool, its commit, the input hashes and the row count",
    "studies_listed": 1597,
-   "gold3": 1557,
+   "gold3": 1558,
    "gold4": 3,
-   "silver3": 37,
-   "tier_per_study": "gold 3 for the 1,557 whole; gold 4 for the 3 repaired (1134, 1283, 1347: names moved by a rule the ribs settle, or MOOSE's rerun); silver 3 for the 37 with no C2",
+   "silver3": 36,
+   "tier_per_study": "gold 3 for the 1,558 the field test admits (rule 3): the 1,557 whole by their masks and 1379, provisional while a segmenter adds the C2 its masks do not draw; gold 4 for the 3 repaired (1134, 1283, 1347: names moved by a rule the ribs settle, or MOOSE's rerun); silver 3 for the 36 with no C2 in the field",
    "scheme": {
     "vertebrae": "C1-C7 = 1-7, T1-T12 = 8-19, L1-L6 = 20-25, hips 26 and 27, sacrum 28; no T13",
     "ribs": "left rib k = k (1-13), right rib k = 13 + k (14-26), sternum 27; rib k's own vertebra is label k + 7, so rib 13's own body is the one this scheme names L1 (20)",
@@ -71,10 +77,10 @@
    "name": "VerSe 19 and 20",
    "rows": "data/gold3-ct/verse/facts.jsonl",
    "studies_listed": 374,
-   "gold3": 18,
+   "gold3": 21,
    "gold4": 0,
-   "silver3": 356,
-   "tier_per_study": "by the field test (rule 2): gold 3 for the 18 series admitted, every one provisional while a segmenter adds the sacrum VerSe never draws; silver 3 for the 356 others, 9 of them border cases a person's look may admit",
+   "silver3": 353,
+   "tier_per_study": "by the field test (rule 3): gold 3 for the 21 series admitted, every one provisional while a segmenter adds the sacrum VerSe never draws; silver 3 for the 353 others, 6 of them border cases a person's look may admit",
    "scheme": {
     "vertebrae": "C1-C7 = 1-7, T1-T12 = 8-19, L1-L5 = 20-24, L6 = 25, T13 = 28; no sacrum label",
     "ribs": "none",
@@ -97,8 +103,8 @@
     "held_note": "364 of 374 series are on the grid by the source records; the 10 VerSe'20 series never downloaded (grid/README.md) are not held",
     "pattern": "/rs/rs_grp_oschome/go2432/data/versefusion/raw/VerSeFusion_data/raw/**/*{id}*.nii.gz"
    },
-   "persons_by_records": [18, 18],
-   "persons": "374 series of 355 patients; the 18 admitted series are 18 patients",
+   "persons_by_records": [21, 21],
+   "persons": "374 series of 355 patients; the 21 admitted series are 21 patients",
    "caveats": [
     "VerSe draws no sacrum: every admitted series is gold 3 provisional until a segmenter's sacrum is added and the field test's placement is confirmed by it.",
     "VerSe's labellers leave a vertebra fused to the sacrum (Castellvi III or IV) undrawn, so a missing L5 is flagged (no_l5), never read as four lumbar.",
@@ -116,10 +122,10 @@
    "name": "TotalSegmentator v3",
    "rows": "data/gold3-ct/totalsegmentator/facts.jsonl",
    "studies_listed": 1939,
-   "gold3": 151,
+   "gold3": 154,
    "gold4": 0,
-   "silver3": 1626,
-   "tier_per_study": "by the field test (rule 2): gold 3 for the 151 subjects admitted, 6 of them provisional while a segmenter adds a level; silver 3 for the 1,626 others with part of the column, 1 of them border cases; 162 subjects draw no vertebra above the sacrum and have no row. The release's masks are model output refined by hand, counted as a person's annotation and flagged",
+   "silver3": 1623,
+   "tier_per_study": "by the field test (rule 3): gold 3 for the 154 subjects admitted, 7 of them provisional while a segmenter adds a level; silver 3 for the 1,623 others with part of the column, 0 of them border cases; 162 subjects draw no vertebra above the sacrum and have no row. The release's masks are model output refined by hand, counted as a person's annotation and flagged",
    "scheme": {
     "vertebrae": "the release's named files, vertebrae_C1 to vertebrae_L6 and sacrum.nii.gz (v3 ships an L6 file for every subject and no separate S1, which the sacrum holds); no T13",
     "ribs": "24 named rib files, rib_left_1 to rib_right_12",
@@ -141,8 +147,8 @@
     "held": "unchecked",
     "pattern": "<root>/{id}/ct.nii.gz with <root>/{id}/segmentations/*.nii.gz"
    },
-   "persons_by_records": [151, 151],
-   "persons": "1,939 subject folders, one person each by release id; the 151 admitted are 151 person keys once byte-identical duplicates share one",
+   "persons_by_records": [154, 154],
+   "persons": "1,939 subject folders, one person each by release id; the 154 admitted are 154 person keys once byte-identical duplicates share one",
    "caveats": [
     "v3 names an L6 and no T13, so an L6 its masks draw is a candidate and a thirteenth thoracic body cannot be named; a count needs a reader from C2, SPINEPS and VERIDAH, or Hofmann's 70 reads.",
     "286 of the 1,924 subjects meta.csv gives an age for are under 18 at the scan (15 have none), whose unfused S1 can read as a free body: flagged (child), never left out.",

@@ -1,9 +1,9 @@
 {
- "about": "The gold tier 3 CT dataset's admission by the field test, rule version 2 (tools/gold3_field.py): every study of the three members with its verdict, its two ends and the levels a segmenter must add. Written by `python3 tools/gold3_field.py write`; never edited by hand.",
+ "about": "The gold tier 3 CT dataset's admission by the field test, rule version 3 (tools/gold3_field.py): every study of the three members with its verdict, its two ends and the levels a segmenter must add. Written by `python3 tools/gold3_field.py write`; never edited by hand.",
  "rule": {
-  "version": 2,
-  "rule": "A CT is admitted when its field holds C2 and the top of the sacrum, whatever its masks hold; a level its masks do not draw is completed by a segmenter, kept as a machine mask of its own. The head end is out when the field's top cuts C2 and the level below it alike, a sliver of C2; the foot end is out when the field's foot cuts the sacrum, with less than s1_view_mm of it in the field, and the foot-most level above it too, and a border case when it cuts the sacrum alone or when the level above a sacrum in view runs on to the field's foot. The field is read over each level along the world's vertical line, and a padded grid's field ends where the spinal cord and the column stop together. A name missing between two drawn levels is a level to add when their centres stand more than room_times the study's spacing of neighbours apart, else a count variant, flagged.",
-  "asked": "the owner, 2026-10-28 22:58 UTC (#443's question): \"if the full spune is in view in the volume, and just missing a mask or two, that should just be completed using a segmentation software of choice ... i dont think i should leave out any spines that have ct volumes with the full spine in view\"",
+  "version": 3,
+  "rule": "A CT is admitted when its field holds the foot of C2 and the top of the sacrum, whatever its masks hold; a level its masks do not draw is completed by a segmenter, kept as a machine mask of its own. A drawn C2 is in view however the field's top cuts it, unless it cuts the level below C2 too, a sliver of C2, and the end is out; an undrawn C2 is in view when the field's top lies above where C2's foot lies in 95 of 100 spines. A drawn sacrum is in view however little of it the field holds; an undrawn one is in view when the field's foot lies below where the sacrum's top lies in 95 of 100 spines. The field is read over each level along the world's vertical line, and a padded grid's field ends where the spinal cord and the column stop together. A name missing between two drawn levels is a level to add when their centres stand more than room_times the study's spacing of neighbours apart, else a count variant, flagged.",
+  "asked": "the owner, 2026-10-28 22:58 UTC (#443's question): \"if the full spune is in view in the volume, and just missing a mask or two, that should just be completed using a segmentation software of choice ... i dont think i should leave out any spines that have ct volumes with the full spine in view\"; and for version 3, 2026-10-29 12:58 UTC: \"If the top of the sacrum is visible that is acceptable, which I believe is all of them but check\" and \"Same for the bottom c2\"",
   "thresholds": {
    "level_min_voxels": 200,
    "percentiles": [
@@ -11,7 +11,7 @@
     95
    ],
    "min_table_spines": 20,
-   "s1_view_mm": 20.0,
+   "s1_view_mm": 0.0,
    "tilt_span_mm": 100.0,
    "level_span_mm": 40.0,
    "room_times": 1.4,
@@ -467,10 +467,8 @@
  },
  "checks": {
   "head_with_c1_c2_hidden": {
-   "enhance_pet: border": 11,
-   "enhance_pet: in_view": 1532,
-   "totalsegmentator: border": 12,
-   "totalsegmentator: in_view": 352,
+   "enhance_pet: in_view": 1543,
+   "totalsegmentator: in_view": 364,
    "verse: in_view": 75
   },
   "foot_with_sacrum_hidden": {
@@ -486,13 +484,18 @@
  },
  "sensitivity_s1_view_mm": {
   "10": {
-   "admitted": 1730,
-   "look": 11,
+   "admitted": 1735,
+   "look": 6,
    "not_admitted": 2169
   },
+  "20": {
+   "admitted": 1733,
+   "look": 7,
+   "not_admitted": 2170
+  },
   "30": {
-   "admitted": 1728,
-   "look": 12,
+   "admitted": 1732,
+   "look": 8,
    "not_admitted": 2170
   }
  },
@@ -500,23 +503,24 @@
   "enhance_pet": {
    "studies": 1597,
    "verdicts": {
-    "admitted": 1560,
-    "look": 1,
+    "admitted": 1561,
     "not_admitted": 36
    },
    "admitted_persons": null,
-   "look_persons": null,
+   "look_persons": 0,
    "admitted_whole_by_masks": 1560,
-   "admitted_to_complete": 0,
+   "admitted_to_complete": 1,
    "head": {
-    "border": 1,
     "drawn": 1560,
+    "in_view": 1,
     "out": 36
    },
    "foot": {
     "drawn": 1597
    },
-   "complete": {},
+   "complete": {
+    "C2": 1
+   },
    "flags_admitted": {
     "c2_at_field_top": 17,
     "name_skipped": 2,
@@ -528,45 +532,44 @@
   "verse": {
    "studies": 374,
    "verdicts": {
-    "admitted": 18,
-    "look": 9,
+    "admitted": 21,
+    "look": 6,
     "not_admitted": 347
    },
-   "admitted_persons": 18,
-   "look_persons": 9,
+   "admitted_persons": 21,
+   "look_persons": 6,
    "admitted_whole_by_masks": 0,
-   "admitted_to_complete": 18,
+   "admitted_to_complete": 21,
    "head": {
-    "border": 10,
+    "border": 7,
     "drawn": 76,
-    "in_view": 1,
+    "in_view": 4,
     "out": 287
    },
    "foot": {
-    "border": 3,
-    "in_view": 293,
+    "border": 2,
+    "in_view": 294,
     "out": 78
    },
    "complete": {
-    "C2": 1,
-    "sacrum": 18
+    "C2": 4,
+    "sacrum": 21
    },
    "flags_admitted": {
-    "name_skipped": 1,
+    "name_skipped": 2,
     "no_l5": 3
    }
   },
   "totalsegmentator": {
    "studies": 1939,
    "verdicts": {
-    "admitted": 151,
-    "look": 1,
-    "not_admitted": 1787
+    "admitted": 154,
+    "not_admitted": 1785
    },
-   "admitted_persons": 151,
-   "look_persons": 1,
-   "admitted_whole_by_masks": 145,
-   "admitted_to_complete": 6,
+   "admitted_persons": 154,
+   "look_persons": 0,
+   "admitted_whole_by_masks": 147,
+   "admitted_to_complete": 7,
    "head": {
     "border": 61,
     "drawn": 494,
@@ -574,13 +577,14 @@
     "out": 1222
    },
    "foot": {
-    "border": 8,
-    "drawn": 877,
-    "in_view": 5,
+    "drawn": 901,
+    "in_view": 8,
     "no_column": 131,
-    "out": 918
+    "out": 899
    },
    "complete": {
+    "C4": 1,
+    "C5": 1,
     "T4": 1,
     "T5": 1,
     "T6": 2,
@@ -596,14 +600,15 @@
     "sacrum": 2
    },
    "flags_admitted": {
-    "c2_at_field_top": 5,
-    "child": 22,
+    "c2_at_field_top": 6,
+    "child": 23,
     "cut_in_plane": 4,
     "label_spans_levels": 12,
-    "no_l5": 1,
-    "sacrum_at_field_foot": 14,
+    "level_past_sacrum_top": 2,
+    "no_l5": 2,
+    "sacrum_at_field_foot": 17,
     "small_column": 17,
-    "stray_labels": 9
+    "stray_labels": 10
    }
   }
  },
@@ -14507,8 +14512,8 @@
    "member": "enhance_pet",
    "id": "1379",
    "person": null,
-   "verdict": "look",
-   "head": "border",
+   "verdict": "admitted",
+   "head": "in_view",
    "foot": "drawn",
    "complete": [
     "C2"
@@ -17047,7 +17052,7 @@
    "person": "verse:verse007",
    "verdict": "not_admitted",
    "head": "out",
-   "foot": "border",
+   "foot": "in_view",
    "complete": [],
    "flags": []
   },
@@ -19200,8 +19205,8 @@
    "member": "verse",
    "id": "verse559",
    "person": "verse:verse559",
-   "verdict": "look",
-   "head": "border",
+   "verdict": "admitted",
+   "head": "in_view",
    "foot": "in_view",
    "complete": [
     "C2",
@@ -19225,8 +19230,8 @@
    "member": "verse",
    "id": "verse561",
    "person": "verse:verse561",
-   "verdict": "look",
-   "head": "border",
+   "verdict": "admitted",
+   "head": "in_view",
    "foot": "in_view",
    "complete": [
     "C2",
@@ -19434,8 +19439,8 @@
    "member": "verse",
    "id": "verse588",
    "person": "verse:verse588",
-   "verdict": "look",
-   "head": "border",
+   "verdict": "admitted",
+   "head": "in_view",
    "foot": "in_view",
    "complete": [
     "C2",
@@ -21251,10 +21256,11 @@
    "person": "totalsegmentator:s0071",
    "verdict": "not_admitted",
    "head": "out",
-   "foot": "out",
+   "foot": "drawn",
    "complete": [],
    "flags": [
-    "sacrum_at_field_foot"
+    "sacrum_at_field_foot",
+    "level_past_sacrum_top"
    ]
   },
   {
@@ -22928,10 +22934,11 @@
    "person": "totalsegmentator:s0253",
    "verdict": "not_admitted",
    "head": "out",
-   "foot": "border",
+   "foot": "drawn",
    "complete": [],
    "flags": [
     "sacrum_at_field_foot",
+    "level_past_sacrum_top",
     "stray_labels"
    ]
   },
@@ -23202,10 +23209,11 @@
    "person": "totalsegmentator:s0286",
    "verdict": "not_admitted",
    "head": "out",
-   "foot": "out",
+   "foot": "drawn",
    "complete": [],
    "flags": [
     "sacrum_at_field_foot",
+    "level_past_sacrum_top",
     "stray_labels"
    ]
   },
@@ -23511,10 +23519,11 @@
    "person": "totalsegmentator:s0316",
    "verdict": "not_admitted",
    "head": "out",
-   "foot": "border",
+   "foot": "drawn",
    "complete": [],
    "flags": [
-    "sacrum_at_field_foot"
+    "sacrum_at_field_foot",
+    "level_past_sacrum_top"
    ]
   },
   {
@@ -27483,10 +27492,11 @@
    "person": "totalsegmentator:s0709",
    "verdict": "not_admitted",
    "head": "out",
-   "foot": "out",
+   "foot": "drawn",
    "complete": [],
    "flags": [
-    "sacrum_at_field_foot"
+    "sacrum_at_field_foot",
+    "level_past_sacrum_top"
    ]
   },
   {
@@ -28270,10 +28280,11 @@
    "person": "totalsegmentator:s0788",
    "verdict": "not_admitted",
    "head": "out",
-   "foot": "out",
+   "foot": "drawn",
    "complete": [],
    "flags": [
     "sacrum_at_field_foot",
+    "level_past_sacrum_top",
     "stray_labels"
    ]
   },
@@ -28395,7 +28406,7 @@
    "person": "totalsegmentator:s0800",
    "verdict": "not_admitted",
    "head": "out",
-   "foot": "border",
+   "foot": "in_view",
    "complete": [],
    "flags": [
     "sacrum_at_field_foot",
@@ -30485,13 +30496,15 @@
    "member": "totalsegmentator",
    "id": "s1018",
    "person": "totalsegmentator:s1018",
-   "verdict": "not_admitted",
+   "verdict": "admitted",
    "head": "drawn",
-   "foot": "out",
+   "foot": "drawn",
    "complete": [],
    "flags": [
     "c2_at_field_top",
-    "sacrum_at_field_foot"
+    "sacrum_at_field_foot",
+    "level_past_sacrum_top",
+    "no_l5"
    ]
   },
   {
@@ -31494,9 +31507,10 @@
    "person": "totalsegmentator:s1127",
    "verdict": "not_admitted",
    "head": "out",
-   "foot": "border",
+   "foot": "drawn",
    "complete": [],
    "flags": [
+    "level_past_sacrum_top",
     "stray_labels",
     "label_spans_levels"
    ]
@@ -31951,12 +31965,13 @@
    "member": "totalsegmentator",
    "id": "s1171",
    "person": "totalsegmentator:s1171",
-   "verdict": "not_admitted",
+   "verdict": "admitted",
    "head": "drawn",
-   "foot": "out",
+   "foot": "drawn",
    "complete": [],
    "flags": [
-    "sacrum_at_field_foot"
+    "sacrum_at_field_foot",
+    "level_past_sacrum_top"
    ]
   },
   {
@@ -32235,7 +32250,7 @@
    "person": "totalsegmentator:s1205",
    "verdict": "not_admitted",
    "head": "out",
-   "foot": "border",
+   "foot": "in_view",
    "complete": [],
    "flags": [
     "cut_in_plane"
@@ -32502,10 +32517,11 @@
    "person": "totalsegmentator:s1236",
    "verdict": "not_admitted",
    "head": "out",
-   "foot": "out",
+   "foot": "drawn",
    "complete": [],
    "flags": [
     "sacrum_at_field_foot",
+    "level_past_sacrum_top",
     "stray_labels"
    ]
   },
@@ -32549,10 +32565,11 @@
    "person": "totalsegmentator:s1240",
    "verdict": "not_admitted",
    "head": "out",
-   "foot": "out",
+   "foot": "drawn",
    "complete": [],
    "flags": [
     "sacrum_at_field_foot",
+    "level_past_sacrum_top",
     "stray_labels"
    ]
   },
@@ -32562,10 +32579,11 @@
    "person": "totalsegmentator:s1241",
    "verdict": "not_admitted",
    "head": "out",
-   "foot": "out",
+   "foot": "drawn",
    "complete": [],
    "flags": [
     "sacrum_at_field_foot",
+    "level_past_sacrum_top",
     "stray_labels"
    ]
   },
@@ -32732,10 +32750,11 @@
    "person": "totalsegmentator:s1257",
    "verdict": "not_admitted",
    "head": "out",
-   "foot": "out",
+   "foot": "drawn",
    "complete": [],
    "flags": [
-    "sacrum_at_field_foot"
+    "sacrum_at_field_foot",
+    "level_past_sacrum_top"
    ]
   },
   {
@@ -32788,10 +32807,11 @@
    "person": "totalsegmentator:s1262",
    "verdict": "not_admitted",
    "head": "out",
-   "foot": "out",
+   "foot": "drawn",
    "complete": [],
    "flags": [
     "sacrum_at_field_foot",
+    "level_past_sacrum_top",
     "stray_labels"
    ]
   },
@@ -32801,10 +32821,11 @@
    "person": "totalsegmentator:s1264",
    "verdict": "not_admitted",
    "head": "out",
-   "foot": "out",
+   "foot": "drawn",
    "complete": [],
    "flags": [
     "sacrum_at_field_foot",
+    "level_past_sacrum_top",
     "stray_labels"
    ]
   },
@@ -33299,10 +33320,11 @@
    "person": "totalsegmentator:s1315",
    "verdict": "not_admitted",
    "head": "out",
-   "foot": "out",
+   "foot": "drawn",
    "complete": [],
    "flags": [
-    "sacrum_at_field_foot"
+    "sacrum_at_field_foot",
+    "level_past_sacrum_top"
    ]
   },
   {
@@ -36419,9 +36441,9 @@
    "member": "totalsegmentator",
    "id": "s1597",
    "person": "totalsegmentator:s1597",
-   "verdict": "look",
+   "verdict": "admitted",
    "head": "drawn",
-   "foot": "border",
+   "foot": "drawn",
    "complete": [
     "C4",
     "C5"
@@ -37030,7 +37052,7 @@
    "person": "totalsegmentator:s1645",
    "verdict": "not_admitted",
    "head": "out",
-   "foot": "border",
+   "foot": "drawn",
    "complete": [],
    "flags": [
     "sacrum_at_field_foot",
@@ -37804,10 +37826,11 @@
    "person": "totalsegmentator:s1714",
    "verdict": "not_admitted",
    "head": "out",
-   "foot": "out",
+   "foot": "drawn",
    "complete": [],
    "flags": [
     "sacrum_at_field_foot",
+    "level_past_sacrum_top",
     "child"
    ]
   },
@@ -41969,9 +41992,10 @@
    "person": "totalsegmentator:s2083",
    "verdict": "not_admitted",
    "head": "out",
-   "foot": "border",
+   "foot": "in_view",
    "complete": [],
    "flags": [
+    "no_l5",
     "stray_labels",
     "child"
    ]
@@ -42266,10 +42290,11 @@
    "person": "totalsegmentator:s2107",
    "verdict": "not_admitted",
    "head": "out",
-   "foot": "out",
+   "foot": "drawn",
    "complete": [],
    "flags": [
     "sacrum_at_field_foot",
+    "level_past_sacrum_top",
     "stray_labels"
    ]
   },
@@ -42289,10 +42314,11 @@
    "person": "totalsegmentator:s2109",
    "verdict": "not_admitted",
    "head": "out",
-   "foot": "out",
+   "foot": "drawn",
    "complete": [],
    "flags": [
     "sacrum_at_field_foot",
+    "level_past_sacrum_top",
     "stray_labels"
    ]
   },
@@ -42302,10 +42328,11 @@
    "person": "totalsegmentator:s2110",
    "verdict": "not_admitted",
    "head": "out",
-   "foot": "out",
+   "foot": "drawn",
    "complete": [],
    "flags": [
     "sacrum_at_field_foot",
+    "level_past_sacrum_top",
     "stray_labels"
    ]
   },
@@ -42349,10 +42376,11 @@
    "person": "totalsegmentator:s2114",
    "verdict": "not_admitted",
    "head": "out",
-   "foot": "out",
+   "foot": "drawn",
    "complete": [],
    "flags": [
-    "sacrum_at_field_foot"
+    "sacrum_at_field_foot",
+    "level_past_sacrum_top"
    ]
   },
   {
@@ -42595,10 +42623,11 @@
    "person": "totalsegmentator:s2135",
    "verdict": "not_admitted",
    "head": "out",
-   "foot": "out",
+   "foot": "drawn",
    "complete": [],
    "flags": [
-    "sacrum_at_field_foot"
+    "sacrum_at_field_foot",
+    "level_past_sacrum_top"
    ]
   },
   {

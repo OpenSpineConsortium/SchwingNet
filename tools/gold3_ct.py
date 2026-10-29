@@ -14,7 +14,7 @@ series of the release, data/gold3-ct/verse/facts.jsonl, the 17 the older records
 reads from data/gold3-ct/verse.json) and TotalSegmentator (one row per subject that draws some of the
 column, data/gold3-ct/totalsegmentator/facts.jsonl), the last two made by bordercall's
 holdings/fullspine_facts.py. Which study is gold and which silver is the field test's,
-tools/gold3_field.py, through data/gold3-ct/admission.json (rule version 2: the CT's field, not its
+tools/gold3_field.py, through data/gold3-ct/admission.json (rule version 3: the CT's field, not its
 masks, decides). Everything here is the standard library over committed files: the masks never enter
 the repository, only facts read from them.
 
@@ -1203,10 +1203,7 @@ def enhance_item(row, inputs, context, member):
     klass, reason = classify(read, decision)
     results = {r["id"]: run_qa(r, context) for r in filter(None, (row, repaired))}
     verdicts = {r["check"]: r["verdict"] for r in results[read["id"]]}
-    tier, tier_reason = tier_of(klass, row)
-    provisional = int(tier == "silver3" and context["field"].get(sid, {}).get("verdict") == "look")
-    if provisional:
-        tier_reason += "; a border case of the field test (rule 2): gold 3 once a person's look finds C2 and the sacrum in the field"
+    tier, tier_reason, provisional = enhance_tier(klass, row, context["field"].get(sid, {}))
     source = next((e["source"] for k in RECORD_CLASSES for e in inputs["record"].get(k, []) if e["id"] == sid), None)
     return {
         "item": enhance_item_row(row, item, member, (tier, tier_reason, provisional), context),
@@ -1216,6 +1213,19 @@ def enhance_item(row, inputs, context, member):
         "anomaly": anomaly_row(item, "enhance_pet", read, klass, reason, verdicts, source),
         "qa": [r for f_id, found in results.items() for r in qa_rows(item, row if f_id == sid else repaired, found, context["known"])],
     }
+
+
+def enhance_tier(klass, row, study):
+    """(tier, reason, provisional): version 1's whole rule over the masks, but for a study whose masks miss
+    a level the field test admits, gold 3 provisional while a segmenter adds it, as field_tier gives VerSe
+    and TotalSegmentator, and for a border case of the field test, silver 3 provisional."""
+    tier, reason = tier_of(klass, row)
+    if tier == "silver3" and study.get("verdict") == "admitted" and study.get("complete"):
+        return "gold3", ("C2 to the sacrum in the field (rule 3); a segmenter adds " + ", ".join(study["complete"])
+                         + ", kept apart as a machine mask that raises no tier"), 1
+    if tier == "silver3" and study.get("verdict") == "look":
+        return tier, reason + "; a border case of the field test (rule 3): gold 3 once a person's look finds C2 and the sacrum in the field", 1
+    return tier, reason, 0
 
 
 def enhance_item_row(row, item, member, tiered, context):
@@ -1381,18 +1391,18 @@ NO_COLUMN = "no_column"
 
 
 def field_tier(study):
-    """Rule version 2: gold 3 for a study the field test admits, provisional while a segmenter has levels
+    """Rule version 3: gold 3 for a study the field test admits, provisional while a segmenter has levels
     to add; silver 3, provisional, for a border case a person's look decides; silver 3 for one whose field
     holds part of the column."""
     if study["verdict"] == "admitted" and study["complete"]:
-        return "gold3", 1, ("C2 to the sacrum in the field (rule 2); a segmenter adds " + ", ".join(study["complete"])
+        return "gold3", 1, ("C2 to the sacrum in the field (rule 3); a segmenter adds " + ", ".join(study["complete"])
                             + ", kept apart as a machine mask that raises no tier")
     if study["verdict"] == "admitted":
-        return "gold3", 0, "C2 to the sacrum in the field, every level drawn by the release's masks (rule 2)"
+        return "gold3", 0, "C2 to the sacrum in the field, every level drawn by the release's masks (rule 3)"
     ends = " and ".join(end for end in ("head", "foot") if study[end] == "border")
     if study["verdict"] == "look":
         return "silver3", 1, f"a border case at the {ends}: gold 3 once a person's look finds C2 and the sacrum in the field"
-    return "silver3", 0, f"part of the column in the field: the head {study['head']}, the foot {study['foot']} (rule 2)"
+    return "silver3", 0, f"part of the column in the field: the head {study['head']}, the foot {study['foot']} (rule 3)"
 
 
 def drawn_level(row, name):
@@ -1980,13 +1990,14 @@ def table(header, rows):
 
 
 def class_shares(db, member, site=None, gold_only=False):
-    """Each class of one member (and site) with its count and its share of the whole studies; gold_only
-    counts the classes of the whole studies alone, as VerSe's silver series carry classes too."""
+    """Each class of one member (and site) with its count and its share of the whole studies, gold 3 whose
+    class the masks give, so a gold 3 study a segmenter completes (not_whole by its masks) is no share's;
+    gold_only counts the classes of the whole studies alone, as VerSe's silver series carry classes too."""
     where, params = "anomaly.member = ?", [member]
     if site:
         where, params = where + " AND item.site = ?", params + [site]
     whole = db.execute(f"SELECT COUNT(*) FROM anomaly JOIN item ON item.item = anomaly.item WHERE {where}"
-                       " AND item.tier = 'gold3'", params).fetchone()[0]
+                       f" AND {WHOLE_BY_MASKS}", params).fetchone()[0]
     counted = where + (" AND item.tier = 'gold3'" if gold_only else "")
     rows = db.execute(f"SELECT anomaly.class, COUNT(*) FROM anomaly JOIN item ON item.item = anomaly.item WHERE {counted}"
                       " GROUP BY anomaly.class", params).fetchall()
@@ -1999,7 +2010,12 @@ def status_counts(db, member):
                       " ORDER BY class, status", (member,)).fetchall()
 
 
-def distribution(db, column, member="enhance_pet", where="item.tier = 'gold3'"):
+# A gold 3 study whose masks draw C2 to the sacrum: one the field test admits with a level to add is gold 3
+# and its class not_whole, read by no class or distribution until a segmenter's level is in.
+WHOLE_BY_MASKS = "item.tier = 'gold3' AND anomaly.class != 'not_whole'"
+
+
+def distribution(db, column, member="enhance_pet", where=WHOLE_BY_MASKS):
     return db.execute(f"SELECT anomaly.{column}, COUNT(*) FROM anomaly JOIN item ON item.item = anomaly.item"
                       f" WHERE anomaly.member = ? AND {where} GROUP BY anomaly.{column} ORDER BY COUNT(*) DESC, anomaly.{column}",
                       (member,)).fetchall()
@@ -2012,7 +2028,7 @@ DISTANCE_BINS = ((TOUCH_MM, f"touching, {TOUCH_MM} mm or less"), (CONTROL_NEARES
 
 def distance_bins(db):
     values = [r[0] for r in db.execute("SELECT anomaly.l4_to_sacrum_mm FROM anomaly JOIN item ON item.item = anomaly.item"
-                                       " WHERE anomaly.member = 'enhance_pet' AND item.tier = 'gold3'"
+                                       f" WHERE anomaly.member = 'enhance_pet' AND {WHOLE_BY_MASKS}"
                                        " AND anomaly.l4_to_sacrum_mm IS NOT NULL")]
     edges = [float("-inf"), *(edge for edge, _ in DISTANCE_BINS)]
     counts = [sum(1 for v in values if low < v <= high) for low, high in zip(edges, edges[1:])]
@@ -2096,8 +2112,8 @@ def sites_section(db):
     rows = db.execute("SELECT * FROM member_count WHERE member = 'enhance_pet' ORDER BY site = 'all', site").fetchall()
     body = [(r["site"], thousands(r["studies"]), thousands(r["gold3"]), thousands(r["gold4"]), thousands(r["silver3"]),
              persons_text(r)) for r in rows]
-    return ["## ENHANCE.PET by site", ""] + table(("Site", "Studies", "Whole, gold 3", "Repaired, gold 4",
-                                                   "Not whole, silver 3", "Persons"), body) + [""]
+    return ["## ENHANCE.PET by site", ""] + table(("Site", "Studies", "Gold 3", "Repaired, gold 4",
+                                                   "Silver 3", "Persons"), body) + [""]
 
 
 def classes_section(db):
@@ -2108,8 +2124,9 @@ def classes_section(db):
     body = [(name, *(share_cell(dict(found).get(name, 0), whole, name) for whole, found in shares)) for name in names]
     header = ("Class", "All", *sites)
     return (["## ENHANCE.PET classes", "",
-             "One class per study. The share is of the whole studies (gold 3) of the column; a repaired or not-whole"
-             " study is counted, with no share, since it is not among them.", ""]
+             "One class per study. The share is of the whole studies of the column, gold 3 with C2 to the sacrum drawn"
+             " by their masks; a repaired or not-whole study is counted, with no share, since it is not among them,"
+             " as is 1379, gold 3 by the field test while a segmenter adds its C2.", ""]
             + table(header, body) + [""])
 
 
@@ -2166,7 +2183,7 @@ def field_section(db):
             ("silver3", 1): "silver 3 until a person's look (a border case)", ("silver3", 0): "silver 3, part of the column"}
     body = [(m, what[(t, p)], thousands(n), thousands(k)) for m, t, p, n, k in rows]
     return (["## VerSe and TotalSegmentator by the field test", "",
-             "Rule version 2: a CT is admitted when its field holds C2 and the top of the sacrum, whatever its masks"
+             "Rule version 3: a CT is admitted when its field holds the foot of C2 and the top of the sacrum, whatever its masks"
              " hold; docs/research/gold3-ct/ADMISSION.md gives every verdict's numbers and README.md the rule."
              " A study that draws no vertebra above the sacrum is no spine study and has no row.", ""]
             + table(("Member", "Tier", "Studies", "Persons"), body) + [""])
@@ -2441,9 +2458,9 @@ COMMAND_OF = {STATS_PAGE: "stats", QA_PAGE: "qa", PAGE_DATA: "page"}
 
 
 def enhance_field_differences(db, inputs):
-    """ENHANCE.PET's studies whole by version 1's rule (gold 3, or gold 4 once repaired) must be the ones
-    the field test admits by version 2: the two rules read one release, and a study they part on is a bug
-    or a case for a person's look, named here. Every study the dataset holds has its verdict and no verdict
+    """ENHANCE.PET's studies whole by version 1's rule (gold 3, or gold 4 once repaired), with those the field
+    test admits by version 3 with a level to add (enhance_tier), must be the ones it admits: the two rules
+    read one release, and a study they part on is a bug or a case for a person's look, named here. Every study the dataset holds has its verdict and no verdict
     names a study it does not hold, so a verdict dropped never takes a border case's provisional mark."""
     verdicts = field_verdicts(inputs, "enhance_pet")
     found, held = [], set()

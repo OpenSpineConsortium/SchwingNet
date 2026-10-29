@@ -128,7 +128,7 @@ python3 tools/storage_panel.py check
 # STATS.md, QA.md or page-data.json not written again from the committed files (python3 tools/gold3_ct.py
 # stats, qa, page) fails here; while the facts are not committed it passes with a note.
 python3 tools/gold3_ct.py check
-# Its admission by the field test (rule version 2, tools/gold3_field.py): data/gold3-ct/admission.json or
+# Its admission by the field test (rule version 3, tools/gold3_field.py): data/gold3-ct/admission.json or
 # docs/research/gold3-ct/ADMISSION.md not what the committed facts give (python3 tools/gold3_field.py write)
 # fails here.
 python3 tools/gold3_field.py check
