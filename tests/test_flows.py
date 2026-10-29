@@ -996,7 +996,7 @@ class SweepFlowTest(unittest.TestCase):
         self.assertEqual(code, 90, out)
         self.assertIn("covers live, gone, race, smoke, merged, faulty, nothing, reported, pinned, not trials", out)
         self.assertEqual((said, calls), ([], []), out)
-        self.assertFalse((self.root / "progress").exists())
+        self.assertFalse(self.root.exists(), "a part refused before the datastore is touched leaves no folder there")
         # a plan covered by its bytes runs as frozen, and edited under the same name is another design
         code, said, out, calls = self.sweep(PINNED, 1)
         self.assertEqual((code, said[0]["decision"]), (0, "run"), out)

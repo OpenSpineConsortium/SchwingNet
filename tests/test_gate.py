@@ -3932,7 +3932,72 @@ esac
         folder = self.repo / "grid" / "sweeps"
         folder.mkdir(parents=True, exist_ok=True)
         (folder / f"{name}.json").write_text(json.dumps(record, indent=1, sort_keys=True) + "\n", encoding="utf-8")
+        self.cover_plans()
         return folder / f"{name}.json"
+
+    def cover_plans(self, *uncovered, by_name=()):
+        """The registry's sweep line and the sweep's PREREG frozen as the Lab Recipe says, covering
+        every plan under the test's grid/sweeps/ by its bytes, but those uncovered and those it
+        covers by name alone, as the word reads them before it queues anything."""
+        (self.repo / "flows").mkdir(exist_ok=True)
+        shutil.copy(ROOT / "flows" / "registry.txt", self.repo / "flows" / "registry.txt")
+        entries = []
+        for plan in sorted((self.repo / "grid" / "sweeps").glob("*.json")):
+            if plan.stem in by_name:
+                entries.append(plan.stem)
+            elif plan.stem not in uncovered:
+                entries.append(f"{plan.stem}={hashlib.sha256(plan.read_bytes()).hexdigest()}")
+        prereg = self.repo / "docs" / "research" / "block-smoke"
+        prereg.mkdir(parents=True, exist_ok=True)
+        text = f"# The test's design\n\nCovers: {', '.join(entries)}\n"
+        (prereg / "PREREG.md").write_text(text, encoding="utf-8")
+        (prereg / "PREREG.md.sha256").write_text(f"{hashlib.sha256(text.encode()).hexdigest()}  PREREG.md\n", encoding="ascii")
+        return prereg / "PREREG.md"
+
+    def test_sweep_refuses_a_plan_its_frozen_prereg_does_not_cover_before_anything_is_queued(self):
+        # the launcher refuses such a plan with exit 90 too, but only once the job holds a GPU and the
+        # catalog is built; the word reads the same Covers line first and queues nothing
+        self.environments_ready()
+        self.plan("synthetic", "synthetic")
+        self.plan("trials", "synthetic")
+        self.cover_plans("trials")
+        done = self.gate("sweep", "trials")
+        self.assertEqual(done.returncode, 90, done.stdout)
+        self.assertIn("refusing: docs/research/block-smoke/PREREG.md does not cover the plan trials, which waits for a PREREG "
+                      "of its own, frozen before it runs; nothing was queued", done.stdout)
+        # a plan edited since the freeze, under the same name, is another design
+        plan = self.repo / "grid" / "sweeps" / "synthetic.json"
+        frozen = hashlib.sha256(plan.read_bytes()).hexdigest()
+        plan.write_text(plan.read_text(encoding="utf-8").replace('"epochs": 3', '"epochs": 4'), encoding="utf-8")
+        done = self.gate("sweep", "synthetic")
+        self.assertEqual(done.returncode, 90, done.stdout)
+        self.assertIn(f"covers synthetic as the bytes of sha256 {frozen[:16]}, and grid/sweeps/synthetic.json's are "
+                      f"{hashlib.sha256(plan.read_bytes()).hexdigest()[:16]}: a plan changed since the freeze is another design", done.stdout)
+        # a PREREG edited since its freeze covers nothing
+        prereg = self.cover_plans()
+        with prereg.open("a", encoding="utf-8") as text:
+            text.write("A hypothesis added after the data were seen.\n")
+        done = self.gate("sweep", "synthetic")
+        self.assertEqual(done.returncode, 90, done.stdout)
+        self.assertIn("refusing: STOP: docs/research/block-smoke/PREREG.md is not frozen as its PREREG.md.sha256 says", done.stdout)
+        self.assertEqual(self.submitted(), [])
+        # an entry that names the plan alone covers it whatever its bytes, as the launcher reads it
+        self.cover_plans(by_name=("synthetic",))
+        done = self.gate("sweep", "synthetic")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertEqual(len(self.line_of("sweep-driver.sbatch")), 1)
+
+    def test_the_repositorys_own_prereg_covers_its_smoke_plans_and_not_the_trials(self):
+        self.environments_ready()
+        (self.repo / "flows").mkdir()
+        shutil.copy(ROOT / "flows" / "registry.txt", self.repo / "flows" / "registry.txt")
+        shutil.copytree(ROOT / "docs" / "research" / "block-smoke", self.repo / "docs" / "research" / "block-smoke")
+        done = self.gate("sweep", "trials")
+        self.assertEqual(done.returncode, 90, done.stdout)
+        self.assertIn("does not cover the plan trials", done.stdout)
+        done = self.gate("sweep", "synthetic")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertEqual(len(self.line_of("sweep-driver.sbatch")), 1)
 
     def test_sweep_and_bank_each_take_exactly_one_plain_id(self):
         for words in (("sweep",), ("sweep", "a", "b"), ("sweep", "Real"), ("sweep", "../real"), ("bank",),

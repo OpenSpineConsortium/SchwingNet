@@ -685,10 +685,12 @@ def launch(argv):
     point_metaflow_at(root)
     require_metaflow()
     require_parent(root)
-    (root / ".metaflow").mkdir(parents=True, exist_ok=True)
-    commit, code = commit_of(repo), code_of(repo, name)
+    # The part a run is can be read only from the flow's own file, which imports Metaflow; it is
+    # refused there, before the datastore is touched and before git or the code digest is asked.
     flow = flow_module(name, repo)
     prereg = require_prereg(name, repo, *part_of(flow, words)) if prereg else prereg
+    (root / ".metaflow").mkdir(parents=True, exist_ok=True)
+    commit, code = commit_of(repo), code_of(repo, name)
     key = run_key(name, code, words, [*reads_of(flow, words), *prereg_reads(prereg)])
     flow_class = flows[name]["class"]
     folder = beats_folder(root, flow_class, key)

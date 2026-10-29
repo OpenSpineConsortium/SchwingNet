@@ -39,7 +39,9 @@ Metaflow's own resume rather than by anything written around it.
   again, which tools/flow.py carries on from its last epoch (tools/train.py --resume). Its runs
   are held to docs/research/block-smoke/PREREG.md, which covers the plans synthetic, real and
   two_source by their bytes; `sweep trials` is refused until the six trials have a PREREG of their
-  own, and so is a plan made again with other rows.
+  own, and so is a plan made again with other rows. grid/gate.sh's word `sweep <plan>` reads the
+  same Covers line in bash and refuses such a plan with 90 before it queues anything, since the
+  launcher's own refusal comes only once the job holds a GPU and its catalog is built.
 
 Every flow's end step sets an int artifact `verdict`, 0 when all went well and 1 otherwise.
 
@@ -94,12 +96,15 @@ request.
   in design names the part a run is and the sha256 of its bytes (the sweep's `prereg_part`, its
   plan's name and the plan file's sha256), so a run of a part no frozen PREREG covers, or of one
   whose bytes are not those its entry names, a plan edited or made again since the freeze, is
-  refused the same way. The PREREG's
+  refused with exit 90 too: after Metaflow is imported, since the part is read from the flow's own
+  file, which imports it, but before the datastore is touched or anything is written. The PREREG's
   path and sha256 are in the key and on the run's tags (prereg:<12>), and start keeps them as the
   run's artifacts prereg_path and prereg_sha256, with the part and its sha256
   (`stage.hold_to_prereg`). A resume clones start, and `python flows/sweep.py resume` started by
   hand skips the launcher's refusal too, so end holds the run to them again (`stage.still_held`)
   and fails where the PREREG frozen now is another or no longer covers the part as start read it.
+  A refusal by start or end is the flow's own (`StageFault`), so it fails the run and the launcher
+  exits with the flow's 1, not 90; only the launcher's own refusal exits 90.
 - `stage.py` is what every flow's steps run for the rule: `Beat` around a step's work, its line on
   the page, `run_watched` for a command whose line moves while it runs, `Beat(self).passed()` in a
   step that only routes the flow, `claim_report` in end, and `finish`, the verdict and the
@@ -215,7 +220,8 @@ else null, and the flow's own output passes through after it, followed by `{"flo
 "Class/ID", "successful", "verdict"}`. It exits with the flow's own code where that is not 0 (128
 plus the signal where the flow was killed, or where the launcher was stopped, above), else with the verdict, so a job's afterok means what
 it meant before Metaflow. A refusal comes before any flow starts, as the line `LaunchError:
-<words>` on stderr: exit 69 where Metaflow cannot be imported, the datastore's parent folder is
+<words>` on stderr: exit 90 where the kind's PREREG is missing or moved or does not cover the
+run's part (above); exit 69 where Metaflow cannot be imported, the datastore's parent folder is
 missing or the commit or the code cannot be named; exit 64 for a flow it does not know,
 a --max-workers that is no whole number from 1 to 9999 or a --commit among the words, which it
 passes itself; and exit 70 where the runs Metaflow lists break a rule of schwingnet.pipeline.
