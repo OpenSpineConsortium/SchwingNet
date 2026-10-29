@@ -71,3 +71,23 @@ Side by side: 1, 2 and 3 can start at once; 4 and 5 after 3 and PR 30; 6 after 5
 2. Re-run the four unfinished readers if their facts matter for the issue text (the workflow script is kept at the session's workflow folder, not in git; the prompts are reproducible from the area list above), or write the issues from this list.
 3. Create the epic in SchwingNet with the plan section and the "<!-- team:plan -->" marker in its body before or with the label epic, so coordinator.yml does not plan it again; create each task with the Task form's three headings, labelled todo, as a sub-issue of the epic (parent_issue_number), then add the blocked-by relation to the task before it (POST issues/{n}/dependencies/blocked_by with the blocker's id). No "@claude" in any text. Reply to the owner with the links and the run order.
 4. Nothing of this needs a grid word; the first grid words are tasks 1, 2 and 4, each on the owner's count.
+
+## Done: the issues (2026-10-29, about 18:15 UTC)
+
+The next thread (project symphony_2, "Plan real-time fluoroscopy task") wrote the issues from the draft list above, without re-running the four unfinished readers; the shared folder's maps file was not in the new project, so the list here was the source. The epic is #473, labelled epic with "<!-- team:plan -->" and the machine line "<!-- team:tasks ... -->" in its body, so coordinator.yml skipped it (its run of 18:10 UTC ended skipped). Its nine tasks are sub-issues labelled todo, in the Task form's three headings, with GitHub blocked-by relations; none carries "@claude".
+
+Tasks 1 and 2 of the draft were not opened again: #138 (under #7) and #256 (under #262) already are those tasks, so the new tasks wait for them by blocked-by instead. The production blockers #257 and #259 block the three training tasks. Task 1's move onto a launched flow is draft #466's work.
+
+| Draft | Issue | Blocked by |
+| --- | --- | --- |
+| 3 | #474 naming layer scored over all 106 measures | none (bordercall PR 29 first, in text) |
+| 4 | #475 gold-CT reference table | #474 |
+| 5 | #476 auto-anatomist as a pipeline block | #474, #475, #257, #259 |
+| 6 | #477 naming from the frame alone on synthetic fluoroscopy | #476 |
+| 7 | #478 the frame stage, no segmentation at inference | #257, #259 |
+| 8 | #479 frozen real held-out test set | none (the owner names sets and readers) |
+| 9 | #480 naming that follows a pan within 97 ms | #474, #478, #138 |
+| 10 | #481 end-to-end path on an MP4 | #478, #479, #480, #256 |
+| 11 | #482 the demo video | #481 |
+
+Draft item 12 is the open gates, depended on and not re-opened. Dependencies on draft pull requests (#463, #466, #468, #471) and on #391 are named in the issue text only.
