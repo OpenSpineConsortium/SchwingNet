@@ -25,10 +25,12 @@ loads and the scripts it names and fails on a file in neither list, so a new imp
 someone made and never an accident.
 
 The kinds: `row` is one run of tools/flow.py, named by schwingnet.flow.configured_run_id; `state`
-is a sweep's state folder, tools/block_sweep.py's with the rows it starts; `sweep`, `v1`, `bank`,
-`catalog`, `drr_gap` and `drr_seg` are the Metaflow flows of flows/, named by the launcher's key
-(schwingnet.pipeline.run_key), `v1` the version 1 run of tools/flow.py as a launched flow, the last
-two the DRR domain-gap study's parts and its MOOSE masks.
+is a sweep's state folder, tools/block_sweep.py's with the rows it starts; `sweep`, `v1`,
+`experiment`, `latency`, `bank`, `catalog`, `drr_gap` and `drr_seg` are the Metaflow flows of
+flows/, named by the launcher's key (schwingnet.pipeline.run_key), `v1` the version 1 run of
+tools/flow.py as a launched flow, `experiment` one requested combination of it, `latency` one job
+of the latency word on a run's checkpoint, the last two the DRR domain-gap study's parts and its
+MOOSE masks.
 
 A copy of the code that `git archive` made, as the DRR domain-gap study's prepare makes one so that
 no later step reads the checkout while the gate moves it, holds no .git; it holds COPY_RECORD
@@ -80,6 +82,11 @@ KINDS = {
     "state": STATE,
     "sweep": (*STATE, "flows/sweep.py", "flows/stage.py", "flows/stage_registry.py"),
     "v1": (*ROW, "flows/v1.py", "flows/flow_tool.py", "flows/stage.py", "flows/stage_registry.py"),
+    "experiment": (*ROW, "flows/experiment.py", "flows/flow_tool.py", "flows/stage.py", "flows/stage_registry.py"),
+    # One job of the latency word on a run's checkpoint: tools/latency.py loads tools/train.py for the
+    # model and its crops, so it reaches every file a row runs, and the two tools and their rules.
+    "latency": (*ROW, "flows/latency.py", "flows/flow_tool.py", "flows/stage.py", "flows/stage_registry.py",
+                "tools/latency.py", "tools/sweep.py", "src/schwingnet/latency.py", "src/schwingnet/sweep.py"),
     "bank": (*STAGE, "flows/bank.py", "grid/02-bank-ingest.sbatch", "tools/bank.py", "tools/ingest.py"),
     "catalog": (*STAGE, "flows/catalog.py", "grid/03-catalog.sbatch"),
     "drr_gap": (*DRR_STUDY, "data/splits/test-persons.json", "grid/drr-gap.sbatch", "flows/drr_gap.py", "flows/stage.py",
@@ -132,6 +139,8 @@ LEFT_OUT = {
     "state": STATE_LEFT_OUT,
     "sweep": {**STATE_LEFT_OUT, **STAGE_PAGE_LEFT_OUT},
     "v1": {**ROW_LEFT_OUT, **STAGE_PAGE_LEFT_OUT},
+    "experiment": {**ROW_LEFT_OUT, **STAGE_PAGE_LEFT_OUT},
+    "latency": {**ROW_LEFT_OUT, **STAGE_PAGE_LEFT_OUT},
     "bank": {**STAGE_LEFT_OUT, "grid/size-rule.sh": "admits the job under the size rule before the launcher starts, and no step of the flow runs it"},
     "catalog": STAGE_LEFT_OUT,
     "drr_gap": {**DRR_LEFT_OUT, "tools/report.py": REPORTS_THE_STUDY},

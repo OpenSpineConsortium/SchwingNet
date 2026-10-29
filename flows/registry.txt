@@ -4,15 +4,17 @@
 # PREREG.md.sha256 beside it as `sha256sum PREREG.md` writes it, or - for a stage that trains and
 # runs no network. Every deep learning job on the grid is to run on one of these flows, under a
 # frozen PREREG (the owner's rule of 2026-10-29); the gate's words that still submit a plain job
-# are listed in flows/README.md, each to be moved onto a flow here, and once they are the gate
-# refuses any GPU job that does not start through the launcher. flows/stage_registry.py reads this
+# are listed in flows/README.md, each to be moved onto a flow here, and grid/gate.sh refuses any
+# GPU job whose script is not one this file names in its fourth column (launched_script). flows/stage_registry.py reads this
 # file and `python3 flows/stage_registry.py check`, which scripts/check.sh runs, holds every line to it.
 #
-# kind     class         word           script                  PREREG
-bank       BankFlow      XR_BANK_RC     02-bank-ingest.sbatch   -
-catalog    CatalogFlow   XR_CATALOG_RC  03-catalog.sbatch       -
-sweep      SweepFlow     SWEEP_RC       sweep-driver.sbatch     docs/research/block-smoke/PREREG.md
-v1         V1Flow        V1_RC          v1-driver.sbatch        docs/research/v1-demo/PREREG.md
-drr_gap    DrrGapFlow    DRR_GAP_RC     drr-gap.sbatch          docs/research/drr-domain-gap/PREREG.md
-drr_seg    DrrSegFlow    DRR_SEG_RC     drr-seg.sbatch          docs/research/drr-domain-gap/PREREG.md
-realism    RealismFlow   REALISM_RC     realism.sbatch          docs/research/flux-realism/PREREG.md
+# kind      class           word           script                    PREREG
+bank        BankFlow        XR_BANK_RC     02-bank-ingest.sbatch     -
+catalog     CatalogFlow     XR_CATALOG_RC  03-catalog.sbatch         -
+sweep       SweepFlow       SWEEP_RC       sweep-driver.sbatch       docs/research/block-smoke/PREREG.md
+v1          V1Flow          V1_RC          v1-driver.sbatch          docs/research/v1-demo/PREREG.md
+experiment  ExperimentFlow  EXPERIMENT_RC  experiment-driver.sbatch  docs/research/experiments/PREREG.md
+latency     LatencyFlow     LATENCY_RC     latency-sweep.sbatch      docs/research/latency-and-sweep/PREREG.md
+drr_gap     DrrGapFlow      DRR_GAP_RC     drr-gap.sbatch            docs/research/drr-domain-gap/PREREG.md
+drr_seg     DrrSegFlow      DRR_SEG_RC     drr-seg.sbatch            docs/research/drr-domain-gap/PREREG.md
+realism     RealismFlow     REALISM_RC     realism.sbatch            docs/research/flux-realism/PREREG.md
