@@ -29,7 +29,11 @@ ROOT = Path(__file__).resolve().parent.parent
 # second review's finding 4).
 PYDRV = tuple(re.findall(r"^export PYDRV=\$REPO/(\S+)$", (ROOT / "grid" / "gate.sh").read_text(encoding="utf-8"), re.M))
 ENTRIES = {"row": ("tools/flow.py",), "state": ("tools/block_sweep.py",), "sweep": ("flows/sweep.py",),
-           "bank": ("flows/bank.py", *PYDRV), "catalog": ("flows/catalog.py", *PYDRV)}
+           "bank": ("flows/bank.py", *PYDRV), "catalog": ("flows/catalog.py", *PYDRV),
+           "drr_gap": ("flows/drr_gap.py",), "drr_seg": ("flows/drr_seg.py",)}
+# The calls that load a neighbour of tools/ by its name: tools/domain_gap.py names its own helper tool,
+# which loads tools/<name>.py by path, as the others name load_tool and run_tool.
+LOADERS = ("load_tool", "run_tool", "tool")
 SCRIPT_WORD = re.compile(r"(?<![\w.-])((?:tools|grid|flows)/[\w.-]+\.(?:py|sh|sbatch|awk))(?![\w/-])")
 # A script that finds its neighbours from where it lies, as grid/bin/train-cpu-python does:
 # here=$(cd "$(dirname "$0")/.." && pwd), then "$here/box.sh".
@@ -43,6 +47,14 @@ QUIET_GIT = {"GIT_CONFIG_COUNT": "4", "GIT_CONFIG_KEY_0": "gc.auto", "GIT_CONFIG
              "GIT_CONFIG_KEY_1": "gc.autoDetach", "GIT_CONFIG_VALUE_1": "false",
              "GIT_CONFIG_KEY_2": "maintenance.auto", "GIT_CONFIG_VALUE_2": "false",
              "GIT_CONFIG_KEY_3": "maintenance.autoDetach", "GIT_CONFIG_VALUE_3": "false"}
+
+
+def drr_code_paths():
+    """What the DRR domain-gap study's prepare copies at its commit for every later step to run,
+    as grid/drr-gap.sbatch lists it in CODE_PATHS."""
+    text = (ROOT / "grid" / "drr-gap.sbatch").read_text(encoding="utf-8")
+    listed = re.search(r"^CODE_PATHS=\((.*?)\)$", text, re.M | re.S)
+    return listed.group(1).split() if listed else []
 
 
 def load_run_code():
@@ -124,7 +136,7 @@ def node_references(node, skip, tools_on_path, path):
     """The repository files one node of a module's tree names as code."""
     if isinstance(node, (ast.Import, ast.ImportFrom)):
         return import_references(node, tools_on_path, path)
-    if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id in ("load_tool", "run_tool") and node.args:
+    if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id in LOADERS and node.args:
         first = node.args[0]
         if isinstance(first, ast.Constant) and isinstance(first.value, str):
             return [f"tools/{first.value.removesuffix('.py')}.py"]
@@ -252,6 +264,15 @@ class ListsTest(unittest.TestCase):
         self.assertLessEqual(set(kinds["row"]), set(kinds["state"]))
         self.assertLessEqual(set(kinds["state"]), set(kinds["sweep"]))
 
+    def test_the_drr_studys_copy_holds_every_file_its_two_kinds_name(self):
+        # prepare copies CODE_PATHS at its commit and every later step's launcher names the run's code
+        # from that copy, so a file a kind names outside them would refuse every shard and the merge
+        paths = drr_code_paths()
+        self.assertIn("grid/drr-gap.sbatch", paths)
+        for name in self.code.KINDS["drr_gap"]:
+            with self.subTest(name=name):
+                self.assertTrue(any(name == path or name.startswith(path.rstrip("/") + "/") for path in paths), name)
+
     def test_the_command_line_prints_the_digest_and_the_files(self):
         said = subprocess.run([sys.executable, str(ROOT / "tools" / "run_code.py"), "digest", "row"], capture_output=True, text=True, check=False)
         self.assertEqual(said.returncode, 0, said.stderr)
@@ -314,6 +335,32 @@ class DigestTest(unittest.TestCase):
 
     def test_the_kinds_name_differs_so_two_kinds_of_one_list_name_two_digests(self):
         self.assertNotEqual(self.code.digest("row", self.repo), self.code.digest("state", self.repo))
+
+    def test_a_copy_git_archive_made_with_its_record_names_the_digest_its_commit_does(self):
+        # grid/drr-gap.sbatch's prepare copies the code at its commit with git archive, which keeps no
+        # .git, and writes COPY.txt, the commit and the files as git ls-tree lists them; the copy's
+        # digest is read from that record and is the commit's, so a shard names the code prepare ran
+        paths = drr_code_paths()
+        for path in paths:
+            if not (self.repo / path).exists():
+                self.write(f"{path}/one.json" if (ROOT / path).is_dir() else path, f"{path}\n")
+        self.commit("the study's other files")
+        commit = git(self.repo, "rev-parse", "HEAD").strip()
+        copy = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, copy, True)
+        archive = subprocess.run(["git", "-C", str(self.repo), "archive", commit, "--", *paths], capture_output=True, check=True)
+        subprocess.run(["tar", "-x", "-C", str(copy)], input=archive.stdout, check=True)
+        listed = git(self.repo, "-c", "core.quotePath=false", "ls-tree", "-r", "--name-only", commit, "--", *paths)
+        (copy / "COPY.txt").write_text(f"{commit}\n{listed}", encoding="utf-8")
+        self.assertFalse((copy / ".git").exists())
+        self.assertEqual(self.code.files("drr_gap", copy), self.code.files("drr_gap", self.repo))
+        self.assertEqual(self.code.digest("drr_gap", copy), self.code.digest("drr_gap", self.repo))
+        # a file the copy holds that its record does not list counts no more than an untracked one
+        (copy / "data" / "domain_gap" / "stray.json").write_text("not copied by git\n", encoding="utf-8")
+        self.assertEqual(self.code.digest("drr_gap", copy), self.code.digest("drr_gap", self.repo))
+        (copy / "COPY.txt").write_text("not a commit\n", encoding="utf-8")
+        with self.assertRaisesRegex(self.code.RunCodeError, r"COPY\.txt names no commit"):
+            self.code.digest("drr_gap", copy)
 
     def test_a_file_a_kind_names_that_is_not_tracked_is_refused_in_words(self):
         git(self.repo, "rm", "-q", "tools/train.py")

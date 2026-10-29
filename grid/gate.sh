@@ -108,7 +108,10 @@
 #                   for the FleXray replication, SPINEPS for production): the study's choice of CTs
 #                   (tools/domain_gap.py plan) and MOOSE on exactly those (tools/flexray_render.py segment),
 #                   once the TotalSegmentator CTs, the SPINEPS masks and the five model zips of
-#                   `fetch moose_weights` are there; it writes the masks under the data root's moose
+#                   `fetch moose_weights` are there; it writes the masks under the data root's moose.
+#                   Both run on launched flows (the owner's rule of 2026-10-29): each of the study's
+#                   jobs, and each task of its array, starts flows/launch.py drr_gap from prepare's copy
+#                   of the code, and flexray_drr_seg's job (grid/drr-seg.sbatch) flows/launch.py drr_seg
 #   anomaly <stage> one stage of the SPINEPS to FleXray anomaly route (#398, the owner's word and count of
 #                   2026-10-25 21:22 UTC: seven jobs, two CPU and five GPU, docs/research/spineps-anomaly-route.md),
 #                   queued once as one job (grid/anomaly.sbatch, tools/anomaly_route.py) once the stage's code has
@@ -147,7 +150,7 @@
 #
 # While a version 1 run, a sweep, an experiment run, a benchmark, an anomaly stage, a bordercall stage or a
 # realism stage lasts, grid/logs/HOLD names its job and commit (grid/v1-driver.sbatch, grid/sweep-driver.sbatch,
-# grid/experiment-driver.sbatch, grid/bench.sbatch, grid/anomaly.sbatch, grid/bordercall.sbatch, grid/realism.sbatch;
+# grid/experiment-driver.sbatch, grid/bench.sbatch, grid/drr-seg.sbatch, grid/anomaly.sbatch, grid/bordercall.sbatch, grid/realism.sbatch;
 # not the DRR domain-gap study's steps, grid/drr-gap.sbatch, which run from a copy of their code); the
 # gate's side skips its fast-forward while the file is there, and every word but a refused one
 # clears a hold whose job Slurm no longer holds, so the run's later steps run the code it
@@ -815,15 +818,43 @@ flow_shapes() {  # a flow's progress lines, its tasks' and its reports' judged a
     esac
   done
 }
-flow_progress() {  # the newest runs of every launched flow, each its PROGRESS.txt as status shows it
-  local progress run kind
-  ls -1t "$FLOW_ROOT"/progress/*/*/PROGRESS.txt 2>/dev/null | head -n "$FLOW_RUNS_SHOWN" | while read -r progress; do
+# Which runs: the newest of every kind first, then the newest of the rest up to FLOW_RUNS_SHOWN in all,
+# shown newest first, so the DRR domain-gap study's 18 runs a chain (prepare, 16 shard tasks, the merge),
+# whose own PROGRESS.txt the bench progress shows, never push another flow's run out of status.
+FLOW_HEAD='^flow [^ ]+ ([^ ]+):'
+FLOW_KIND=""
+flow_kind_of() {  # flow_kind_of PROGRESS: the kind its first line names into FLOW_KIND, or unknown, read by the shell alone with no process per run
+  local first=""
+  FLOW_KIND=unknown
+  read -r first 2>/dev/null < "$1"
+  [[ "$first" =~ $FLOW_HEAD ]] || return 0
+  case "${BASH_REMATCH[1]}" in *[!a-z0-9_]*) ;; *) FLOW_KIND=${BASH_REMATCH[1]} ;; esac
+}
+flow_progress() {  # the runs of the launched flows status shows, each its PROGRESS.txt as status shows it
+  local files=() kinds=() shown=() seen=" " count=0 i progress run
+  mapfile -t files < <(ls -1t "$FLOW_ROOT"/progress/*/*/PROGRESS.txt 2>/dev/null)
+  for i in ${files[@]+"${!files[@]}"}; do
+    progress=${files[$i]}
+    run=${progress%/PROGRESS.txt}; run=${run##*/}
     [ -f "$progress" ] || continue
-    run=$(basename "$(dirname "$progress")")
-    kind=$(head -n 1 "$progress" | awk '$1 == "flow" { sub(/:$/, "", $3); print $3 }')
     case "$run" in ""|*[!A-Za-z0-9_.-]*) continue ;; esac
-    case "$kind" in ""|*[!a-z0-9_]*) kind=unknown ;; esac
-    echo "## flow $kind $run, progress ($(date -u -r "$progress" '+%F %H:%M') UTC)"
+    flow_kind_of "$progress"
+    kinds[$i]=$FLOW_KIND
+    case "$seen" in *" ${kinds[$i]} "*) continue ;; esac
+    seen="$seen${kinds[$i]} "
+    shown[$i]=1
+    count=$((count + 1))
+  done
+  for i in ${kinds[@]+"${!kinds[@]}"}; do
+    [ "$count" -lt "$FLOW_RUNS_SHOWN" ] || break
+    [ -z "${shown[$i]:-}" ] || continue
+    shown[$i]=1
+    count=$((count + 1))
+  done
+  for i in ${shown[@]+"${!shown[@]}"}; do
+    progress=${files[$i]}
+    run=${progress%/PROGRESS.txt}; run=${run##*/}
+    echo "## flow ${kinds[$i]} $run, progress ($(date -u -r "$progress" '+%F %H:%M') UTC)"
     head -n "$FLOW_PROGRESS_LINES" "$progress" | LC_ALL=C tr -cd '\11\12\40-\176' | flow_shapes | masked | sed 's/^/  /'
   done
 }
@@ -1346,7 +1377,7 @@ zip_whole() {  # zip_whole FILE: the file ends in a whole end-of-central-directo
   # The record's signature PK\5\6 within the last 65557 bytes, 18 bytes after it and then a comment
   # of the length the record states, up to the file's end: a zip cut short anywhere, in its last
   # bytes included, fails this, a whole one passes. awk and coreutils alone, since the login node
-  # runs no python; grid/bench.sbatch's copy adds unzip's test of every member where the node has it.
+  # runs no python; grid/drr-seg.sbatch's copy adds unzip's test of every member where the node has it.
   local size from
   size=$(stat -c %s "$1" 2>/dev/null) && [ "$size" -ge 22 ] || return 1
   from=$(( size > 65558 ? size - 65558 : 0 ))
@@ -1422,7 +1453,7 @@ drr_gap_progress() {  # the study's PROGRESS.txt, masked, as a send while it las
   bench_progress_of flexray_drr_gap
 }
 word_bench() {  # one public model's benchmark (#287): queued once, its report printed on every later send
-  local report=$LOGS/BENCH-$id.md busy missing holds opts setup again=""
+  local report=$LOGS/BENCH-$id.md busy missing holds opts setup again="" script
   case "$id" in
     flexray_carmlspine|flexray_deepfluoro|xvr_deepfluoro|flexray_drr_gap|flexray_drr_seg) ;;
     *) echo "refusing: bench takes flexray_carmlspine, flexray_deepfluoro, xvr_deepfluoro, flexray_drr_gap or flexray_drr_seg"; return 64 ;;
@@ -1474,7 +1505,7 @@ word_bench() {  # one public model's benchmark (#287): queued once, its report p
   # on, rather than by 'start', which would queue the whole pipeline (the owner's choice, 2026-10-25).
   setup=$(setup_dependency) || return 1
   [ -z "$setup" ] || echo "  the environments: after the setup job that rebuilds them (${setup#afterok:})"
-  # The job holds the checkout while it runs (grid/bench.sbatch), so it is queued after every other
+  # The job holds the checkout while it runs (grid/bench.sbatch, grid/drr-seg.sbatch), so it is queued after every other
   # run that holds it, as a sweep is, rather than refused; the study's prepare waits for them too,
   # bench flexray_drr_seg among them, whose MOOSE masks it reads.
   holds=$(checkout_holders)
@@ -1485,7 +1516,11 @@ word_bench() {  # one public model's benchmark (#287): queued once, its report p
     echo "submitted the study. 'status' shows its progress while it runs; send bench $id again once its merge ends to read its report, logs/BENCH-$id.md."
     return 0
   fi
-  submit "bench_$id" gpu BENCH="$id" DATA_ROOT="$DATA_ROOT" ${opts[@]+"${opts[@]}"} --no-requeue -- bench.sbatch > /dev/null || return 1
+  # MOOSE's masks for the study run on a launched flow (grid/drr-seg.sbatch, flows/drr_seg.py), under the
+  # same job name, so the holders and the report's name are as they were; the public benchmarks stay here.
+  script=bench.sbatch
+  [ "$id" != flexray_drr_seg ] || script=drr-seg.sbatch
+  submit "bench_$id" gpu BENCH="$id" DATA_ROOT="$DATA_ROOT" ${opts[@]+"${opts[@]}"} --no-requeue -- "$script" > /dev/null || return 1
   echo "submitted the benchmark. Send bench $id again once it ends to read its report, logs/BENCH-$id.md."
 }
 
@@ -1969,7 +2004,7 @@ word_cancel() {  # the job named, if the gate's and live, with every live job of
   "$SCANCEL" $cancel && echo "cancelled ($from): $cancel"
 }
 
-release_hold() {  # a run's hold (grid/v1-driver.sbatch, grid/sweep-driver.sbatch, grid/experiment-driver.sbatch, grid/bench.sbatch, grid/anomaly.sbatch, grid/bordercall.sbatch) is cleared once Slurm no longer holds its job
+release_hold() {  # a run's hold (grid/v1-driver.sbatch, grid/sweep-driver.sbatch, grid/experiment-driver.sbatch, grid/bench.sbatch, grid/drr-seg.sbatch, grid/anomaly.sbatch, grid/bordercall.sbatch) is cleared once Slurm no longer holds its job
   local job
   [ -f "$LOGS/HOLD" ] || return 0
   job=$(awk '{ print $1; exit }' "$LOGS/HOLD")
