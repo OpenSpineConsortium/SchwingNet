@@ -66,3 +66,24 @@ What is open:
 3. The thread "Read the rest of VerSe's masks" holds the machine arm. That is SPINEPS run on the public CTs in a cloud container on the owner's word of 03:32 UTC, with the matcher in bordercall PR 28 and the record in SchwingNet #458. Its own handoff says where that run stands. Its counts come back into members.json by #458.
 
 Lost with this container: the scratchpad of the session, which held the reader's validation (ref.py, mine.py and the 1,596 masks it compared), the dry run's made-up grid and the check's throwaway clone. The validation can be run again from the tool's docstring and the public ENHANCE.PET bucket.
+
+## 7. Checkpoint of 17:30 UTC on 2026-10-29, on the owner's word
+
+The owner's words, verbatim: at 17:22 UTC "WTF PLEASE PUSH ALL WORK AND CHECKPOINT AND WRITE HANDOFFS NOW!" and at 17:27 UTC "DUDE STOP ALL ADVERSARIAL REVIEW AND PUSH THIS SHIT!". The review was stopped at 17:28 UTC and everything pushed. Nothing went to the grid in this thread.
+
+What changed since section 6:
+
+- The checkpoint of 14:30 UTC was cancelled by his word of 14:53 UTC ("Just continue all without handing off but please use the grid where appropriate"). At 17:05 UTC he lifted the hold of 2026-10-28 for every thread ("yes lift the hold for every thread and update the instructions"); every grid job still waits for his word and its count, and the census is the one job he has counted.
+- main moved to 28f0387 (#461, the DRR port) and is merged into this branch.
+- The adversarial review's first round (a reader of the tool, two reviewers of the job and the gate) gave 13 findings, every one fixed on this branch: the reader catches any error per file, not only OSError, so a damaged file is counted and never ends a part; a gzip stream is read to its end so a damaged file raises rather than giving changed voxels; the header's magic, voxel offset and endian are read as nibabel reads them (its check_fix and guessed_endian); the extent part lists 40 changes at most; a member's admitted persons are counted; the job runs each part in the background under a TERM trap that keeps the parts done, is requeueable (the batch class's default) and, started again by Slurm under its id, skips the parts already done; it copies the code from git at the commit the gate names (CENSUS_COMMIT) and holds no checkout; the gate asks the scheduler for the job's shape before it marks a submission, marks the submission (logs/CENSUS-gold3.sent) so a lost answer never queues a second job, prints an unfinished report's .part, refuses while any root the census reads is missing, and takes the owner's word for one more job only as CENSUS_RERUNS=gold3:<job or lost> committed in grid/gate.sh. The second round (the parts and tests reviewers, the skeptics and the critic) was stopped before it reported.
+- tests/test_gold3_census.py (18) and the census test of tests/test_gate.py pass. tests/fixtures/gold3-census-grids.json is committed (nibabel 5.4.2's reading of 15 crafted headers and fullspine_facts' facts of one big-endian labelled volume, made by a script that is not in the repository) and its test is not yet written. Not yet written either: the gate tests for the lost answer (HPCW_LOSSY in tests/fakes/hpcworker), the .part printing and CENSUS_RERUNS, and the job script run locally (a full run, a restart, a TERM during a part, a failing part, no CENSUS_COMMIT). bash scripts/check.sh was last run at 635dfa6, before the fixes, with only the environment's errors (beartype, sync_adopted); CI on #463 decides.
+- grid/README.md's census row and docs/research/gold3-ct/README.md section 7 still say the job is never requeued; it is now requeueable and a requeue carries on after the parts done.
+
+Steps for the next account, in order:
+
+1. Read CI on #463. Update the two rows above. Write the tests listed above or leave them to a follow-up issue.
+2. Write "## Adversarial review" into the body from the 13 findings and their fixes, mark it ready in a call of its own, and merge once green with the head sha copied from git.
+3. Read the status word (schwingnet-status). Then dispatch grid-accounts.yml once with the job schwingnet-census-gold3; that is the one job the tap of 12:26 UTC allows. Once the job has ended, send the word again: it prints grid/logs/CENSUS-gold3.md and queues nothing. Never send it twice; a job that ended with no report, or a submission whose answer was lost, waits for his word as CENSUS_RERUNS.
+4. Record the counts in a follow-up pull request: held in members.json, README sections 2b and 7, the memory line, each count with what it is made of.
+
+The owner's decision card on VerSe's split whole-spine scans (section 6, item 2) is still open; an idk is option 0, join them and count from C2.

@@ -1946,14 +1946,25 @@ esac
         self.assertIn("census takes gold3", refused.stdout)
         self.assertEqual(self.gate("census", "gold3").returncode, 2)
         (self.repo / "tools" / "gold3_census.py").write_text("", encoding="utf-8")
+        # nor is the one job spent on roots the census would read nothing from
+        empty = self.gate("census", "gold3")
+        self.assertEqual(empty.returncode, 2, empty.stdout)
+        self.assertIn("the census would read nothing from the census tier lists under the lab volume's go2432/ruleclass/tiers; "
+                      f"{self.data}/totalsegmentator_v300; ", empty.stdout)
+        self.assertEqual(self.submitted(), [])
+        self.census_inputs()
         done = self.gate("census", "gold3")
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
         lines = self.submitted()
         # the environments are not made here, and still no setup job goes with it: the job finds its own python
         self.assertEqual(len(lines), 1, lines)
         self.assertIn("--class batch --name census_gold3", lines[0])
-        self.assertIn("--no-requeue", lines[0])
+        # requeueable, the batch class's default, since a requeued job carries on after the parts it finished
+        self.assertNotIn("--no-requeue", lines[0])
         self.assertIn("gold3-census.sbatch", lines[0])
+        # the job copies the code from the commit the gate was sent from; none here, where the copy is no repository
+        self.assertTrue(lines[0].endswith(" CENSUS_COMMIT="), lines[0])
+        self.assertFalse((self.repo / "grid" / "logs" / "CENSUS-gold3.sent").exists())
         job = self.recorded()["census_gold3"]
         self.live(job)
         self.assertEqual(self.gate("census", "gold3").returncode, 75)
@@ -1970,6 +1981,17 @@ esac
             self.assertEqual(done.returncode, 0, done.stdout)
             self.assertIn("gold4: idc rows 2, admitted 1", done.stdout)
         self.assertEqual(len(self.submitted()), 1)
+
+    def census_inputs(self):
+        """What the census reads, as the lab volume and the data root hold them: the tier lists and the
+        members' roots, each empty here, so the gate finds every root and the one job is not spent on none."""
+        tiers = self.tmp / "go2432" / "ruleclass" / "tiers"
+        tiers.mkdir(parents=True, exist_ok=True)
+        for name in ("tier1.tsv", "tier2.tsv"):
+            (tiers / name).write_text("tier\n", encoding="utf-8")
+        for root in ("totalsegmentator_v300", "aws_enhance_pet_labels/raw", "aws_enhance_pet_ct/raw", "tcia_fdg_pet_ct_lesions",
+                     "versefusion/raw/VerSeFusion_data/raw"):
+            (self.data / root).mkdir(parents=True, exist_ok=True)
 
     def realism_inputs(self, *which):
         """The data root as the realism fetches leave it, each named set landed by its marker file, and

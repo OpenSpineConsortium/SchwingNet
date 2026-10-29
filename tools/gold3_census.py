@@ -89,7 +89,7 @@ class NiftiError(ValueError):
 # NIfTI-1's data types with a numeric numpy type (nibabel's nifti1._dtdefs); the others are not masks or CTs.
 DATATYPES = {2: "u1", 4: "i2", 8: "i4", 16: "f4", 64: "f8", 256: "i1", 512: "u2", 768: "u4", 1024: "i8", 1280: "u8"}
 XFORM_CODES = (0, 1, 2, 3, 4, 5)
-SINGLE_MAGIC, PAIR_MAGIC = b"n+1", b"ni1"
+SINGLE_MAGIC = b"n+1"
 SINGLE_VOX_OFFSET = 352
 QUATERNION_THRESHOLD = np.finfo(np.float32).eps * 3
 
@@ -115,18 +115,25 @@ class HashingReader:
 
 
 def endian_of(block):
-    for endian in ("<", ">"):
-        if struct.unpack(endian + "i", block[:4])[0] == 348:
-            return endian
+    """nibabel's guessed_endian, on this little-endian machine as on the grid's: dim[0] from 1 to 7 read
+    little-endian says little-endian; 0 says big-endian only where sizeof_hdr reads 348 that way; anything
+    else says big-endian. nibabel then fixes any sizeof_hdr, so the magic, not sizeof_hdr, is what refuses."""
     if struct.unpack("<i", block[:4])[0] == 540 or struct.unpack(">i", block[:4])[0] == 540:
         raise NiftiError("a NIfTI-2 header, which this reader does not read")
-    raise NiftiError("no NIfTI-1 header (sizeof_hdr is not 348)")
+    dim0 = struct.unpack("<h", block[40:42])[0]
+    if dim0 == 0:
+        return ">" if struct.unpack(">i", block[:4])[0] == 348 else "<"
+    return "<" if 1 <= dim0 <= 7 else ">"
 
 
 def header_of(block):
     """The fields of a 348-byte header that the facts read, with nibabel's fixes on load (check_fix):
     zero spatial pixdims set to 1 and negative ones to their size, qfac set to 1 unless it is 1 or -1, an
-    unknown qform or sform code set to 0, and a single file's voxel offset raised to 352."""
+    unknown qform or sform code set to 0. What nibabel refuses on load (its problem level 40 and over) is
+    refused too: a magic that is not NIfTI-1's, and a single file's voxel offset below 352. Two cases
+    nibabel would read are refused here as well, since every file the census reads is one .nii or .nii.gz:
+    the pair magic ni1, whose voxels are in another file, and an offset of 0, which nibabel reads from the
+    file's first byte, so that the voxels would be the header's own bytes."""
     if len(block) < 348:
         raise NiftiError("a header shorter than 348 bytes")
     e = endian_of(block)
@@ -139,9 +146,11 @@ def header_of(block):
     if pixdim[0] not in (-1, 1):
         pixdim[0] = 1
     magic = block[344:347]
+    if magic != SINGLE_MAGIC or block[347:348] != b"\0":
+        raise NiftiError("a header whose magic is not a single NIfTI-1 file's")
     offset = float(np.frombuffer(block[108:112], dtype=e + "f4")[0])
-    if magic == SINGLE_MAGIC and 0 < offset < SINGLE_VOX_OFFSET:
-        offset = SINGLE_VOX_OFFSET
+    if not np.isfinite(offset) or offset < SINGLE_VOX_OFFSET:
+        raise NiftiError("a single file's voxel offset below 352")
     qform_code, sform_code = struct.unpack(e + "2h", block[252:256])
     return {"endian": e, "dim": dim, "datatype": datatype, "pixdim": pixdim, "vox_offset": int(offset),
             "slope": np.frombuffer(block[112:116], dtype=e + "f4")[0], "inter": np.frombuffer(block[116:120], dtype=e + "f4")[0],
@@ -291,7 +300,17 @@ class Volume:
             stop = min(start + step, self.shape[2])
             raw = self._read(plane * (stop - start) * self.dtype.itemsize)
             slab = np.frombuffer(raw, dtype=self.dtype).reshape((self.shape[0], self.shape[1], stop - start), order="F")
+            if stop == self.shape[2]:
+                self.drained()
             yield start, self.scaled(slab)
+
+    def drained(self):
+        """A gzip stream read to its end, so gzip checks its CRC32 and length and a damaged file raises
+        BadGzipFile rather than giving changed voxels; bytes past the voxels, rare in NIfTI, are read and
+        dropped."""
+        if isinstance(self.stream, gzip.GzipFile):
+            while self.stream.read(READ_BYTES):
+                pass
 
     def scaled(self, slab):
         """nibabel's apply_read_scaling: the raw values where the scaling is (1, 0), else in float64."""
@@ -669,11 +688,15 @@ def fdg_cases(data):
 
 
 def ct_grid(path):
+    """One CT's grid as read and turned canonical, or the kind of error that stopped it: any error, since a
+    damaged file can raise what no list foresees (zlib.error is no OSError) and one file must never end the
+    part."""
     try:
         grid = header_only(path)
-    except (NiftiError, OSError, EOFError, gzip.BadGzipFile) as error:
+        shape, affine = list(grid["shape"]), np.asarray(grid["affine"], float)
+        return {"shape": shape, "affine": affine.tolist(), "canonical": canonical_grid(shape, affine)}
+    except Exception as error:  # noqa: BLE001
         return {"error": error_kind(error)}
-    return {"shape": grid["shape"], "affine": np.asarray(grid["affine"], float).tolist()}
 
 
 def autopet_rows():
@@ -724,7 +747,7 @@ def part_autopet(args):
     cases, source = fdg_cases(args.data)
     with pool(args.workers) as ex:
         read = list(ex.map(ct_grid, [ct for _, ct in cases], chunksize=8))
-    grids = [None if "error" in g else canonical_grid(g["shape"], g["affine"]) for g in read]
+    grids = [None if "error" in g else g["canonical"] for g in read]
     errors = Counter(g["error"] for g in read if "error" in g)
     rows = autopet_rows()
     matches, bins = match_studies(rows, cases, grids)
@@ -821,7 +844,9 @@ def gold4_one(row):
             grid, field = grid_facts(volume), field_facts(volume)
         finally:
             volume.close()
-    except (NiftiError, OSError, EOFError, gzip.BadGzipFile, ValueError) as error:
+    # Any error, counted by its kind: a damaged file can raise what no list foresees, and one of 17,000
+    # masks must never end the part.
+    except Exception as error:  # noqa: BLE001
         return {"error": error_kind(error)}
     G = sibling("gold3_field")
     try:
@@ -868,6 +893,8 @@ def gold4_counts(rows, results, repeats):
             by[collection]["set aside" if "set_aside" in result else "unreadable"] += 1
             continue
         by[collection][result["verdict"]] += 1
+        if result["verdict"] == "admitted":
+            persons[collection].add(row["person_key"] or f"case:{row['collection']}:{row['case_id']}")
         if member:
             ident = member_id(member, row["case_id"])
             agree[member][(released.get((member, ident), "no row"), result["verdict"])] += 1
@@ -876,7 +903,6 @@ def gold4_counts(rows, results, repeats):
             agree["enhance_pet"][(released.get(("enhance_pet", repeats[row["case_id"]]), "no row"), result["verdict"])] += 1
         if result["verdict"] != "admitted":
             continue
-        persons[collection].add(row["person_key"] or f"case:{row['collection']}:{row['case_id']}")
         if is_fdg(row["collection"]):
             matched = repeats is not None and row["case_id"] in repeats
             by[collection]["admitted, matched to its ENHANCE.PET study by grid" if matched else "admitted, unmatched"] += 1
@@ -936,6 +962,7 @@ def part_gold4(args):
 
 
 TS_SUBJECT = re.compile(r"^s\d{4}$")
+CHANGES_LISTED = 40
 TS_SEGMENTATION = re.compile(r"^(vertebrae_.*|sacrum|rib_(left|right)_\d+|hip_(left|right)|skull|spinal_cord)\.nii\.gz$")
 
 
@@ -993,16 +1020,17 @@ def extent_one(job):
     """One CT read whole and hashed: its grid, its constant planes at either end of the head-foot axis and
     the heights, at the column, of the first plane past them at each end."""
     sid, path, centre = job
+    # Any error, counted by its kind, as in gold4_one: one CT must never end the part.
     try:
         volume = Volume(path, hashed=True)
-    except (NiftiError, OSError, EOFError, gzip.BadGzipFile) as error:
+    except Exception as error:  # noqa: BLE001
         return {"id": sid, "error": error_kind(error)}
     try:
         grid = grid_facts(volume)
         axis = grid["head_foot_axis"]
         low, high = plane_ranges(volume, axis)
         sha, size = volume.finish()
-    except (NiftiError, OSError, EOFError, gzip.BadGzipFile, ValueError) as error:
+    except Exception as error:  # noqa: BLE001
         volume.close()
         return {"id": sid, "error": error_kind(error)}
     varied = np.flatnonzero(low != high)
@@ -1011,9 +1039,11 @@ def extent_one(job):
         return out | {"error": "every plane constant"}
     first, last = int(varied[0]), int(varied[-1])
     centre = centre if centre is not None else corner_centres(volume.shape, volume.affine).mean(0)[:3]
-    return out | {"flat_low": first, "flat_high": len(low) - 1 - last,
-                  "low_mm": rounded(plane_height(volume.affine, axis, first, centre), MM_DECIMALS),
-                  "high_mm": rounded(plane_height(volume.affine, axis, last, centre), MM_DECIMALS)}
+    try:
+        heights = [rounded(plane_height(volume.affine, axis, i, centre), MM_DECIMALS) for i in (first, last)]
+    except Exception as error:  # noqa: BLE001  (a singular affine, which no height can be read through)
+        return out | {"error": f"no plane height, {error_kind(error)}"}
+    return out | {"flat_low": first, "flat_high": len(low) - 1 - last, "low_mm": heights[0], "high_mm": heights[1]}
 
 
 def own_planes(read):
@@ -1091,8 +1121,11 @@ def part_extent(args):
     part.say("extent: the CT's own planes against the cord's and the column's (image_planes), by end: "
              + ", ".join(f"{k} {n(v)}" for k, v in sorted(ends.items())))
     part.say(f"extent: re-judged with the CT's own planes {n(len(judged))}; verdicts or ends that change {n(len(changes))}")
-    for line in wrapped("extent: changed (verdict, head, foot):", changes) if changes else []:
+    # The first few by subject, the rest in extent.json, so the report stays within what the gate prints.
+    for line in wrapped("extent: changed (verdict, head, foot):", changes[:CHANGES_LISTED]) if changes else []:
         part.say(line)
+    if len(changes) > CHANGES_LISTED:
+        part.say(f"extent: {n(len(changes) - CHANGES_LISTED)} more changes, each by subject in the detail that stays on the grid")
     part.say(f"extent: the CTs' sums, sha256sum's layout by subject, written beside the report; their digest {grouped(digest)}")
     part.save()
     return part
@@ -1230,7 +1263,11 @@ def held_totalseg(args, part):
 def part_held(args):
     part = Part("held", args.out)
     for check in (held_enhance_labels, held_enhance_cts, held_verse, held_totalseg):
-        check(args, part)
+        # Each check reads its own files, so one that fails is said and the next still runs.
+        try:
+            check(args, part)
+        except Exception as error:  # noqa: BLE001
+            part.say(f"held: {check.__name__.replace('_', ' ')} stopped, {error_kind(error)}")
     part.save()
     return part
 
