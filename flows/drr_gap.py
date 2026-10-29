@@ -33,7 +33,6 @@ with the body's exit line, unless the body ended 0 and the flow did not, when th
 with the launcher's code and says why in the part's file and, for the merge, in the report.
 """
 
-import inspect
 import json
 import os
 import re
@@ -117,21 +116,9 @@ def verdict_of(code, report_ok):
 
 
 def finish(verdict, reports, lines):
-    """The verdict and the lines on the run's page, by flows/stage.py's finish in whichever of its
-    two forms the code carries: one takes the reports as stage.claim_report gives them, with the
-    one line to show where none was checked, here the lines joined; the other takes the lines alone."""
-    if "none_words" in inspect.signature(stage.finish).parameters:
-        stage.finish(verdict, reports, none_words="; ".join(lines) if lines else None)
-    else:
-        stage.finish(verdict, [line for _, line in reports] + lines)
-
-
-def held_again(flow):
-    """In end, the run held again to the PREREG start kept, where flows/stage.py can say so
-    (still_held); the launcher has already held it before any resume."""
-    still_held = getattr(stage, "still_held", None)
-    if still_held:
-        still_held(flow, KIND)
+    """The verdict and the lines on the run's page: the reports as stage.claim_report gives them, and
+    the part's own lines where no report was checked."""
+    stage.finish(verdict, reports, none_words="; ".join(lines) if lines else None)
 
 
 class DrrGapFlow(FlowSpec):
@@ -172,12 +159,12 @@ class DrrGapFlow(FlowSpec):
     def end(self):
         """The verdict: the part's exit, and for the merge the study's CLAIM and REFORMS report."""
         with stage.Beat(self, "report") as beat:
-            held_again(self)
+            stage.still_held(self, KIND)
             reports, report_ok = [], True
             lines = [self.said]
             if self.part == "merge" and self.code == 0:
                 record = record_folder(self.out, self.prepare_job)
-                reports = [stage.claim_report(record, STUDY)]
+                reports = [stage.claim_report(record, STUDY, began=stage.run_began())]
                 report_ok = reports[0][0]
                 pathspec = f"{current.flow_name}/{current.run_id}"
                 note = {"flow": "DrrGapFlow", "run": pathspec, "root": stage.datastore_root(), "page": str(stage.page_path())}

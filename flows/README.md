@@ -56,16 +56,16 @@ The owner's rule of 2026-10-29, 02:39 UTC: every deep learning job on the grid r
 block-based pipeline, under a PREREG frozen before the run, with the CLAIM 2024 and REFORMS report
 enforced and a page that shows its progress in the browser; a plain Slurm job is not enough.
 
-As of this pull request only the sweep keeps it. These words of grid/gate.sh still submit a plain
-job that trains or runs a network, each to be moved onto a flow listed in registry.txt, one pull
-request each, under a PREREG of its own:
+The sweep keeps it, and so do the DRR domain-gap study, `bench flexray_drr_gap`, and the step
+that makes its MOOSE masks, `bench flexray_drr_seg` (below). These words of grid/gate.sh still
+submit a plain job that trains or runs a network, each to be moved onto a flow listed in
+registry.txt, one pull request each, under a PREREG of its own:
 
 - `start` and `v1`, version 1's training and evaluation (grid/v1-driver.sbatch);
 - `experiment <issue>`, one combination of blocks from the experiments panel
   (grid/experiment-driver.sbatch);
-- `bench <id>`, a public model's benchmark (grid/bench.sbatch), and among its ids
-  `flexray_drr_seg`, the step that makes MOOSE's masks;
-- `bench flexray_drr_gap`, the DRR domain-gap study (grid/drr-gap.sbatch);
+- `bench <id>` for the three public models' benchmarks (grid/bench.sbatch): flexray_carmlspine,
+  flexray_deepfluoro and xvr_deepfluoro;
 - `anomaly timing`, SPINEPS over the anomaly route's CTs (grid/anomaly.sbatch);
 - `latency`, the latency arms and the recorded sweep (grid/run-latency-sweep.sh);
 - `realism <edit|stats|lora|eval>`, the Flux realism stages (grid/realism.sbatch).
@@ -318,6 +318,14 @@ has no Covers line, so neither flow names a part and the PREREG holds every run 
   copy, SN_CHECKOUT the checkout), and the launcher and tools/run_code.py read the commit and the
   files from COPY.txt where the copy has no .git, so a run's commit and code digest are those of
   the checkout at that commit, and no part holds grid/logs/HOLD.
+- Each run of the study has a folder of its own under the bench root: grid/gate.sh's
+  DRR_GAP_FOLDER, handed to all 18 jobs as DRR_GAP_OUT (where none is named the job script falls
+  back on flexray_drr_gap, the folder of runs 1 and 2). The third run's, flexray_drr_gap_run3, makes
+  it a full recomputation, every render, plan, image, feature, head and unit computed again from
+  the same inputs and code, while run 2's folder stays as it was
+  (docs/research/drr-domain-gap/DEVIATIONS.md, item 12). Prepare's step file counts the units it
+  listed and those an earlier chain in the same folder left done, and the send and status read
+  the progress of DRR_GAP_FOLDER's folder alone.
 - `drr_seg.py`, DrrSegFlow: MOOSE's masks for the study's CTs. The gate word
   `bench flexray_drr_seg` queues one gpu job, grid/drr-seg.sbatch (4 CPUs, 50G, 12 hours), split
   out of grid/bench.sbatch, which keeps the three public benchmarks and refuses both DRR ids. Its

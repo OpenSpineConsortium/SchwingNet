@@ -208,6 +208,14 @@ NETRC=${NETRC:-$HOME/.netrc}
 # each on whichever of its partitions frees first (the owner's words of 2026-10-28 00:23 UTC, "shard
 # it to more gpus like 16" and "drop the requirement for h200 unless its a memory problem").
 DRR_GAP_TASKS=16
+# The study's folder under BENCH_ROOT, where its three steps write everything they compute and keep
+# (grid/drr-gap.sbatch, DRR_GAP_OUT): a committed name changed by pull request, as DRR_GAP_TASKS is.
+# The study keeps whatever an earlier run left in its folder under the same stamps (its plan, the
+# images, features and heads keyed by it, and every unit done), so a run in a folder of its own
+# computes every render, plan, image, feature, head and unit again from the same inputs, and the
+# folder of the run before it is left as it was. Run 3 (docs/research/drr-domain-gap/DEVIATIONS.md,
+# item 12) is such a run, the owner's count of 2026-10-29 12:51 UTC; runs 1 and 2 used flexray_drr_gap.
+DRR_GAP_FOLDER=flexray_drr_gap_run3
 # The benchmarks the owner's word and count let run once more although a report of theirs stands,
 # each as <id>:<the job that report's first line names>: a committed list changed by pull request,
 # as DRR_GAP_TASKS is, since a gate word carries no option. A send of bench <id> whose standing
@@ -217,12 +225,13 @@ DRR_GAP_TASKS=16
 # every later send prints the new report and queues nothing. A run that writes no report (its merge
 # cut short, or its prepare never started) leaves none standing, and the next send queues the
 # benchmark again, as it does wherever no report stands, so that send waits for the owner's word.
-# flexray_drr_gap:40828920 is the owner's
-# tap of 2026-10-28 16:28 UTC, "Rerun, family as PREREG says", one more run of the DRR domain-gap
-# study's 18 jobs (prepare, 16 shards, the merge) once FluXray's reader was fixed (#441) and the
-# family set (#442), and his word of 22:58 UTC that day, "The FluXray rerun: go, and which project
-# runs it., this project can run it now".
-BENCH_RERUNS="flexray_drr_gap:40828920"
+# flexray_drr_gap:40859208 is the owner's word of 2026-10-29 12:45 UTC, "rerun on grid when u can",
+# and his count tapped at 12:51 UTC, one more run of the DRR domain-gap study's 18 jobs (prepare, 16
+# shards, the merge), each on its launched flow (the owner's rule of 02:39 UTC that day), and one
+# bench flexray_drr_seg only where MOOSE's masks are missing (DEVIATIONS.md, item 12). The entry
+# before it, flexray_drr_gap:40828920, was his tap of 2026-10-28 16:28 UTC and his go of 22:58 UTC,
+# spent by the second run, prepare 40859208.
+BENCH_RERUNS="flexray_drr_gap:40859208"
 LOGS=$REPO/grid/logs
 STATE=$LOGS/GATE_JOBS.txt
 WORDS="start status leaks v1 latency fetch explore dropzip unpack nodequota folders samples sweep bank experiment bench anomaly bordercall realism literature stop cancel"
@@ -798,6 +807,9 @@ bench_progress() {  # every benchmark under BENCH_ROOT that keeps a PROGRESS.txt
     name=$(basename "$folder")
     # A benchmark's folder is named by its id; any other name is no benchmark's and is passed over.
     case "$name" in ""|*[!a-z0-9_]*) continue ;; esac
+    # The DRR study's folder is DRR_GAP_FOLDER; an earlier run's folder keeps its last PROGRESS.txt,
+    # which is no live view, and is passed over.
+    case "$name" in flexray_drr_gap|flexray_drr_gap_run*) [ "$name" = "$DRR_GAP_FOLDER" ] || continue ;; esac
     bench_progress_of "$name"
   done
 }
@@ -1477,7 +1489,8 @@ drr_gap_jobs() {  # drr_gap_jobs [WAIT...]: the study's three jobs (grid/drr-gap
   # its part, so each waits afterany; the shards and the merge are handed prepare's job, so neither
   # reads a step file an earlier chain left, and the merge the array's count, so it names each task.
   local waits=("$@") study prepare shards merge opts
-  study=(BENCH="$id" DATA_ROOT="$DATA_ROOT" INDEX="$(samples_index)" MODELS="$MODELS" BENCH_ROOT="$BENCH_ROOT")
+  study=(BENCH="$id" DATA_ROOT="$DATA_ROOT" INDEX="$(samples_index)" MODELS="$MODELS" BENCH_ROOT="$BENCH_ROOT"
+         DRR_GAP_OUT="$BENCH_ROOT/$DRR_GAP_FOLDER")
   prepare=$(submit bench_flexray_drr_gap gpu "${study[@]}" STEP=prepare ${waits[@]+"${waits[@]}"} \
     --cpus 16 --mem 64G --time 12:00:00 --no-requeue -- drr-gap.sbatch) || return 1
   # Both or neither, as grid/run-leaks.sh queues its array and join: a prepare whose shards were
@@ -1495,8 +1508,8 @@ drr_gap_jobs() {  # drr_gap_jobs [WAIT...]: the study's three jobs (grid/drr-gap
   echo "  the study: prepare $prepare, then the shard array $shards ($DRR_GAP_TASKS tasks, afterany $prepare), then the merge $merge (afterany $shards), each on the first card of the gpu class that frees"
 }
 drr_gap_progress() {  # the study's PROGRESS.txt, masked, as a send while it lasts prints it, or that it has none yet
-  [ -f "$BENCH_ROOT/flexray_drr_gap/PROGRESS.txt" ] || { echo "  the study has written no PROGRESS.txt yet: prepare starts it once it runs"; return 0; }
-  bench_progress_of flexray_drr_gap
+  [ -f "$BENCH_ROOT/$DRR_GAP_FOLDER/PROGRESS.txt" ] || { echo "  the study has written no PROGRESS.txt yet in $DRR_GAP_FOLDER: prepare starts it once it runs"; return 0; }
+  bench_progress_of "$DRR_GAP_FOLDER"
 }
 word_bench() {  # one public model's benchmark (#287): queued once, its report printed on every later send
   local report=$LOGS/BENCH-$id.md busy missing holds opts setup again="" script

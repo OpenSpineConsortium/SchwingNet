@@ -1856,14 +1856,14 @@ esac
         self.environments_ready()
         gate = (self.repo / "grid" / "gate.sh").read_text(encoding="utf-8")
         listed = [line for line in gate.splitlines() if line.startswith("BENCH_RERUNS=")]
-        self.assertEqual(listed, ['BENCH_RERUNS="flexray_drr_gap:40828920"'])
+        self.assertEqual(listed, ['BENCH_RERUNS="flexray_drr_gap:40859208"'])
         logs = self.repo / "grid" / "logs"
         logs.mkdir(parents=True, exist_ok=True)
         report = logs / "BENCH-flexray_drr_gap.md"
-        kept = logs / "BENCH-flexray_drr_gap-40828920.md"
+        kept = logs / "BENCH-flexray_drr_gap-40859208.md"
         head = "# bench flexray_drr_gap: job {} on voh6, commit {}, 2026-10-28 03:08:36 UTC\n"
         ended = "- exit 0 at 2026-10-28 03:26:43 UTC\n"
-        for job, at in (("40828919", "d3fe578"), ("40828920", commit)):
+        for job, at in (("40828920", "d3fe578"), ("40859208", commit)):
             report.write_text(head.format(job, at) + ended, encoding="utf-8")
             done = self.gate("bench", "flexray_drr_gap")
             self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
@@ -1871,15 +1871,16 @@ esac
             self.assertNotIn("queueing the benchmark again", done.stdout)
             self.assertTrue(report.is_file())
         other = logs / "BENCH-flexray_carmlspine.md"
-        other.write_text(head.format("40828920", "d3fe578").replace("flexray_drr_gap", "flexray_carmlspine") + ended, encoding="utf-8")
+        other.write_text(head.format("40859208", "d3fe578").replace("flexray_drr_gap", "flexray_carmlspine") + ended, encoding="utf-8")
         done = self.gate("bench", "flexray_carmlspine")
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
         self.assertNotIn("queueing the benchmark again", done.stdout)
         self.assertTrue(other.is_file())
         self.assertEqual(self.submitted(), [])
+        # the entry before it, job 40828920, spent by the second run, is listed no more and queued nothing above;
         # the listed job from an older commit: refused while an input is missing, the report left
         # standing, then queued once the input is back
-        report.write_text(head.format("40828920", "d3fe578") + ended, encoding="utf-8")
+        report.write_text(head.format("40859208", "d3fe578") + ended, encoding="utf-8")
         cts = self.data / "totalsegmentator_v201"
         cts.rename(self.tmp / "cts")
         refused = self.gate("bench", "flexray_drr_gap")
@@ -1892,10 +1893,10 @@ esac
         (self.tmp / "cts").rename(cts)
         done = self.gate("bench", "flexray_drr_gap")
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
-        self.assertIn("  the report above is job 40828920's, which BENCH_RERUNS lets the owner's count run once more:"
+        self.assertIn("  the report above is job 40859208's, which BENCH_RERUNS lets the owner's count run once more:"
                       f" queueing the benchmark again at {commit}\n", done.stdout)
         self.assertFalse(report.exists())
-        self.assertEqual(kept.read_text(encoding="utf-8"), head.format("40828920", "d3fe578") + ended)
+        self.assertEqual(kept.read_text(encoding="utf-8"), head.format("40859208", "d3fe578") + ended)
         self.assertEqual(len(self.submitted()), 3)
         self.assertEqual([line.split("--name ")[1].split()[0] for line in self.submitted()], list(self.DRR_GAP_NAMES))
         # the rerun's own report names prepare's new job, which no entry lists: printed, nothing queued
@@ -2709,7 +2710,8 @@ esac
         index = run / "samples.sqlite"
         for line, step in zip(lines, ("prepare", "shard", "merge")):
             for value in ("BENCH=flexray_drr_gap", f"DATA_ROOT={self.data}", f"INDEX={index}", f"MODELS={self.models}",
-                          f"BENCH_ROOT={self.bench_root()}", f"STEP={step}"):
+                          f"BENCH_ROOT={self.bench_root()}", f"DRR_GAP_OUT={self.bench_root() / self.drr_gap_folder()}",
+                          f"STEP={step}"):
                 self.assertIn(f" {value} ", line + " ")
             self.assertNotIn("bench.sbatch", line)
         self.assertIn(" PREPARE_JOB= ", prepare + " ")
@@ -2785,8 +2787,14 @@ esac
         self.assertEqual([line for line in self.submitted() if "bench_flexray_drr_gap_merge" in line], [])
         self.assertNotIn("the study: prepare", done.stdout)
 
+    def drr_gap_folder(self):
+        """The study's folder under BENCH_ROOT, the committed DRR_GAP_FOLDER of grid/gate.sh: a run
+        in a folder of its own computes everything again, and the folder before it is left as it was."""
+        lines = (GRID / "gate.sh").read_text(encoding="utf-8").splitlines()
+        return [line.split("=", 1)[1] for line in lines if line.startswith("DRR_GAP_FOLDER=")][0]
+
     def drr_gap_progress_file(self, lines):
-        folder = self.bench_root() / "flexray_drr_gap"
+        folder = self.bench_root() / self.drr_gap_folder()
         folder.mkdir(parents=True, exist_ok=True)
         (folder / "PROGRESS.txt").write_text("".join(f"{line}\n" for line in lines), encoding="utf-8")
 
@@ -2807,20 +2815,21 @@ esac
             self.assertEqual(done.returncode, 75, done.stdout)
             self.assertIn(f"refusing: the benchmark flexray_drr_gap is still queued or running (jobs {job}); send bench"
                           " flexray_drr_gap again once its merge ends\n", done.stdout)
-            self.assertIn("## bench flexray_drr_gap, progress (", done.stdout)
+            self.assertIn(f"## bench {self.drr_gap_folder()}, progress (", done.stdout)
             self.assertIn("  prepare: done, 120 units in 6 heads\n  shard 1: claimed 4 units, token <withheld>\n", done.stdout)
             self.assertIn("  unit 057 done\n", done.stdout)
             self.assertNotIn("unit 058", done.stdout)
             self.assertNotIn(token, done.stdout)
-            self.assertLess(done.stdout.index("## bench flexray_drr_gap, progress"), done.stdout.index("refusing:"))
+            self.assertLess(done.stdout.index(f"## bench {self.drr_gap_folder()}, progress"), done.stdout.index("refusing:"))
         self.live(501, 503)
         done = self.gate("bench", "flexray_drr_gap")
         self.assertEqual(done.returncode, 75, done.stdout)
         self.assertIn("(jobs 501 503)", done.stdout)
-        (self.bench_root() / "flexray_drr_gap" / "PROGRESS.txt").unlink()
+        (self.bench_root() / self.drr_gap_folder() / "PROGRESS.txt").unlink()
         done = self.gate("bench", "flexray_drr_gap")
         self.assertEqual(done.returncode, 75, done.stdout)
-        self.assertIn("  the study has written no PROGRESS.txt yet: prepare starts it once it runs\n", done.stdout)
+        self.assertIn(f"  the study has written no PROGRESS.txt yet in {self.drr_gap_folder()}: prepare starts it once it runs\n",
+                      done.stdout)
         self.assertEqual(self.submitted(), [])
 
     def test_cancel_takes_the_studys_three_jobs_together_and_nothing_else(self):
@@ -2842,6 +2851,11 @@ esac
         token = "hf_" + "Gh" * 17
         self.drr_gap_progress_file(["prepare: done, 120 units in 6 heads", f"shard 0: unit 7 failed, token {token}"]
                                    + [f"unit {n:03d} done" for n in range(70)])
+        # an earlier run's folder keeps its last PROGRESS.txt, which is no live view
+        self.assertNotEqual(self.drr_gap_folder(), "flexray_drr_gap")
+        earlier = self.bench_root() / "flexray_drr_gap"
+        earlier.mkdir(parents=True)
+        (earlier / "PROGRESS.txt").write_text("run 2's last words\n", encoding="utf-8")
         odd = self.bench_root() / "Not-A-Bench"
         odd.mkdir(parents=True)
         (odd / "PROGRESS.txt").write_text("odd folder\n", encoding="utf-8")
@@ -2849,15 +2863,18 @@ esac
         done = self.gate("status")
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
         out = done.stdout
-        self.assertIn("## bench flexray_drr_gap, progress (", out)
+        shown = f"## bench {self.drr_gap_folder()}, progress"
+        self.assertIn(shown + " (", out)
+        self.assertNotIn("run 2's last words", out)
+        self.assertNotIn("## bench flexray_drr_gap, progress", out)
         self.assertIn("  prepare: done, 120 units in 6 heads\n  shard 0: unit 7 failed, token <withheld>\n", out)
         self.assertIn("  unit 057 done\n", out)
         self.assertNotIn("unit 058", out)
         self.assertNotIn(token, out)
         self.assertNotIn("odd folder", out)
         self.assertNotIn("bench flexray_carmlspine", out)
-        self.assertLess(out.index("## space on the lab volume"), out.index("## bench flexray_drr_gap, progress"))
-        self.assertLess(out.index("## bench flexray_drr_gap, progress"), out.index("no job submitted by the gate yet"))
+        self.assertLess(out.index("## space on the lab volume"), out.index(shown))
+        self.assertLess(out.index(shown), out.index("no job submitted by the gate yet"))
         self.assertNotIn("not shown, for want of room", out)
 
     def flow_root(self):
@@ -3115,7 +3132,10 @@ esac
             '  prepare)\n'
             '    echo "plan: $out/plan.json names files"\n'
             '    [ ! -f "$FAKE/fail" ] || { echo "drr-gap FAILED: no image decoded, token $(cat "$FAKE/fail")"; exit 2; }\n'
-            '    mkdir -p "$out/analysis" && echo \'{"units": 3}\' > "$out/analysis/PREPARED.json" ;;\n'
+            '    mkdir -p "$out/analysis/runlog" && echo \'{"units": 3}\' > "$out/analysis/PREPARED.json"\n'
+            '    kept=""; [ ! -f "$FAKE/kept" ] || kept="; $(cat "$FAKE/kept") of them an earlier chain left done, which count as done"\n'
+            '    echo "1.000 prepare: 3 units listed over 2 readings (0 not read), so the array\'s tasks claim them$kept"'
+            ' > "$out/analysis/runlog/prepare.txt" ;;\n'
             '  shard)\n'
             '    if [ -f "$FAKE/shard_sleep" ]; then\n'
             '      trap \'echo "the tool saw TERM" >> "$FAKE/term.log"; exit 143\' TERM\n'
@@ -3250,7 +3270,8 @@ esac
                      " masks are not read, or too few CTs have, is skipped with that reason",
                      f"- environment: {self.DRR_GAP_PINS}; index: {index}; weights: {self.data / 'hf_flexray_weights' / 'raw'};"
                      f" imagenet: {self.models / 'resnet18-f37072fd.pth'}",
-                     "- prepared: analysis/PREPARED.json written, so the shards claim its units"):
+                     "- prepared: analysis/PREPARED.json written, so the shards claim its units",
+                     "- units: 3 listed; 0 kept from an earlier chain in this folder, so this chain computes 3"):
             self.assertIn(line, lines)
         self.assertNotIn("NOTE: not an H200", "\n".join(lines))
         self.assertTrue(lines[-1].startswith("- exit 0 at "), lines)
@@ -3278,6 +3299,40 @@ esac
         self.assertEqual(len(self.study_calls("prepare")), 1)
         self.assertFalse((out / "analysis" / "PREPARED.json").exists())
         self.assertTrue((out / f"code-{moved[:7]}" / "docs" / "research" / "drr-domain-gap" / "PREREG.md").is_file())
+
+    def test_a_drr_gap_run_in_a_folder_of_its_own_leaves_the_earlier_run_as_it_was_and_counts_what_it_keeps(self):
+        # each run of the study has a folder of its own (gate.sh's DRR_GAP_FOLDER, passed as
+        # DRR_GAP_OUT), so the third run computes everything again while the second's folder stays as
+        # it was (DEVIATIONS.md, item 12); prepare's step file counts the units it lists and those an
+        # earlier chain in the same folder left done, which the tool names only where there are some
+        self.drr_gap_repo()
+        self.drr_gap_inputs()
+        earlier = self.bench_root() / "flexray_drr_gap"
+        (earlier / "analysis" / "steps").mkdir(parents=True)
+        (earlier / "plan.json").write_text("run 2's plan\n", encoding="ascii")
+        (earlier / "analysis" / "PREPARED.json").write_text('{"units": 3}\n', encoding="ascii")
+        (earlier / "analysis" / "steps" / "prepare.md").write_text("run 2's prepare\n", encoding="ascii")
+        (earlier / "RUNLOG.txt").write_text("run 2's run log\n", encoding="ascii")
+        def files_of(folder):
+            return {str(path.relative_to(folder)): path.read_bytes() for path in folder.rglob("*") if path.is_file()}
+        before = files_of(earlier)
+        out = self.bench_root() / "flexray_drr_gap_run3"
+        done = self.drr_gap_job("prepare", DRR_GAP_OUT=str(out))
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        launched = (self.fake / "launch.log").read_text(encoding="utf-8").splitlines()
+        self.assertIn(f" --out {out} | ", launched[0])
+        self.assertIn(f" --out {out} ", self.study_calls("prepare")[0] + " ")
+        lines = (out / "analysis" / "steps" / "prepare.md").read_text(encoding="utf-8").splitlines()
+        self.assertIn("- units: 3 listed; 0 kept from an earlier chain in this folder, so this chain computes 3", lines)
+        self.assertEqual(out.stat().st_mode & 0o777, 0o700)
+        # a second chain of the same run keeps what its first left done, and says how much
+        (self.fake / "kept").write_text("1", encoding="ascii")
+        done = self.drr_gap_job("prepare", job="502", DRR_GAP_OUT=str(out))
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        lines = (out / "analysis" / "steps" / "prepare.md").read_text(encoding="utf-8").splitlines()
+        self.assertIn("- units: 3 listed; 1 kept from an earlier chain in this folder, so this chain computes 2", lines)
+        # nothing in the second run's folder was read, moved, written or added to
+        self.assertEqual(files_of(earlier), before)
 
     def test_the_drr_gap_prepare_step_refuses_a_missing_input_a_node_with_no_gpu_and_a_failed_tool(self):
         # the masks refuse nothing (the owner's word of 2026-10-27): with neither folder the step says
@@ -3415,7 +3470,7 @@ esac
         self.drr_gap_inputs()
         self.assertEqual(self.drr_gap_job("prepare").returncode, 0)
         out = self.bench_root() / "flexray_drr_gap"
-        (out / "analysis" / "runlog").mkdir(parents=True)
+        (out / "analysis" / "runlog").mkdir(parents=True, exist_ok=True)
         (out / "analysis" / "runlog" / "prepare.txt").write_text("1.0 prepare: started as job 501 on node1\n", encoding="utf-8")
         (out / "RUNLOG.txt").write_text("2026-10-27 22:10:00 prepare: started as job 501 on node1\n", encoding="utf-8")
         (self.fake / "gpu").unlink()

@@ -32,7 +32,6 @@ whose report is the merge's (flows/drr_gap.py). It is held to the study's frozen
 same, since MOOSE is a network and the choice of CTs is the study's.
 """
 
-import inspect
 import json
 import os
 import time
@@ -74,11 +73,8 @@ def segment_words(masks, since):
 
 
 def finish(verdict, lines):
-    """The verdict and the lines on the run's page, by flows/stage.py's finish in whichever form it has."""
-    if "none_words" in inspect.signature(stage.finish).parameters:
-        stage.finish(verdict, [], none_words="; ".join(lines) if lines else None)
-    else:
-        stage.finish(verdict, lines)
+    """The verdict and the lines on the run's page, where no report is checked."""
+    stage.finish(verdict, [], none_words="; ".join(lines) if lines else None)
 
 
 class DrrSegFlow(FlowSpec):
@@ -114,9 +110,7 @@ class DrrSegFlow(FlowSpec):
     def end(self):
         """The verdict, the body's exit."""
         with stage.Beat(self, "verdict") as beat:
-            still_held = getattr(stage, "still_held", None)
-            if still_held:
-                still_held(self, KIND)
+            stage.still_held(self, KIND)
             self.verdict = 0 if self.code == 0 else 1
             line = f"segment: exit {self.code}; the study's report is its merge's, which reads these masks"
             print(f"DrrSegFlow: {line}; verdict {self.verdict}", flush=True)

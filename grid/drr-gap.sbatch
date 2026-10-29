@@ -59,7 +59,7 @@
 # streak are the tool's (rule 8); never requeued (rule 10).
 #
 # Logging: the tool keeps <out>/PROGRESS.txt current, which the busy refusal of the word prints and
-# the status word shows as its section "bench flexray_drr_gap, progress" while the study runs, its
+# the status word shows as its section "bench <out folder>, progress" while the study runs, its
 # last lines the newest of the run log, which every step of the tool writes as it goes, line by line
 # with the time (the owner's ask of 2026-10-28 00:23 UTC, "make sure there is realtime logging in
 # the CLAIMS/REPORT"); each run's page shows that file's last line beside its step. Each step's own
@@ -341,6 +341,21 @@ term_unwritten() {  # term_unwritten WHY: the TERM's line where the step's work 
   esac
 }
 
+prepared_units() {  # prepare's count of its units from its run log line: listed, kept from an earlier chain in this folder, and computed now
+  # The tool names the units an earlier chain left done only where there are some, so a line with
+  # none kept says every unit is computed in this chain, as a study folder of its own for each run
+  # (gate.sh, DRR_GAP_FOLDER) makes it for the run's first chain.
+  local line listed kept
+  line=$(grep -a ' prepare: [0-9]* units listed' "$ANALYSIS/runlog/prepare.txt" 2>/dev/null | tail -n 1)
+  listed=$(printf '%s\n' "$line" | sed -n 's/.* prepare: \([0-9][0-9]*\) units listed.*/\1/p')
+  if [ -z "$listed" ]; then
+    echo "not counted, since prepare's run log has no line listing them"
+    return 0
+  fi
+  kept=$(printf '%s\n' "$line" | sed -n 's/.*; \([0-9][0-9]*\) of them an earlier chain left done.*/\1/p')
+  kept=${kept:-0}
+  echo "$listed listed; $kept kept from an earlier chain in this folder, so this chain computes $((listed - kept))"
+}
 step_prepare() {
   local gpu
   STEP_FILE=$STEPS/prepare.md
@@ -415,6 +430,7 @@ body_prepare() {
   # that left none is a failure here rather than the array's tasks finding nothing to claim.
   [ -s "$ANALYSIS/PREPARED.json" ] || { report "FAILED: domain_gap.py prepare ended 0 and wrote no analysis/PREPARED.json"; step_end 2; }
   report "prepared: analysis/PREPARED.json written, so the shards claim its units"
+  report "units: $(prepared_units)"
   step_end 0
 }
 
