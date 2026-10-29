@@ -5,6 +5,7 @@ record names and never guessed, and every owner item missing until the owner wri
 import hashlib
 import importlib.util
 import json
+import os
 import shutil
 import tempfile
 import unittest
@@ -469,6 +470,38 @@ class DesignTest(StudyFolder):
         self.assertIn("the MMD's q printed as 0.050, the bar of 0.05 to the digits the summary prints, so whether the MMD told them apart too is not read here", mmd_at)
         self.assertNotIn("rests on the classifier alone", mmd_at)
 
+    def test_a_number_at_its_bar_beside_one_that_passes_is_the_one_that_failed(self):
+        classifier = self.pair_verdict("0.60", "0.060", True)
+        self.assertIn("the classifier told them apart (AUC lower bound printed as 0.60, the bar of 0.6, the word showing the unrounded number on the failing side, since the other bar is passed (src/schwingnet/domain_gap.py, replication_word)), the MMD's q of 0.060 being at least 0.05, so the word rests on the classifier alone", classifier)
+        mmd = self.pair_verdict("0.50", "0.050", True)
+        self.assertIn("in PREREG.md section 5's words this project's blocks did not reproduce FleXray's own renders of its recipe: the MMD told them apart (q printed as 0.050, the bar of 0.05,", mmd)
+        self.assertIn("the AUC's lower bound of 0.50 at most the bar of 0.6, so the word rests on the MMD alone", mmd)
+        alone = self.pair_verdict("0.50", "0.050", False)
+        self.assertNotIn("in PREREG.md section 5's words", alone)
+        self.assertIn("so the frozen rule's word on the MMD is not read in this run", alone)
+        both = self.pair_verdict("0.60", "0.050", True)
+        self.assertIn("at least one of them at its bar to the digits the summary prints, which as printed do not show which bar it failed", both)
+
+    def flag(self, count, names):
+        """The fixture's flexray space with its calibration line counting count flagged split-half
+        nulls and a flagged line naming names."""
+        lines = self.lines()
+        at = next(i for i, line in enumerate(lines) if line.startswith(" calibration split-half auc median 0.33"))
+        head = lines[at].replace("mmd flagged 0,", f"mmd flagged {count},")
+        self.write_lines(lines[:at] + [head, f" calibration flagged {' '.join(names)}"] + lines[at + 1:])
+
+    def test_a_verdict_pair_whose_split_half_null_is_flagged_is_not_read(self):
+        self.pair_verdict("0.70", "0.300", True)
+        self.flag(1, ["flexray_replica"])
+        claim = self.rows("claim")
+        for item in ("30", "37", "39", "40"):
+            evidence = claim[item]["evidence"]
+            self.assertIn("reads not replicated, but the split-half null of flexray_replica in flexray found a difference, so its contrasts are not read (DEVIATIONS.md, item 8), the verdict pair's among them", evidence, item)
+            self.assertNotIn("in PREREG.md section 5's words this project's blocks", evidence, item)
+        self.pair_verdict("0.70", "0.300", True)
+        self.flag(2, ["flexray_replica"])
+        self.assertIn("the flexray space's calibration line counts 2 flagged split-half nulls and names 1, so whether the pair's contrast is read cannot be told", self.rows("claim")["30"]["evidence"])
+
     def test_the_endpoints_item_reads_the_verdict_as_the_others_do(self):
         self.pair_verdict("0.50", "0.048", False)
         self.assertIn("read here, the verdict, flexray_replica against flexray_reference in the flexray space read inversion-invariant, reads not replicated, the MMD's q of 0.048 being under the bar of 0.05", self.rows("claim")["37"]["evidence"])
@@ -586,6 +619,21 @@ class AnswersForARunTest(StudyFolder):
         self.assertEqual(title["state"], "missing")
         self.assertIn("whose answers are run 2000002's, not this run's", title["evidence"])
         self.assertEqual(quiet(report.check, self.run, True, STUDY), 1)
+
+    def test_a_run_named_by_a_number_or_read_from_inside_its_folder(self):
+        answers = {fact: "Fixture sentence." for fact in report.study_declared_facts(STUDY)}
+        self.write_answers({"_run": 1000001, **answers})
+        with self.assertRaisesRegex(report.ReportError, "_run names a run folder and must be a string"):
+            self.rows("claim")
+        self.write_answers({"_run": "1000001", **answers})
+        self.addCleanup(os.chdir, os.getcwd())
+        os.chdir(self.run)
+        self.assertEqual(report.answers_for(self.answers, report.load_study(STUDY, "."))[0], answers)
+
+    def test_a_missing_answers_file_is_a_report_error(self):
+        self.answers.unlink()
+        with self.assertRaisesRegex(report.ReportError, "the study's answers file is not there"):
+            self.rows("claim")
 
 
 class StudyRulesTest(unittest.TestCase):

@@ -1432,6 +1432,9 @@ def verdict_said(run):
         return why
     a, b, space = verdict["a"], verdict["b"], verdict["space"]
     pair = f"the verdict, {a} against {b} in the {space} space read inversion-invariant,"
+    unread = pair_not_read(run, a, b, space)
+    if unread:
+        return f"{pair} reads {verdict['word']}, but {unread}"
     line = next((line for line in run["body"]["spaces"].get(space, {}).get("lines", []) if line.startswith(f" replication {a} vs {b} ")), "")
     numbers = PAIR_NUMBERS.search(line)
     if numbers is None:
@@ -1448,8 +1451,36 @@ def verdict_said(run):
     if mmd == "told":
         rests = f"the AUC's lower bound of {lo} at most the bar of 0.6, so the word rests on the MMD alone" if auc == "passed" else f"the AUC's lower bound printed as {lo}, the bar of 0.6 to the digits the summary prints, so which bar the word rests on is not read here"
         return f"{pair} reads not replicated, the MMD's q of {q} being under the bar of 0.05 and {rests}" + family_caveat(family)
+    if {auc, mmd} == {"at", "passed"}:
+        return failed_at_its_bar(pair, lo, q, auc == "at", family)
     at = " and at least one of them at its bar to the digits the summary prints" if "at" in (auc, mmd) else ""
     return f"{pair} reads not replicated on an AUC lower bound of {lo} and an MMD q of {q}{at}, which as printed do not show which bar it failed"
+
+
+def pair_not_read(run, a, b, space):
+    """Why the verdict pair's contrast is not read, or None: a split-half null of either side flagged
+    in the space, every contrast that group is a side of being then not read (DEVIATIONS.md, item 8),
+    or a calibration line whose count of flagged nulls its names do not match, which leaves it untold."""
+    names, count = flagged_of(run["body"]["spaces"].get(space, {}))
+    if count is not None and count != len(names):
+        return f"the {space} space's calibration line counts {count} flagged split-half nulls and names {len(names)}, so whether the pair's contrast is read cannot be told"
+    sides = [name for name in (a, b) if name in names]
+    if sides:
+        return f"the split-half null of {' and '.join(sides)} in {space} found a difference, so its contrasts are not read (DEVIATIONS.md, item 8), the verdict pair's among them"
+    return None
+
+
+def failed_at_its_bar(pair, lo, q, by_the_classifier, family):
+    """A not-replicated word where one bar is passed and the other printed at it: the number at its
+    bar is the one that failed, unrounded, since the word is replicated exactly when both bars pass
+    (src/schwingnet/domain_gap.py, replication_word)."""
+    shows = "the word showing the unrounded number on the failing side, since the other bar is passed (src/schwingnet/domain_gap.py, replication_word)"
+    if by_the_classifier:
+        return failure_in_design_words(pair, [f"the classifier told them apart (AUC lower bound printed as {lo}, the bar of 0.6, {shows})"], beside_the_classifier(q, "passed", family))
+    alone = f"the AUC's lower bound of {lo} at most the bar of 0.6, so the word rests on the MMD alone"
+    if family == "frozen":
+        return failure_in_design_words(pair, [f"the MMD told them apart (q printed as {q}, the bar of 0.05, {shows})"], f", {alone}")
+    return f"{pair} reads not replicated, the MMD's q printed as {q}, the bar of 0.05, {shows}, and {alone}" + family_caveat(family)
 
 
 def failure_in_design_words(pair, failed, tail):
@@ -2029,8 +2060,12 @@ def answers_for(path, run):
     """The owner's answers that hold for this run, and where the report says they are: every field
     where the file names no run, and none where its _run names another, since an abstract written
     from one run's numbers is not another run's."""
+    if not path.is_file():
+        raise ReportError(f"{shown(path)}: the study's answers file is not there")
     for_run = json.loads(path.read_text(encoding="utf-8")).get("_run")
-    if for_run in (None, run["dir"].name):
+    if for_run is not None and not isinstance(for_run, str):
+        raise ReportError(f"{shown(path)}: _run names a run folder and must be a string, not {for_run!r}")
+    if for_run in (None, run["dir"].resolve().name):
         return study_answers(path), shown(path)
     return {}, f"{shown(path)}, whose answers are run {for_run}'s, not this run's"
 
