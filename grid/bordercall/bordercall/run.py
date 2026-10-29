@@ -16,6 +16,20 @@ Run the commands in this order on a corpus you have not measured before.
     python run.py disagree --levels levels.csv --phenotype phenotype.csv --above T12 --below L1
     python run.py synth-corpus --out out/synth         # a made-up corpus to run the rest on
     python run.py panjabi-figures --json out/panjabi/panjabi_junction.json --outdir figures/junction
+    python run.py neighbour --outdir out/neighbour          # name a vertebra from its neighbours alone
+    python run.py neighbour-enumerate --arm flank --shard 0 --of 1 --out out/neighbour/shard0.json
+    python run.py neighbour-more --outdir out/neighbour     # the field with the target in it, continued
+    python run.py neighbour-figures --json out/neighbour/neighbour.json --outdir figures/neighbour
+    python run.py identify --outdir out/identify               # which vertebrae a normal spine identifies best
+    python run.py identify-figures --json out/identify/identify.json --outdir figures/identify
+    python run.py exact --outdir out/exact                     # the generator's own Bayes rule, by enumeration
+    python run.py exact-figures --json out/exact/exact.json --outdir figures/exact
+    python run.py exact-supplement --outdir out/exact          # the checks the second review asked for
+    python run.py exact-slide-figures --json out/exact/exact.json --outdir figures/exact-slides
+    python run.py second-opinion --outdir out/whitepaper       # the exact rule beside a registration's answer
+    python run.py study-power --outdir out/whitepaper          # readers and cases for the white paper's study
+    python run.py study-power-three --outdir out/whitepaper    # the same for the three-arm design, C minus A
+    python run.py whitepaper-checks --outdir out/whitepaper    # within-one best rule; anomalous by the count from C2
 
 `scheme` and `selftest` are not optional. The first catches a corpus numbered differently
 from this package's assumption, which produces finite, plausible, wrong numbers and raises
@@ -165,7 +179,7 @@ def cmd_panjabi(a) -> int:
     junction.run_synthetic(outdir=a.outdir, n_columns=a.n_columns, n_eval=a.n_eval,
                            measures=measures, within=a.within, profile=a.profile,
                            margin=a.margin, seed=a.seed, rho=a.rho, noise_mm=a.noise_mm,
-                           scale_sd=a.scale_sd)
+                           scale_sd=a.scale_sd, r_between=a.r_between)
     return 0
 
 
@@ -174,7 +188,7 @@ def cmd_panjabi_corpus(a) -> int:
     measures = [m.strip() for m in a.measures.split(",") if m.strip()]
     junction.run_corpus(a.levels, a.phenotype, outdir=a.outdir, n_columns=a.n_columns,
                         margin=a.margin, seed=a.seed, measures=measures, rho=a.rho,
-                        noise_mm=a.noise_mm, scale_sd=a.scale_sd)
+                        noise_mm=a.noise_mm, scale_sd=a.scale_sd, r_between=a.r_between)
     return 0
 
 
@@ -194,6 +208,157 @@ def cmd_panjabi_figures(a) -> int:
 def cmd_synth_corpus(a) -> int:
     import synth_corpus
     synth_corpus.write(a.out, n=a.n, seed=a.seed)
+    return 0
+
+
+def cmd_covariance(a) -> int:
+    """The between-measure covariance: what the literature does and does not supply.
+
+    The generator draws each measure's departure from its published mean independently.
+    Real vertebrae do not work that way -- a wide body tends to come with a deep one -- so
+    independence hands the classifier more information than it would really have, and every
+    accuracy at r = 0 is an upper bound. No published source gives the within-patient value
+    (see the report), so it is swept rather than assumed, and the sweep's job is to show
+    whether the conclusion survives the whole range.
+    """
+    import covariance as CV
+
+    if a.from_json:
+        CV.report_from_record(a.from_json)
+        return 0
+
+    grid = None
+    if a.r_grid:
+        grid = [float(x) for x in a.r_grid.replace(",", " ").split()]
+
+    CV.report()
+    if a.sweep:
+        print("\n")
+        CV.measure_set_sweep(r_grid=grid, out_json=a.out,
+                             n_columns=a.n_columns, n_eval=a.n_eval)
+    else:
+        print("\nRe-run with --sweep to measure whether the conclusion depends on it,")
+        print("or --from-json RECORD.json to re-report a sweep already recorded.")
+    return 0
+
+
+def cmd_enumerate(a) -> int:
+    """Every subset, every r. Exhaustive is the right method at these counts, not a fallback.
+
+    7.24 s per evaluation, measured, so the whole ground set of 7 measures is 127 subsets and
+    about 3 hours of single-core work -- cheaper than reasoning about which subsets to try, and
+    exact. HANDOFF.md has the Slurm array job and the crossover where this stops being true.
+    """
+    import covariance as CV
+
+    if a.gather:
+        CV.gather_shards(a.gather, out_json=a.out)
+        return 0
+
+    measures = ([x for x in a.measures.replace(",", " ").split()] if a.measures else None)
+    grid = ([float(x) for x in a.r_grid.replace(",", " ").split()] if a.r_grid else None)
+    CV.enumerate_subsets(measures=measures, min_k=a.min_k, r_grid=grid,
+                         shard=a.shard, n_shards=a.n_shards,
+                         n_columns=a.n_columns, n_eval=a.n_eval, out_json=a.out)
+    return 0
+
+
+def cmd_neighbour(a) -> int:
+    import neighbour as NB
+    grid = [float(x) for x in a.r_grid.split(",")] if a.r_grid else None
+    NB.run(outdir=a.outdir, n_fit=a.n_fit, n_select=a.n_select, n_score=a.n_score,
+           r_grid=grid, quick=a.quick)
+    return 0
+
+
+def cmd_neighbour_enumerate(a) -> int:
+    import neighbour as NB
+    if a.gather:
+        NB.gather_subsets(a.gather, out_json=a.out)
+        return 0
+    NB.enumerate_subsets(arm=a.arm, shard=a.shard, n_shards=a.n_shards, n_fit=a.n_fit,
+                         n_select=a.n_select, n_score=a.n_score, out_json=a.out, quick=a.quick)
+    return 0
+
+
+def cmd_neighbour_more(a) -> int:
+    import neighbour_more as NM
+    grid = [float(x) for x in a.r_grid.split(",")] if a.r_grid else None
+    NM.run(outdir=a.outdir, n_fit=a.n_fit, n_select=a.n_select, n_score=a.n_score,
+           r_grid=grid, quick=a.quick)
+    return 0
+
+
+def cmd_neighbour_figures(a) -> int:
+    import neighbour_figures as NF
+    NF.run(a.json, a.outdir, enumerate_json=a.enumerate_json, more_json=a.more_json)
+    return 0
+
+
+def cmd_identify(a) -> int:
+    import identify as ID
+    ID.run(outdir=a.outdir, n_fit=a.n_fit, n_select=a.n_select, n_score=a.n_score, quick=a.quick)
+    return 0
+
+
+def cmd_identify_figures(a) -> int:
+    import identify_figures as IF
+    IF.run(a.json, a.outdir)
+    return 0
+
+
+def cmd_exact(a) -> int:
+    import exact as E
+    if a.quick:
+        E.run(a.outdir, n_score=60, widths=(1, 3, 9), n_worlds=2, identify_json=a.identify_json,
+              processes=a.processes, quick=True, robust_columns=20)
+    else:
+        E.run(a.outdir, identify_json=a.identify_json, processes=a.processes)
+    return 0
+
+
+def cmd_exact_figures(a) -> int:
+    import exact_figures as EF
+    EF.run(a.json, a.outdir)
+    return 0
+
+
+def cmd_exact_slide_figures(a) -> int:
+    import exact_slide_figures as XS
+    XS.run(a.json, a.outdir, a.venue)
+    return 0
+
+
+def cmd_exact_supplement(a) -> int:
+    import exact_supplement as ES
+    if a.quick:
+        ES.run(a.outdir, record_json=a.record_json, processes=a.processes, n_score=40, n_worlds=2, quick=True)
+    else:
+        ES.run(a.outdir, record_json=a.record_json, processes=a.processes)
+    return 0
+
+
+def cmd_second_opinion(a) -> int:
+    import second_opinion as SO
+    SO.run(a.outdir, record_json=a.record_json)
+    return 0
+
+
+def cmd_study_power(a) -> int:
+    import study_power as SP
+    SP.run(a.outdir, power_reps=a.power_reps, size_reps=a.size_reps)
+    return 0
+
+
+def cmd_study_power_three(a) -> int:
+    import study_power as SP
+    SP.run_three(a.outdir, power_reps=a.power_reps, size_reps=a.size_reps)
+    return 0
+
+
+def cmd_whitepaper_checks(a) -> int:
+    import whitepaper_checks as WC
+    WC.run(a.outdir, record_json=a.record_json, supplement_json=a.supplement_json)
     return 0
 
 
@@ -328,6 +493,10 @@ def main() -> int:
         p.add_argument("--rho", type=float, default=0.5, help="share of a measure's spread a column keeps across levels")
         p.add_argument("--noise-mm", type=float, default=1.0, dest="noise_mm", help="measurement noise, mm")
         p.add_argument("--scale-sd", type=float, default=0.07, dest="scale_sd", help="patient size spread, log")
+        p.add_argument("--r-between", type=float, default=0.0, dest="r_between",
+                       help="correlation between the measures' patient offsets. 0.0 is "
+                            "the OPTIMISTIC end, not a neutral default: nothing published "
+                            "supplies the real value, so sweep it (run.py covariance)")
         p.add_argument("--outdir", default=None, help="write the tables as JSON here")
 
     p = sub.add_parser("panjabi", help="name both junctions from Panjabi's tables on synthetic columns")
@@ -367,6 +536,182 @@ def main() -> int:
     p.add_argument("--n", type=int, default=300)
     p.add_argument("--seed", type=int, default=0)
     p.set_defaults(fn=cmd_synth_corpus)
+
+    p = sub.add_parser("covariance",
+                       help="can the literature supply the between-measure covariance, and "
+                            "does the answer change what we conclude?")
+    p.add_argument("--sweep", action="store_true",
+                   help="also run the 7-against-3 measure-set sweep over the whole r grid "
+                        "(a few minutes; synthetic columns only, no corpus is read)")
+    p.add_argument("--out", default=None, help="write the sweep's JSON here")
+    p.add_argument("--from-json", default=None, dest="from_json",
+                   help="re-report the partial identification from a recorded sweep "
+                        "instead of running one; costs nothing and is reproducible")
+    p.add_argument("--r-grid", default=None, dest="r_grid",
+                   help="comma-separated r values to sweep, e.g. "
+                        "0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9. A finer grid narrows the "
+                        "L*h/2 term the command reports, but refining is NOT a reliable "
+                        "check on its own -- see the note in covariance.py")
+    p.add_argument("--n-columns", type=int, default=600, dest="n_columns")
+    p.add_argument("--n-eval", type=int, default=400, dest="n_eval")
+    p.set_defaults(fn=cmd_covariance)
+
+    p = sub.add_parser("enumerate",
+                       help="score EVERY subset of the measures at every r: the exact answer, "
+                            "and the ground truth any budget-allocation procedure must be "
+                            "tested against")
+    p.add_argument("--measures", default=None,
+                   help="comma-separated ground set; defaults to the 7 SPINEPS-measurable")
+    p.add_argument("--min-k", type=int, default=1, dest="min_k")
+    p.add_argument("--r-grid", default=None, dest="r_grid")
+    p.add_argument("--shard", type=int, default=0,
+                   help="this task's index, for a Slurm array job")
+    p.add_argument("--of", type=int, default=1, dest="n_shards",
+                   help="how many shards in total")
+    p.add_argument("--n-columns", type=int, default=600, dest="n_columns")
+    p.add_argument("--n-eval", type=int, default=400, dest="n_eval")
+    p.add_argument("--out", default=None, help="write this shard's JSON here")
+    p.add_argument("--gather", nargs="+", default=None,
+                   help="instead of scoring, merge these shard JSONs and rank the subsets")
+    p.set_defaults(fn=cmd_enumerate)
+
+    p = sub.add_parser("neighbour",
+                       help="name a vertebra from its neighbours alone, on synthetic columns: "
+                            "solutions A to F, three projection regimes, six phenotypes, the "
+                            "r sweep and the latency (docs/NEIGHBOUR_IDENTITY_STUDY.md)")
+    p.add_argument("--outdir", default=None, help="write neighbour.json and models.json here")
+    p.add_argument("--n-fit", type=int, default=300, dest="n_fit", help="typical columns fitted on")
+    p.add_argument("--n-select", type=int, default=150, dest="n_select", help="columns per phenotype thresholds are chosen on")
+    p.add_argument("--n-score", type=int, default=200, dest="n_score", help="columns per phenotype scored")
+    p.add_argument("--r-grid", default=None, dest="r_grid", help="comma-separated r values for the sweep")
+    p.add_argument("--quick", action="store_true", help="a small run to check the command")
+    p.set_defaults(fn=cmd_neighbour)
+
+    p = sub.add_parser("neighbour-enumerate",
+                       help="solution D: every subset of the seven measures on one arm, chosen on "
+                            "one seed and scored on another; shard with --shard/--of, then --gather")
+    p.add_argument("--arm", default="flank", choices=list(["below1", "above1", "flank", "flank2", "with_target"]))
+    p.add_argument("--shard", type=int, default=0)
+    p.add_argument("--of", type=int, default=1, dest="n_shards")
+    p.add_argument("--n-fit", type=int, default=300, dest="n_fit")
+    p.add_argument("--n-select", type=int, default=150, dest="n_select")
+    p.add_argument("--n-score", type=int, default=200, dest="n_score")
+    p.add_argument("--out", default=None, help="this shard's JSON, or the gathered JSON")
+    p.add_argument("--gather", nargs="+", default=None, help="merge these shard JSONs and rank")
+    p.add_argument("--quick", action="store_true")
+    p.set_defaults(fn=cmd_neighbour_enumerate)
+
+    p = sub.add_parser("neighbour-more",
+                       help="the series continued: the field decoded with the target in it, a nonlinear "
+                            "classifier, the size of the fit; writes neighbour_more.json")
+    p.add_argument("--outdir", default=None, help="write neighbour_more.json here")
+    p.add_argument("--n-fit", type=int, default=300, dest="n_fit", help="typical columns fitted on")
+    p.add_argument("--n-select", type=int, default=150, dest="n_select", help="columns per phenotype the width is chosen on")
+    p.add_argument("--n-score", type=int, default=200, dest="n_score", help="columns per phenotype scored")
+    p.add_argument("--r-grid", default=None, dest="r_grid", help="comma-separated r values for the sweep")
+    p.add_argument("--quick", action="store_true", help="a small run to check the command")
+    p.set_defaults(fn=cmd_neighbour_more)
+
+    p = sub.add_parser("neighbour-figures", help="the neighbour study's figures from its recorded JSON")
+    p.add_argument("--json", required=True, help="neighbour.json")
+    p.add_argument("--more-json", default=None, dest="more_json", help="neighbour_more.json, for the field figure")
+    p.add_argument("--enumerate-json", default=None, dest="enumerate_json", help="the gathered enumeration JSON")
+    p.add_argument("--outdir", default="figures/neighbour")
+    p.set_defaults(fn=cmd_neighbour_figures)
+
+    p = sub.add_parser("identify",
+                       help="which vertebrae of a normal spine can be identified best, and by what: "
+                            "Kunkel 2010's frame, the closed-form isolation of every level, the classifier "
+                            "level by level at every width, abstention, the size, the unidentified r; "
+                            "typical columns only; writes identify.json")
+    p.add_argument("--outdir", default=None, help="write identify.json here")
+    p.add_argument("--n-fit", type=int, default=1000, dest="n_fit", help="typical columns fitted on")
+    p.add_argument("--n-select", type=int, default=500, dest="n_select", help="typical columns the confidence thresholds are chosen on")
+    p.add_argument("--n-score", type=int, default=1000, dest="n_score", help="typical columns scored")
+    p.add_argument("--quick", action="store_true", help="a small run to check the command")
+    p.set_defaults(fn=cmd_identify)
+
+    p = sub.add_parser("identify-figures", help="the identifiability study's figures from its recorded JSON")
+    p.add_argument("--json", required=True, help="identify.json")
+    p.add_argument("--outdir", default="figures/identify")
+    p.set_defaults(fn=cmd_identify_figures)
+
+    p = sub.add_parser("exact",
+                       help="name a run of 1 to 22 consecutive vertebrae with the generator's own Bayes rule, "
+                            "every place enumerated: the ceiling for any formula or network, the selective "
+                            "guarantee, the coarse claims (which border a body is below), all 127 measure "
+                            "subsets, and what survives a wrong table or generator; writes exact.json")
+    p.add_argument("--outdir", default=None, help="write exact.json here")
+    p.add_argument("--identify-json", default=os.path.join(HERE, "..", "records", "identify-2026-10-26", "identify.json"),
+                   dest="identify_json", help="the identifiability study's record, for its fitted classifiers")
+    p.add_argument("--processes", type=int, default=4, help="processes to run the widths and worlds in")
+    p.add_argument("--quick", action="store_true", help="a small run to check the command")
+    p.set_defaults(fn=cmd_exact)
+
+    p = sub.add_parser("exact-figures", help="the exact study's figures from its recorded JSON")
+    p.add_argument("--json", required=True, help="exact.json")
+    p.add_argument("--outdir", default="figures/exact")
+    p.set_defaults(fn=cmd_exact_figures)
+
+    p = sub.add_parser("exact-slide-figures",
+                       help="the panels of the five exact-identification slides, each at its slide size, from "
+                            "the recorded JSON")
+    p.add_argument("--json", required=True, help="exact.json")
+    p.add_argument("--outdir", default="figures/exact-slides",
+                   help="the NeurIPS set goes here, the CNS set into its cns/ folder")
+    p.add_argument("--venue", choices=("both", "neurips", "cns"), default="both")
+    p.set_defaults(fn=cmd_exact_slide_figures)
+
+    p = sub.add_parser("exact-supplement",
+                       help="the checks the exact study's second review asked for: the region claim near the "
+                            "regional borders, the quadrature on every scoring column, the exact rule on the "
+                            "classifier's fields and on columns of another length; writes supplement.json")
+    p.add_argument("--outdir", default=None, help="write supplement.json here")
+    p.add_argument("--record-json", default=os.path.join(HERE, "..", "records", "exact-2026-10-26", "exact.json"),
+                   dest="record_json", help="the exact study's record, to check the region counts against")
+    p.add_argument("--processes", type=int, default=4, help="processes to run the worlds and chunks in")
+    p.add_argument("--quick", action="store_true", help="a small run to check the command")
+    p.set_defaults(fn=cmd_exact_supplement)
+
+    p = sub.add_parser("second-opinion",
+                       help="what the exact rule says about an answer one level off, on the exact study's own "
+                            "scoring columns, for the white paper's comparison with registration; writes "
+                            "second_opinion.json")
+    p.add_argument("--outdir", default=None, help="write second_opinion.json here")
+    p.add_argument("--record-json", default=os.path.join(HERE, "..", "records", "exact-2026-10-26", "exact.json"),
+                   dest="record_json", help="the exact study's record, whose columns and exact shares it must match")
+    p.set_defaults(fn=cmd_second_opinion)
+
+    p = sub.add_parser("study-power",
+                       help="power of the white paper's randomized reader study by simulation, over readers, "
+                            "cases and strata; writes study_power.json")
+    p.add_argument("--outdir", default=None, help="write study_power.json here")
+    p.add_argument("--power-reps", type=int, default=None, dest="power_reps",
+                   help="simulated studies per power cell (default the module's)")
+    p.add_argument("--size-reps", type=int, default=None, dest="size_reps",
+                   help="simulated studies per size cell (default the module's)")
+    p.set_defaults(fn=cmd_study_power)
+
+    p = sub.add_parser("study-power-three",
+                       help="power and size of the three-arm design (registration, the exact rule, both), for "
+                            "the contrast of both against registration; writes study_power_three_arms.json")
+    p.add_argument("--outdir", default=None, help="write study_power_three_arms.json here")
+    p.add_argument("--power-reps", type=int, default=None, dest="power_reps",
+                   help="simulated studies per power cell (default the module's)")
+    p.add_argument("--size-reps", type=int, default=None, dest="size_reps",
+                   help="simulated studies per size cell (default the module's)")
+    p.set_defaults(fn=cmd_study_power_three)
+
+    p = sub.add_parser("whitepaper-checks",
+                       help="the within-one Bayes rule on the exact study's scoring columns, and the anomalous "
+                            "columns judged by the count from C2 as well as by their own names; writes checks.json")
+    p.add_argument("--outdir", default=None, help="write checks.json here")
+    p.add_argument("--record-json", default=os.path.join(HERE, "..", "records", "exact-2026-10-26", "exact.json"),
+                   dest="record_json", help="the exact study's record, whose shares it must match")
+    p.add_argument("--supplement-json",
+                   default=os.path.join(HERE, "..", "records", "exact-2026-10-26", "supplement.json"),
+                   dest="supplement_json", help="the supplement, whose own-name anomalous counts it must match")
+    p.set_defaults(fn=cmd_whitepaper_checks)
 
     p = sub.add_parser("selftest", help="reproduce the known CTSpinoPelvic1K answers")
     p.add_argument("--levels", default=DEFAULT_FIXTURE,

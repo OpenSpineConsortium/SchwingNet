@@ -12,6 +12,8 @@ needed, no GPU. The model is a logistic regression written out, because the ques
 whether the shape carries the border at all; if hand-built features on a linear model
 separate it, a network will do better.
 
+The literature survey behind the statistical reporting here -- what mathematical problem this is, and what software does and does not exist for it -- is committed at `research/solver-survey-2026-10-26/` (start at its `INDEX.md`). `CHECKPOINT_2026-10-26.md` records the state of the work, and `HANDOFF.md` has a numbered plan for running the measure-set study on the Wayne State grid, which needs no CT and no label access. The neighbour-identity study, naming a vertebra from the field of view around it (the target among the visible bodies, on the owner's word of 2026-10-26, with naming from the neighbours alone kept as the obscured case) and asking whether one radiographic plane holds the information, is answered in `docs/NEIGHBOUR_IDENTITY_RESULTS.md` from `records/neighbour-2026-10-26/`. Which vertebrae of a normal spine can be identified best, and by what (the field's width, the plane, the measures, abstention, the patient's size), framed from Kunkel 2010's prediction equations, is answered in `docs/LEVEL_IDENTIFIABILITY_RESULTS.md` from `records/identify-2026-10-26/`. Whether any formula, function or network of the measurements of 1 to n consecutive bodies names a vertebra exactly, and which weaker statements (its region, the side of a border, a run of levels) a field can make nearly certainly, is answered in `docs/EXACT_IDENTIFICATION_RESULTS.md` from `records/exact-2026-10-26/`. Five slides on that answer, for a CNS talk or a NeurIPS oral, are built from the same record by `python run.py exact-slide-figures` (a NeurIPS set of seven figure panels and a results-only CNS set of six, each panel drawn at the exact inches its deck gives it) and `python slides/make_exact_slides.py` (both decks, every figure, word and equation an element of its own; the NeurIPS equations native PowerPoint mathematics with their LaTeX kept as alternative text; the CNS deck results only, with no equation and no method word anywhere in the file; both marked confidential until built with `--public`); see `records/README.md` and HANDOFF step 10, which lists what the results-only talk cuts and what the TTO must read first. A white paper sets the exact rule against the labeller upstream of LevelCheck, the Johns Hopkins registration that copies a labelled CT's levels onto the radiograph: where those labels come from and what each source says about being wrong, what the rule can prove and what the published counts can bound, how the rule's posterior is carried through the registration onto every overlaid label, how it runs on one or two C-arm views with no CT, and a randomized browser study of surgeons using either aid, with its analysis plan and power. It is `docs/SCHWINGCHECK_LEVELCHECK.md`; its new computations are `python run.py second-opinion`, `python run.py whitepaper-checks` and `python run.py study-power`, recorded in `records/whitepaper-2026-10-26/` (HANDOFF step 11, which lists what the TTO must read first).
+
 ## Install
 
 ```bash
@@ -48,6 +50,10 @@ python run.py disagree  --levels levels.csv --phenotype phenotype.csv --above T1
 python run.py panjabi                                         # Panjabi's tables alone, no corpus
 python run.py panjabi-corpus --levels levels.csv --phenotype phenotype.csv
 python run.py synth-corpus --out out/synth                    # a made-up corpus to run the rest on
+python run.py covariance                                      # what the literature can and cannot supply
+python run.py covariance --sweep --out ../records/covariance-sweep.json
+python run.py enumerate --shard 0 --of 16 --out out/shard_0.json   # every subset, sharded
+python run.py enumerate --gather out/shard_*.json --out out/gathered.json
 ```
 
 Any adjacent pair works: `--above C7 --below T1`, `--above L5 --below L6`. Narrow what gets
@@ -218,27 +224,177 @@ audience has read for thirty years. Anomalous classes are points rather than vio
 `--violin-min` (40), because a violin over fourteen cases draws a density through almost
 nothing. `--scale 1.3` for a poster.
 
-## The reference table
+## The reference table and the papers
 
-`bordercall/reference/panjabi_full_spine.csv`, used by default: 108 rows over **C2–C7, T1–T12
-and L1–L5** for end-plate width, posterior body height, canal width, canal depth and pedicle
-width, from
+`bordercall/reference/panjabi_full_spine.csv`, used by default: **296 rows over C2-C7,
+T1-T12 and L1-L5**, every linear dimension of the body, canal and pedicle tables of all three
+papers. The PDFs themselves are in `bordercall/reference/papers/`, with a README naming which
+table and page each value came from.
 
-- Panjabi et al., *Cervical human vertebrae*, Spine 1991;16(8):861–869, Tables 2–4
-- Panjabi et al., *Thoracic human vertebrae*, Spine 1991;16(8):888–901, Tables 3–5
-- Panjabi et al., *Human lumbar vertebrae*, Spine 1992;17(3):299–306
+| Measure | Panjabi | Levels |
+|---|---|---|
+| `endplate`, `endplate_depth` | EPWu, EPDu | C3-L5 |
+| `endplate_lower`, `endplate_lower_depth` | EPWl, EPDl | C2-L5 |
+| `h_post` | VBHp | C3-L5 |
+| `canal_w`, `canal_ap` | SCW, SCD | C2-L5 |
+| `pedicle`, `pedicle_h` (and `_left` / `_right`) | PDW, PDH | C2-L5 |
+
+Rebuild with `python reference/build_panjabi.py`. It carries two checks and fails on either:
+T11/T12 against an earlier independent transcription, and the pedicle means against the
+lumbar paper's own prose ("the width was initially 8.6 mm at L1, then decreased to 8.2 at
+L2"). That second check caught a real error in the inherited data: `h_post` L1 carried a
+standard error of 0.92, which is `canal_w` L1's, one table away. The table reads 1.03.
 
 Both 1991 papers are scans with **no text layer**, so every value was read from rendered page
-images; automatic text extraction of the thoracic canal table interleaves rows and columns and
-must not be parsed. `build_panjabi.py` re-checks its own T11/T12 against an earlier
-independent transcription and fails on a disagreement.
+images; automatic text extraction of the thoracic canal table interleaves rows and columns
+and must not be parsed.
 
-Dispersion is always the **standard error** as printed; the population SD is `sem*sqrt(12)`.
-Drawing the SEM as if it were an SD gives an interval 3.5× too narrow. C2 has no upper
-end-plate row — the dens occupies it — so `endplate` and `h_post` start at C3.
+Dispersion is always the **standard error**; the population SD is `sem*sqrt(12)`. Drawing the
+SEM as an SD gives an interval 3.5x too narrow. C2 has no upper end-plate row -- the dens
+occupies it -- so `endplate`, `endplate_depth` and `h_post` start at C3. There is **no
+anterior body height** in these papers.
 
 Supply your own with `--reference FILE`, columns `measure, level, mean, sem, n` (or `sd`).
 `--no-reference` draws none.
+
+## Taking these measurements on a SPINEPS segmentation
+
+`bordercall/SPINEPS_MAPPING.md` and `bordercall/spineps_map.py`.
+
+```bash
+python spineps_map.py --table                                  # the mapping, then stop
+python spineps_map.py --subregion sub.nii.gz --instance inst.nii.gz --out measures.csv
+```
+
+With VERIDAH labelling, SPINEPS's instance identifiers **already are** the VerSe-native
+scheme this package uses -- 1 C1, 2-7 C2-C7, 8-19 T1-T12, 28 T13, 20-25 L1-L6, 26 sacrum --
+so no remapping is needed. Without VERIDAH the instance labels are arbitrary indices and mean
+nothing anatomically.
+
+Six of Panjabi's structures have their own SPINEPS subregion label and are measured as
+geometric extents. **The pedicle does not.** SPINEPS labels the whole posterior arch as 41
+`Arcus_Vertebrae` and never isolates the pedicle, so PDW and PDH are **refused** rather than
+approximated: an extent of 41 is not a pedicle width, and returning one would be a finite,
+plausible, wrong number. The mapping doc names the two honest ways to get it.
+
+## The between-measure correlation: `covariance`
+
+Synthetic columns draw each measure's departure from its published mean **independently**.
+Real vertebrae do not work that way -- a wide body tends to come with a deep one -- so
+independence hands the classifier more information than it would really have, and **every
+accuracy this package reports at the default is an upper bound.**
+
+No published source gives the within-patient value. `run.py covariance` shows the search
+rather than asserting a number:
+
+- Panjabi's tables could only hide it in the **ratio rows**, since a mean of per-specimen
+  ratios carries a covariance and a ratio of means does not. All three two-decimal rows
+  reproduce `mean(a)/mean(b)` to within 0.0044 against a 0.005 rounding tolerance. They are
+  ratios of means. The thoracic row is printed to one decimal and is reported as
+  **uninformative** rather than counted either way. And n = 12: a correlation from twelve
+  specimens has a 95 % interval of roughly 0.00 to 0.84.
+- **Kunkel et al. (J Anat 2010;216:320) is the near miss worth knowing about.** Alone in the
+  lineage they regress each parameter on *another parameter* rather than on level, with R²
+  up to 0.982 -- the exact shape of relation wanted. But each of their data points is the
+  **mean at one level across the 12 cadavers**, so the fit runs over sixteen level means, not
+  over individuals. Reading a within-patient correlation out of it is the ecological fallacy,
+  in the direction that inflates.
+
+So `r` is swept, not assumed. `--sweep` reruns the whole measure-set comparison across
+r = 0.0 … 0.9, drawing fresh columns at every point, selecting on one seed and scoring on
+another so the chosen measure set is scored on columns the choice never saw.
+
+**r is unidentified, not merely unknown**, so a single accuracy is the wrong object to
+report. Nothing in the available data can pin r down, which is Manski's situation exactly,
+and the right report is an **identified set** -- the values the quantity takes as r ranges
+over everything it could be -- with an **Imbens-Manski** interval rather than a naive
+`[min - 2 se, max + 2 se]`, which over-covers because only one end can bind at a time:
+
+```
+cervico-thoracic C7/T1
+  baseline_3 accuracy in [0.4150, 0.4225]   (Imbens-Manski 95 % [0.3977, 0.4398])
+  spineps_7  accuracy in [0.6950, 0.7100]   (Imbens-Manski 95 % [0.6795, 0.7253])
+  difference [+0.2750 at r=0.40, +0.2925 at r=0.00], IM 95 % [+0.2521, +0.3152]
+  worst case over r: +0.2750 +/- 0.0138  (20.0 s.e. from zero)
+
+thoraco-lumbar T12/L1
+  difference [+0.1154 at r=0.40, +0.1262 at r=0.90], IM 95 % [+0.0934, +0.1481]
+  worst case over r: +0.1154 +/- 0.0130  (8.9 s.e. from zero)
+```
+
+**The accuracy is not identified; the conclusion drawn from it is.** The identified set of
+the difference lies entirely above zero at both junctions, so the *size* of the gain stays
+unknown while its *direction* is known exactly: seven measures beat three whatever r turns
+out to be. That is the strongest honest claim available when a parameter cannot be measured,
+and it is a statement about the **sign**, not about the value -- so quote the worst case over
+r and the interval, never the r = 0 figure alone. If a future comparison's sign *does* turn
+over inside the set, the command says so and names the crossing r instead of picking a
+winner.
+
+Recorded in `records/covariance-sweep.json`. `--from-json` re-reports from that record
+without re-running the sweep, so a change to the reporting is checked against a fixed run
+rather than a fresh draw that moves underneath it.
+
+### What the grid can be hiding, and why refining it is not the check
+
+min and max over a grid are a **relaxation** of min and max over the interval: dropping the
+off-grid r enlarges what is being minimised over, so the reported worst case is an
+**overestimate** of the true one -- the unsafe direction for any claim resting on it. The gap
+is bounded by `L * h / 2` and is unbounded without an `L`.
+
+**Refining the grid is not a reliable check on its own.** On a profile with a narrow dip
+between points, successive refinements can return the identical wrong value and falsely
+confirm; and Monte Carlo noise biases the same quantity the other way, growing as the grid
+thickens, so agreement between a coarse and a fine grid is not evidence either. So the
+command measures the assumption instead of asserting it:
+
+```
+how much the grid can be hiding, measured rather than assumed:
+spineps_7  NOT monotone in r, |slope| <= 0.0333, grid gap L*h/2 = 0.0033 (0.3 MC s.e.)
+           the measured slope 0.0333 is below the noise floor 0.1373, so this
+           run cannot see a slope -- it has not shown there is none
+```
+
+**A is measurably not monotone in r**, which is the opposite of what this file asserted
+before it was measured. What saves the conclusion is not monotonicity but the size of the
+margin: the grid gap is a fraction of one Monte Carlo standard error, while the sign clears
+zero by 8.9 (T12/L1) to 20.0 (C7/T1) standard errors. The margin dwarfs both error terms by
+twenty- to sixty-fold. That is the argument to make; the monotonicity argument is not
+available and should not be repeated.
+
+The measured `L` is a secant estimate from the same grid, so it is a **lower** bound on the
+true `sup |A'|` and the gap it reports is indicative, not certified. Certifying it needs an
+independent bound on A's derivative in r, which this package does not have and does not
+claim. `--r-grid 0,0.1,0.2,...,0.9` runs a finer grid when that matters.
+
+### Does the interval actually cover? Measured, not assumed
+
+The Imbens-Manski construction has a documented small-sample under-coverage, and Stoye (2009)
+argues the result "implicitly assumes superefficient estimation of a nuisance parameter", so
+it is pointwise valid but not uniformly so. On top of that, this package estimates the
+endpoints by taking min and max over a grid of noisy Monte Carlo values, which is **not** how
+the formula assumes they arrive. So `covariance.coverage_check()` measures coverage against a
+known truth. At 20,000 trials, a true set of [0.40, 0.45] and se = 0.01:
+
+| regime | covers the true value |
+|---|---|
+| unbiased endpoints, at the lower end | **0.9515** ± 0.0015 |
+| unbiased endpoints, at the upper end | **0.9520** ± 0.0015 |
+| min/max over a 6-point noisy grid, true minimum | 0.9916 ± 0.0006 (over-covers) |
+| min/max over a 6-point noisy grid, true maximum | 0.9925 ± 0.0006 (over-covers) |
+| **the same, with a 0.02 dip hidden between grid points** | **0.4242** ± 0.0035 |
+
+The formula is right. The pipeline is conservative when the grid can see the extremum,
+because the min of noisy values sits below the true min. And **a dip of 0.02 -- two accuracy
+points, far too small to notice in a printed table -- takes coverage from 0.95 to 0.42.**
+That is the measured reason monotonicity or a Lipschitz bound is load-bearing rather than a
+formality, and the reason the accuracy interval here is reported as uncertified.
+
+**The sign conclusion is a different matter and survives this.** Breaking coverage of the
+accuracy takes a dip of about 0.02; overturning the sign would take one the size of the
+margin, which is 0.1154 to 0.2750 -- five to fourteen times larger, and grossly visible. A
+test asserts that ratio, so it fails if a future run erodes the margin toward the dip size
+that is enough to break the interval.
 
 ## Traps
 
@@ -282,12 +438,17 @@ one.
 | `border.py` | features, grouped-CV logistic regression, border evaluation |
 | `plots.py` | the two conference figures |
 | `sweep.py` | every candidate border ranked by its worst anomalous class |
+| `covariance.py` | the between-measure correlation: what the literature supplies, the exchangeable draw, the sweep that shows the conclusion survives it, the partial-identification reporting (identified set, Imbens-Manski interval, sign invariance), the measured grid error and coverage check, and exhaustive subset enumeration |
 | `disagree.py` | the count, the ribs and the circular arm where the shape disagrees with the name |
 | `panjabi.py` | synthetic columns from Panjabi's tables, with the phenotypes and their twins |
 | `junction.py` | the junction named from the shape profile, fitted on the tables alone |
 | `junction_figures.py` | the five junction figures from a recorded run, with their CSV, caption and `FIGURES.md` |
+| `exact_slide_figures.py` | the figure panels of the exact-rule slides from the recorded `exact` run, a NeurIPS set and a results-only CNS set (`cns/`), each panel at the inches its deck gives it, with their CSV, caption and one `FIGURES.md` per set |
+| `second_opinion.py` | what the exact rule says about a registration's answer one level off, on the exact study's scoring columns, for the white paper |
+| `study_power.py` | the power, size and critical values of the white paper's randomized reader study, by simulation, for the two-arm design and the three-arm design (`run_three`) |
+| `whitepaper_checks.py` | the within-one Bayes rule, and anomalous columns scored by the count from C2, for the white paper |
 | `records/` | the recorded `panjabi` runs the figures and slides are drawn from |
-| `slides/` | the CNS slides built from a record and its figures |
+| `slides/` | the CNS junction slides, and the exact-rule slides for the CNS or NeurIPS, each built from a record and its figures |
 | `synth_corpus.py` | a made-up corpus in the grid job's layout, to run the commands on |
 | `reference/` | the Panjabi tables and the script that builds them |
 | `render_anchors.py` | the 3-D phenotype gallery |
