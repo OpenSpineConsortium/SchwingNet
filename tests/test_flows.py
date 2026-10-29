@@ -1086,7 +1086,7 @@ class SweepFlowTest(unittest.TestCase):
         self.assertEqual(calls.read_text(encoding="utf-8").splitlines(), ["row b"])
 
 
-STUB_FLOW_TOOL = '''"""A stand-in for tools/flow.py run, as V1Flow runs it: the run's folder held by its .lock and its
+STUB_FLOW_TOOL = '''"""A stand-in for tools/flow.py run, as V1Flow and ExperimentFlow run it: the run's folder held by its .lock and its
 RUN.json written first, an epoch line a second, the run's id and folder said before its first step,
 killed once or failing where the test says, a report of its own that is not current where the test
 says, and FINISHED.json last."""
@@ -1114,7 +1114,7 @@ def ancestor(test):
 
 def kill_the_job():
     """As Slurm ends a job: the flow's runtime first, so nothing retries, then the task."""
-    runtime = ancestor(lambda c: "v1.py --quiet " in c and " step " not in c)
+    runtime = ancestor(lambda c: ("v1.py --quiet " in c or "experiment.py --quiet " in c) and " step " not in c)
     task = ancestor(lambda c: " step train_evaluate " in c)
     for pid in (runtime, task):
         if pid:
@@ -1123,7 +1123,9 @@ def kill_the_job():
 
 
 with open(os.environ["FLOW_TEST_CALLS"], "a", encoding="utf-8") as calls:
-    calls.write(" ".join(["run", value("--epochs"), value("--seed"), Path(value("--catalog")).name]) + "\\n")
+    extra = [f"{flag} {value(flag)}" for flag in ("--hours", "--recipe") if flag in sys.argv]
+    extra += [f"--block {sys.argv[i + 1]}" for i, word in enumerate(sys.argv) if word == "--block"]
+    calls.write(" ".join(["run", value("--epochs"), value("--seed"), Path(value("--catalog")).name, *extra]) + "\\n")
 if os.environ.get("FLOW_TEST_FAULT"):
     print("flow: train exited 1; see the train log", file=sys.stderr)
     sys.exit(1)
@@ -1289,6 +1291,511 @@ class V1FlowTest(unittest.TestCase):
         self.assertIn("STOP: docs/research/v1-demo/PREREG.md changed since the freeze", out)
         self.assertEqual((said, calls), ([], []), out)
         self.assertIn("V1_RC=90 ", out)
+
+
+EXPERIMENT_PREREG = "# The test's design for requested experiments\n"
+EXPERIMENT_REQUEST = "recipe: none\nepochs: 3\nseed: 2\nhours: 1.5\nblock: optimiser=adamw\nblock: augment=blur,noise\n"
+
+
+@unittest.skipIf(MISSING, f"needs the train environment ({', '.join(MISSING)} missing)")
+class ExperimentFlowTest(unittest.TestCase):
+    """ExperimentFlow over the same stub of tools/flow.py as V1Flow's, in a temporary copy of the
+    repository's flow: the request's words reach tools/flow.py, and its bytes key the run."""
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
+        self.repo = self.tmp / "repo"
+        (self.repo / "flows").mkdir(parents=True)
+        (self.repo / "tools").mkdir()
+        for name in ("experiment.py", "flow_tool.py", "stage.py", "stage_progress.py", "stage_registry.py", "registry.txt"):
+            shutil.copy(ROOT / "flows" / name, self.repo / "flows" / name)
+        (self.repo / "tools" / "flow.py").write_text(STUB_FLOW_TOOL, encoding="utf-8")
+        (self.repo / "tools" / "report.py").write_text(STUB_REPORT, encoding="utf-8")
+        prereg = self.repo / "docs" / "research" / "experiments"
+        prereg.mkdir(parents=True)
+        (prereg / "PREREG.md").write_text(EXPERIMENT_PREREG, encoding="utf-8")
+        (prereg / "PREREG.md.sha256").write_text(f"{hashlib.sha256(EXPERIMENT_PREREG.encode()).hexdigest()}  PREREG.md\n",
+                                                 encoding="ascii")
+        shutil.copy(ROOT / "tools" / "run_code.py", self.repo / "tools" / "run_code.py")
+        for name in load_run_code().KINDS["experiment"]:
+            path = self.repo / name
+            if not path.exists():
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(f"# {name}, a stand-in\n", encoding="utf-8")
+        subprocess.run(self.git("init", "-q"), check=True, capture_output=True, timeout=60)
+        self.commit("the stub")
+        self.root, self.runs, self.work = self.tmp / "metaflow", self.tmp / "runs", self.tmp / "work"
+        self.work.mkdir()
+        self.catalog = self.tmp / "catalog-000001-abc.sqlite"
+        self.catalog.write_text("a catalog\n", encoding="utf-8")
+        self.weights = self.tmp / "resnet18.pth"
+        self.weights.write_text("weights\n", encoding="utf-8")
+        self.request = self.tmp / "experiment-250.request"
+        self.request.write_text(EXPERIMENT_REQUEST, encoding="utf-8")
+
+    def git(self, *words):
+        return ["git", "-C", str(self.repo), "-c", "user.name=flow test", "-c", "user.email=flow@test", "-c", "commit.gpgsign=false",
+                "-c", "gc.auto=0", "-c", "gc.autoDetach=false", "-c", "maintenance.auto=false", "-c", "maintenance.autoDetach=false", *words]
+
+    def commit(self, message):
+        for words in (["add", "-A"], ["commit", "-q", "-m", message]):
+            subprocess.run(self.git(*words), check=True, capture_output=True, timeout=60)
+
+    def experiment(self, n, blocks="optimiser=adamw augment=blur,noise", seed="2", **extra):
+        """One launch of issue 250's request over the stub, as grid/experiment-driver.sbatch gives its words:
+        (code, JSON lines, output, calls)."""
+        calls = self.tmp / f"calls-{n}"
+        calls.write_text("", encoding="utf-8")
+        env = base_env(SCHWINGNET=str(self.repo), FLOW_TEST_CALLS=str(calls), FLOW_TEST_MARKER=str(self.tmp / "killed"), **extra)
+        words = ["experiment", "--", "--issue", "250", "--request", str(self.request), "--catalog", str(self.catalog),
+                 "--out", str(self.runs), "--environment", "train-cpu", "--epochs", "3", "--seed", seed, "--hours", "1.5",
+                 "--weights", str(self.weights), "--recipe", "none", "--blocks", blocks]
+        code, said, out = launch(words, self.work, env, self.root)
+        return code, said, out, calls.read_text(encoding="utf-8").splitlines()
+
+    def test_the_requests_words_reach_the_flow_tool_and_the_run_ends_with_its_report_and_page(self):
+        code, said, out, calls = self.experiment(1)
+        self.assertEqual(code, 0, out)
+        self.assertEqual((said[0]["decision"], said[-1]["successful"], said[-1]["verdict"]), ("run", True, 0), out)
+        # recipe none is no --recipe, and each block word is one --block, as tools/flow.py takes them
+        self.assertEqual(calls, ["run 3 2 catalog-000001-abc.sqlite --hours 1.5 --block optimiser=adamw --block augment=blur,noise"])
+        record = json.loads((self.runs / "r1" / "METAFLOW.json").read_text(encoding="utf-8"))
+        self.assertEqual((record["flow"], record["issue"], record["request_sha256"]),
+                         ("ExperimentFlow", 250, hashlib.sha256(EXPERIMENT_REQUEST.encode()).hexdigest()))
+        folder = self.root / "progress" / "ExperimentFlow" / said[-1]["run"].split("/")[1]
+        lines = (folder / "PROGRESS.txt").read_text(encoding="utf-8").splitlines()
+        self.assertRegex(lines[1], r"PREREG docs/research/experiments/PREREG\.md sha256 [0-9a-f]{12}$")
+        self.assertEqual(lines[2:5], ["verdict: 0", "ended: the launcher exited 0, the flow succeeded", "reports: 1 of 1 current"])
+        self.assertIn("EXPERIMENT_RC=0 ", out)
+
+    def test_a_cut_run_resumes_on_the_same_request_and_runs_anew_on_an_edited_one(self):
+        code, said, out, _ = self.experiment(1, FLOW_TEST_KILL="1")
+        self.assertEqual(code, 137, out)
+        first_run = said[-1]["run"].split("/")[1]
+        code, said, out, calls = self.experiment(2)
+        self.assertEqual(code, 0, out)
+        self.assertEqual((said[0]["decision"], said[0]["origin"]), ("resume", first_run), out)
+        (self.tmp / "killed").unlink()
+        code, said, out, _ = self.experiment(3, FLOW_TEST_KILL="1")
+        self.assertEqual(code, 137, out)
+        # the same path with other lines is another request: the key holds its bytes, so it is never carried on
+        self.request.write_text(EXPERIMENT_REQUEST.replace("seed: 2", "seed: 9"), encoding="utf-8")
+        code, said, out, _ = self.experiment(4, seed="9")
+        self.assertEqual((code, said[0]["decision"], said[0]["origin"]), (0, "run", None), out)
+
+    def test_words_that_are_not_the_requests_train_nothing(self):
+        code, said, out, calls = self.experiment(1, seed="9")
+        self.assertNotEqual(code, 0, out)
+        self.assertIn("the run's words are not its request's: seed: the request says '2', the run was given '9'", out)
+        self.assertEqual(calls, [], out)
+
+    def test_an_architecture_with_no_imagenet_file_trains_nothing(self):
+        self.request.write_text(EXPERIMENT_REQUEST + "block: architecture=resnet34\n", encoding="utf-8")
+        code, said, out, calls = self.experiment(1, blocks="optimiser=adamw augment=blur,noise architecture=resnet34")
+        self.assertNotEqual(code, 0, out)
+        self.assertIn("architecture=resnet34: no ImageNet file for it on the grid, so the request waits for one", out)
+        self.assertEqual(calls, [], out)
+
+    def test_a_request_with_no_blocks_is_version_1s_training_and_keeps_the_v1_record(self):
+        self.request.write_text("recipe: none\nepochs: 3\nseed: 2\nhours: 1.5\n", encoding="utf-8")
+        # the folder tools/flow.py names by code, catalog and configuration is the one V1Flow finished
+        (self.runs / "r1").mkdir(parents=True)
+        v1_record = json.dumps({"flow": "V1Flow", "run": "V1Flow/7"}) + "\n"
+        (self.runs / "r1" / "METAFLOW.json").write_text(v1_record, encoding="utf-8")
+        code, said, out, calls = self.experiment(1, blocks="")
+        self.assertEqual(code, 0, out)
+        self.assertEqual(calls, ["run 3 2 catalog-000001-abc.sqlite --hours 1.5"])
+        self.assertEqual((self.runs / "r1" / "METAFLOW.json").read_text(encoding="utf-8"), v1_record)
+        record = json.loads((self.runs / "r1" / "METAFLOW-experiment-250.json").read_text(encoding="utf-8"))
+        self.assertEqual((record["flow"], record["issue"]), ("ExperimentFlow", 250))
+        # end says the run's folder too, so a resume that clones train_evaluate still names it
+        self.assertGreaterEqual(out.count('"run_dir": "' + str(self.runs / "r1") + '"'), 2, out)
+
+    def test_a_moved_prereg_starts_nothing(self):
+        with (self.repo / "docs" / "research" / "experiments" / "PREREG.md").open("a", encoding="utf-8") as prereg:
+            prereg.write("An edit after the freeze.\n")
+        self.commit("an edit to the PREREG after its freeze")
+        code, said, out, calls = self.experiment(1)
+        self.assertEqual(code, 90, out)
+        self.assertIn("STOP: docs/research/experiments/PREREG.md changed since the freeze", out)
+        self.assertEqual((said, calls), ([], []), out)
+
+
+STUB_LATENCY = '''"""A stand-in for tools/latency.py export, parity and measure, as LatencyFlow runs them: the files the
+real tool writes, with the keys the flow's end reads, and an export or a parity that fails where the
+test says; an arm whose parity does not hold is refused, as the real tool refuses it."""
+import hashlib
+import json
+import os
+import sys
+from pathlib import Path
+
+TIMES = {("torch", "cuda"): (5.0, 6.0), ("onnxruntime", "cuda"): (3.0, 4.0),
+         ("torch", "cpu"): (60.0, 120.0), ("onnxruntime", "cpu"): (20.0, 30.0)}
+
+
+def value(flag, default=None):
+    return sys.argv[sys.argv.index(flag) + 1] if flag in sys.argv else default
+
+
+def sha256(path):
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+def parity_holds(run, runtime, device):
+    if (runtime, device) == ("torch", "cpu"):
+        return True
+    verdict = run / "onnx" / f"parity-{runtime}-{device}.json"
+    return verdict.is_file() and json.loads(verdict.read_text(encoding="utf-8")).get("passed") is True
+
+
+action, run = sys.argv[1], Path(value("--run"))
+runtime, device = value("--runtime"), value("--device", "cpu")
+with open(os.environ["FLOW_TEST_CALLS"], "a", encoding="utf-8") as calls:
+    calls.write(" ".join(word for word in (action, runtime, device if runtime else None) if word) + "\\n")
+if action == "export":
+    if os.environ.get("FLOW_TEST_EXPORT_FAULT"):
+        print("export: the checker refused the graph", file=sys.stderr)
+        sys.exit(1)
+    (run / "onnx").mkdir(exist_ok=True)
+    (run / "onnx" / "level.onnx").write_bytes(b"an onnx file")
+    sys.exit(0)
+if action == "parity":
+    fails = os.environ.get("FLOW_TEST_PARITY_FAULT") == f"{runtime}-{device}"
+    verdict = {"runtime": runtime, "device": device, "part": "validation", "crops": 64, "persons": 5, "witness_frames": 3,
+               "checkpoint_sha256": sha256(run / "train" / "best.pt"),
+               "onnx_sha256": sha256(run / "onnx" / "level.onnx") if runtime == "onnxruntime" else None,
+               "max_abs_probability_difference": 0.2 if fails else 1.9e-6, "labels_equal": not fails, "passed": not fails}
+    (run / "onnx" / f"parity-{runtime}-{device}.json").write_text(json.dumps(verdict), encoding="utf-8")
+    if fails:
+        print(f"parity: {runtime} on {device} differs from the reference", file=sys.stderr)
+        sys.exit(1)
+    sys.exit(0)
+if not parity_holds(run, runtime, device):
+    print(f"latency: no latency is measured for {runtime} on {device} before parity", file=sys.stderr)
+    sys.exit(1)
+arm = f"{runtime}-{device}" + (f"-{value('--threads')}t" if device == "cpu" else "")
+p50, p95 = TIMES[(runtime, device)]
+record = {"arm": arm, "runtime": runtime, "device_kind": device, "device": f"a test {device}", "frames": int(value("--frames")),
+          "ms_per_frame_median": p50, "ms_per_frame_p95": p95, "within_budget": p95 < 97.0, "parity_passed": True}
+(run / "latency").mkdir(exist_ok=True)
+(run / "latency" / f"{arm}.json").write_text(json.dumps(record), encoding="utf-8")
+arms = [json.loads(path.read_text(encoding="utf-8")) for path in sorted((run / "latency").glob("*.json"))]
+best = min((a for a in arms if parity_holds(run, a["runtime"], a["device_kind"])), key=lambda a: (a["ms_per_frame_p95"], a["arm"]))
+(run / "evaluate").mkdir(exist_ok=True)
+(run / "evaluate" / "latency.json").write_text(json.dumps(best), encoding="utf-8")
+'''
+STUB_SWEEP = '''"""A stand-in for tools/sweep.py from-bank and run, as LatencyFlow runs them: a sweep's input made from
+a bank, then its overlay and its summary.json with the keys the flow's end reads."""
+import hashlib
+import json
+import os
+import sys
+from pathlib import Path
+
+
+def value(flag):
+    return sys.argv[sys.argv.index(flag) + 1]
+
+
+action = sys.argv[1]
+said = value("--case") if action == "from-bank" else " ".join([value("--name"), Path(value("--frames")).name, value("--runtime"),
+                                                                 value("--box-source")])
+with open(os.environ["FLOW_TEST_CALLS"], "a", encoding="utf-8") as calls:
+    calls.write(f"sweep {action} {said}\\n")
+if action == "from-bank":
+    out = Path(value("--out"))
+    (out / "frames").mkdir(parents=True, exist_ok=True)
+    (out / "frames" / "00000.png").write_bytes(b"a frame")
+    (out / "boxes.jsonl").write_text('{"frame": "00000.png", "boxes": []}\\n', encoding="utf-8")
+    sys.exit(0)
+run, name, runtime = Path(value("--run")), value("--name"), value("--runtime")
+folder = run / "sweep" / name
+(folder / "overlay").mkdir(parents=True, exist_ok=True)
+(folder / "overlay" / "00000.png").write_bytes(b"an overlay")
+onnx = run / "onnx" / "level.onnx"
+summary = {"name": name, "runtime": runtime, "frames": 301, "latency_ms": {"p50": 4.0, "p95": 5.5}, "within_budget": True,
+           "accuracy": {"all frames": {"correct": 900, "total": 1000}},
+           "onnx_sha256": hashlib.sha256(onnx.read_bytes()).hexdigest() if runtime == "onnxruntime" else None}
+(folder / "summary.json").write_text(json.dumps(summary), encoding="utf-8")
+'''
+LATENCY_PREREG = "# The test's latency design\n\nCovers: gpu, cpu, sweep\n"
+GPU_CALLS = ["export", "parity onnxruntime cpu", "parity onnxruntime cuda", "parity torch cuda", "measure torch cuda",
+             "measure onnxruntime cuda"]
+
+
+@unittest.skipIf(MISSING, f"needs the train environment ({', '.join(MISSING)} missing)")
+class LatencyFlowTest(unittest.TestCase):
+    """LatencyFlow over stubs of tools/latency.py and tools/sweep.py in a temporary copy of the
+    repository's flow, on a run folder the version 1 run left with its report: each part's tools in
+    order, the parity rule read back from the files, the report and the verdict, without a GPU."""
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
+        self.repo = self.tmp / "repo"
+        (self.repo / "flows").mkdir(parents=True)
+        (self.repo / "tools").mkdir()
+        for name in ("latency.py", "flow_tool.py", "stage.py", "stage_progress.py", "stage_registry.py", "registry.txt"):
+            shutil.copy(ROOT / "flows" / name, self.repo / "flows" / name)
+        (self.repo / "tools" / "latency.py").write_text(STUB_LATENCY, encoding="utf-8")
+        (self.repo / "tools" / "sweep.py").write_text(STUB_SWEEP, encoding="utf-8")
+        (self.repo / "tools" / "report.py").write_text(STUB_REPORT, encoding="utf-8")
+        prereg = self.repo / "docs" / "research" / "latency-and-sweep"
+        prereg.mkdir(parents=True)
+        (prereg / "PREREG.md").write_text(LATENCY_PREREG, encoding="utf-8")
+        (prereg / "PREREG.md.sha256").write_text(f"{hashlib.sha256(LATENCY_PREREG.encode()).hexdigest()}  PREREG.md\n", encoding="ascii")
+        shutil.copy(ROOT / "tools" / "run_code.py", self.repo / "tools" / "run_code.py")
+        for name in load_run_code().KINDS["latency"]:
+            path = self.repo / name
+            if not path.exists():
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(f"# {name}, a stand-in\n", encoding="utf-8")
+        subprocess.run(self.git("init", "-q"), check=True, capture_output=True, timeout=60)
+        self.commit("the stub")
+        self.root, self.work = self.tmp / "metaflow", self.tmp / "work"
+        self.work.mkdir()
+        self.catalog = self.tmp / "catalog-000001-abc.sqlite"
+        self.catalog.write_text("a catalog\n", encoding="utf-8")
+        self.run_dir = self.finished_run(self.tmp / "runs" / "r1")
+
+    def finished_run(self, folder):
+        """A run folder as the version 1 run leaves it: its record, its checkpoint, FINISHED.json and
+        the report its end step wrote, all an hour old."""
+        (folder / "train").mkdir(parents=True)
+        (folder / "RUN.json").write_text(json.dumps({"run_id": folder.name}), encoding="utf-8")
+        (folder / "train" / "checkpoint.json").write_text("{}\n", encoding="utf-8")
+        (folder / "train" / "best.pt").write_bytes(b"the checkpoint")
+        (folder / "FINISHED.json").write_text(json.dumps({"run_id": folder.name}), encoding="utf-8")
+        subprocess.run([sys.executable, str(self.repo / "tools" / "report.py"), "write", "--run", str(folder)], check=True,
+                       env=base_env(FLOW_TEST_CALLS=str(self.tmp / "calls-setup")), capture_output=True, timeout=60)
+        an_hour_ago = time.time() - 3600
+        for path in folder.rglob("*"):
+            os.utime(path, (an_hour_ago, an_hour_ago))
+        return folder
+
+    def git(self, *words):
+        return ["git", "-C", str(self.repo), "-c", "user.name=flow test", "-c", "user.email=flow@test", "-c", "commit.gpgsign=false",
+                "-c", "gc.auto=0", "-c", "gc.autoDetach=false", "-c", "maintenance.auto=false", "-c", "maintenance.autoDetach=false", *words]
+
+    def commit(self, message):
+        for words in (["add", "-A"], ["commit", "-q", "-m", message]):
+            subprocess.run(self.git(*words), check=True, capture_output=True, timeout=60)
+
+    def latency(self, n, part, *words, **extra):
+        """One launch of a part over the stubs, as grid/latency-sweep.sbatch gives its words: (code,
+        JSON lines, output, calls)."""
+        calls = self.tmp / f"calls-{n}"
+        calls.write_text("", encoding="utf-8")
+        env = base_env(SCHWINGNET=str(self.repo), FLOW_TEST_CALLS=str(calls), **extra)
+        code, said, out = launch(["latency", "--", "--part", part, "--run-dir", str(self.run_dir), *words], self.work, env, self.root)
+        return code, said, out, calls.read_text(encoding="utf-8").splitlines()
+
+    def gpu(self, n, **extra):
+        return self.latency(n, "gpu", "--catalog", str(self.catalog), "--threads", "8", "--frames", "300", **extra)
+
+    def page_lines(self, said):
+        folder = self.root / "progress" / "LatencyFlow" / said[-1]["run"].split("/")[1]
+        return (folder / "PROGRESS.txt").read_text(encoding="utf-8").splitlines()
+
+    def record(self, label):
+        return json.loads((self.run_dir / "metaflow" / f"latency-{label}.json").read_text(encoding="utf-8"))
+
+    def test_the_gpu_part_exports_checks_three_parities_times_both_gpu_arms_and_ends_well(self):
+        code, said, out, calls = self.gpu(1)
+        self.assertEqual(code, 0, out)
+        self.assertEqual((said[0]["decision"], said[-1]["successful"], said[-1]["verdict"]), ("run", True, 0), out)
+        self.assertEqual(calls, GPU_CALLS)
+        record = self.record("gpu")
+        self.assertEqual((record["flow"], record["part"], record["run"], record["verdict"]), ("LatencyFlow", "gpu", said[-1]["run"], 0))
+        self.assertIn("r1: current as an earlier run wrote it; CLAIM 2024: 20 met, 3 declared, 2 not applicable, 4 missing; "
+                      "REFORMS: 20 met, 3 declared, 2 not applicable, 4 missing", record["lines"])
+        self.assertIn("parity onnxruntime on cuda: holds, max difference 1.9e-06 on 64 validation crops of 5 persons, "
+                      "3 witness frames first", record["lines"])
+        self.assertIn("onnxruntime-cuda: p50 3.0 ms, p95 4.0 ms over 300 frames on a test cuda, within the 97 ms budget", record["lines"])
+        self.assertIn("headline onnxruntime-cuda: p95 4.0 ms on a test cuda, real-time, the p95 under 97 ms", record["lines"])
+        self.assertEqual(len(record["lines"]), 7, record["lines"])
+        lines = self.page_lines(said)
+        self.assertRegex(lines[0], r" latency: succeeded, started ")
+        self.assertRegex(lines[1], r"PREREG docs/research/latency-and-sweep/PREREG\.md sha256 [0-9a-f]{12}$")
+        self.assertEqual(lines[2], "verdict: 0")
+        self.assertIn("LatencyFlow: end: part gpu, verdict 0", out)
+        # the report was current, so it was checked and never written again
+        self.assertEqual((self.tmp / "calls-1.reports").read_text(encoding="utf-8").split(), ["end", "check", "r1"])
+
+    def test_a_failed_parity_stops_only_its_own_arm_and_the_part_ends_with_verdict_1(self):
+        code, said, out, calls = self.gpu(1, FLOW_TEST_PARITY_FAULT="onnxruntime-cuda")
+        self.assertEqual(code, 1, out)
+        self.assertEqual((said[-1]["successful"], said[-1]["verdict"]), (True, 1), out)
+        self.assertEqual(calls, GPU_CALLS)
+        lines = self.record("gpu")["lines"]
+        self.assertIn("parity onnxruntime on cuda: FAILED, exit 1, why: parity: onnxruntime on cuda differs from the reference", lines)
+        self.assertIn("measure onnxruntime on cuda: FAILED, exit 1, why: latency: no latency is measured for onnxruntime on cuda "
+                      "before parity", lines)
+        self.assertIn("parity onnxruntime on cuda: DOES NOT HOLD, why: parity-onnxruntime-cuda.json: the levels differ or a "
+                      "probability is not within 1e-05 of the reference", lines)
+        self.assertIn("onnxruntime-cuda: TIMED NOTHING, why: no latency/onnxruntime-cuda.json", lines)
+        # the other arms stand: PyTorch on the GPU is timed and heads the run
+        self.assertIn("torch-cuda: p50 5.0 ms, p95 6.0 ms over 300 frames on a test cuda, within the 97 ms budget", lines)
+        self.assertIn("headline torch-cuda: p95 6.0 ms on a test cuda, real-time, the p95 under 97 ms", lines)
+        page = self.page_lines(said)
+        self.assertEqual(page[2], "verdict: 1")
+        # the lines that do not hold come first, so the gate's status, which keeps few, shows them
+        self.assertTrue(any(word in page[5] for word in ("FAILED", "DOES NOT HOLD", "TIMED NOTHING")), page)
+
+    def test_a_failed_export_stops_the_part_and_names_each_tool_it_never_reached(self):
+        code, said, out, calls = self.gpu(1, FLOW_TEST_EXPORT_FAULT="1")
+        self.assertEqual((code, said[-1]["verdict"]), (1, 1), out)
+        self.assertEqual(calls, ["export"])
+        lines = self.record("gpu")["lines"]
+        self.assertIn("export: FAILED, exit 1, why: export: the checker refused the graph", lines)
+        for tool in GPU_CALLS[1:]:
+            action, runtime, device = tool.split()
+            self.assertIn(f"{action} {runtime} on {device}: NOT RUN, why: an earlier tool stopped the part", lines)
+
+    def test_the_cpu_part_times_both_cpu_arms_and_an_arm_over_the_budget_is_a_result_not_a_failure(self):
+        self.assertEqual(self.gpu(1)[0], 0)
+        code, said, out, calls = self.latency(2, "cpu", "--catalog", str(self.catalog), "--threads", "8", "--frames", "300")
+        self.assertEqual((code, said[-1]["verdict"]), (0, 0), out)
+        self.assertEqual(calls, ["measure torch cpu", "measure onnxruntime cpu"])
+        lines = self.record("cpu")["lines"]
+        self.assertIn("torch-cpu-8t: p50 60.0 ms, p95 120.0 ms over 300 frames on a test cpu, not within the 97 ms budget", lines)
+        self.assertIn("onnxruntime-cpu-8t: p50 20.0 ms, p95 30.0 ms over 300 frames on a test cpu, within the 97 ms budget", lines)
+        self.assertIn("headline onnxruntime-cuda: p95 4.0 ms on a test cuda, real-time, the p95 under 97 ms", lines)
+
+    def test_a_sweep_held_as_a_bank_is_made_into_its_input_run_and_recorded(self):
+        self.assertEqual(self.gpu(1)[0], 0)
+        bank = self.tmp / "carmlspine_sweep"
+        (bank / "images" / "test").mkdir(parents=True)
+        (bank / "meta").mkdir()
+        (bank / "images" / "test" / "case134_sw000.png").write_bytes(b"a frame")
+        (bank / "meta" / "case134_sw000.json").write_text("{}\n", encoding="utf-8")
+        code, said, out, calls = self.latency(2, "sweep", "--sweep", f"case134:bank={bank}")
+        self.assertEqual((code, said[-1]["verdict"]), (0, 0), out)
+        self.assertEqual(calls, ["sweep from-bank case134", "sweep run case134 frames onnxruntime truth"])
+        self.assertTrue((self.run_dir / "sweep-input" / "case134" / "boxes.jsonl").is_file())
+        lines = self.record("sweep-case134")["lines"]
+        self.assertIn("sweep case134: 301 frames, p50 4.0 ms, p95 5.5 ms, within the 97 ms budget, 900/1000 levels named over "
+                      "the truth boxes", lines)
+        # a sweep held to another ONNX file is no sweep of this export, whatever the tool said
+        (self.run_dir / "onnx" / "level.onnx").write_bytes(b"another export")
+        code, said, out, _ = self.latency(3, "sweep", "--sweep", f"case134:bank={bank}")
+        self.assertEqual((code, said[-1]["verdict"]), (1, 1), out)
+        self.assertIn("parity onnxruntime on cuda: DOES NOT HOLD, why: parity-onnxruntime-cuda.json: shown for another ONNX file",
+                      self.record("sweep-case134")["lines"])
+
+    def test_a_report_made_stale_since_the_run_is_written_anew_and_the_part_ends_well(self):
+        code, said, out, _ = self.gpu(1, FLOW_TEST_REPORT_VERSION="2")
+        self.assertEqual((code, said[-1]["verdict"]), (0, 0), out)
+        lines = self.record("gpu")["lines"]
+        self.assertTrue([line for line in lines if line.startswith("r1: written anew under the report tool as it is now, its work "
+                                                                   "done before this run began; CLAIM 2024: 20 met")], lines)
+        self.assertEqual((self.tmp / "calls-1.reports").read_text(encoding="utf-8").split(), ["end", "check", "r1", "end", "write", "r1"])
+
+    def test_a_part_no_prereg_covers_or_a_moved_prereg_starts_nothing(self):
+        code, said, out, calls = self.latency(1, "probe")
+        self.assertEqual((code, said, calls), (90, [], []), out)
+        self.assertIn("covers gpu, cpu, sweep, not probe", out)
+        self.assertIn("LATENCY_RC=90 ", out)
+        with (self.repo / "docs" / "research" / "latency-and-sweep" / "PREREG.md").open("a", encoding="utf-8") as prereg:
+            prereg.write("An edit after the freeze.\n")
+        self.commit("an edit to the PREREG after its freeze")
+        code, said, out, calls = self.gpu(2)
+        self.assertEqual((code, said, calls), (90, [], []), out)
+        self.assertIn("STOP: docs/research/latency-and-sweep/PREREG.md changed since the freeze", out)
+
+    def test_a_run_folder_that_has_not_finished_training_fails_the_start(self):
+        (self.run_dir / "train" / "best.pt").unlink()
+        code, said, out, calls = self.gpu(1)
+        self.assertEqual((code, said[-1]["successful"], calls), (1, False, []), out)
+        self.assertIn("has no train/best.pt, so it is no run that has finished training", out)
+
+
+@unittest.skipIf(MISSING, f"needs the train environment ({', '.join(MISSING)} missing)")
+class LatencyChecksTest(unittest.TestCase):
+    """What LatencyFlow's end reads from a run directory, the parity rule and the budget as the
+    PREREG states them, beside whatever the tools said."""
+
+    @classmethod
+    def setUpClass(cls):
+        with mock.patch.object(sys, "path", [str(ROOT / "flows"), *sys.path]):
+            cls.flow = load(ROOT / "flows" / "latency.py", "latency_flow_under_test")
+
+    def setUp(self):
+        self.run = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.run, ignore_errors=True)
+        for folder in ("train", "onnx", "latency", "evaluate"):
+            (self.run / folder).mkdir()
+        (self.run / "train" / "best.pt").write_bytes(b"the checkpoint")
+        (self.run / "onnx" / "level.onnx").write_bytes(b"the export")
+
+    def sha256(self, name):
+        return hashlib.sha256((self.run / name).read_bytes()).hexdigest()
+
+    def parity(self, runtime="onnxruntime", device="cuda", **changes):
+        verdict = {"part": "validation", "crops": 64, "persons": 5, "passed": True, "labels_equal": True,
+                   "max_abs_probability_difference": 2e-6, "checkpoint_sha256": self.sha256("train/best.pt"),
+                   "onnx_sha256": self.sha256("onnx/level.onnx") if runtime == "onnxruntime" else None, **changes}
+        (self.run / "onnx" / f"parity-{runtime}-{device}.json").write_text(json.dumps(verdict), encoding="utf-8")
+
+    def arm(self, name, runtime, device, p95, **changes):
+        arm = {"arm": name, "runtime": runtime, "device_kind": device, "device": device, "frames": 300, "ms_per_frame_median": p95 / 2,
+               "ms_per_frame_p95": p95, "within_budget": p95 < 97.0, "parity_passed": True, **changes}
+        (self.run / "latency" / f"{name}.json").write_text(json.dumps(arm), encoding="utf-8")
+        return arm
+
+    def test_a_parity_holds_only_within_the_tolerance_on_validation_crops_for_this_checkpoint_and_export(self):
+        self.parity()
+        self.assertIsNone(self.flow.parity_problem(self.run, "onnxruntime", "cuda"))
+        self.assertIsNone(self.flow.parity_problem(self.run, "torch", "cpu"))
+        for changes, why in (({"max_abs_probability_difference": 1e-5}, "not within 1e-05"),
+                             ({"labels_equal": False}, "the levels differ"),
+                             ({"part": "test"}, "not shown on the validation crops"),
+                             ({"crops": 0}, "not shown on the validation crops"),
+                             ({"passed": False}, "the tool did not pass it"),
+                             ({"checkpoint_sha256": "0" * 64}, "shown for another checkpoint"),
+                             ({"onnx_sha256": "0" * 64}, "shown for another ONNX file")):
+            self.parity(**changes)
+            self.assertIn(why, self.flow.parity_problem(self.run, "onnxruntime", "cuda") or "", changes)
+        (self.run / "onnx" / "parity-onnxruntime-cuda.json").unlink()
+        self.assertIn("missing", self.flow.parity_problem(self.run, "onnxruntime", "cuda"))
+
+    def test_an_arm_is_read_only_with_its_parity_and_its_budget_word_as_the_rule_gives_it(self):
+        self.parity()
+        self.assertEqual(self.flow.arm_words(self.run, "onnxruntime", "cuda", 8),
+                         (False, "onnxruntime-cuda: TIMED NOTHING, why: no latency/onnxruntime-cuda.json"))
+        self.arm("onnxruntime-cuda", "onnxruntime", "cuda", 96.9)
+        self.assertEqual(self.flow.arm_words(self.run, "onnxruntime", "cuda", 8),
+                         (True, "onnxruntime-cuda: p50 48.5 ms, p95 96.9 ms over 300 frames on cuda, within the 97 ms budget"))
+        self.arm("onnxruntime-cuda", "onnxruntime", "cuda", 96.9, within_budget=False)
+        self.assertIn("NOT READ", self.flow.arm_words(self.run, "onnxruntime", "cuda", 8)[1])
+        self.arm("onnxruntime-cuda", "onnxruntime", "cuda", 97.0)
+        ok, line = self.flow.arm_words(self.run, "onnxruntime", "cuda", 8)
+        self.assertTrue(ok, line)
+        self.assertIn("not within the 97 ms budget", line)
+        self.parity(passed=False)
+        self.assertIn("A LATENCY WITHOUT PARITY", self.flow.arm_words(self.run, "onnxruntime", "cuda", 8)[1])
+
+    def test_the_headline_is_the_fastest_arm_whose_parity_holds_now(self):
+        self.parity()
+        fast = self.arm("onnxruntime-cuda", "onnxruntime", "cuda", 4.0)
+        slow = self.arm("torch-cpu-8t", "torch", "cpu", 120.0)
+        (self.run / "evaluate" / "latency.json").write_text(json.dumps(slow), encoding="utf-8")
+        self.assertEqual(self.flow.headline_words(self.run),
+                         (False, "headline: NOT READ, why: it is not the fastest arm whose parity holds"))
+        (self.run / "evaluate" / "latency.json").write_text(json.dumps(fast), encoding="utf-8")
+        self.assertTrue(self.flow.headline_words(self.run)[0])
+        # an export made again since its parity leaves the fastest arm without one, so its headline is not read
+        (self.run / "onnx" / "level.onnx").write_bytes(b"another export")
+        self.assertEqual(self.flow.headline_words(self.run), (False, "headline: NOT READ, why: its arm's parity does not hold now"))
+
+    def test_a_sweep_is_named_as_a_file_and_given_as_frames_and_boxes_or_a_bank(self):
+        self.assertEqual(self.flow.parse_sweep("case134:bank=/b"), ("case134", None, "/b"))
+        self.assertEqual(self.flow.parse_sweep("case134:f:b.jsonl"), ("case134", "f", "b.jsonl"))
+        for spec in ("../x:bank=/b", "case134:bank=", "case134", "case134:f", "a:b:c:d"):
+            with self.assertRaises(self.flow.LatencyFault, msg=spec):
+                self.flow.parse_sweep(spec)
 
 
 # A failed stage 2 job's log under the launcher, in the shape Metaflow 2.19.39 gave it (measured

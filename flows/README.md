@@ -54,6 +54,36 @@ Metaflow's own resume rather than by anything written around it.
   names the run. The verdict is 0 only where tools/flow.py finished the run (FINISHED.json) and
   its report is current. The driver runs the launcher in the background, as the sweep's does, so
   job submit's TERM two minutes before the limit reaches it at once and it closes the run's page.
+- `experiment.py`, ExperimentFlow: one requested combination of data and blocks, the gate's word
+  `experiment <issue>`, which grid/experiment-driver.sbatch starts through the launcher once it has
+  checked the request against this checkout's blocks and recipes, chosen the catalog version and
+  checked its split again. It is V1Flow with the request's words: start holds the run to
+  docs/research/experiments/PREREG.md, which pre-registers every requested combination as an
+  estimate with no bar, its configuration the request; `train_evaluate` runs `tools/flow.py run`
+  with the request's recipe (none gives no `--recipe`), epochs, seed, hours and one `--block` for
+  each word of `--blocks`, through the same helpers (flows/flow_tool.py); end is V1Flow's, and
+  METAFLOW.json names the issue and the request's sha256 too. The key reads the request's bytes
+  beside the catalog's and the ImageNet file's, so a request edited after its run began is a run
+  of its own.
+- `latency.py`, LatencyFlow: one network job of the latency word (issue #13) on a run directory
+  that finished training, which grid/latency-sweep.sbatch starts through the launcher in each job
+  grid/run-latency-sweep.sh submits: `--part gpu` (the ONNX export, the parity of ONNX Runtime on
+  the CPU and the GPU and of PyTorch on the GPU against PyTorch on the CPU, then both GPU arms
+  timed), `--part cpu` (both arms on THREADS CPU threads) or `--part sweep` (one recorded sweep, one
+  task of the array, a bank turned into its input first). start holds the run to
+  docs/research/latency-and-sweep/PREREG.md, whose Covers line names the three parts (prereg_part
+  gives the part and no sha256, since a part is a fixed list of tool calls in the flow, which the
+  code's digest names); `measure` runs tools/latency.py and tools/sweep.py as the job's body did, a
+  failed export or bank conversion stopping the part and a failed parity or timing only its arm;
+  end holds the run to the PREREG again, reads the parity rule and the 97 ms budget back from the
+  run directory's files beside the tools' own refusals, checks the run's CLAIM 2024 and REFORMS
+  report (the parts write nothing it reads) and writes metaflow/latency-<part>.json, its verdict
+  and lines, into the run directory. The verdict is 0 only where the part ran to its end, every
+  parity it rests on holds, every arm and the headline read as the rule gives them and the report
+  is current; an arm that holds parity and is over the budget is a result, not a failure. The key
+  reads the checkpoint's and the catalog's bytes and a sweep input's listing. The probe runs no
+  network and stays a plain batch job. The job runs the launcher in the background, as the
+  sweep's driver does, so job submit's early TERM reaches it at once.
 - `realism.py`, RealismFlow: the FluXray reproduction (docs/research/flux-realism/PREREG.md), one
   run per stage on the owner's count of 2026-10-29 (two GPU jobs, edit and then stats; grid word
   `realism <stage>`, grid/realism.sbatch). start holds the run to the PREREG and to its frozen block,
@@ -92,20 +122,19 @@ enforced and a page that shows its progress in the browser; a plain Slurm job is
 The sweep keeps it, and so do the FluXray reproduction's `realism edit` and `realism stats`
 (RealismFlow, above; lora and eval are refused until they have a count and a PREREG of their own),
 the DRR domain-gap study, `bench flexray_drr_gap`, and the step that makes its MOOSE masks, `bench
-flexray_drr_seg` (both below), and version 1's run, `start` and `v1` (V1Flow, above). These words of
-grid/gate.sh still submit a plain job that trains or runs a network, each to be moved onto a flow
-listed in registry.txt, one pull request each, under a PREREG of its own:
+flexray_drr_seg` (both below), version 1's run, `start` and `v1` (V1Flow, above), a requested
+experiment, `experiment <issue>` (ExperimentFlow, above), and the latency word's three network
+parts, `latency` (LatencyFlow, above). These words of grid/gate.sh still submit a
+plain job that trains or runs a network, each to be moved onto a flow listed in registry.txt, one
+pull request each, under a PREREG of its own:
 
-- `experiment <issue>`, one combination of blocks from the experiments panel
-  (grid/experiment-driver.sbatch);
 - `bench <id>` for the three public models' benchmarks (grid/bench.sbatch): flexray_carmlspine,
   flexray_deepfluoro and xvr_deepfluoro;
-- `anomaly timing`, SPINEPS over the anomaly route's CTs (grid/anomaly.sbatch);
-- `latency`, the latency arms and the recorded sweep (grid/run-latency-sweep.sh).
+- `anomaly timing`, SPINEPS over the anomaly route's CTs (grid/anomaly.sbatch).
 
-The rule holds already, so until a word is moved it is not sent. Once they all are, the gate
-refuses any GPU job that does not start through flows/launch.py; that refusal is a later pull
-request.
+The rule holds already, and grid/gate.sh enforces it: its submit refuses a GPU job whose script
+column 4 of registry.txt does not name, with exit 90 before anything is queued, so the two words
+above are refused until each is moved onto a flow.
 
 - `registry.txt` is the one list of the flows: per kind its class in flows/<kind>.py, the word the
   launcher's last line ends with, the job script under grid/ that starts the launcher when Slurm

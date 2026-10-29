@@ -221,6 +221,8 @@ class TheClerk(unittest.TestCase):
         self.assertIn(held["request"], comment)
         self.assertIn(held["command"], comment)
         self.assertIn(panel.DRIVER_HEAD + " --epochs 20 --seed 2 --hours 6 --weights <weights> --block architecture=resnet34", comment)
+        # the job runs the request on the launched flow, under the frozen PREREG of every requested run
+        self.assertIn("the launched flow experiment (flows/experiment.py), held to the frozen docs/research/experiments/PREREG.md", comment)
         self.assertIn("`schwingnet-experiment-250`", comment)
         self.assertIn(clerk.GATE_WORKFLOW, comment)
         self.assertIn("choose the action `job`, write `schwingnet-experiment-250` under job", comment)

@@ -4,7 +4,7 @@ Source: the thread "Build plug-and-play training experiment framework", 2026-10-
 
 ## Where it stands
 
-The tooling is built and tested on a CPU (issue #252); no grid job of the smoke has run yet. The jobs, each on the owner's word and count of 22:12 UTC:
+The tooling is built and tested on a CPU (issue #252). Two of the GPU jobs have run, as the gate's status word read on 2026-10-29 at 18:38 UTC: `sweep synthetic` (job 40781593, 2026-10-25, state 5a7482d0-7f69ef4c: 27 rows, 23 ran, 4 refused, 0 failed, every row as the check predicted) and `sweep real` (job 40781617, 2026-10-25, state 06601195-44ddbdf5: 27 rows, 10 ran, 12 refused, 5 not applicable, 0 failed), each through flows/launch.py with verdict 0 and launcher exit 0, at commit fc027a6; their results are not yet copied here. The VinDr-SpineXR bank (job 40781621) failed at ingest, so `sweep two_source` (40781628) was cancelled with its catalog build. The jobs, each on the owner's word and count of 22:12 UTC:
 
 | Job | Gate word | What it proves |
 | --- | --- | --- |
