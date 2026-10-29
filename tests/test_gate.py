@@ -2150,7 +2150,9 @@ esac
         self.assertEqual(refused.returncode, 64, refused.stdout)
         self.assertIn("enhance or verse", refused.stdout)
         self.environments_ready()
-        # the pinned copy must carry the engine, whatever has landed
+        # the pinned copy must carry the engine, whatever has landed; the checkout's grid/ carries it,
+        # so the test's copy drops it first
+        shutil.rmtree(self.repo / "grid" / "bordercall" / "morphometry", ignore_errors=True)
         self.morphometry_inputs("truth", "verse", "totalseg")
         for which in ("enhance", "verse"):
             refused = self.gate("morphometry", which)
