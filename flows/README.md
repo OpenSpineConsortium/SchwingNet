@@ -88,7 +88,9 @@ To open a page in the browser on the grid: Open OnDemand (https://ondemand.grid.
 university's VPN), Files, then /rs/rs_grp_oschome/go2432/metaflow/progress/, the flow's folder,
 the run's folder and index.html, opened with View; not yet tried on the grid, so where the Files
 app shows the page as text, Download it and open the file in the browser. Off the grid, the gate's status word prints the
-newest four runs' PROGRESS.txt under `## flow <kind> <run>, progress (<time> UTC)`, their task and
+newest run of each kind and then the newest of the rest, four runs in all unless more kinds have
+runs, newest first, so the DRR study's 18 runs a chain never push another flow's run out; each
+run's PROGRESS.txt under `## flow <kind> <run>, progress (<time> UTC)`, their task and
 report lines judged as a stage report's are (a path cut, a quoting reason withheld) and every line
 masked, and `python3 tools/progress_page.py <status answer> --out page.html` draws the same page
 from that answer.
@@ -182,6 +184,63 @@ runs every row through `launch.py sweep`, and calls block_sweep itself only for 
 `synthetic`, the synthetic catalog, and `state`, the state folder's path for its report. PYDRV on
 the grid is grid/bin/train-cpu-python, which carries Metaflow and execs grid/box.sh; every tool
 of a bank or catalog step runs through the two, so both are in those kinds' code digests.
+
+## The DRR domain-gap study: drr_gap and drr_seg
+
+The DRR domain-gap study (tools/domain_gap.py, docs/research/drr-domain-gap/README.md) runs as two
+kinds, both held to docs/research/drr-domain-gap/PREREG.md as it was frozen on 2026-10-27, which
+has no Covers line, so neither flow names a part and the PREREG holds every run of either whole.
+
+- `drr_gap.py`, DrrGapFlow: one part of the study, `--part prepare|shard|merge` with
+  `--prepare-job`, the chain's prepare job, and for a shard `--task` and `--tasks`, for the merge
+  `--tasks`. The gate word `bench flexray_drr_gap` queues the same jobs as before, 18 of the gpu
+  class: prepare (16 CPUs, 64G, 12 hours), an array of DRR_GAP_TASKS=16 shard tasks afterany
+  prepare (each 16 CPUs, 64G, 12 hours) and the merge afterany the array (4 CPUs, 64G, 4 hours).
+  Each job, and each task of the array, runs grid/drr-gap.sbatch's driver, which does what must
+  come before any flow (prepare's copy of the code, the checks of the step's input, the study's
+  environment) and then starts its own launcher run with its part's words, so a chain is 18 runs,
+  each with its page. start holds the run to the PREREG; work runs grid/drr-gap.sbatch again with
+  SCHWINGNET_FLOW_STEP=1, the part's body, which runs the tool and writes the part's own lines
+  under <out>/analysis/steps/, its page line following the last line of the study's
+  PROGRESS.txt; end gives the verdict. The launcher's last line is `DRR_GAP_RC=<code> <time>`.
+- Only the merge reports the study. Its body writes the bench report,
+  logs/BENCH-flexray_drr_gap.md in the checkout, as before, its first line `# bench
+  flexray_drr_gap: job N on H, commit X, ... UTC` and its last `- exit N at ...`, prints
+  SN_BENCH_RC, and leaves the run's record under <out>/runs/<prepare job>/ as a recorded run of
+  the study is kept (BENCH.md, summary.txt, groups.json); the flow's end then writes and checks
+  the study's CLAIM and REFORMS report there through `stage.claim_report` with study
+  drr-domain-gap, and its verdict is 1 where that report is not current or the merge did not end
+  0. The bench report's exit line and SN_BENCH_RC stay the body's own, so a report that is not
+  current is said on the page and in DRR_GAP_RC and never makes the gate queue the 18 jobs again.
+  A merge whose chain's prepare never started writes no report and starts no flow, as before, and
+  one whose prepare failed composes its report from what prepare said, starting no flow either.
+  Prepare's and a shard's runs report only their part's own exit and progress, and make no study
+  report: the study's numbers are the merge's.
+- Prepare copies the study's code at the commit it starts on (CODE_PATHS in grid/drr-gap.sbatch:
+  the tools and their packages, the flows and the launcher, the groups, the split, the report's
+  checklists and licences, pixi.toml and pixi.lock, the container and environment scripts, the
+  job script, PREREG.md and its hash) with `git archive`, and writes COPY.txt there: the commit,
+  then every file the copy holds. Every part starts the launcher from that copy (SCHWINGNET the
+  copy, SN_CHECKOUT the checkout), and the launcher and tools/run_code.py read the commit and the
+  files from COPY.txt where the copy has no .git, so a run's commit and code digest are those of
+  the checkout at that commit, and no part holds grid/logs/HOLD.
+- `drr_seg.py`, DrrSegFlow: MOOSE's masks for the study's CTs. The gate word
+  `bench flexray_drr_seg` queues one gpu job, grid/drr-seg.sbatch (4 CPUs, 50G, 12 hours), split
+  out of grid/bench.sbatch, which keeps the three public benchmarks and refuses both DRR ids. Its
+  driver holds the checkout, checks the CTs, SPINEPS's masks and MOOSE's zips, makes the
+  environment and starts the launcher; the flow's segment step runs the body, the study's choice
+  of CTs and MOOSE on those, which appends its lines to the report the driver began and leaves its
+  exit in <out>/SEGMENT_RC, with which the driver ends the report; the launcher's last line is
+  `DRR_SEG_RC=`. A subject's existing masks are never written again: the choice of CTs ignores
+  MOOSE's masks, so the same inputs give the same choice on every start, and the segment
+  subcommand's own plan marks a subject done when it lacks no model and runs only the models a
+  subject lacks, rewriting SEGMENT.json after each subject, so a resumed run, start cloned and
+  segment run again, segments only what the cut run had not finished.
+- Slurm's TERM: job submit asks for TERM to the batch shell alone two minutes before the limit;
+  each driver waits on the launcher in the background, so its trap runs at once and passes the TERM
+  on to the launcher, which passes it to the flow's processes, the body's own trap passing it to
+  the tool; the study's driver then waits up to 80 s for the part's exit line before it writes
+  its own, and MOOSE's ends with no report, as before, the run it began resumed by the next send.
 
 ## The datastore
 
