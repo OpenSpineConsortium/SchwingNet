@@ -5,6 +5,7 @@ record names and never guessed, and every owner item missing until the owner wri
 import hashlib
 import importlib.util
 import json
+import os
 import shutil
 import tempfile
 import unittest
@@ -60,9 +61,13 @@ class StudyFolder(unittest.TestCase):
         prereg.write_text("fixture pre-registration, frozen\n", encoding="ascii")
         self.prereg = report.dashed(hashlib.sha256(prereg.read_bytes()).hexdigest()[:16])
         self.replace_line("record: study ", self.lines()[0].replace("PREREG 2222-2222-2222-2222", f"PREREG {self.prereg}"))
+        # a README of the fixture's own whose section 6 records the run and what it does not support
+        self.readme = root / "README.md"
+        self.readme.write_text("# Fixture study\n\n## 6. Results\n\nThe fixture run is recorded under runs/1000001/.\n\n"
+                               "What the run does not support, in the fixture: its film persons are files.\n\n## 7. How to run it\n", encoding="ascii")
         config = report.STUDIES[STUDY]
         self.addCleanup(config.update, dict(config))
-        config.update(answers=self.answers, runs=root / "runs", prereg=prereg)
+        config.update(answers=self.answers, runs=root / "runs", prereg=prereg, design=self.prereg, readme=self.readme)
         self.addCleanup(setattr, report, "LICENCES", report.LICENCES)
         report.LICENCES = register
 
@@ -160,7 +165,7 @@ class MissingRecordLineTest(StudyFolder):
     def test_without_the_study_line_its_items_are_missing_never_not_applicable(self):
         self.replace_line("record: study", None)
         claim = self.rows("claim")
-        for item in ("7", "9", "19", "26", "33", "38"):
+        for item in ("4", "7", "9", "14", "19", "26", "33", "34", "38"):
             self.assertEqual(claim[item]["state"], "missing", item)
             self.assertIn("'record: study ...' (absent)", claim[item]["evidence"], item)
         self.assertEqual(claim["35"]["state"], "met")
@@ -253,7 +258,7 @@ class RunLogTest(StudyFolder):
 class NotApplicableTest(StudyFolder):
     def test_what_the_design_leaves_out_says_why_and_names_the_run(self):
         claim, reforms = self.rows("claim"), self.rows("reforms")
-        for row in (claim["26"], claim["33"], claim["38"], reforms["5d"]):
+        for row in (*(claim[item] for item in ("14", "15", "16", "17", "18", "26", "33", "34", "38", "39")), reforms["5d"], reforms["5e"]):
             self.assertEqual(row["state"], "not applicable", row["id"])
             self.assertTrue(row["evidence"].startswith("Not applicable: the study "), row["id"])
             self.assertIn("study drr-domain-gap, commit 0000000, code 3333-3333-3333-3333", row["evidence"])
@@ -263,7 +268,7 @@ class NotApplicableTest(StudyFolder):
     def test_a_record_naming_another_pre_registration_answers_nothing_that_reads_it(self):
         self.replace_line("record: study ", self.lines()[0].replace(f"PREREG {self.prereg}", "PREREG 2222-2222-2222-2222"))
         claim, reforms = self.rows("claim"), self.rows("reforms")
-        for row in (claim["26"], reforms["5d"], reforms["2d"]):
+        for row in (claim["4"], claim["26"], claim["42"], reforms["1a"], reforms["5d"], reforms["2d"]):
             self.assertEqual(row["state"], "missing", row["id"])
             self.assertIn("the record names PREREG 2222-2222-2222-2222, which is not the frozen ", row["evidence"])
 
@@ -272,6 +277,256 @@ class NotApplicableTest(StudyFolder):
         for row in rows.values():
             if row["state"] == "not applicable":
                 self.assertEqual(row["basis"], "code", row["id"])
+
+
+class DesignTest(StudyFolder):
+    """The answers that restate the frozen design hold only for a run whose record names it, and the
+    answers that read the table or the summary quote them."""
+
+    DESIGN = {"claim": ("4", "6", "8", "21", "30", "31", "34", "39", "40", "42"),
+              "reforms": ("1a", "1b", "1c", "3b", "3c", "3g", "5e", "5f", "6c", "7c")}
+
+    def design_rows(self):
+        return [row for key, items in self.DESIGN.items() for row in map(self.rows(key).get, items)]
+
+    def test_the_design_answers_hold_for_the_design_the_record_names(self):
+        for row in self.design_rows():
+            self.assertIn(row["state"], ("met", "not applicable"), row["id"])
+            self.assertEqual(row["basis"], "code", row["id"])
+
+    def test_a_design_other_than_the_one_the_answers_restate_leaves_them_missing(self):
+        report.STUDIES[STUDY]["design"] = "4444-4444-4444-4444"
+        for row in self.design_rows():
+            self.assertEqual(row["state"], "missing", row["id"])
+            self.assertIn(f"the record names PREREG {self.prereg}, and these answers restate PREREG.md 4444-4444-4444-4444", row["evidence"], row["id"])
+        self.assertEqual(self.rows("claim")["14"]["state"], "not applicable")
+
+    def test_a_record_naming_no_pre_registration_leaves_the_design_answers_missing(self):
+        self.replace_line("record: study ", self.lines()[0].replace(f"PREREG {self.prereg}", "PREREG none"))
+        for row in self.design_rows():
+            self.assertEqual(row["state"], "missing", row["id"])
+            self.assertIn("the record names none (PREREG none)", row["evidence"], row["id"])
+
+    def test_what_the_table_answers_is_missing_without_it(self):
+        (self.run / "groups.json").unlink()
+        claim, reforms = self.rows("claim"), self.rows("reforms")
+        for row in (claim["8"], claim["21"], reforms["1a"], reforms["3b"], reforms["3g"]):
+            self.assertEqual(row["state"], "missing", row["id"])
+            self.assertIn("needs the groups table the record names", row["evidence"], row["id"])
+
+    def test_the_table_and_the_summary_are_quoted(self):
+        claim, reforms = self.rows("claim"), self.rows("reforms")
+        self.assertIn("summary.txt carries flexray dim 8; flexray_as_stored dim 8; physics dim 4; imagenet not run (no ImageNet weights in this fixture);", claim["30"]["evidence"])
+        self.assertIn("have none of their own: flexray_drr 10, flexray_drr_ct 10, fixture_fluoro 8", claim["30"]["evidence"])
+        self.assertIn("1 group skipped, fluxray (not on the data root in this fixture); persons by file in fixture_film", claim["40"]["evidence"])
+        self.assertIn("the calibration lines reading flexray mmd flagged none, auc interval above half 0; physics mmd flagged none, auc interval above half 0", claim["40"]["evidence"])
+        self.assertIn('"What the run does not support, in the fixture: its film persons are files."', claim["40"]["evidence"])
+        self.assertIn("render fixture_cts: 10 CTs chosen of 10", claim["21"]["evidence"])
+        self.assertIn("; render fixture_cts: 10 CTs chosen of 10 with every mask of 12 CTs (moose 10); 10 kept by every group", claim["8"]["evidence"])
+        self.assertIn("of which the analysis reads only those every render group on the folder kept (README section 7)", claim["8"]["evidence"])
+        self.assertIn("the records of its ThunderDB as FleXray's reader lists them: fluxray", reforms["3b"]["evidence"])
+        self.assertIn("salt fixture-salt", reforms["3b"]["evidence"])
+        self.assertIn("synthetic, flexray_drr, flexray_drr_ct, fluxray; fluoroscopy, fixture_fluoro; film, fixture_film", reforms["1a"]["evidence"])
+        self.assertIn("in the spaces flexray, physics", reforms["5f"]["evidence"])
+
+    def test_a_flagged_null_is_named_where_the_design_s_failures_are(self):
+        calibration = " calibration split-half auc median 0.33 range 0.32 to 0.34 over 1, mmd flagged 0, auc interval above half 0"
+        lines = self.lines()
+        at = lines.index(calibration)
+        self.write_lines(lines[:at] + [calibration.replace("mmd flagged 0", "mmd flagged 1"), " calibration flagged flexray_drr"] + lines[at + 1:])
+        claim = self.rows("claim")
+        for item in ("39", "40"):
+            self.assertIn("flexray mmd flagged flexray_drr, auc interval above half 0; physics mmd flagged none", claim[item]["evidence"], item)
+
+
+    def test_a_flagged_count_its_lines_do_not_name_is_said_as_it_stands(self):
+        self.replace_line(" calibration split-half auc median 0.33", " calibration split-half auc median 0.33 range 0.32 to 0.34 over 1, mmd flagged 1, auc interval above half 0")
+        claim = self.rows("claim")
+        for item in ("39", "40"):
+            self.assertIn("flexray mmd flagged 1, its lines naming 0", claim[item]["evidence"], item)
+            self.assertNotIn("flexray mmd flagged none", claim[item]["evidence"], item)
+
+    def test_a_summary_with_no_group_line_leaves_what_reads_them_missing(self):
+        self.write_lines([line for line in self.lines() if not line.startswith("group")])
+        claim = self.rows("claim")
+        for item in ("8", "40"):
+            self.assertEqual(claim[item]["state"], "missing", item)
+            self.assertIn("needs summary.txt's group lines", claim[item]["evidence"], item)
+
+    def test_a_partial_run_points_at_no_answer_it_leaves_missing(self):
+        self.replace_line("record: units", "record: units 3 of 4 done, 1 failed; mmd backend numpy")
+        claim, reforms = self.rows("claim"), self.rows("reforms")
+        self.assertEqual((claim["32"]["state"], claim["37"]["state"]), ("missing", "missing"))
+        self.assertNotIn("CLAIM 32", reforms["5f"]["evidence"])
+        self.assertIn("the primary endpoints are not read here", claim["39"]["evidence"])
+
+    def test_the_paired_null_of_a_pair_on_the_same_persons_is_named(self):
+        self.assertIn("the p holds under the null that a person's two sides are exchangeable (tools/domain_gap_stats.py, twin_swaps", self.rows("reforms")["7c"]["evidence"])
+
+    def verdict(self, family):
+        """The fixture with a not-replicated verdict that the MMD alone carries, its q taken with the
+        split-half nulls in its family or without them."""
+        calibration = " calibration split-half auc median 0.33 range 0.32 to 0.34 over 1, mmd flagged 0, auc interval above half 0"
+        lines = self.lines()
+        at = lines.index(calibration)
+        pair = " replication flexray_replica vs flexray_reference persons 10/10 n 40/40 auc 0.50 [0.50, 0.50] p 0.455 knn 0.50 mmd p 0.043 q 0.046 fd64 0.0 kid64 -1.000 prdc 1.00 1.00 1.00 1.00 not replicated"
+        self.write_lines(lines[:at] + [calibration + (", nulls in the mmd q family" if family else ""), pair] + lines[at + 1:])
+        self.replace_line("replication flexray_replica vs flexray_reference", "replication flexray_replica vs flexray_reference in flexray (invariant): not replicated (persons 10/10 n 40/40; mmd q 0.046)")
+        return self.rows("claim")
+
+    def test_a_verdict_the_mmd_alone_carries_is_read_in_the_design_s_words(self):
+        claim = self.verdict(True)
+        for item in ("30", "39", "40"):
+            evidence = claim[item]["evidence"]
+            self.assertIn("in PREREG.md section 5's words this project's blocks did not reproduce FleXray's own renders of its recipe: the MMD told them apart (q 0.046)", evidence, item)
+            self.assertIn("so the word rests on the MMD alone", evidence, item)
+
+    def test_a_verdict_whose_q_left_the_nulls_out_is_not_the_frozen_rule_s(self):
+        evidence = self.verdict(False)["30"]["evidence"]
+        self.assertIn("so the frozen rule's word on the MMD is not read in this run", evidence)
+        self.assertNotIn("in PREREG.md section 5's words", evidence)
+
+    def test_the_limits_wait_for_the_readme_to_record_the_run(self):
+        self.readme.write_text("# Fixture study\n\n## 6. Results\n\nNo run is recorded yet.\n\n## 7. How to run it\n", encoding="ascii")
+        limits = self.rows("claim")["40"]
+        self.assertEqual(limits["state"], "missing")
+        self.assertIn("needs README section 6's record of this run (runs/1000001/)", limits["evidence"])
+
+    def test_a_space_the_summary_does_not_name_is_said_to_be_given_up(self):
+        lines = self.lines()
+        at = lines.index("space physics dim 4 rows 160 spread 0.555 pca64 0.66")
+        self.write_lines(lines[:at])
+        self.assertIn("of the design's spaces and readings it does not name physics, which its 80-line budget gave up", self.rows("claim")["30"]["evidence"])
+
+    def test_a_reading_of_a_space_that_did_not_run_was_never_made(self):
+        lines = self.lines()
+        start = lines.index("space flexray dim 8 rows 160 spread 0.111 pca64 0.22")
+        end = lines.index("space imagenet not run, no ImageNet weights in this fixture")
+        self.write_lines(lines[:start] + ["space flexray not run, no features"] + lines[end:])
+        evidence = self.rows("claim")["30"]["evidence"]
+        self.assertIn("flexray_as_stored was never made, since the space it reads had no features", evidence)
+        self.assertNotIn("it does not name flexray_as_stored", evidence)
+
+    def test_a_reading_of_a_space_whose_invariant_head_alone_failed_was_made(self):
+        lines = self.lines()
+        start = lines.index("space flexray dim 8 rows 160 spread 0.111 pca64 0.22")
+        end = lines.index("space imagenet not run, no ImageNet weights in this fixture")
+        self.write_lines(lines[:start] + ["space flexray not run, every image has the same features"] + lines[end:])
+        evidence = self.rows("claim")["30"]["evidence"]
+        self.assertIn("it does not name flexray_as_stored, which its 80-line budget gave up", evidence)
+        self.assertNotIn("never made", evidence)
+
+    def test_the_verdict_is_the_verdict_pair_s_and_no_other_pair_s(self):
+        lines = self.lines()
+        at = next(i for i, line in enumerate(lines) if line.startswith("replication flexray_replica vs flexray_reference"))
+        other = "replication fluxray_raw vs fluxray_raw_reference in flexray (invariant): replicated (persons 10/10 n 40/40; mmd q 0.910)"
+        self.write_lines(lines[:at + 1] + [other] + lines[at + 1:])
+        evidence = self.rows("claim")["30"]["evidence"]
+        self.assertIn("the verdict pair, flexray_replica against flexray_reference, has no word, summary.txt giving its reason: flexray_replica: not in this fixture table", evidence)
+        self.assertNotIn("reads replicated", evidence)
+
+    def test_a_replicated_verdict_on_a_q_without_the_nulls_is_not_the_frozen_rule_s(self):
+        calibration = " calibration split-half auc median 0.33 range 0.32 to 0.34 over 1, mmd flagged 0, auc interval above half 0"
+        lines = self.lines()
+        at = lines.index(calibration)
+        pair = " replication flexray_replica vs flexray_reference persons 10/10 n 40/40 auc 0.50 [0.45, 0.55] p 0.455 knn 0.50 mmd p 0.060 q 0.070 fd64 0.0 kid64 -1.000 prdc 1.00 1.00 1.00 1.00 replicated"
+        self.write_lines(lines[:at + 1] + [pair] + lines[at + 1:])
+        self.replace_line("replication flexray_replica vs flexray_reference", "replication flexray_replica vs flexray_reference in flexray (invariant): replicated (persons 10/10 n 40/40; mmd q 0.070)")
+        evidence = self.rows("claim")["30"]["evidence"]
+        self.assertIn("reads replicated, the AUC's lower bound of 0.45 at most the bar of 0.6 and the MMD's q of 0.070 at least 0.05", evidence)
+        self.assertIn("so the frozen rule's word on the MMD is not read in this run", evidence)
+
+    def pair_verdict(self, lo, q, family, word="not replicated"):
+        """The fixture with the verdict pair's line at this AUC lower bound and MMD q, its q's
+        family the frozen one or the contrasts alone; CLAIM 30's evidence."""
+        calibration = " calibration split-half auc median 0.33 range 0.32 to 0.34 over 1, mmd flagged 0, auc interval above half 0"
+        self.base = getattr(self, "base", None) or self.lines()
+        lines = list(self.base)
+        at = lines.index(calibration)
+        pair = f" replication flexray_replica vs flexray_reference persons 10/10 n 40/40 auc 0.80 [{lo}, 0.90] p 0.010 knn 0.80 mmd p 0.040 q {q} fd64 9.0 kid64 1.000 prdc 0.50 0.50 0.50 0.50 {word}"
+        self.write_lines(lines[:at] + [calibration + (", nulls in the mmd q family" if family else ""), pair] + lines[at + 1:])
+        self.replace_line("replication flexray_replica vs flexray_reference", f"replication flexray_replica vs flexray_reference in flexray (invariant): {word} (persons 10/10 n 40/40; mmd q {q})")
+        return self.rows("claim")["30"]["evidence"]
+
+    def test_a_verdict_the_classifier_decides_stands_under_either_family(self):
+        evidence = self.pair_verdict("0.70", "0.300", False)
+        self.assertIn("the classifier told them apart (AUC lower bound 0.70), which decides the word whichever family the MMD's q is taken over (DEVIATIONS.md, item 11); the MMD's q is 0.300; that q was taken over the space's contrasts alone", evidence)
+        self.assertNotIn("rests on the classifier alone", evidence)
+        self.assertIn("the classifier told them apart (AUC lower bound 0.70), the MMD's q of 0.300 being at least 0.05, so the word rests on the classifier alone", self.pair_verdict("0.70", "0.300", True))
+
+    def test_the_mmd_s_bar_is_said_in_the_design_s_words_only_under_the_frozen_family(self):
+        alone = self.pair_verdict("0.65", "0.048", False)
+        self.assertIn("in PREREG.md section 5's words this project's blocks did not reproduce FleXray's own renders of its recipe: the classifier told them apart (AUC lower bound 0.65), which decides", alone)
+        self.assertNotIn("the MMD told them apart", alone)
+        self.assertIn("so the frozen rule's word on the MMD is not read in this run", alone)
+        frozen = self.pair_verdict("0.65", "0.048", True)
+        self.assertIn("the classifier told them apart (AUC lower bound 0.65) and the MMD told them apart (q 0.048);", frozen)
+
+    def test_a_number_printed_at_its_bar_places_nothing(self):
+        auc_at = self.pair_verdict("0.60", "0.046", True)
+        self.assertIn("the MMD told them apart (q 0.046), the AUC's lower bound printed as 0.60, the bar of 0.6 to the digits the summary prints, so whether the classifier told them apart too is not read here", auc_at)
+        self.assertNotIn("rests on the MMD alone", auc_at)
+        mmd_at = self.pair_verdict("0.65", "0.050", True)
+        self.assertIn("the MMD's q printed as 0.050, the bar of 0.05 to the digits the summary prints, so whether the MMD told them apart too is not read here", mmd_at)
+        self.assertNotIn("rests on the classifier alone", mmd_at)
+
+    def test_a_number_at_its_bar_beside_one_that_passes_is_the_one_that_failed(self):
+        classifier = self.pair_verdict("0.60", "0.060", True)
+        self.assertIn("the classifier told them apart (AUC lower bound printed as 0.60, the bar of 0.6, the word showing the unrounded number on the failing side, since the other bar is passed (src/schwingnet/domain_gap.py, replication_word)), the MMD's q of 0.060 being at least 0.05, so the word rests on the classifier alone", classifier)
+        mmd = self.pair_verdict("0.50", "0.050", True)
+        self.assertIn("in PREREG.md section 5's words this project's blocks did not reproduce FleXray's own renders of its recipe: the MMD told them apart (q printed as 0.050, the bar of 0.05,", mmd)
+        self.assertIn("the AUC's lower bound of 0.50 at most the bar of 0.6, so the word rests on the MMD alone", mmd)
+        alone = self.pair_verdict("0.50", "0.050", False)
+        self.assertNotIn("in PREREG.md section 5's words", alone)
+        self.assertIn("so the frozen rule's word on the MMD is not read in this run", alone)
+        both = self.pair_verdict("0.60", "0.050", True)
+        self.assertIn("at least one of them at its bar to the digits the summary prints, which as printed do not show which bar it failed", both)
+
+    def flag(self, count, names):
+        """The fixture's flexray space with its calibration line counting count flagged split-half
+        nulls and a flagged line naming names."""
+        lines = self.lines()
+        at = next(i for i, line in enumerate(lines) if line.startswith(" calibration split-half auc median 0.33"))
+        head = lines[at].replace("mmd flagged 0,", f"mmd flagged {count},")
+        self.write_lines(lines[:at] + [head, f" calibration flagged {' '.join(names)}"] + lines[at + 1:])
+
+    def test_a_verdict_pair_whose_split_half_null_is_flagged_is_not_read(self):
+        self.pair_verdict("0.70", "0.300", True)
+        self.flag(1, ["flexray_replica"])
+        claim = self.rows("claim")
+        for item in ("30", "37", "39", "40"):
+            evidence = claim[item]["evidence"]
+            self.assertIn("reads not replicated, but the split-half null of flexray_replica in flexray found a difference, so its contrasts are not read (DEVIATIONS.md, item 8), the verdict pair's among them", evidence, item)
+            self.assertNotIn("in PREREG.md section 5's words this project's blocks", evidence, item)
+        self.pair_verdict("0.70", "0.300", True)
+        self.flag(2, ["flexray_replica", "flexray_reference"])
+        self.assertIn("the split-half nulls of flexray_replica and flexray_reference in flexray found a difference, so their contrasts are not read", self.rows("claim")["30"]["evidence"])
+        self.pair_verdict("0.70", "0.300", True)
+        self.flag(2, ["flexray_replica"])
+        self.assertIn("the flexray space's calibration line counts 2 flagged split-half nulls and names 1, so whether the pair's contrast is read cannot be told", self.rows("claim")["30"]["evidence"])
+        self.pair_verdict("0.70", "0.300", True)
+        self.flag(1, [])
+        self.assertIn("counts 1 flagged split-half null and names 0", self.rows("claim")["30"]["evidence"])
+
+    def test_the_endpoints_item_reads_the_verdict_as_the_others_do(self):
+        self.pair_verdict("0.50", "0.048", False)
+        self.assertIn("read here, the verdict, flexray_replica against flexray_reference in the flexray space read inversion-invariant, reads not replicated, the MMD's q of 0.048 being under the bar of 0.05", self.rows("claim")["37"]["evidence"])
+
+    def test_every_descriptive_line_the_summary_prints_is_named(self):
+        lines = self.lines()
+        at = lines.index(" fluoroscopy vs film auc 0.64 [0.63, 0.65] p 0.066")
+        self.write_lines(lines[:at + 1] + [" silhouette 0.01", " nearest real; flexray_drr fixture_fluoro 90 pct", " tsne centres; flexray_drr 1.0 2.0 3.0"] + lines[at + 1:])
+        self.assertIn("of these summary.txt prints PRDC, the silhouette, the nearest real corpora and the t-SNE map's group centres, and the rest are on the grid", self.rows("claim")["31"]["evidence"])
+
+    def test_the_limits_are_this_run_s_own_or_held_by_its_own_part(self):
+        earlier = "# Fixture study\n\n## 6. Results\n\nAn earlier run is recorded under runs/999999/.\n\nWhat the run does not support, in the earlier run: its persons are files.\n\n"
+        self.readme.write_text(earlier + "### The fixture run\n\nThe fixture run is recorded under runs/1000001/.\n\n## 7. How to run it\n", encoding="ascii")
+        limits = self.rows("claim")["40"]
+        self.assertEqual(limits["state"], "missing")
+        self.assertIn("its part says nothing of what the run does not support", limits["evidence"])
+        self.readme.write_text(earlier + "### The fixture run\n\nThe fixture run is recorded under runs/1000001/.\n\nWhat the earlier run does not support holds for this one.\n\n## 7. How to run it\n", encoding="ascii")
+        evidence = self.rows("claim")["40"]["evidence"]
+        self.assertIn('"What the run does not support, in the earlier run: its persons are files." "What the earlier run does not support holds for this one."', evidence)
 
 
 class TableAndLicenceTest(StudyFolder):
@@ -318,6 +573,20 @@ class TableAndLicenceTest(StudyFolder):
         self.assertNotIn("flexray_drr vs fluoroscopy auc 0.12", endpoints["evidence"])
         self.assertIn("flexray_drr_ct vs fluoroscopy auc 0.32", endpoints["evidence"])
 
+    def test_an_endpoint_whose_family_holds_a_flagged_group_is_not_read(self):
+        calibration = " calibration split-half auc median 0.33 range 0.32 to 0.34 over 1, mmd flagged 0, auc interval above half 0"
+        lines = self.lines()
+        at = lines.index(calibration)
+        self.write_lines(lines[:at] + [calibration.replace("mmd flagged 0", "mmd flagged 1"), " calibration flagged fixture_fluoro"] + lines[at + 1:])
+        endpoints = self.rows("claim")["37"]["evidence"]
+        self.assertIn("not read: flexray_drr vs fluoroscopy: the split-half null of fixture_fluoro in flexray found a difference", endpoints)
+        self.assertIn("flexray_drr vs film auc 0.22", endpoints)
+        self.assertNotIn("flexray_drr vs fluoroscopy auc 0.12", endpoints)
+
+    def test_an_endpoint_line_with_no_word_is_not_counted_as_worded(self):
+        self.replace_line(" flexray_drr vs film auc 0.22", " flexray_drr vs film auc 0.22 [0.21, 0.23] p 0.020 knn 0.24 fd64 2.5 mmd p 0.027 prdc 0.28 0.29 0.30 0.31")
+        self.assertIn("of the primary endpoints' 3 worded lines read, none worded separable, 1 printed with no word", self.rows("claim")["39"]["evidence"])
+
     def test_a_flagged_count_the_names_do_not_match_leaves_the_endpoints_missing(self):
         calibration = " calibration split-half auc median 0.33 range 0.32 to 0.34 over 1, mmd flagged 0, auc interval above half 0"
         self.replace_line(calibration, calibration.replace("mmd flagged 0", "mmd flagged 2"))
@@ -346,6 +615,36 @@ class CheckTest(StudyFolder):
             report.render_study(STUDY, self.run)
 
 
+class AnswersForARunTest(StudyFolder):
+    def test_answers_written_for_another_run_answer_nothing_here(self):
+        answers = {fact: "Fixture sentence." for fact in report.study_declared_facts(STUDY)}
+        self.write_answers({"_run": "1000001", **answers})
+        self.assertEqual(self.rows("claim")["1"]["state"], "declared")
+        self.write_answers({"_run": "2000002", **answers})
+        title = self.rows("claim")["1"]
+        self.assertEqual(title["state"], "missing")
+        self.assertIn("whose answers are run 2000002's, not this run's", title["evidence"])
+        self.assertEqual(quiet(report.check, self.run, True, STUDY), 1)
+
+    def test_a_run_named_by_a_number_or_read_from_inside_its_folder(self):
+        answers = {fact: "Fixture sentence." for fact in report.study_declared_facts(STUDY)}
+        self.write_answers({"_run": 1000001, **answers})
+        with self.assertRaisesRegex(report.ReportError, "_run names a run folder and must be a string"):
+            self.rows("claim")
+        self.write_answers({"_run": "", **answers})
+        with self.assertRaisesRegex(report.ReportError, "must be a string that is not empty"):
+            self.rows("claim")
+        self.write_answers({"_run": "1000001", **answers})
+        self.addCleanup(os.chdir, os.getcwd())
+        os.chdir(self.run)
+        self.assertEqual(report.answers_for(self.answers, report.load_study(STUDY, "."))[0], answers)
+
+    def test_a_missing_answers_file_is_a_report_error(self):
+        self.answers.unlink()
+        with self.assertRaisesRegex(report.ReportError, "the study's answers file is not there"):
+            self.rows("claim")
+
+
 class StudyRulesTest(unittest.TestCase):
     def test_every_item_a_training_run_answers_by_code_has_a_study_answer(self):
         for key, checklist in report.checklists().items():
@@ -354,6 +653,13 @@ class StudyRulesTest(unittest.TestCase):
                 self.assertIn(basis, ("code", "declared"), item["id"])
                 if basis == "code":
                     self.assertIn(fact, report.STUDY_FACTS, item["id"])
+
+    def test_the_owner_answers_only_what_no_file_of_the_study_says(self):
+        self.assertEqual(report.study_declared_facts(STUDY), {"title", "abstract", "background", "study_design", "acquisition", "deidentification", "characteristics", "implications", "availability", "funding", "model_rationale", "external_validity", "non_generalization"})
+
+    def test_the_design_the_answers_restate_is_the_frozen_pre_registration(self):
+        prereg = ROOT / "docs" / "research" / "drr-domain-gap" / "PREREG.md"
+        self.assertEqual(hashlib.sha256(prereg.read_bytes()).hexdigest()[:16], report.undashed(report.STUDIES[STUDY]["design"]))
 
     def test_the_study_s_answers_file_holds_every_fact_its_owner_answers(self):
         path = ROOT / "data" / "reporting" / "studies" / f"{STUDY}.json"
