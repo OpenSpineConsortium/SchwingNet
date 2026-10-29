@@ -962,6 +962,32 @@ class SweepFlowTest(unittest.TestCase):
         self.assertIn("STOP: docs/research/block-smoke/PREREG.md changed since the freeze", out)
         self.assertEqual((said, calls), ([], []), out)
 
+    def test_a_run_resumed_straight_under_another_prereg_fails_at_its_end(self):
+        # the launcher's key names the PREREG, so it never carries a run on under another; a resume
+        # started with flows/sweep.py itself clones start, so end holds the run to its PREREG again
+        code, said, out, calls = self.sweep({"plan": "smoke", "first": ["a", "b"], "second": []}, 1, FLOW_TEST_KILL="b")
+        self.assertEqual(code, 137, out)
+        first_run = said[-1]["run"].split("/")[1]
+        prereg = self.repo / "docs" / "research" / "block-smoke"
+        text = TEST_PREREG + "A design settled again after the run began.\n"
+        (prereg / "PREREG.md").write_text(text, encoding="utf-8")
+        (prereg / "PREREG.md.sha256").write_text(f"{hashlib.sha256(text.encode()).hexdigest()}  PREREG.md\n", encoding="ascii")
+        self.commit("the PREREG frozen again")
+        calls = self.tmp / "calls-straight"
+        calls.write_text("", encoding="utf-8")
+        env = base_env(SCHWINGNET=str(self.repo), SCHWINGNET_WORKDIR=str(self.work), FLOW_TEST_CALLS=str(calls),
+                       FLOW_TEST_MARKER=str(self.tmp / "killed"), METAFLOW_DATASTORE_SYSROOT_LOCAL=str(self.root),
+                       METAFLOW_DEFAULT_DATASTORE="local", METAFLOW_DEFAULT_METADATA="local")
+        done = subprocess.run([sys.executable, str(self.repo / "flows" / "sweep.py"), "--quiet", "resume", "--origin-run-id", first_run],
+                              cwd=self.root, env=env, capture_output=True, text=True, timeout=TIMEOUT)
+        self.assertNotEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("StageFault: the run started under docs/research/block-smoke/PREREG.md, sha256 "
+                      f"{hashlib.sha256(TEST_PREREG.encode()).hexdigest()[:16]}, and its kind's PREREG frozen now is "
+                      f"docs/research/block-smoke/PREREG.md, sha256 {hashlib.sha256(text.encode()).hexdigest()[:16]}",
+                      done.stdout + done.stderr)
+        # the cut row ran again, and end stopped before it read any result
+        self.assertEqual(calls.read_text(encoding="utf-8").splitlines(), ["row b"])
+
 
 # A failed stage 2 job's log under the launcher, in the shape Metaflow 2.19.39 gave it (measured
 # 2026-10-25): every line a task printed behind "<date> <time> [<run>/<step>/<task> (pid N)] " and

@@ -78,7 +78,10 @@ enforced and a page that shows its progress in the browser; a plain Slurm job is
   whose bytes are not those its entry names, a plan edited or made again since the freeze, is
   refused the same way. The PREREG's
   path and sha256 are in the key and on the run's tags (prereg:<12>), and start keeps them as the
-  run's artifacts prereg_path and prereg_sha256 (`stage.hold_to_prereg`).
+  run's artifacts prereg_path and prereg_sha256, with the part and its sha256
+  (`stage.hold_to_prereg`). A resume clones start, and `python flows/sweep.py resume` started by
+  hand skips the launcher's refusal too, so end holds the run to them again (`stage.still_held`)
+  and fails where the PREREG frozen now is another or no longer covers the part as start read it.
 - `stage.py` is what every flow's steps run for the rule: `Beat` around a step's work, its line on
   the page, `run_watched` for a command whose line moves while it runs, `Beat(self).passed()` in a
   step that only routes the flow, `claim_report` in end, and `finish`, the verdict and the

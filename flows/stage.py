@@ -8,9 +8,13 @@ steps run:
 
 - hold_to_prereg, in start: the run held to its kind's frozen PREREG again, read from the checkout
   the steps run, and the PREREG's path and sha256 kept as the run's artifacts prereg_path and
-  prereg_sha256, so every run says which design it ran under. A resume clones start, and the
-  launcher's key names the PREREG's bytes, so a run is only ever carried on under the PREREG it
-  started under.
+  prereg_sha256, with the part it covers and the part's sha256 (prereg_part, prereg_part_sha256),
+  so every run says which design it ran under. start's own refusal fails the flow, so the
+  launcher then exits with the flow's 1, not 90, which it gives only for a refusal of its own.
+- still_held, in end: a resume clones start, and the launcher's key names the PREREG's bytes, so a
+  run the launcher carries on is carried on under the PREREG it started under; a resume started
+  straight with `python flows/<kind>.py resume` skips both, so end holds the run to the PREREG
+  start kept once more and fails where the one frozen now is another or no longer covers the part.
 - Beat, around a step's work: the step's line on the run's progress page (flows/stage_progress.py),
   running from its start, then done or failed, with its last lines; run_watched runs a command
   under it and rewrites that line every BEAT_SECONDS from what the work has written so far.
@@ -63,8 +67,28 @@ def hold_to_prereg(flow, kind, part=None, part_sha256=None):
     except (registry.RegistryError, registry.PreregError) as error:
         raise StageFault(str(error)) from error
     flow.prereg_path, flow.prereg_sha256 = frozen if frozen else (None, None)
+    flow.prereg_part, flow.prereg_part_sha256 = part, part_sha256
     if frozen:
         print(f"{current.flow_name}: held to {frozen[0]}, sha256 {frozen[1][:16]}, as frozen", flush=True)
+
+
+def still_held(flow, kind):
+    """In end: the run held again to the PREREG start kept. A resume clones start, so start's hold
+    is not run again, and a resume started straight, `python flows/<kind>.py resume`, skips the
+    launcher's too; so end asks again whether the kind's PREREG frozen now, read from the checkout
+    end runs in, covers the part start ran with its bytes as start read them, and is the one start
+    kept. A StageFault where it is not, which fails the run."""
+    part, part_sha256 = getattr(flow, "prereg_part", None), getattr(flow, "prereg_part_sha256", None)
+    try:
+        frozen = registry.frozen_for(kind, part, part_sha256, REPO)
+    except (registry.RegistryError, registry.PreregError) as error:
+        raise StageFault(f"the run's PREREG no longer holds at its end: {error}") from error
+    kept = (flow.prereg_path, flow.prereg_sha256) if getattr(flow, "prereg_path", None) else None
+    if (tuple(frozen) if frozen else None) != kept:
+        started = f"{kept[0]}, sha256 {kept[1][:16]}" if kept else "no PREREG"
+        now = f"{frozen[0]}, sha256 {frozen[1][:16]}" if frozen else "none"
+        raise StageFault(f"the run started under {started}, and its kind's PREREG frozen now is {now}: a run is only ever "
+                         f"carried on under the PREREG it started under, so start a new run")
 
 
 def graph_of(flow):

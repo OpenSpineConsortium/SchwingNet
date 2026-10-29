@@ -20,11 +20,13 @@ so `python flows/sweep.py card server` on the grid shows the row moving; end exp
 it can find into the state folder's cards/ and writes METAFLOW.json there, which names this run.
 
 The sweep trains networks, so it keeps the owner's rule of 2026-10-29 through flows/stage.py:
-start holds the run to the block smoke test's frozen PREREG (docs/research/block-smoke-test/),
-every step keeps its line on the run's progress page, a row's line moving with its epochs, and
-end checks the CLAIM 2024 and REFORMS report (tools/report.py) of every row that ran as the row
-left it: a row whose report is not what its run gives, or cannot be written where the row left
-none, makes the verdict 1, whatever the row did.
+start holds the run to the block smoke test's frozen PREREG (docs/research/block-smoke/PREREG.md)
+and end holds it there again, since a resume clones start; every step keeps its line on the
+run's progress page, a row's line moving with its epochs; and end checks the CLAIM 2024 and
+REFORMS report (tools/report.py) of every row that ran as the row left it: a row whose report is
+not what its run gives, or cannot be written where the row left none, makes the verdict 1,
+whatever the row did.
+
 Where a list is empty, Metaflow 2.19's switch, a conditional next, steps past its foreach, which
 Metaflow refuses over nothing.
 """
@@ -47,6 +49,9 @@ KIND = "sweep"
 RAN = "ran"
 REFRESH = 15
 LAST_HOPS = 10
+# What start keeps of the PREREG the run is held to (stage.hold_to_prereg), carried through both
+# joins so end can hold the run to it again (stage.still_held).
+PREREG_ARTIFACTS = ("prereg_path", "prereg_sha256", "prereg_part", "prereg_part_sha256")
 
 
 class SweepFault(Exception):
@@ -355,7 +360,7 @@ class SweepFlow(FlowSpec):
     def join_first(self, inputs):
         with stage.Beat(self):
             self.merge_artifacts(inputs, include=["state", "catalog_file", "weights_words", "plan_epochs", "second_rows", "faults",
-                                                  "prereg_path", "prereg_sha256"])
+                                                  *PREREG_ARTIFACTS])
             self.faults = self.faults + faults_of(inputs)
         self.next(self.middle)
 
@@ -383,16 +388,18 @@ class SweepFlow(FlowSpec):
     @step
     def join_second(self, inputs):
         with stage.Beat(self):
-            self.merge_artifacts(inputs, include=["state", "faults", "prereg_path", "prereg_sha256"])
+            self.merge_artifacts(inputs, include=["state", "faults", *PREREG_ARTIFACTS])
             self.faults = self.faults + faults_of(inputs)
         self.next(self.end)
 
     @card(type="blank")
     @step
     def end(self):
-        """block_sweep results, every row's report checked, the verdict, METAFLOW.json, the cards,
-        the results card and the progress page's last lines."""
+        """The run held to the PREREG start kept, whatever resumed it; block_sweep results, every
+        row's report checked, the verdict, METAFLOW.json, the cards, the results card and the
+        progress page's last lines."""
         with stage.Beat(self, "results") as beat:
+            stage.still_held(self, KIND)
             done = block_sweep(["results", self.state])
             results = read_json(Path(self.state) / "results.json") if done.returncode == 0 else None
             if results is None:
