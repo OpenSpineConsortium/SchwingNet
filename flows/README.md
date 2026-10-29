@@ -42,6 +42,27 @@ Metaflow's own resume rather than by anything written around it.
   own, and so is a plan made again with other rows. grid/gate.sh's word `sweep <plan>` reads the
   same Covers line in bash and refuses such a plan with 90 before it queues anything, since the
   launcher's own refusal comes only once the job holds a GPU and its catalog is built.
+- `realism.py`, RealismFlow: the FluXray reproduction (docs/research/flux-realism/PREREG.md), one
+  run per stage on the owner's count of 2026-10-29 (two GPU jobs, edit and then stats; grid word
+  `realism <stage>`, grid/realism.sbatch). start holds the run to the PREREG and to its frozen block,
+  which must equal schwingnet.realism.frozen_lines(), and checks every input (`tools/realism.py
+  inputs`) before a GPU second is spent. For edit, prepare draws the subjects by the frozen seed into
+  shards, a foreach runs `render`, `edit` and `score` per shard (`@retry(times=1)`; a shard that
+  still fails fails the run, and a later launch of the same key resumes it from that shard, every
+  sample already whole skipped and a half-written one redone), and join_shards runs `keep`,
+  `fluxray-export` and `measure` over all of them;
+  for stats, a foreach runs `stats` on the kept edits and on the raw renders, and join_comparisons
+  reads the replication's word and the geometry's; the stats start records its own environment and
+  the weights' sha256 (`tools/realism.py environment`). Each run works in
+  <out>/<stage>-<run key>-<run id>, a resume in the folder its first run made and a new run of the
+  same key in an empty one; end writes RECORD.json (with where, the run that made the folder, and
+  ended_in, the run that ended it, each with the commit and whether the tree was clean) and
+  SUMMARY.md, checks the run's CLAIM 2024 and REFORMS report (`tools/report.py --study
+  flux-realism`, tools/realism_report.py), and, for an edit with verdict 0, writes <out>/edit.json,
+  the one way the stats stage finds its edit. The verdict is 1 where the report is not current or an
+  edit made fewer renders, edits or FluXray images than its own draw holds, so the stats, which
+  refuse an edit whose verdict was not 0 or whose PREREG differs, never read a sample short of the
+  PREREG's. lora and eval are refused until they have a count and a PREREG of their own.
 
 Every flow's end step sets an int artifact `verdict`, 0 when all went well and 1 otherwise.
 
@@ -56,8 +77,10 @@ The owner's rule of 2026-10-29, 02:39 UTC: every deep learning job on the grid r
 block-based pipeline, under a PREREG frozen before the run, with the CLAIM 2024 and REFORMS report
 enforced and a page that shows its progress in the browser; a plain Slurm job is not enough.
 
-The sweep keeps it, and so do the DRR domain-gap study, `bench flexray_drr_gap`, and the step
-that makes its MOOSE masks, `bench flexray_drr_seg` (below). These words of grid/gate.sh still
+The sweep keeps it, and so do the FluXray reproduction's `realism edit` and `realism stats`
+(RealismFlow, above; lora and eval are refused until they have a count and a PREREG of their own),
+the DRR domain-gap study, `bench flexray_drr_gap`, and the step that makes its MOOSE masks,
+`bench flexray_drr_seg` (below). These words of grid/gate.sh still
 submit a plain job that trains or runs a network, each to be moved onto a flow listed in
 registry.txt, one pull request each, under a PREREG of its own:
 
@@ -67,8 +90,7 @@ registry.txt, one pull request each, under a PREREG of its own:
 - `bench <id>` for the three public models' benchmarks (grid/bench.sbatch): flexray_carmlspine,
   flexray_deepfluoro and xvr_deepfluoro;
 - `anomaly timing`, SPINEPS over the anomaly route's CTs (grid/anomaly.sbatch);
-- `latency`, the latency arms and the recorded sweep (grid/run-latency-sweep.sh);
-- `realism <edit|stats|lora|eval>`, the Flux realism stages (grid/realism.sbatch).
+- `latency`, the latency arms and the recorded sweep (grid/run-latency-sweep.sh).
 
 The rule holds already, so until a word is moved it is not sent. Once they all are, the gate
 refuses any GPU job that does not start through flows/launch.py; that refusal is a later pull

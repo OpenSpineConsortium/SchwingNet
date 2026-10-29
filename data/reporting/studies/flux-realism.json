@@ -1,0 +1,12 @@
+{
+ "_about": "The owner's answers of the FluXray reproduction's report (tools/report.py write --study flux-realism): one plain sentence or more per field. These are the items no file of the study answers, the owner's own judgement: the title, the abstract, the background, the de-identification, the implications, what is made available, the funding, and where the findings hold and where they will not. Every other item is answered by code from the run folder and the frozen PREREG.md (tools/realism_report.py), since the owner asked on 2026-10-29 at 03:35 UTC that a run generate them, and is never written here. An empty field is reported as missing; a field that does not apply says so, starting with 'Not applicable:' and the reason. A session copies into a field only the owner's own words, as written, naming the owner's message in its pull request; no session writes a field in its own words, since the report would then be vouching for itself.",
+ "abstract": "",
+ "availability": "",
+ "background": "",
+ "deidentification": "",
+ "external_validity": "",
+ "funding": "",
+ "implications": "",
+ "non_generalization": "",
+ "title": ""
+}

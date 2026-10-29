@@ -30,7 +30,7 @@ ROOT = Path(__file__).resolve().parent.parent
 PYDRV = tuple(re.findall(r"^export PYDRV=\$REPO/(\S+)$", (ROOT / "grid" / "gate.sh").read_text(encoding="utf-8"), re.M))
 ENTRIES = {"row": ("tools/flow.py",), "state": ("tools/block_sweep.py",), "sweep": ("flows/sweep.py",),
            "bank": ("flows/bank.py", *PYDRV), "catalog": ("flows/catalog.py", *PYDRV),
-           "drr_gap": ("flows/drr_gap.py",), "drr_seg": ("flows/drr_seg.py",)}
+           "drr_gap": ("flows/drr_gap.py",), "drr_seg": ("flows/drr_seg.py",), "realism": ("flows/realism.py",)}
 # The calls that load a neighbour of tools/ by its name: tools/domain_gap.py names its own helper tool,
 # which loads tools/<name>.py by path, as the others name load_tool and run_tool.
 LOADERS = ("load_tool", "run_tool", "tool")

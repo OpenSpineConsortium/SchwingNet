@@ -84,6 +84,10 @@ KINDS = {
                 "flows/stage_registry.py"),
     "drr_seg": (*DRR_STUDY, "data/splits/test-persons.json", "grid/drr-seg.sbatch", "flows/drr_seg.py", "flows/stage.py",
                 "flows/stage_registry.py"),
+    # The FluXray reproduction's stages (docs/research/flux-realism/PREREG.md): the flow, the tool
+    # each step runs, the rules it imports and the label names the render reads.
+    "realism": (*ENVIRONMENT, *CONTRACTS, "src/schwingnet/__init__.py", "src/schwingnet/realism.py", "flows/realism.py",
+                "flows/stage.py", "flows/stage_registry.py", "tools/realism.py", "grid/enhance-pet-labels.json"),
 }
 
 NAMES_THE_RUN = "names the run: the files it lists are the digest, so a change to the lists changes the digest by itself"
@@ -132,6 +136,8 @@ LEFT_OUT = {
                 "the launcher starts; no step of the flow runs it, and the zips are read by their bytes",
                 "tools/report.py": "is named by flows/stage.py for a run's report, which the masks' flow never makes; the "
                 "study's report is its merge's"},
+    "realism": {**STAGE_PAGE_LEFT_OUT,
+                "tools/report.py": "writes the run's CLAIM 2024 and REFORMS report from its files in the end step, after every number"},
 }
 
 
