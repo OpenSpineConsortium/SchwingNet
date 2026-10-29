@@ -1,0 +1,17 @@
+---
+name: item-p-state
+description: Where bordercall item P and the census stand at the checkpoint of 2026-10-29 17:25 UTC - PRs 31 to 34 merged (chain, one-vertebra, fixed-k review, the PyMC report), the census of every measure in hand as draft PR 35 with its handoff reports/every-measure/HANDOFF.md; the page over every measure unfinished
+metadata:
+  type: project
+---
+
+Item P (greg, 2026-10-27): Panjabi's four papers in PyMC. Steps a to e merged (PRs 3 to 19); greg kept all 32 measures as printed (2026-10-29 09:01 UTC).
+
+- Merged 2026-10-29: PR 31 the chain of levels (12:06 UTC), PR 32 the one-vertebra evaluation (14:12), PR 33 the fixed-k NUTS review with schwingcheck.categorical.MetropolisedGibbs (14:58), PR 34 the PyMC proportional-proposal report (17:04, main 86f4856): schwingcheck/examples/pymc_proportional_report.md + repro. Posting the issue at pymc-devs/pymc is greg's (outside the session's scope). PR 26 (the clinical reread, 106 vocabulary keys, 4,357 series) merged 17:1x UTC as 6409164.
+- The census (greg 15:09 UTC: ranked by how much each measure helps each level, separated by orthogonal information; 15:18 UTC: all unique measures of the reread, not Panjabi alone): schwingcheck/census.py, record records/census-2026-10-29/ (inputs copied from PR 26), README section "The census of the measures", 22 tests, TODO step f; draft PR 35 on branch claude/project-thread-tzrsgs, NOT marked ready: suites not yet run on its tree, no adversarial review yet. Definition agreed with the morphometrics thread 15:14 UTC: I_L(S) = E[log p(L|x,S)] - log p(L) under the exact rule; greedy order by conditional gain; "shares most with" where the gain is under a tenth of the standalone; schema levels.csv (level, measure, kind, n, mean, sd, error) + correlation.csv (level, measure_a, measure_b, n, r); they run the same command on their gold tier 3 table and send the record path.
+- Findings (synthetic): 68 of 106 keys ranked (Panjabi 42, 26 more from 34 of the 39 papers), 38 unrankable with reasons; endplate_area alone 22.79 of 68.0 nats and 19.2% of lone bodies named; first five 44.73 / 56.5%; all 32 61.56 / 88.8%; 22 of 32 add under a tenth of their standalone; none of the SPINEPS seven in the first five (endplate_lower 6th, h_post last); Tan 2004's 18 measures at every level 85.9%; 80 lumbar-only groups 23.8 to 69.4% (median 43.5, chance 20).
+- Unfinished (reports/every-measure/HANDOFF.md, in order): the page reports/every-measure/ (build.py has no census section yet, not published; model page SchwingNet artifacts/naming-vertebrae-without-an-anchor-3dfzmh/); PR 35 suites + review + ready + merge; send the command to the morphometrics thread; pin threads in test_recover_draws_levels_as_the_posterior_says (flaky under load, reported by the reread thread 17:08 UTC) in its own PR; reports/project-report-plan.md is the plan for the project-wide report (the engine as a library "like ostk", which the morphometrics thread confirms with greg).
+- greg lifted the grid/WSU-data hold at 17:05 UTC; each grid job still needs his word and count. Checkpoint called 17:22 UTC: everything pushed, thread stopped.
+
+**Why:** the next thread starts from PR 35's handoff, not from the step list.
+**How to apply:** bordercall has no CI, so every suite runs alone before a merge; results are synthetic ([[findings-buildup-and-chain]]); the census order (one body) differs from the build-up study's order (1, 3 and 9 bodies) and both are right for their question; see [[clinical-reread]], [[hold-and-wrap-up]].
