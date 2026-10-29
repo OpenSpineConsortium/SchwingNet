@@ -35,13 +35,15 @@ m["whole_rule"] = {
              "drawn at 200 voxels or more. C2 drawn is in view unless the field's top cuts the level below it too; "
              "the sacrum drawn is in view when the field holds 20 mm of it below its top; a sacrum the field's foot cuts "
              "short of that makes the end out when the foot-most level above it is cut too, and a border case "
-             "otherwise. One not drawn is placed "
+             "otherwise, as is a sacrum in view beside a level above it that runs on to the field's foot. One "
+             "not drawn is placed "
              "from the nearest drawn level by tables measured on the members' own whole spines (the 5th and 95th "
              "percentiles), with 20 mm of S1 asked below the sacrum's top. The field is measured over the column, "
-             "and at the image's own edge where a TotalSegmentator grid is padded. A study at neither end clearly "
+             "and at the image's own edge over the column where a TotalSegmentator grid is padded. A study at neither end clearly "
              "in or out is a border case, silver 3 until a person's look. A level the release does not draw is "
-             "completed by a segmenter, kept as a machine mask of its own and never raising a tier; names the "
-             "column skips with no room for a body are a count variant, never a level to add. ENHANCE.PET's "
+             "completed by a segmenter, kept as a machine mask of its own and never raising a tier; one name "
+             "the column skips between levels whose centres stand no farther apart than the study's own spacing "
+             "of neighbours allows is a count variant, never a level to add. ENHANCE.PET's "
              "verdicts, each study judged once on its repaired mask where it has one, match version 1's tiers "
              "study for study."),
     "asked": adm["rule"]["asked"],
@@ -131,7 +133,7 @@ ts.update({
     "tier_per_study": (f"by the field test (rule 2): gold 3 for the {n(t['gold3'])} subjects admitted, {n(t['complete'])} "
                        f"of them provisional while a segmenter adds a level; silver 3 for the {n(t['silver3'])} others "
                        f"with part of the column, {n(t['look'])} of them border cases; {n(t['no_column'])} subjects "
-                       "draw no vertebra and have no row. The release's masks are model output refined by hand, "
+                       "draw no vertebra above the sacrum and have no row. The release's masks are model output refined by hand, "
                        "counted as a person's annotation and flagged"),
     "access": "public release (Zenodo), on the grid as totalsegmentator_v300",
     "persons": f"1,939 subject folders, one person each by release id; the {n(t['gold3'])} admitted are {n(t['persons'])} person keys once byte-identical duplicates share one",

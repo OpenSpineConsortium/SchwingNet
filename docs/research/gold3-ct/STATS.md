@@ -104,8 +104,8 @@ Rule version 2: a CT is admitted when its field holds C2 and the top of the sacr
 
 | Member | Tier | Studies | Persons |
 | --- | --- | --- | --- |
-| totalsegmentator | gold 3, whole by the release's masks | 146 | 146 |
-| totalsegmentator | gold 3, a segmenter adds levels | 5 | 5 |
+| totalsegmentator | gold 3, whole by the release's masks | 145 | 145 |
+| totalsegmentator | gold 3, a segmenter adds levels | 6 | 6 |
 | totalsegmentator | silver 3, part of the column | 1,625 | 1,623 |
 | totalsegmentator | silver 3 until a person's look (a border case) | 1 | 1 |
 | verse | gold 3, a segmenter adds levels | 18 | 18 |
@@ -250,13 +250,13 @@ Persons the SPINEPS to FleXray route holds out or deals into folds (data/splits/
 
 ## Inputs
 
-- data/gold3-ct/admission.json: db3682141a542cb04e2f73bd3785faa964def23e5f698078e27e8085c899ae8c
+- data/gold3-ct/admission.json: 68e71e8bd40fc6e5e25969515a5df6a4628625f9d6a1ec6c3498768e2175e882
 - data/gold3-ct/enhance-pet/FACTS.json: 43ef43abe1dbaecdfa6c778815446668a7cc6f9da5ffcdcacb30e0fc90798ae5
 - data/gold3-ct/enhance-pet/bucket.json: 42678637bf4c9243310339b93d0a854ef85916f76953577c35a4656388f5799a
 - data/gold3-ct/enhance-pet/facts-b.jsonl: 12eb15d27f64b58cc2aee20cfe415fc6c88eebaad6936e4fb01d5760a976f7b4
 - data/gold3-ct/enhance-pet/facts.jsonl: 95cc36bf5e4c710bb0000e8a1eb9290dae7ca730c88a347ca9792110f96cd847
 - data/gold3-ct/enhance-pet/record.json: 143d447a7dc5c1aab4c33abb0e68999b08e268acf1fa7067539f097545c946d3
-- data/gold3-ct/members.json: 970c0effa1d189c7a5e88477f2e897486820268744befce2c08840da11c8c5c6
+- data/gold3-ct/members.json: d9afe53a83bb000a346bb3115c8a8b1d46df4b704ffd1a4908231158a4f9243c
 - data/gold3-ct/totalsegmentator.json: cc2bb3e7404e04ee73862f1d9e03a92b5dd9b2f685a343d499ef934be6799b7b
 - data/gold3-ct/totalsegmentator/facts.jsonl: a0cb5b927c7b50845912198a003572315b8cccf085eeb6a1121a2eb7c8803356
 - data/gold3-ct/verse.json: 88b4d0f268697532d1cdc53ccf677f012f8e737e4b02a9652f66606a29a7fdea

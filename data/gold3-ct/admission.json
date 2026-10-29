@@ -2,7 +2,7 @@
  "about": "The gold tier 3 CT dataset's admission by the field test, rule version 2 (tools/gold3_field.py): every study of the three members with its verdict, its two ends and the levels a segmenter must add. Written by `python3 tools/gold3_field.py write`; never edited by hand.",
  "rule": {
   "version": 2,
-  "rule": "A CT is admitted when its field holds C2 and the top of the sacrum, whatever its masks hold; a level its masks do not draw is completed by a segmenter, kept as a machine mask of its own. The head end is out when the field's top cuts C2 and the level below it alike, a sliver of C2; the foot end is out when the field's foot cuts the sacrum, with less than s1_view_mm of it in the field, and the foot-most level above it too, and a border case when it cuts the sacrum alone. The field is read over each level along the world's vertical line, and a padded grid's field ends where the spinal cord and the column stop together.",
+  "rule": "A CT is admitted when its field holds C2 and the top of the sacrum, whatever its masks hold; a level its masks do not draw is completed by a segmenter, kept as a machine mask of its own. The head end is out when the field's top cuts C2 and the level below it alike, a sliver of C2; the foot end is out when the field's foot cuts the sacrum, with less than s1_view_mm of it in the field, and the foot-most level above it too, and a border case when it cuts the sacrum alone or when the level above a sacrum in view runs on to the field's foot. The field is read over each level along the world's vertical line, and a padded grid's field ends where the spinal cord and the column stop together. A name missing between two drawn levels is a level to add when their centres stand more than room_times the study's spacing of neighbours apart, else a count variant, flagged.",
   "asked": "the owner, 2026-10-28 22:58 UTC (#443's question): \"if the full spune is in view in the volume, and just missing a mask or two, that should just be completed using a segmentation software of choice ... i dont think i should leave out any spines that have ct volumes with the full spine in view\"",
   "thresholds": {
    "level_min_voxels": 200,
@@ -13,6 +13,9 @@
    "min_table_spines": 20,
    "s1_view_mm": 20.0,
    "tilt_span_mm": 100.0,
+   "level_span_mm": 40.0,
+   "room_times": 1.4,
+   "room_pairs": 4,
    "child_under_years": 18,
    "small_column_mm": 300.0,
    "tall_label_times": 4
@@ -117,13 +120,13 @@
     "high": 114.0
    },
    "T4": {
-    "n": 1805,
-    "low": 121.3,
+    "n": 1809,
+    "low": 121.4,
     "median": 155.0,
     "high": 180.0
    },
    "T4 to C2's foot": {
-    "n": 1805,
+    "n": 1809,
     "low": 84.0,
     "median": 115.0,
     "high": 137.5
@@ -153,25 +156,25 @@
     "high": 183.0
    },
    "T7": {
-    "n": 1728,
-    "low": 181.3,
+    "n": 1729,
+    "low": 181.4,
     "median": 220.5,
     "high": 252.0
    },
    "T7 to C2's foot": {
-    "n": 1728,
+    "n": 1729,
     "low": 145.0,
     "median": 182.5,
     "high": 208.5
    },
    "T8": {
-    "n": 1722,
+    "n": 1723,
     "low": 205.0,
     "median": 246.0,
     "high": 278.0
    },
    "T8 to C2's foot": {
-    "n": 1722,
+    "n": 1723,
     "low": 170.0,
     "median": 207.0,
     "high": 235.0
@@ -341,13 +344,13 @@
     "high": -370.0
    },
    "C7": {
-    "n": 1765,
+    "n": 1766,
     "low": -462.0,
     "median": -417.0,
     "high": -357.5
    },
    "T1": {
-    "n": 1852,
+    "n": 1853,
     "low": -441.0,
     "median": -399.0,
     "high": -342.9
@@ -407,7 +410,7 @@
     "high": -150.0
    },
    "T11": {
-    "n": 2307,
+    "n": 2308,
     "low": -192.5,
     "median": -165.0,
     "high": -127.5
@@ -437,10 +440,10 @@
     "high": -18.0
    },
    "L4": {
-    "n": 2385,
+    "n": 2387,
     "low": -17.5,
     "median": -7.3,
-    "high": 8.9
+    "high": 8.8
    },
    "L5": {
     "n": 2361,
@@ -468,24 +471,23 @@
    "enhance_pet: in_view": 1532,
    "totalsegmentator: border": 12,
    "totalsegmentator: in_view": 352,
-   "totalsegmentator: no_column": 2,
    "verse: in_view": 75
   },
   "foot_with_sacrum_hidden": {
    "enhance_pet: in_view": 1596,
    "totalsegmentator: in_view": 791,
-   "totalsegmentator: no_column": 7,
    "totalsegmentator: out": 1
   },
   "head_most_level_cut_at_the_top": {
    "enhance_pet: out": 36,
-   "totalsegmentator: out": 1193
+   "totalsegmentator: out": 1193,
+   "verse: out": 48
   }
  },
  "sensitivity_s1_view_mm": {
   "10": {
-   "admitted": 1731,
-   "look": 10,
+   "admitted": 1730,
+   "look": 11,
    "not_admitted": 2169
   },
   "30": {
@@ -517,8 +519,8 @@
    "complete": {},
    "flags_admitted": {
     "c2_at_field_top": 17,
-    "name_skipped": 1,
-    "no_l5": 40,
+    "name_skipped": 2,
+    "no_l5": 39,
     "sacrum_at_field_foot": 1,
     "small_column": 1
    }
@@ -563,17 +565,17 @@
    },
    "admitted_persons": 151,
    "look_persons": 1,
-   "admitted_whole_by_masks": 146,
-   "admitted_to_complete": 5,
+   "admitted_whole_by_masks": 145,
+   "admitted_to_complete": 6,
    "head": {
     "border": 61,
-    "drawn": 493,
+    "drawn": 494,
     "no_column": 162,
-    "out": 1223
+    "out": 1222
    },
    "foot": {
-    "border": 5,
-    "drawn": 880,
+    "border": 8,
+    "drawn": 877,
     "in_view": 5,
     "no_column": 131,
     "out": 918
@@ -582,9 +584,9 @@
     "T4": 1,
     "T5": 1,
     "T6": 2,
-    "T7": 1,
-    "T8": 2,
-    "T9": 1,
+    "T7": 2,
+    "T8": 3,
+    "T9": 2,
     "T10": 1,
     "T11": 2,
     "T12": 2,
@@ -598,7 +600,6 @@
     "child": 22,
     "cut_in_plane": 4,
     "label_spans_levels": 12,
-    "name_skipped": 1,
     "no_l5": 1,
     "sacrum_at_field_foot": 14,
     "small_column": 17,
@@ -5919,7 +5920,7 @@
    "foot": "drawn",
    "complete": [],
    "flags": [
-    "no_l5"
+    "name_skipped"
    ]
   },
   {
@@ -14509,7 +14510,9 @@
    "verdict": "look",
    "head": "border",
    "foot": "drawn",
-   "complete": [],
+   "complete": [
+    "C2"
+   ],
    "flags": []
   },
   {
@@ -17152,6 +17155,12 @@
    "head": "border",
    "foot": "in_view",
    "complete": [
+    "C2",
+    "C3",
+    "C4",
+    "C5",
+    "C6",
+    "C7",
     "sacrum"
    ],
    "flags": [
@@ -17258,6 +17267,11 @@
    "head": "border",
    "foot": "in_view",
    "complete": [
+    "C2",
+    "C3",
+    "C4",
+    "C5",
+    "C6",
     "sacrum"
    ],
    "flags": []
@@ -18423,6 +18437,11 @@
    "head": "border",
    "foot": "in_view",
    "complete": [
+    "C2",
+    "C3",
+    "C4",
+    "C5",
+    "C6",
     "sacrum"
    ],
    "flags": []
@@ -18915,6 +18934,8 @@
    "head": "border",
    "foot": "in_view",
    "complete": [
+    "C2",
+    "C3",
     "sacrum"
    ],
    "flags": []
@@ -19167,6 +19188,10 @@
    "head": "border",
    "foot": "in_view",
    "complete": [
+    "C2",
+    "C3",
+    "C4",
+    "C5",
     "sacrum"
    ],
    "flags": []
@@ -19179,6 +19204,7 @@
    "head": "border",
    "foot": "in_view",
    "complete": [
+    "C2",
     "sacrum"
    ],
    "flags": [
@@ -19203,6 +19229,7 @@
    "head": "border",
    "foot": "in_view",
    "complete": [
+    "C2",
     "sacrum"
    ],
    "flags": []
@@ -19411,6 +19438,7 @@
    "head": "border",
    "foot": "in_view",
    "complete": [
+    "C2",
     "sacrum"
    ],
    "flags": []
@@ -19455,6 +19483,9 @@
    "head": "border",
    "foot": "in_view",
    "complete": [
+    "C2",
+    "C3",
+    "C4",
     "sacrum"
    ],
    "flags": []
@@ -22897,7 +22928,7 @@
    "person": "totalsegmentator:s0253",
    "verdict": "not_admitted",
    "head": "out",
-   "foot": "drawn",
+   "foot": "border",
    "complete": [],
    "flags": [
     "sacrum_at_field_foot",
@@ -23480,7 +23511,7 @@
    "person": "totalsegmentator:s0316",
    "verdict": "not_admitted",
    "head": "out",
-   "foot": "drawn",
+   "foot": "border",
    "complete": [],
    "flags": [
     "sacrum_at_field_foot"
@@ -24040,6 +24071,7 @@
    "foot": "out",
    "complete": [],
    "flags": [
+    "sacrum_at_field_foot",
     "stray_labels"
    ]
   },
@@ -25924,6 +25956,7 @@
    "foot": "out",
    "complete": [],
    "flags": [
+    "sacrum_at_field_foot",
     "stray_labels"
    ]
   },
@@ -28365,6 +28398,7 @@
    "foot": "border",
    "complete": [],
    "flags": [
+    "sacrum_at_field_foot",
     "stray_labels"
    ]
   },
@@ -29379,7 +29413,7 @@
    "id": "s0909",
    "person": "totalsegmentator:s0909",
    "verdict": "not_admitted",
-   "head": "out",
+   "head": "drawn",
    "foot": "out",
    "complete": [],
    "flags": [
@@ -29601,6 +29635,7 @@
    "foot": "out",
    "complete": [],
    "flags": [
+    "sacrum_at_field_foot",
     "stray_labels"
    ]
   },
@@ -30549,6 +30584,7 @@
    "foot": "out",
    "complete": [],
    "flags": [
+    "sacrum_at_field_foot",
     "stray_labels"
    ]
   },
@@ -30757,7 +30793,6 @@
    "foot": "out",
    "complete": [],
    "flags": [
-    "name_skipped",
     "stray_labels"
    ]
   },
@@ -31235,6 +31270,7 @@
    "foot": "out",
    "complete": [],
    "flags": [
+    "sacrum_at_field_foot",
     "stray_labels"
    ]
   },
@@ -31458,7 +31494,7 @@
    "person": "totalsegmentator:s1127",
    "verdict": "not_admitted",
    "head": "out",
-   "foot": "drawn",
+   "foot": "border",
    "complete": [],
    "flags": [
     "stray_labels",
@@ -31737,6 +31773,7 @@
    "foot": "out",
    "complete": [],
    "flags": [
+    "sacrum_at_field_foot",
     "stray_labels"
    ]
   },
@@ -31859,6 +31896,7 @@
    "foot": "out",
    "complete": [],
    "flags": [
+    "sacrum_at_field_foot",
     "stray_labels"
    ]
   },
@@ -32077,6 +32115,7 @@
    "foot": "out",
    "complete": [],
    "flags": [
+    "sacrum_at_field_foot",
     "stray_labels"
    ]
   },
@@ -33677,6 +33716,7 @@
    "foot": "out",
    "complete": [],
    "flags": [
+    "sacrum_at_field_foot",
     "stray_labels"
    ]
   },
@@ -36382,10 +36422,12 @@
    "verdict": "look",
    "head": "drawn",
    "foot": "border",
-   "complete": [],
+   "complete": [
+    "C4",
+    "C5"
+   ],
    "flags": [
     "sacrum_at_field_foot",
-    "name_skipped",
     "stray_labels",
     "child"
    ]
@@ -36520,6 +36562,7 @@
    "foot": "out",
    "complete": [],
    "flags": [
+    "name_skipped",
     "cut_in_plane",
     "stray_labels",
     "child"
@@ -39758,9 +39801,12 @@
    "verdict": "admitted",
    "head": "drawn",
    "foot": "drawn",
-   "complete": [],
+   "complete": [
+    "T7",
+    "T8",
+    "T9"
+   ],
    "flags": [
-    "name_skipped",
     "stray_labels",
     "child",
     "small_column"
@@ -42350,6 +42396,7 @@
    "foot": "out",
    "complete": [],
    "flags": [
+    "sacrum_at_field_foot",
     "stray_labels"
    ]
   },
@@ -42409,6 +42456,7 @@
    "foot": "out",
    "complete": [],
    "flags": [
+    "sacrum_at_field_foot",
     "stray_labels"
    ]
   },
@@ -42421,6 +42469,7 @@
    "foot": "out",
    "complete": [],
    "flags": [
+    "sacrum_at_field_foot",
     "stray_labels"
    ]
   },
@@ -42466,6 +42515,7 @@
    "foot": "out",
    "complete": [],
    "flags": [
+    "sacrum_at_field_foot",
     "stray_labels"
    ]
   },
@@ -42525,6 +42575,7 @@
    "foot": "out",
    "complete": [],
    "flags": [
+    "sacrum_at_field_foot",
     "stray_labels"
    ]
   },

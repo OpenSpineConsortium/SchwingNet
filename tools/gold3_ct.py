@@ -2443,17 +2443,18 @@ COMMAND_OF = {STATS_PAGE: "stats", QA_PAGE: "qa", PAGE_DATA: "page"}
 def enhance_field_differences(db, inputs):
     """ENHANCE.PET's studies whole by version 1's rule (gold 3, or gold 4 once repaired) must be the ones
     the field test admits by version 2: the two rules read one release, and a study they part on is a bug
-    or a case for a person's look, named here."""
+    or a case for a person's look, named here. Every study the dataset holds has its verdict and no verdict
+    names a study it does not hold, so a verdict dropped never takes a border case's provisional mark."""
     verdicts = field_verdicts(inputs, "enhance_pet")
-    if not verdicts:
-        return []
     found, held = [], set()
     for native_id, tier in db.execute("SELECT native_id, tier FROM item WHERE member = 'enhance_pet'"):
         held.add(native_id)
-        admitted = verdicts.get(native_id, {}).get("verdict") == "admitted"
-        if admitted != (tier in ("gold3", "gold4")):
+        if native_id in verdicts and (verdicts[native_id].get("verdict") == "admitted") != (tier in ("gold3", "gold4")):
             found.append(native_id)
     problems = [f"enhance_pet: the field test and the whole rule part on {', '.join(sorted(found))}"] if found else []
+    missing = sorted(held - set(verdicts))
+    if missing:
+        problems.append(f"{ADMISSION}: no enhance_pet verdict for studies the dataset holds: {', '.join(missing)}")
     extra = sorted(set(verdicts) - held)
     if held and extra:
         problems.append(f"{ADMISSION}: enhance_pet verdicts for studies the dataset does not hold: {', '.join(extra)}")

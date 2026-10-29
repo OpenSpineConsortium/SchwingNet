@@ -42,7 +42,8 @@ def column(names=NORMAL, top=0.0, stretch=1.0):
         if name == "sacrum":
             position = levels["L5"]["bottom"] + SACRUM_ABOVE_L5_MM * stretch if "L5" in levels else position
         levels[name] = {"voxels": 5000, "top": round(position, 1), "bottom": round(position - height, 1),
-                        "head_cut": False, "foot_cut": False, "side_cut": False}
+                        "centre": round(position - height / 2, 1), "head_cut": False, "foot_cut": False,
+                        "side_cut": False}
         position -= height + DISC_MM * stretch
     return levels
 
@@ -66,6 +67,13 @@ def population(n=40):
 
 def without(levels, *names):
     return {name: entry for name, entry in levels.items() if name not in names}
+
+
+def facets(levels, reach=15.0):
+    """Each level's extremes moved out by `reach` with its centre kept, as facets and spines reach past a
+    body: neighbours then overlap, and so do levels two apart."""
+    return {name: {**e, "top": round(e["top"] + reach, 1), "bottom": round(e["bottom"] - reach, 1)}
+            for name, e in levels.items()}
 
 
 class Tables(unittest.TestCase):
@@ -205,21 +213,80 @@ class Ends(unittest.TestCase):
 
     def test_a_cut_sacrum_label_under_the_floor_keeps_the_sacrum_from_view(self):
         levels = column()
-        levels["sacrum"] = {**levels["sacrum"], "voxels": 11, "foot_cut": True}
-        # The table alone would put the sacrum in view 80 mm below L5's foot; the label says the field
-        # holds 2 mm of it.
-        found = self.judged(levels, levels["C1"]["top"] + 5, levels["sacrum"]["top"] - 2.0)
+        bottom = levels["L5"]["bottom"] - 10.0
+        # With no sacrum label the table puts it in view: the field runs 10 mm below L5's foot, past where
+        # the sacrum's top lies in most spines with S1_VIEW_MM to spare. An 11-voxel label the field's
+        # foot cuts 2 mm below its top says the sacrum begins lower, and the field holds 2 mm of it.
+        alone = self.judged(without(levels, "sacrum"), levels["C1"]["top"] + 5, bottom)
+        self.assertEqual(alone["foot"], "in_view")
+        levels["sacrum"] = {**levels["sacrum"], "voxels": 11, "foot_cut": True, "top": bottom + 2.0, "bottom": bottom}
+        found = self.judged(levels, levels["C1"]["top"] + 5, bottom)
+        self.assertEqual((found["verdict"], found["foot"]), ("look", "border"))
+        self.assertIn("sacrum_at_field_foot", found["flags"])
+
+    def test_a_last_lumbar_cut_beside_a_sacrum_in_view_is_a_border_case(self):
+        # The field holds 25 mm of the sacrum, yet L5's label runs on past the sacrum's top to the
+        # field's foot: a label over the junction, for a person's look.
+        levels = column()
+        bottom = levels["sacrum"]["top"] - 25.0
+        levels["sacrum"] = {**levels["sacrum"], "foot_cut": True, "bottom": bottom}
+        levels["L5"] = {**levels["L5"], "foot_cut": True, "bottom": bottom}
+        found = self.judged(levels, levels["C1"]["top"] + 5, bottom)
         self.assertEqual((found["verdict"], found["foot"]), ("look", "border"))
 
+    def test_the_foot_is_judged_on_the_field_over_the_column(self):
+        # On a tilted grid the field below L5 is where the vertical line through L5 leaves the volume,
+        # higher than the volume's lowest corner: the foot is judged there.
+        levels = without(column(), "sacrum")
+        study_ = study(levels, levels["C1"]["top"] + 5, levels["L5"]["bottom"] - 60.0)
+        self.assertEqual(field.judge(study_, self.table)["foot"], "in_view")
+        study_["levels"]["L5"]["field_bottom"] = levels["L5"]["bottom"] - 1.0
+        self.assertEqual(field.judge(study_, self.table)["foot"], "border")
+
+    def test_a_border_case_lists_what_a_look_would_ask(self):
+        levels = without(column(), "C1", "C2", "C3")
+        fits, foot = self.table["head"]["C4"], self.table["head"]["C4 to C2's foot"]
+        top = levels["C4"]["top"] + (fits["high"] + foot["low"]) / 2
+        found = self.judged(levels, top, levels["sacrum"]["bottom"] - 5)
+        self.assertEqual((found["verdict"], found["head"], found["complete"]), ("look", "border", ["C2", "C3"]))
+
     def test_eleven_thoracic_is_a_skipped_name_not_a_gap(self):
-        levels = without(column(), "T12")
-        # L1's top stands 15 mm above T11's foot, as neighbours overlap by their facets.
-        shift = levels["T11"]["bottom"] - levels["L1"]["top"] + 15.0
-        for name in ("L1", "L2", "L3", "L4", "L5", "sacrum"):
-            levels[name] = {**levels[name], "top": levels[name]["top"] + shift, "bottom": levels[name]["bottom"] + shift}
+        # A column of eleven thoracic bodies: L1 stands one spacing below T11, where T12 would.
+        levels = facets(column(tuple(n for n in NORMAL if n != "T12")))
         found = self.judged(levels, levels["C1"]["top"] + 5, levels["sacrum"]["bottom"] - 5)
         self.assertEqual((found["verdict"], found["complete"]), ("admitted", []))
         self.assertIn("name_skipped", found["flags"])
+
+    def test_a_level_missing_between_overlapping_neighbours_is_a_gap(self):
+        # T7 and T9 overlap by their facets as levels two apart do in the thoracic spine, yet their
+        # centres stand two spacings apart: T8's body is there and its mask is not.
+        levels = facets(without(column(), "T8"), reach=20.0)
+        self.assertLess(levels["T7"]["bottom"], levels["T9"]["top"])
+        found = self.judged(levels, levels["C1"]["top"] + 5, levels["sacrum"]["bottom"] - 5)
+        self.assertEqual((found["verdict"], found["complete"]), ("admitted", ["T8"]))
+        self.assertNotIn("name_skipped", found["flags"])
+
+    def test_two_names_missing_in_a_row_are_gaps(self):
+        levels = facets(column(tuple(n for n in NORMAL if n not in ("T7", "T8"))))
+        found = self.judged(levels, levels["C1"]["top"] + 5, levels["sacrum"]["bottom"] - 5)
+        self.assertEqual(found["complete"], ["T7", "T8"])
+
+    def test_a_lower_level_above_the_upper_one_is_a_gap(self):
+        levels = without(column(), "T7", "T8")
+        levels["T9"] = {**levels["T9"], "centre": levels["T6"]["centre"] + 3.0}
+        self.assertEqual(field.name_runs(study(levels, 0.0, -1000.0))[0], ["T7", "T8"])
+
+    def test_an_l6_below_l4_asks_the_l5_between_and_is_no_missing_l5(self):
+        levels = column(tuple(n for n in NORMAL if n != "L5"))
+        levels["L6"] = levels.pop("sacrum")
+        levels["L6"] = {**column()["L5"], "top": levels["L4"]["bottom"] - DISC_MM,
+                        "bottom": levels["L4"]["bottom"] - DISC_MM - 28.0, "centre": levels["L4"]["bottom"] - DISC_MM - 14.0}
+        levels["sacrum"] = {**column()["sacrum"], "top": levels["L6"]["bottom"] + 20.0,
+                            "bottom": levels["L6"]["bottom"] - 70.0, "centre": levels["L6"]["bottom"] - 25.0}
+        found = self.judged(levels, levels["C1"]["top"] + 5, levels["sacrum"]["bottom"] - 5)
+        self.assertEqual((found["verdict"], found["complete"]), ("admitted", []))
+        self.assertIn("name_skipped", found["flags"])
+        self.assertNotIn("no_l5", found["flags"])
 
     def test_l5_is_asked_below_a_column_that_stops_above_l4(self):
         levels = without(column(), "L4", "L5", "sacrum")
@@ -249,11 +316,17 @@ class Ends(unittest.TestCase):
 class Enhance(unittest.TestCase):
     def test_a_level_in_the_first_or_last_slice_reaches_that_face(self):
         # Slices 2 mm apart: the top slice's centre is 99.0, a millimetre under the field's top at 100.
-        entry = {"voxels": 900, "top_mm": 99.0, "bottom_mm": -40.0}
+        entry = {"voxels": 900, "top_mm": 99.0, "bottom_mm": -40.0, "centroid_mm": [0.0, 0.0, 30.0]}
         found = field.enhance_level(entry, 100.0, -41.0, 2.0)
         self.assertEqual((found["head_cut"], found["foot_cut"], found["side_cut"]), (True, True, None))
         found = field.enhance_level({**entry, "top_mm": 97.0, "bottom_mm": -38.0}, 100.0, -41.0, 2.0)
         self.assertEqual((found["head_cut"], found["foot_cut"]), (False, False))
+
+    def test_a_tilted_mask_is_refused(self):
+        mask = {"affine": [[1.0, 0, 0, 0], [0, 1.0, 0, 0], [0.2, 0, 1.0, 0], [0, 0, 0, 1]],
+                "head_foot_axis": 2, "shape": [10, 10, 10]}
+        with self.assertRaises(field.FieldError):
+            field.enhance_study({"id": "0001", "mask": mask, "labels": {}})
 
     def test_the_field_is_the_outer_faces(self):
         affine = [[1.0, 0, 0, 0], [0, 1.0, 0, 0], [0, 0, 2.0, -100.0], [0, 0, 0, 1]]
@@ -293,6 +366,48 @@ class Geometry(unittest.TestCase):
         found = field.named_study(self.padded(10.0), "p", 50.0, None)
         self.assertEqual(found["levels"]["C6"]["field_top"], 71.0)
         self.assertFalse(found["levels"]["C6"]["head_cut"])
+
+    def tilted_padded(self, cord_top, skull_top=None):
+        # Each step along the first axis climbs 0.5 mm: the plane's height changes 33 mm across 100 mm of
+        # the slice and 13 mm across a vertebra's 40.
+        affine = [[1.5, 0, 0, -100.0], [0, 1.5, 0, -100.0], [0.5, 0, 1.5, -500.0], [0, 0, 0, 1]]
+        shape = [100, 100, 369]
+        heights = field.corner_heights(shape, affine)
+        level = {"voxels": 5000, "faces": [], "centroid_mm": [0.0, 0.0, -40.0]}
+        context = {"spinal_cord": {"voxels": 20000, "faces": [], "top_mm": cord_top, "bottom_mm": -300.0}}
+        if skull_top is not None:
+            context["skull"] = {"voxels": 90000, "faces": ["S"], "top_mm": skull_top, "bottom_mm": -10.0}
+        return {"member": "totalsegmentator", "id": "s0909", "field_mm": {"top": max(heights), "bottom": min(heights)},
+                "grid": {"affine": affine, "shape": shape, "zooms": [1.5, 1.5, 1.5], "head_foot_axis": 2},
+                "levels": {"C2": {**level, "top_mm": -22.7, "bottom_mm": -60.0},
+                           "C3": {**level, "top_mm": -37.7, "bottom_mm": -55.0}},
+                "context": context}
+
+    def test_on_a_tilted_padded_grid_a_level_well_under_the_plane_is_whole(self):
+        found = field.named_study(self.tilted_padded(-23.0), "p", 50.0, None)
+        self.assertEqual((found["levels"]["C2"]["head_cut"], found["levels"]["C3"]["head_cut"]), (True, False))
+        self.assertEqual(field.head_end(found, {})[0], "drawn")
+
+    def test_levels_that_stop_together_at_the_plane_hold_a_sliver_of_c2(self):
+        row = self.tilted_padded(-22.7)
+        row["levels"]["C3"] = {**row["levels"]["C3"], "top_mm": -23.5}
+        found = field.named_study(row, "p", 50.0, None)
+        self.assertEqual(field.head_end(found, {})[0], "out")
+
+    def test_the_plane_over_the_column_is_where_the_cord_stops_not_the_skull(self):
+        # C2 undrawn, the cord stopping 2 mm above C3 with the skull 30 mm higher a body's width away:
+        # over the column the image ends at the cord, C3 is cut, and C2 is out of the field.
+        row = self.tilted_padded(-35.7, skull_top=-7.7)
+        del row["levels"]["C2"]
+        found = field.named_study(row, "p", 50.0, None)
+        self.assertTrue(found["levels"]["C3"]["head_cut"])
+        self.assertEqual(field.head_end(found, field.tables(population())["head"])[0], "out")
+
+    def test_a_skull_a_body_away_does_not_cut_the_column_on_a_tilted_grid(self):
+        # The cord runs 25 mm above C2 and the skull 30 mm: the plane over the column is the cord's end.
+        found = field.named_study(self.tilted_padded(2.3, skull_top=7.3), "p", 50.0, None)
+        self.assertFalse(found["levels"]["C2"]["head_cut"])
+        self.assertEqual(field.head_end(found, {})[0], "drawn")
 
 
 class Studies(unittest.TestCase):

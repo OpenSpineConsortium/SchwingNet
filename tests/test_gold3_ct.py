@@ -952,6 +952,15 @@ class FieldRows(Scratch):
                                " WHERE item IN ('verse:verse024', 'verse:verse518', 'verse:verse010')").fetchall())
         self.assertEqual(rows, {"verse:verse024": "l6 read", "verse:verse518": "l6 read", "verse:verse010": "normal read"})
 
+    def test_every_series_of_a_holdout_person_takes_the_read(self):
+        # verse208 and verse255 are one person of the folds, verse214 and verse261 one of the holdout:
+        # the file names the person, so every series of that person takes its read.
+        db = self.built(mini_repo(self.tmp / "repo", synthetic_facts()))
+        series = ("verse:verse208", "verse:verse255", "verse:verse214", "verse:verse261")
+        rows = dict(db.execute("SELECT item, class || ' ' || evidence FROM anomaly WHERE item IN (?, ?, ?, ?)",
+                               series).fetchall())
+        self.assertEqual(rows, {item: "l6 read" for item in series})
+
     def test_a_duplicate_subject_keeps_its_own_alias_and_every_location_is_a_path(self):
         db = self.built(mini_repo(self.tmp / "repo", synthetic_facts()))
         person = db.execute("SELECT person FROM person_alias WHERE alias = 'ts:s2109'").fetchone()[0]
@@ -1075,6 +1084,18 @@ class Pages(Scratch):
         code, _, err = run("--repo", repo, "check")
         self.assertEqual(code, 1)
         self.assertIn("enhance_pet verdicts for studies the dataset does not hold: 9999", err)
+
+    def test_check_fails_on_a_held_study_with_no_verdict(self):
+        repo = mini_repo(self.tmp / "repo", synthetic_facts())
+        held = {s["id"] for s in json.loads((repo / field.ADMISSION).read_text(encoding="utf-8"))["studies"]
+                if s["member"] == "enhance_pet" and s["verdict"] == "not_admitted"}
+        dropped = sorted(held)[0]
+        self.edited_admission(repo, lambda studies: studies.remove(
+            next(s for s in studies if (s["member"], s["id"]) == ("enhance_pet", dropped))))
+        self.write_pages(repo)
+        code, _, err = run("--repo", repo, "check")
+        self.assertEqual(code, 1)
+        self.assertIn(f"no enhance_pet verdict for studies the dataset holds: {dropped}", err)
 
     def test_check_fails_when_the_field_test_and_the_whole_rule_part(self):
         repo = mini_repo(self.tmp / "repo", synthetic_facts())
