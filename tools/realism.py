@@ -797,7 +797,8 @@ def run_stats(args):
     if absent:
         raise Refused(f"the spaces {', '.join(absent)} were asked for and could not be read (their weights not named)")
     report = {"size": args.size, "seed": args.seed, "sets": {name: {"n": len(stems), "subjects": len(set(groups))}
-                                                           for name, (stems, groups, _) in sets.items()}, "spaces": {}}
+                                                           for name, (stems, groups, _) in sets.items()},
+              "rules": STATS_RULES, "spaces": {}}
     groups_a, groups_b = np.array(sets["a"][1]), np.array(sets["b"][1])
     for space, matrices in spaces.items():
         entry = {"a_vs_b": compare(matrices["a"], matrices["b"], groups_a, groups_b, args.seed),
@@ -811,6 +812,19 @@ def run_stats(args):
     write_json(Path(args.out) / "stats.json", report)
     (Path(args.out) / "stats.md").write_text(stats_markdown(report), encoding="utf-8")
     print(stats_markdown(report))
+
+
+# How the tests treat subjects, written into every stats.json so the report quotes the run's own
+# file for it (PREREG.md, section 3).
+STATS_RULES = {
+    "neighbours": f"{KNN} nearest neighbours, every image of the sample's own subject left out in both sets",
+    "auc_interval": f"{BOOTSTRAPS}-draw bootstrap over subjects, 95 percent",
+    "permutation": f"{PERMUTATIONS} permutations, labels shuffled within each subject both sets hold and whole subjects moved among the rest",
+    "mmd": f"unbiased, Gaussian kernel at the median distance, on {PCA_COMPONENTS} principal components, p from the same permutations",
+    "distances": f"FD and KID on {PCA_COMPONENTS} principal components, KID over {KID_REPEATS} subsets of {KID_SUBSET}",
+    "multiplicity": "Benjamini-Hochberg over the spaces, for the pooled comparison and for each seed arm",
+    "nulls": "the second set's subjects split in halves; the first two seed arms against each other",
+}
 
 
 def word_of(entry, q, reference_high):
