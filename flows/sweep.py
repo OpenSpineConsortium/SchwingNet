@@ -64,10 +64,11 @@ def from_launcher(path, folder=None):
 
 
 def file_sha256(path):
+    """The file's sha256, or None where it cannot be read."""
     try:
         return hashlib.sha256(Path(path).read_bytes()).hexdigest()
     except OSError:
-        return "unreadable"
+        return None
 
 
 def word_value(words, flag):
@@ -87,7 +88,7 @@ def key_reads(words, folder):
     file's bytes, since start makes the state folder and its lists of rows from the plan and resume
     clones start, so an edited plan is never carried on as the plan it was. Read in the launcher,
     from its folder, as start reads the same word."""
-    return [f"plan {file_sha256(from_launcher(word_value(words, '--plan'), folder))}"]
+    return [f"plan {file_sha256(from_launcher(word_value(words, '--plan'), folder)) or 'unreadable'}"]
 
 
 def plan_part(plan_file):
@@ -96,9 +97,12 @@ def plan_part(plan_file):
 
 
 def prereg_part(words, folder):
-    """The part a run of these words is, for the launcher: the plan's name, which the smoke test's
-    PREREG must cover; the trials are another design, with no PREREG yet."""
-    return plan_part(word_value(words, "--plan"))
+    """The part a run of these words is, for the launcher: the plan's name and the sha256 of its
+    bytes, which the smoke test's PREREG must cover, since a plan made again or edited since the
+    freeze is another design under the same name; the trials are another design, with no PREREG
+    yet. Read from the launcher's folder, as start reads the same word."""
+    plan_file = from_launcher(word_value(words, "--plan"), folder)
+    return plan_part(plan_file), file_sha256(plan_file)
 
 
 def weights_words(weights):
@@ -314,7 +318,7 @@ class SweepFlow(FlowSpec):
         two lists of rows to run."""
         with stage.Beat(self, "prepare") as beat:
             self.plan_file, self.catalog_file = from_launcher(self.plan), from_launcher(self.catalog)
-            stage.hold_to_prereg(self, KIND, plan_part(self.plan_file))
+            stage.hold_to_prereg(self, KIND, plan_part(self.plan_file), file_sha256(self.plan_file))
             self.out_root, self.weights_words = from_launcher(self.out), weights_words(self.weights)
             plan = read_json(self.plan_file) or {}
             self.plan_epochs = self.epochs or (plan.get("epochs") if isinstance(plan.get("epochs"), int) else 0)

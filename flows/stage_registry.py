@@ -14,10 +14,14 @@ no longer the one frozen before any flow starts, so the job ends having done not
 flow's start step holds the run to it again, in the checkout the steps run from.
 
 A PREREG may cover only some of the runs of its kind: its line `Covers: <part>, <part>` names them,
-and a flow whose runs differ in design, as the sweep's plans do, names the part a run is (its
-module's prereg_part, read by the launcher from the run's words, and its start's own word), so a
-run of a part no frozen PREREG covers is refused like a PREREG that moved. The sweep's PREREG covers
-the three smoke plans; the six trials are another design and wait for a PREREG of their own.
+and a flow whose runs differ in design, as the sweep's plans do, names the part a run is and the
+sha256 of the part's bytes (its module's prereg_part, read by the launcher from the run's words,
+and its start's own words), so a run of a part no frozen PREREG covers is refused like a PREREG
+that moved. A part named alone is covered by its name; an entry `<part>=<sha256>` covers the part
+only while its bytes are those the freeze saw, since a part's name says nothing of what it holds:
+a plan edited or made again since the freeze is another design. The sweep's PREREG covers the
+three smoke plans by their bytes; the six trials are another design and wait for a PREREG of
+their own.
 
 A PREREG is frozen as the Lab Recipe says ("Pre-register and freeze",
 artifacts/the-lab-recipe-1t2gvp/index.md): `sha256sum PREREG.md > PREREG.md.sha256` in its folder,
@@ -41,6 +45,7 @@ WORD = re.compile(r"[A-Z][A-Z0-9_]{0,39}_RC")
 SCRIPT = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}\.(?:sbatch|sh)")
 HASH_LINE = re.compile(r"([0-9a-f]{64}) [ *]PREREG\.md\n?")
 COVERS = re.compile(r"^Covers: (.+)$", re.M)
+COVERED = re.compile(r"(?P<part>[A-Za-z0-9_.-]{1,64})(?:=(?P<sha256>[0-9a-f]{64}))?")
 # Where the launcher stops a job whose PREREG is not the one frozen: the Lab Recipe's exit code.
 EX_PREREG = 90
 
@@ -132,21 +137,36 @@ def frozen_prereg(kind, repo=ROOT):
 
 
 def covered(path):
-    """The parts a PREREG's first `Covers:` line names, in its order; none where it has no such line."""
+    """The parts a PREREG's first `Covers:` line names, in its order, each as (part, the sha256 its
+    bytes are held to, or None where the entry names the part alone); none where it has no such
+    line, and a PreregError for an entry of another shape, which covers nothing."""
     found = COVERS.search(Path(path).read_text(encoding="utf-8"))
-    return [part for part in re.split(r"[,\s]+", found.group(1)) if part] if found else []
+    parts = []
+    for word in re.split(r"[,\s]+", found.group(1)) if found else []:
+        entry = COVERED.fullmatch(word) if word else None
+        if word and entry is None:
+            raise PreregError(f"{Path(path).name}'s Covers line holds {word!r}, which is neither a part nor <part>=<sha256>")
+        if entry:
+            parts.append((entry["part"], entry["sha256"]))
+    return parts
 
 
-def frozen_for(kind, part=None, repo=ROOT):
+def frozen_for(kind, part=None, part_sha256=None, repo=ROOT):
     """frozen_prereg, and where the run is one part of its kind, a PreregError unless the frozen
-    PREREG names that part on its Covers line."""
+    PREREG names that part on its Covers line and, where its entry names the part's sha256, the
+    part's bytes (part_sha256, None where they were not read) are those."""
     frozen = frozen_prereg(kind, repo)
     if frozen is None or part is None:
         return frozen
     parts = covered(Path(repo) / frozen[0])
-    if part not in parts:
-        raise PreregError(f"{frozen[0]} covers {', '.join(parts) or 'no part it names'}, not {part}: a run of {part} "
-                          f"waits for a PREREG of its own, frozen before it runs")
+    held = dict(parts)
+    if part not in held:
+        raise PreregError(f"{frozen[0]} covers {', '.join(name for name, _ in parts) or 'no part it names'}, "
+                          f"not {part or 'a part with no name'}: a run of it waits for a PREREG of its own, frozen before it runs")
+    if held[part] is not None and part_sha256 != held[part]:
+        bytes_now = f"its bytes now have sha256 {part_sha256[:16]}" if part_sha256 else "its bytes were not read"
+        raise PreregError(f"{frozen[0]} covers {part} as the bytes of sha256 {held[part][:16]}, and {bytes_now}: a {part} "
+                          f"changed since the freeze is another design, which waits for a PREREG of its own")
     return frozen
 
 

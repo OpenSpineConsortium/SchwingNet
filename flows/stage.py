@@ -54,12 +54,12 @@ def datastore_root():
     return os.environ.get("METAFLOW_DATASTORE_SYSROOT_LOCAL") or os.getcwd()
 
 
-def hold_to_prereg(flow, kind, part=None):
+def hold_to_prereg(flow, kind, part=None, part_sha256=None):
     """The run held to its kind's frozen PREREG, kept as the run's artifacts, and where the run is
-    one part of its kind, as a sweep's plan is, to a PREREG that covers that part; a kind with none,
-    a stage that trains and runs no network, keeps None."""
+    one part of its kind, as a sweep's plan is, to a PREREG that covers that part and its bytes
+    (part_sha256); a kind with none, a stage that trains and runs no network, keeps None."""
     try:
-        frozen = registry.frozen_for(kind, part, REPO)
+        frozen = registry.frozen_for(kind, part, part_sha256, REPO)
     except (registry.RegistryError, registry.PreregError) as error:
         raise StageFault(str(error)) from error
     flow.prereg_path, flow.prereg_sha256 = frozen if frozen else (None, None)

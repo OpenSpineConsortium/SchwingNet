@@ -38,7 +38,8 @@ Metaflow's own resume rather than by anything written around it.
   current (below). A kill mid-row resumes with every finished row cloned and the cut row run
   again, which tools/flow.py carries on from its last epoch (tools/train.py --resume). Its runs
   are held to docs/research/block-smoke/PREREG.md, which covers the plans synthetic, real and
-  two_source; `sweep trials` is refused until the six trials have a PREREG of their own.
+  two_source by their bytes; `sweep trials` is refused until the six trials have a PREREG of their
+  own, and so is a plan made again with other rows.
 
 Every flow's end step sets an int artifact `verdict`, 0 when all went well and 1 otherwise.
 
@@ -63,8 +64,11 @@ enforced and a page that shows its progress in the browser; a plain Slurm job is
   launcher refuses a kind whose PREREG is missing or moved before it imports Metaflow, with the
   recipe's exit 90 and the line `LaunchError: ... STOP: <PREREG> changed since the freeze`, so the
   job does nothing. A PREREG's line `Covers: <part>, ...` names the parts of its kind it covers,
-  and a flow whose runs differ in design names the part a run is (the sweep's `prereg_part`, its
-  plan's name), so a run of a part no frozen PREREG covers is refused the same way. The PREREG's
+  each by its name alone or as `<part>=<sha256>`, by its bytes too, and a flow whose runs differ
+  in design names the part a run is and the sha256 of its bytes (the sweep's `prereg_part`, its
+  plan's name and the plan file's sha256), so a run of a part no frozen PREREG covers, or of one
+  whose bytes are not those its entry names, a plan edited or made again since the freeze, is
+  refused the same way. The PREREG's
   path and sha256 are in the key and on the run's tags (prereg:<12>), and start keeps them as the
   run's artifacts prereg_path and prereg_sha256 (`stage.hold_to_prereg`).
 - `stage.py` is what every flow's steps run for the rule: `Beat` around a step's work, its line on

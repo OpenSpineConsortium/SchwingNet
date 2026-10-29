@@ -681,8 +681,11 @@ if stale:
     sys.exit(1)
 print(f"{folder}: report current")
 '''
-# The smoke test's PREREG as the test repository freezes it: the plans the tests run, by name.
-TEST_PREREG = "# The test's design\n\nCovers: live, gone, race, smoke, merged, faulty, nothing, reported\n"
+# The smoke test's PREREG as the test repository freezes it: the plans the tests run, by name, and
+# one by its bytes as well, as the repository's own PREREG covers each smoke plan.
+PINNED = {"plan": "pinned", "first": ["a"], "second": []}
+TEST_PREREG = ("# The test's design\n\nCovers: live, gone, race, smoke, merged, faulty, nothing, reported, "
+               f"pinned={hashlib.sha256(json.dumps(PINNED).encode()).hexdigest()}\n")
 
 
 @unittest.skipIf(MISSING, f"needs the train environment ({', '.join(MISSING)} missing)")
@@ -940,9 +943,17 @@ class SweepFlowTest(unittest.TestCase):
     def test_a_plan_the_frozen_prereg_does_not_cover_or_a_moved_prereg_starts_nothing(self):
         code, said, out, calls = self.sweep({"plan": "trials", "first": ["a"], "second": []}, 1)
         self.assertEqual(code, 90, out)
-        self.assertIn("covers live, gone, race, smoke, merged, faulty, nothing, reported, not trials", out)
+        self.assertIn("covers live, gone, race, smoke, merged, faulty, nothing, reported, pinned, not trials", out)
         self.assertEqual((said, calls), ([], []), out)
         self.assertFalse((self.root / "progress").exists())
+        # a plan covered by its bytes runs as frozen, and edited under the same name is another design
+        code, said, out, calls = self.sweep(PINNED, 1)
+        self.assertEqual((code, said[0]["decision"]), (0, "run"), out)
+        code, said, out, calls = self.sweep({**PINNED, "about": "edited after the freeze"}, 2)
+        self.assertEqual(code, 90, out)
+        self.assertIn("covers pinned as the bytes of sha256 ", out)
+        self.assertIn("a pinned changed since the freeze is another design, which waits for a PREREG of its own", out)
+        self.assertEqual((said, calls), ([], []), out)
         with (self.repo / "docs" / "research" / "block-smoke" / "PREREG.md").open("a", encoding="utf-8") as prereg:
             prereg.write("An edit after the freeze.\n")
         self.commit("an edit to the PREREG after its freeze")

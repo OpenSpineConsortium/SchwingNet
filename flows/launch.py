@@ -58,7 +58,8 @@ Every deep learning flow is held to a frozen PREREG (the owner's rule of 2026-10
 names the PREREG.md of each kind that trains or runs a network, and the launcher refuses one whose
 PREREG is missing or no longer the one its PREREG.md.sha256 froze before any flow starts, with the
 Lab Recipe's exit 90 (flows/stage_registry.py), and so too a run whose part of its kind, a sweep's
-plan, the frozen PREREG does not cover. The PREREG's path and sha256 are among what the key
+plan, the frozen PREREG does not cover, by its name and, where the PREREG names them, its bytes.
+The PREREG's path and sha256 are among what the key
 reads, so a run is only ever carried on under the PREREG it started under, and every run of such a
 kind is tagged prereg:<12> beside the key. Once Metaflow has named the run, the launcher writes the
 head of its progress page (flows/stage_progress.py), <root>/progress/<Flow>/<run>/run.json, since a
@@ -165,12 +166,12 @@ def parse(argv, flows):
     return name, options, words
 
 
-def require_prereg(name, repo, part=None):
+def require_prereg(name, repo, part=None, part_sha256=None):
     """The kind's frozen PREREG, (path, sha256), None for a stage that trains and runs no network;
-    refused with the Lab Recipe's exit 90 where it is missing or moved, or covers no such part,
-    before any flow starts."""
+    refused with the Lab Recipe's exit 90 where it is missing or moved, or covers no such part or
+    not the part's bytes, before any flow starts."""
     try:
-        return stage_registry.frozen_for(name, part, repo)
+        return stage_registry.frozen_for(name, part, part_sha256, repo)
     except stage_registry.PreregError as error:
         raise LaunchError(f"the {name} flow's runs are held to a frozen PREREG (the owner's rule of 2026-10-29), "
                           f"so none was started or resumed: {error}", stage_registry.EX_PREREG) from error
@@ -252,10 +253,11 @@ def reads_of(flow, words):
 
 
 def part_of(flow, words):
-    """The part of its kind a run of these words is, by the flow's own prereg_part, as the sweep's
-    plan is; None for a flow whose runs are all of one design."""
+    """The part of its kind a run of these words is and the sha256 of the part's bytes, by the
+    flow's own prereg_part, as the sweep's plan is; (None, None) for a flow whose runs are all of
+    one design."""
     prereg_part = getattr(flow, "prereg_part", None)
-    return prereg_part(words, Path.cwd()) if prereg_part else None
+    return prereg_part(words, Path.cwd()) if prereg_part else (None, None)
 
 
 def point_metaflow_at(root):
@@ -557,7 +559,7 @@ def launch(argv):
     (root / ".metaflow").mkdir(parents=True, exist_ok=True)
     commit, code = commit_of(repo), code_of(repo, name)
     flow = flow_module(name, repo)
-    prereg = require_prereg(name, repo, part_of(flow, words)) if prereg else prereg
+    prereg = require_prereg(name, repo, *part_of(flow, words)) if prereg else prereg
     key = run_key(name, code, words, [*reads_of(flow, words), *prereg_reads(prereg)])
     flow_class = flows[name]["class"]
     folder = beats_folder(root, flow_class, key)

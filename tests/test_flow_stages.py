@@ -42,7 +42,8 @@ registry = load(ROOT / "flows" / "stage_registry.py", "stage_registry_under_test
 progress = load(ROOT / "flows" / "stage_progress.py", "stage_progress_under_test")
 page_tool = load(ROOT / "tools" / "progress_page.py", "progress_page_under_test")
 
-PREREG = "# A design\n\nCovers: alpha, beta\n\n## 1. The question\n\nWhether it runs.\n"
+ALPHA = hashlib.sha256(b"the plan alpha\n").hexdigest()
+PREREG = f"# A design\n\nCovers: alpha={ALPHA}, beta\n\n## 1. The question\n\nWhether it runs.\n"
 
 
 def freeze(folder, text=PREREG):
@@ -99,16 +100,36 @@ class RegistryTest(unittest.TestCase):
             registry.frozen_prereg("deep", self.repo)
 
     def test_a_part_the_prereg_does_not_cover_waits_for_a_prereg_of_its_own(self):
-        self.assertEqual(registry.covered(self.repo / "docs" / "deep" / "PREREG.md"), ["alpha", "beta"])
-        self.assertEqual(registry.frozen_for("deep", "beta", self.repo), ("docs/deep/PREREG.md", self.digest))
-        with self.assertRaisesRegex(registry.PreregError, "covers alpha, beta, not trials: a run of trials waits for a PREREG of its own"):
-            registry.frozen_for("deep", "trials", self.repo)
+        self.assertEqual(registry.covered(self.repo / "docs" / "deep" / "PREREG.md"), [("alpha", ALPHA), ("beta", None)])
+        self.assertEqual(registry.frozen_for("deep", "beta", repo=self.repo), ("docs/deep/PREREG.md", self.digest))
+        with self.assertRaisesRegex(registry.PreregError, "covers alpha, beta, not trials: a run of it waits for a PREREG of its own"):
+            registry.frozen_for("deep", "trials", repo=self.repo)
 
-    def test_the_sweeps_prereg_covers_the_three_smoke_plans_and_not_the_trials(self):
+    def test_a_part_covered_by_its_bytes_is_covered_only_while_they_are_the_ones_frozen(self):
+        self.assertEqual(registry.frozen_for("deep", "alpha", ALPHA, self.repo), ("docs/deep/PREREG.md", self.digest))
+        edited = hashlib.sha256(b"the plan alpha, edited\n").hexdigest()
+        with self.assertRaisesRegex(registry.PreregError, rf"covers alpha as the bytes of sha256 {ALPHA[:16]}, and its bytes "
+                                                          rf"now have sha256 {edited[:16]}: a alpha changed since the freeze is another design"):
+            registry.frozen_for("deep", "alpha", edited, self.repo)
+        with self.assertRaisesRegex(registry.PreregError, "and its bytes were not read"):
+            registry.frozen_for("deep", "alpha", None, self.repo)
+        # an entry named alone takes any bytes, as the name is all it holds the part to
+        self.assertEqual(registry.frozen_for("deep", "beta", edited, self.repo)[0], "docs/deep/PREREG.md")
+
+    def test_a_covers_entry_of_another_shape_covers_nothing(self):
+        self.digest = freeze(self.repo / "docs" / "deep", PREREG.replace(f"alpha={ALPHA}", "alpha=0123"))
+        with self.assertRaisesRegex(registry.PreregError, "holds 'alpha=0123', which is neither a part nor <part>=<sha256>"):
+            registry.frozen_for("deep", "beta", repo=self.repo)
+
+    def test_the_sweeps_prereg_covers_the_three_smoke_plans_by_their_bytes_and_not_the_trials(self):
         for plan in ("synthetic", "real", "two_source"):
-            self.assertEqual(registry.frozen_for("sweep", plan, ROOT)[0], "docs/research/block-smoke/PREREG.md")
+            digest = hashlib.sha256((ROOT / "grid" / "sweeps" / f"{plan}.json").read_bytes()).hexdigest()
+            self.assertEqual(registry.frozen_for("sweep", plan, digest, ROOT)[0], "docs/research/block-smoke/PREREG.md")
+            with self.assertRaises(registry.PreregError):
+                registry.frozen_for("sweep", plan, hashlib.sha256(b"another plan").hexdigest(), ROOT)
+        trials = hashlib.sha256((ROOT / "grid" / "sweeps" / "trials.json").read_bytes()).hexdigest()
         with self.assertRaises(registry.PreregError):
-            registry.frozen_for("sweep", "trials", ROOT)
+            registry.frozen_for("sweep", "trials", trials, ROOT)
 
     def test_each_line_is_held_to_its_class_its_script_and_its_shape(self):
         (self.repo / "grid" / "deep.sbatch").write_text("python tools/train.py\n", encoding="utf-8")

@@ -2,11 +2,11 @@
 
 Source: the thread "Require Metaflow for every grid DL job", 2026-10-29, on the owner's rule of 02:39 UTC that every deep learning job on the grid runs on the block-based Metaflow pipeline under a frozen PREREG with the CLAIM and REFORMS report enforced; the form is the Lab Recipe's (artifacts/the-lab-recipe-1t2gvp/index.md, "Pre-register and freeze"). Confidential with the rest of this repository.
 
-Covers: synthetic, real, two_source
+Covers: synthetic=4d9481676c3ac6f64f68ea9ed139dc3a71cc8ccb6dee43bead4d08e271a99cc2, real=a0a580a28c17966a1fae3e35855f5dd0bacca1f7cc133bd763bcc134d13d81e0, two_source=c026b6e79281870d710c0e45cb2d85791b0f337ff060f04f816f518433106556
 
 This file is frozen. It writes down, in the Lab Recipe's seven parts, the design the smoke test was built to, the owner's asks of 2026-10-24 from 21:11 to 21:20 UTC and choices of 22:12 and 22:27 UTC (issue #252), as docs/research/experiment-framework.md, section 7, and docs/research/block-smoke/README.md state it at commit 35a4b6f37e591470865f58cf80bf86254f50d011; those are the full text, and this file only restates them. No sweep of the smoke had run when it was frozen, as far as this repository records (the README's "Where it stands": no grid job of the smoke has run yet), so no number of it had been read. Every departure goes in DEVIATIONS.md beside it, dated, with its reason.
 
-The line Covers above is read by flows/stage_registry.py: the launcher and the sweep's start refuse a plan it does not name. The six trials of grid/sweeps/trials.json are another design, with hypotheses of their own, and are not covered; `sweep trials` is refused until a PREREG of their own is frozen.
+The line Covers above is read by flows/stage_registry.py: the launcher, the sweep's start and end, and the gate's word `sweep` refuse a plan it does not name, and a plan whose bytes are not those of the sha256 its entry gives, the plans' sha256 of section 2. A plan made again or edited since the freeze, under the same name or another, is not covered: it is another design, and waits for a PREREG of its own. The six trials of grid/sweeps/trials.json are another design, with hypotheses of their own, and are not covered; `sweep trials` is refused until a PREREG of their own is frozen.
 
 ## 1. The question
 
@@ -23,7 +23,7 @@ Is the static check's prediction right, row by row, on a GPU: does every combina
 ## 3. The measurements
 
 - Per row, the outcome tools/block_sweep.py records: ran (the flow trained and evaluated it), refused with a code of its REFUSALS, failed, not applicable or to come; and whether it matched the check's prediction (block_sweep.matched).
-- Per row that ran: its best validation accuracy, its test accuracy over all levels and its W&B runs, as results.json holds them; and its CLAIM 2024 and REFORMS report (tools/report.py), written after the row's last step and checked again by the flow's end step.
+- Per row that ran: its best validation accuracy, its test accuracy over all levels and its W&B runs, as results.json holds them; and its CLAIM 2024 and REFORMS report (tools/report.py), written by the row after its last step and checked by the flow's end step against the row's files as the row left them, before anything is written; where the row left no report, the end step writes it and then checks it.
 - Per sweep: the counts of results.json and the faults the flow caught.
 
 ## 4. The hypotheses and their bars
@@ -35,7 +35,7 @@ Is the static check's prediction right, row by row, on a GPU: does every combina
 ## 5. What counts as failure
 
 - A mismatch, a failed row, a row still to come or a caught fault: the verdict is 1, with the sentence "the check's prediction for <row> was wrong: it said <predicted> and the row <outcome>", or for a fault "<row> could not be run or recorded: <its last line>". A mismatch is a bug in the check or in the blocks, fixed before the plan is sent again.
-- A row that ran whose report cannot be written or is not current: the verdict is 1, with the sentence "<row> ran and its CLAIM 2024 and REFORMS report is not current".
+- A row that ran whose report, as the row left it, is not what the row's files give, or that left none and whose report cannot be written at the end: the verdict is 1, with the line "<row>: NOT CURRENT as the run wrote it, so written anew; why: <the check's words>" or "<row>: NOT WRITTEN at the end; why: <the tool's words>" among the report's lines on the run's progress page. A stale report is written anew so the page and the row's folder show the current one; the run's verdict stays 1.
 
 ## 6. The analysis plan
 
@@ -43,4 +43,4 @@ The verdict is computed by flows/sweep.py (verdict_of) from results.json and the
 
 ## 7. Freeze
 
-Frozen on 2026-10-29 by the thread named above, from the commit named above, before any sweep of the smoke ran: `sha256sum PREREG.md > PREREG.md.sha256` in this folder, both committed. No further edits: a departure goes in DEVIATIONS.md beside it, and a second design is a new file with its own freeze.
+Frozen on 2026-10-29 by the thread named above, from the commit named above, before any sweep of the smoke ran: `sha256sum PREREG.md > PREREG.md.sha256` in this folder, both committed. Frozen again the same day, before this file was merged and before any run had used the first freeze, after an adversarial review of the pull request that added it: the Covers line now names each plan's sha256, since a plan's name says nothing of its rows, and sections 3 and 5 say how the end step checks a row's report as the row left it. No further edits: a departure goes in DEVIATIONS.md beside it, and a second design is a new file with its own freeze.
