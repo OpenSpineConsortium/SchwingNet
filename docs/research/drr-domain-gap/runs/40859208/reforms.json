@@ -3,7 +3,7 @@
  "run_id": "40859208",
  "checklist": "REFORMS",
  "source": "Kapoor et al., REFORMS: consensus-based recommendations for machine-learning-based science, arXiv 2308.07832; the item list and the code-or-declared split of artifacts/reforms-compliance-checklist-bpzdoi",
- "study_sha256": "09a8707b32df90fbfd6f4ac925cc9eb208a838e00d27ecd26a2cf70c318d1d74",
+ "study_sha256": "f201a519596453871e78236de81f80f55605c433dafa6b80d716712df27e7624",
  "tally": {
   "met": 27,
   "declared": 0,
@@ -27,7 +27,7 @@
    "basis": "code",
    "fact": "population_rationale",
    "state": "met",
-   "evidence": "the question is how far FleXray's renders are from real X-rays of both kinds, plain film and intra-operative fluoroscopy, and whether that distance passes the distance between two real corpora (PREREG.md section 1), so every held corpus of the two kinds is a group but those README section 2 and the groups table's notes leave out, each with its reason (CLAIM 8 lists them), the real-against-real pairs giving the scale; and README section 2.2 names six pairs, each isolating one thing: the engine in the two worded replication pairs, one part of the recipe in three pairs of render groups on the same CTs (the labels' aiming, the attenuation randomisation and the segmenter), and the FLUX edit in fluxray_raw_reference against fluxray; the owner asked on 2026-10-25 for \"all the other Xray corpuses both plain film and fluoro\" (README, opening)"
+   "evidence": "the question is how far FleXray's renders are from real X-rays of both kinds, plain film and intra-operative fluoroscopy, and whether that distance passes the distance between two real corpora (PREREG.md section 1), so every held corpus of the two kinds is a group but those README section 2 and the groups table's notes leave out, each with its reason (CLAIM 8 lists them), the real-against-real pairs giving the scale; and README section 2.2 names six pairs, each meant to isolate one thing: the engine in the two worded replication pairs, one part of the recipe in three pairs of render groups on the same CTs (the labels' aiming, the attenuation randomisation and the segmenter), and the FLUX edit in fluxray_raw_reference against fluxray; README section 6 finds that the FLUX-edit pair measures the edit together with what else differs between its two sides, not the edit alone; the owner asked on 2026-10-25 for \"all the other Xray corpuses both plain film and fluoro\" (README, opening)"
   },
   {
    "id": "1c",
@@ -108,7 +108,7 @@
    "basis": "code",
    "fact": "fitness",
    "state": "met",
-   "evidence": "each real group is a held corpus of plain film or of fluoroscopy (README section 2), the families of the question's two kinds (PREREG.md section 1), the fluoroscopy family holding beside one mobile C-arm's spot frames a cadaver pelvis's vendor fluoroscopy and a resin hip phantom (README section 2); each group is capped by person so that a corpus with many images of few persons cannot outweigh the others (README section 2); the render groups render the same CTs and differ only by their recipe and engine (PREREG.md section 2), and README section 2.2 names six pairs, each meant to isolate one thing; README section 6 finds that the FLUX-edit pair measures the edit together with what else differs between its two sides, not the edit alone; what limits the fit was listed before the run, README section 5: the corpora differ in anatomy (cervical films, a hip phantom, cephalograms, abdomen), devices, eras and formats as well as in realism, and the renders follow their own pose profiles where the real spot frames are narrow and centred on the lumbar spine; and README section 6 records what the recorded runs do not support (CLAIM 40 quotes it)"
+   "evidence": "each real group is a held corpus of plain film or of fluoroscopy (README section 2), the families of the question's two kinds (PREREG.md section 1), the fluoroscopy family holding beside one mobile C-arm's spot frames DeepFluoro's vendor fluoroscopy of cadaver pelves, six specimens plus phantoms by the table's note, and a resin hip phantom (README section 2; data/domain_gap/groups.json); each group is capped by person so that a corpus with many images of few persons cannot outweigh the others (README section 2); the render groups render the same CTs and differ only by their recipe and engine (PREREG.md section 2), and README section 2.2 names six pairs, each meant to isolate one thing; README section 6 finds that the FLUX-edit pair measures the edit together with what else differs between its two sides, not the edit alone; what limits the fit was listed before the run, README section 5: the corpora differ in anatomy (cervical films, a hip phantom, cephalograms, abdomen), devices, eras and formats as well as in realism, and the renders follow their own pose profiles where the real spot frames are narrow and centred on the lumbar spine; and README section 6 records what the recorded runs do not support (CLAIM 40 quotes it)"
   },
   {
    "id": "3d",

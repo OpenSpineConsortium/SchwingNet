@@ -282,7 +282,7 @@ class DesignTest(StudyFolder):
     """The answers that restate the frozen design hold only for a run whose record names it, and the
     answers that read the table or the summary quote them."""
 
-    DESIGN = {"claim": ("4", "5", "6", "8", "21", "30", "31", "34", "39", "40", "42"),
+    DESIGN = {"claim": ("4", "6", "8", "21", "30", "31", "34", "39", "40", "42"),
               "reforms": ("1a", "1b", "1c", "3b", "3c", "3g", "5e", "5f", "6c", "7c")}
 
     def design_rows(self):
@@ -309,14 +309,12 @@ class DesignTest(StudyFolder):
     def test_what_the_table_answers_is_missing_without_it(self):
         (self.run / "groups.json").unlink()
         claim, reforms = self.rows("claim"), self.rows("reforms")
-        for row in (claim["8"], claim["13"], claim["21"], reforms["1a"], reforms["3b"], reforms["3g"]):
+        for row in (claim["8"], claim["21"], reforms["1a"], reforms["3b"], reforms["3g"]):
             self.assertEqual(row["state"], "missing", row["id"])
             self.assertIn("needs the groups table the record names", row["evidence"], row["id"])
 
     def test_the_table_and_the_summary_are_quoted(self):
         claim, reforms = self.rows("claim"), self.rows("reforms")
-        self.assertIn("flexray_drr (no block changed)", claim["13"]["evidence"])
-        self.assertIn("fixture_fluoro: fixture fluoroscopy", claim["13"]["evidence"])
         self.assertIn("summary.txt carries flexray dim 8; flexray_as_stored dim 8; physics dim 4; imagenet not run (no ImageNet weights in this fixture);", claim["30"]["evidence"])
         self.assertIn("have none of their own: flexray_drr 10, flexray_drr_ct 10, fixture_fluoro 8", claim["30"]["evidence"])
         self.assertIn("1 group skipped, fluxray (not on the data root in this fixture); persons by file in fixture_film", claim["40"]["evidence"])
@@ -377,7 +375,7 @@ class DesignTest(StudyFolder):
         claim = self.verdict(True)
         for item in ("30", "39", "40"):
             evidence = claim[item]["evidence"]
-            self.assertIn("in PREREG.md section 5's words this project's blocks did not reproduce FleXray's own renders of its recipe: the MMD did (q 0.046)", evidence, item)
+            self.assertIn("in PREREG.md section 5's words this project's blocks did not reproduce FleXray's own renders of its recipe: the MMD told them apart (q 0.046)", evidence, item)
             self.assertIn("so the word rests on the MMD alone", evidence, item)
 
     def test_a_verdict_whose_q_left_the_nulls_out_is_not_the_frozen_rule_s(self):
@@ -396,6 +394,61 @@ class DesignTest(StudyFolder):
         at = lines.index("space physics dim 4 rows 160 spread 0.555 pca64 0.66")
         self.write_lines(lines[:at])
         self.assertIn("of the design's spaces and readings it does not name physics, which its 80-line budget gave up", self.rows("claim")["30"]["evidence"])
+
+    def test_a_reading_of_a_space_that_did_not_run_was_never_made(self):
+        lines = self.lines()
+        start = lines.index("space flexray dim 8 rows 160 spread 0.111 pca64 0.22")
+        end = lines.index("space imagenet not run, no ImageNet weights in this fixture")
+        self.write_lines(lines[:start] + ["space flexray not run, no features in this fixture"] + lines[end:])
+        evidence = self.rows("claim")["30"]["evidence"]
+        self.assertIn("flexray_as_stored was never made, since the space it reads did not run", evidence)
+        self.assertNotIn("it does not name flexray_as_stored", evidence)
+
+    def test_the_verdict_is_the_verdict_pair_s_and_no_other_pair_s(self):
+        lines = self.lines()
+        at = next(i for i, line in enumerate(lines) if line.startswith("replication flexray_replica vs flexray_reference"))
+        other = "replication fluxray_raw vs fluxray_raw_reference in flexray (invariant): replicated (persons 10/10 n 40/40; mmd q 0.910)"
+        self.write_lines(lines[:at + 1] + [other] + lines[at + 1:])
+        evidence = self.rows("claim")["30"]["evidence"]
+        self.assertIn("the verdict pair, flexray_replica against flexray_reference, has no word, summary.txt giving its reason: flexray_replica: not in this fixture table", evidence)
+        self.assertNotIn("reads replicated", evidence)
+
+    def test_a_replicated_verdict_on_a_q_without_the_nulls_is_not_the_frozen_rule_s(self):
+        calibration = " calibration split-half auc median 0.33 range 0.32 to 0.34 over 1, mmd flagged 0, auc interval above half 0"
+        lines = self.lines()
+        at = lines.index(calibration)
+        pair = " replication flexray_replica vs flexray_reference persons 10/10 n 40/40 auc 0.50 [0.45, 0.55] p 0.455 knn 0.50 mmd p 0.060 q 0.070 fd64 0.0 kid64 -1.000 prdc 1.00 1.00 1.00 1.00 replicated"
+        self.write_lines(lines[:at + 1] + [pair] + lines[at + 1:])
+        self.replace_line("replication flexray_replica vs flexray_reference", "replication flexray_replica vs flexray_reference in flexray (invariant): replicated (persons 10/10 n 40/40; mmd q 0.070)")
+        evidence = self.rows("claim")["30"]["evidence"]
+        self.assertIn("reads replicated, the AUC's lower bound of 0.45 at most the bar of 0.6 and the MMD's q of 0.070 at least 0.05", evidence)
+        self.assertIn("so the frozen rule's word on the MMD is not read in this run", evidence)
+
+    def test_a_verdict_the_classifier_decides_stands_under_either_family(self):
+        calibration = " calibration split-half auc median 0.33 range 0.32 to 0.34 over 1, mmd flagged 0, auc interval above half 0"
+        lines = self.lines()
+        at = lines.index(calibration)
+        pair = " replication flexray_replica vs flexray_reference persons 10/10 n 40/40 auc 0.80 [0.70, 0.90] p 0.010 knn 0.80 mmd p 0.200 q 0.300 fd64 9.0 kid64 1.000 prdc 0.50 0.50 0.50 0.50 not replicated"
+        self.write_lines(lines[:at + 1] + [pair] + lines[at + 1:])
+        self.replace_line("replication flexray_replica vs flexray_reference", "replication flexray_replica vs flexray_reference in flexray (invariant): not replicated (persons 10/10 n 40/40; mmd q 0.300)")
+        evidence = self.rows("claim")["30"]["evidence"]
+        self.assertIn("the classifier told them apart (AUC lower bound 0.70), the MMD's q of 0.300 being at least 0.05, so the word rests on the classifier alone, and the classifier decides the word whichever family the MMD's q is taken over", evidence)
+
+    def test_every_descriptive_line_the_summary_prints_is_named(self):
+        lines = self.lines()
+        at = lines.index(" fluoroscopy vs film auc 0.64 [0.63, 0.65] p 0.066")
+        self.write_lines(lines[:at + 1] + [" silhouette 0.01", " nearest real; flexray_drr fixture_fluoro 90 pct", " tsne centres; flexray_drr 1.0 2.0 3.0"] + lines[at + 1:])
+        self.assertIn("of these summary.txt prints PRDC, the silhouette, the nearest real corpora and the t-SNE map's group centres, and the rest are on the grid", self.rows("claim")["31"]["evidence"])
+
+    def test_the_limits_are_this_run_s_own_or_held_by_its_own_part(self):
+        earlier = "# Fixture study\n\n## 6. Results\n\nAn earlier run is recorded under runs/999999/.\n\nWhat the run does not support, in the earlier run: its persons are files.\n\n"
+        self.readme.write_text(earlier + "### The fixture run\n\nThe fixture run is recorded under runs/1000001/.\n\n## 7. How to run it\n", encoding="ascii")
+        limits = self.rows("claim")["40"]
+        self.assertEqual(limits["state"], "missing")
+        self.assertIn("its part says nothing of what the run does not support", limits["evidence"])
+        self.readme.write_text(earlier + "### The fixture run\n\nThe fixture run is recorded under runs/1000001/.\n\nWhat the earlier run does not support holds for this one.\n\n## 7. How to run it\n", encoding="ascii")
+        evidence = self.rows("claim")["40"]["evidence"]
+        self.assertIn('"What the run does not support, in the earlier run: its persons are files." "What the earlier run does not support holds for this one."', evidence)
 
 
 class TableAndLicenceTest(StudyFolder):
@@ -442,6 +495,20 @@ class TableAndLicenceTest(StudyFolder):
         self.assertNotIn("flexray_drr vs fluoroscopy auc 0.12", endpoints["evidence"])
         self.assertIn("flexray_drr_ct vs fluoroscopy auc 0.32", endpoints["evidence"])
 
+    def test_an_endpoint_whose_family_holds_a_flagged_group_is_not_read(self):
+        calibration = " calibration split-half auc median 0.33 range 0.32 to 0.34 over 1, mmd flagged 0, auc interval above half 0"
+        lines = self.lines()
+        at = lines.index(calibration)
+        self.write_lines(lines[:at] + [calibration.replace("mmd flagged 0", "mmd flagged 1"), " calibration flagged fixture_fluoro"] + lines[at + 1:])
+        endpoints = self.rows("claim")["37"]["evidence"]
+        self.assertIn("not read: flexray_drr vs fluoroscopy: the split-half null of fixture_fluoro in flexray found a difference", endpoints)
+        self.assertIn("flexray_drr vs film auc 0.22", endpoints)
+        self.assertNotIn("flexray_drr vs fluoroscopy auc 0.12", endpoints)
+
+    def test_an_endpoint_line_with_no_word_is_not_counted_as_worded(self):
+        self.replace_line(" flexray_drr vs film auc 0.22", " flexray_drr vs film auc 0.22 [0.21, 0.23] p 0.020 knn 0.24 fd64 2.5 mmd p 0.027 prdc 0.28 0.29 0.30 0.31")
+        self.assertIn("of the primary endpoints' 3 worded lines read, none worded separable, 1 printed with no word", self.rows("claim")["39"]["evidence"])
+
     def test_a_flagged_count_the_names_do_not_match_leaves_the_endpoints_missing(self):
         calibration = " calibration split-half auc median 0.33 range 0.32 to 0.34 over 1, mmd flagged 0, auc interval above half 0"
         self.replace_line(calibration, calibration.replace("mmd flagged 0", "mmd flagged 2"))
@@ -480,7 +547,7 @@ class StudyRulesTest(unittest.TestCase):
                     self.assertIn(fact, report.STUDY_FACTS, item["id"])
 
     def test_the_owner_answers_only_what_no_file_of_the_study_says(self):
-        self.assertEqual(report.study_declared_facts(STUDY), {"title", "abstract", "background", "deidentification", "characteristics", "implications", "availability", "funding", "model_rationale", "external_validity", "non_generalization"})
+        self.assertEqual(report.study_declared_facts(STUDY), {"title", "abstract", "background", "study_design", "acquisition", "deidentification", "characteristics", "implications", "availability", "funding", "model_rationale", "external_validity", "non_generalization"})
 
     def test_the_design_the_answers_restate_is_the_frozen_pre_registration(self):
         prereg = ROOT / "docs" / "research" / "drr-domain-gap" / "PREREG.md"

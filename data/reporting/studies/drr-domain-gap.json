@@ -1,6 +1,7 @@
 {
  "_about": "The owner's answers of the DRR domain-gap study's report (tools/report.py write --study drr-domain-gap): one plain sentence or more per field, the owner's own words. An empty field is reported as missing; a field that does not apply says so, starting with 'Not applicable:' and the reason. These are the items no file of the study answers; every other item is answered by code from the recorded run, the groups table and the frozen PREREG.md, and is never written here. A session may copy the owner's own words into a field, as written, naming in its pull request the message they came from (the owner's choice of 2026-10-29 at 03:34 UTC); no session writes a field in its own words, since the report would then be vouching for itself.",
  "abstract": "",
+ "acquisition": "",
  "availability": "",
  "background": "",
  "characteristics": "",
@@ -10,5 +11,6 @@
  "implications": "",
  "model_rationale": "",
  "non_generalization": "",
+ "study_design": "",
  "title": ""
 }
