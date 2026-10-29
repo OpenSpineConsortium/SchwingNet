@@ -301,8 +301,23 @@ record() {  # record ID WHAT: one line of the gate's own job list, the word with
   echo "$1 $word${id:+:$id} $2 $(date -u '+%FT%TZ')" >> "$STATE"
   echo "  $2: job $1"
 }
+# Every deep learning job on the grid starts through flows/launch.py (the owner's rule of 2026-10-29):
+# a GPU job's script must be one flows/registry.txt names in its fourth column, the job script that
+# starts the launcher, so a word not yet moved onto a flow is refused here before anything is queued.
+launched_script() {  # launched_script SCRIPT: status 0 where flows/registry.txt names SCRIPT as a flow's job script
+  awk -v script="$1" '$1 !~ /^#/ && NF == 5 && $4 == script { found = 1 } END { exit !found }' "$REPO/flows/registry.txt" 2>/dev/null
+}
+script_of() {  # script_of ARGS...: the word after --, the job script a submit names
+  while [ $# -gt 1 ] && [ "$1" != "--" ]; do shift; done
+  [ "${1:-}" = "--" ] && echo "${2:-}"
+}
 submit() {  # submit WHAT CLASS [K=V...] [job submit options...] -- SCRIPT: the job id on stdout, the record on stderr
-  local what=$1 out
+  local what=$1 out script
+  script=$(script_of "$@")
+  if [ "$2" = gpu ] && ! launched_script "$script"; then
+    echo "  refusing: $what is a GPU job whose script ${script:-(none)} flows/registry.txt does not name, and every GPU job starts through flows/launch.py; it waits for its flow (flows/README.md); nothing was queued" >&2
+    return 90
+  fi
   out=$(hpcw_submit "$@" 2>&1) || { echo "  $out" >&2; return 1; }
   record "$out" "$what" >&2
   echo "$out"

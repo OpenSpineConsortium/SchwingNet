@@ -173,6 +173,9 @@ class GateTest(unittest.TestCase):
         (self.repo / "tools" / "leaks.py").write_text("", encoding="utf-8")
         # the freeze and the rule the split-check marker names (grid/03-catalog.sbatch, grid/v1-version.sh)
         shutil.copytree(ROOT / "data" / "splits", self.repo / "data" / "splits")
+        # the flows the launcher starts, whose job scripts are the only GPU jobs the gate queues
+        (self.repo / "flows").mkdir(exist_ok=True)
+        shutil.copy(ROOT / "flows" / "registry.txt", self.repo / "flows" / "registry.txt")
         self.data = self.tmp / "data"
         self.runs = self.tmp / "runs"
         self.models = self.tmp / "models"
@@ -180,6 +183,12 @@ class GateTest(unittest.TestCase):
         for folder in (self.data, self.runs, self.models):
             folder.mkdir()
         self.netrc = self.tmp / "netrc"
+
+    def launched_for_the_test(self, script):
+        """The copy's flows/registry.txt names SCRIPT as a flow's job script, as it will once its word
+        is moved onto a flow, so a test of the word's own logic is not refused for not being moved yet."""
+        with (self.repo / "flows" / "registry.txt").open("a", encoding="utf-8") as registry:
+            registry.write(f"stand_in StandIn STAND_IN_RC {script} -\n")
 
     def gate(self, *words, data_root=None, **extra):
         env = self.gate_env(data_root)
@@ -693,6 +702,23 @@ class GateTest(unittest.TestCase):
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
         self.assertIn("--time 51:00:00", self.line_of("experiment-driver.sbatch")[1])
         self.assertIn("wall time: 51:00:00 for 40 hours of training", done.stdout)
+
+    def test_a_gpu_job_whose_script_starts_no_launched_flow_is_refused_before_anything_is_queued(self):
+        # the owner's rule of 2026-10-29: every GPU job starts through flows/launch.py, so a word whose
+        # script flows/registry.txt does not name, the public benchmarks' bench.sbatch now, queues nothing
+        self.environments_ready()
+        self.weights_ready()
+        self.carmlspine_shards()
+        self.catalog_ready(version=2)
+        bundle = self.data / "hf_flexray_weights" / "raw"
+        bundle.mkdir(parents=True)
+        (bundle / "ensemble.json").write_text("{}\n", encoding="utf-8")
+        (self.data / "realxray" / "carmlspine" / "meta").mkdir(parents=True, exist_ok=True)
+        done = self.gate("bench", "flexray_carmlspine")
+        self.assertNotEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("refusing: bench_flexray_carmlspine is a GPU job whose script bench.sbatch flows/registry.txt does not name, "
+                      "and every GPU job starts through flows/launch.py", done.stdout + done.stderr)
+        self.assertFalse(self.line_of("bench.sbatch"), "nothing was queued")
 
     def test_experiment_refuses_a_request_with_a_strange_line_before_anything_is_submitted(self):
         self.environments_ready()
@@ -1907,6 +1933,7 @@ esac
 
     def test_bench_queues_one_gpu_job_per_model_and_then_keeps_printing_its_report(self):
         # no name, two names and a name of no benchmark are refused before anything is read
+        self.launched_for_the_test("bench.sbatch")
         self.assertEqual(self.gate("bench").returncode, 64)
         self.assertEqual(self.gate("bench", "a", "b").returncode, 64)
         self.assertEqual(self.gate("bench", "fluorosam").returncode, 64)
@@ -1953,6 +1980,7 @@ esac
         # a benchmark that failed scored nothing: once a fix has moved the checkout past the commit
         # its report names, one more send keeps the report under its job's number and queues it
         # again (#312); on the same commit, or once it succeeded, a send queues nothing
+        self.launched_for_the_test("bench.sbatch")
         bundle = self.data / "hf_flexray_weights" / "raw"
         bundle.mkdir(parents=True)
         (bundle / "ensemble.json").write_text("{}\n", encoding="utf-8")
@@ -2164,6 +2192,7 @@ esac
         self.assertEqual(len(self.submitted()), 2)
 
     def test_a_realism_stage_and_the_runs_that_hold_the_checkout_each_wait_for_the_others(self):
+        self.launched_for_the_test("bench.sbatch")
         self.environments_ready()
         self.weights_ready()
         self.carmlspine_shards()
@@ -2612,6 +2641,7 @@ exit "${FAKE_RC:-0}"
         return ssn, conda
 
     def test_timing_waits_for_a_sane_select_report_then_queues_one_gpu_job_and_leaves_a_blackwell_node_for_another(self):
+        self.launched_for_the_test("anomaly.sbatch")
         self.environments_ready()
         ssn, conda = self.spineps_fakes()
         logs = self.repo / "grid" / "logs"
@@ -3091,6 +3121,7 @@ exit "${FAKE_RC:-0}"
         self.assertFalse(hold.exists())
 
     def test_a_benchmark_and_the_runs_that_hold_the_checkout_each_wait_for_the_others(self):
+        self.launched_for_the_test("bench.sbatch")
         self.environments_ready()
         self.weights_ready()
         self.carmlspine_shards()
@@ -3112,6 +3143,7 @@ exit "${FAKE_RC:-0}"
         self.assertIn(f"--dependency=afterany:{job} ", self.line_of("v1-driver.sbatch")[0])
 
     def test_bench_with_stale_environments_queues_one_setup_job_that_every_bench_waits_on(self):
+        self.launched_for_the_test("bench.sbatch")
         bundle = self.data / "hf_flexray_weights" / "raw"
         bundle.mkdir(parents=True)
         (bundle / "ensemble.json").write_text("{}\n", encoding="utf-8")
@@ -3688,7 +3720,7 @@ exit "${FAKE_RC:-0}"
         self.drr_gap_box()
         self.git_repo()
         (self.repo / "tools" / "domain_gap.py").write_text("# the study's tool; grid/box.sh stands in for it\n", encoding="utf-8")
-        (self.repo / "flows").mkdir()
+        (self.repo / "flows").mkdir(exist_ok=True)
         (self.repo / "flows" / "launch.py").write_text("# the launcher; grid/box.sh stands in for it\n", encoding="utf-8")
         (self.repo / "pixi.toml").write_text("[workspace]\n", encoding="utf-8")
         (self.repo / "data" / "reporting").mkdir(parents=True)
@@ -4984,7 +5016,7 @@ exit "${FAKE_RC:-0}"
 
     def test_the_repositorys_own_prereg_covers_its_smoke_plans_and_not_the_trials(self):
         self.environments_ready()
-        (self.repo / "flows").mkdir()
+        (self.repo / "flows").mkdir(exist_ok=True)
         shutil.copy(ROOT / "flows" / "registry.txt", self.repo / "flows" / "registry.txt")
         shutil.copytree(ROOT / "docs" / "research" / "block-smoke", self.repo / "docs" / "research" / "block-smoke")
         done = self.gate("sweep", "trials")

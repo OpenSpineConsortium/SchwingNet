@@ -132,9 +132,9 @@ pull request each, under a PREREG of its own:
   flexray_deepfluoro and xvr_deepfluoro;
 - `anomaly timing`, SPINEPS over the anomaly route's CTs (grid/anomaly.sbatch).
 
-The rule holds already, so until a word is moved it is not sent. Once they all are, the gate
-refuses any GPU job that does not start through flows/launch.py; that refusal is a later pull
-request.
+The rule holds already, and grid/gate.sh enforces it: its submit refuses a GPU job whose script
+column 4 of registry.txt does not name, with exit 90 before anything is queued, so the two words
+above are refused until each is moved onto a flow.
 
 - `registry.txt` is the one list of the flows: per kind its class in flows/<kind>.py, the word the
   launcher's last line ends with, the job script under grid/ that starts the launcher when Slurm
