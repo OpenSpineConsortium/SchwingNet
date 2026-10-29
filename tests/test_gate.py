@@ -43,7 +43,7 @@ FAKE_HPCWORKER = ROOT / "tests" / "fakes" / "hpcworker"
 NEW_SCRIPTS = ("gate.sh", "hpcw.sh", "box.sh", "bin/pixi", "bin/train-cpu-python", "00-setup.sbatch", "00-weights.sbatch",
                "00-carmlspine.sbatch", "v1-driver.sbatch", "experiment-driver.sbatch", "run-xray-chain.sh",
                "run-platform-fetch.sh", "sweep-driver.sbatch", "v1-version.sh", "realism.sbatch", "venv.sh",
-               "drr-gap.sbatch", "drr-seg.sbatch", "morphometry.sbatch", "gold3-census.sbatch")
+               "drr-gap.sbatch", "drr-seg.sbatch", "morphometry.sbatch", "gold3-census.sbatch", "bordercall-complete.sbatch")
 ENVS = ("default", "train-cpu", "train-gpu", "telemetry")
 # What bench flexray_drr_gap's word says of a mask folder that is there: the study reads too few CTs'
 # masks as none, which its summary says, so the word says only where the folder is.
@@ -2103,6 +2103,52 @@ esac
             done = self.gate("anomaly", "select")
             self.assertEqual(done.returncode, 0, done.stdout)
             self.assertIn("- exit 0", done.stdout)
+        self.assertEqual(len(self.submitted()), 1)
+
+    def test_bordercall_complete_queues_one_cpu_job_once_and_never_again_without_the_owners_word(self):
+        # the owner's count of 2026-10-29 15:22 UTC is one CPU job: a stage it does not know is refused
+        refused = self.gate("bordercall", "tune")
+        self.assertEqual(refused.returncode, 64, refused.stdout)
+        self.assertIn("pilot, full or complete", refused.stdout)
+        # with no vendored matcher (the checkout's copy carries one, so it is taken away first), or no
+        # job script or tool, nothing is queued
+        matcher = self.repo / "grid" / "bordercall" / "holdings" / "fullspine_complete.py"
+        matcher.unlink(missing_ok=True)
+        missing = self.gate("bordercall", "complete")
+        self.assertEqual(missing.returncode, 2, missing.stdout)
+        self.assertIn("no vendored matcher", missing.stdout)
+        matcher.parent.mkdir(parents=True, exist_ok=True)
+        matcher.write_text("", encoding="utf-8")
+        self.assertEqual(self.gate("bordercall", "complete").returncode, 2)
+        (self.repo / "tools" / "gold3_complete_grid.py").write_text("", encoding="utf-8")
+        # no pilot comes before it and no setup job goes with it, the environments not made here
+        done = self.gate("bordercall", "complete")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        lines = self.submitted()
+        self.assertEqual(len(lines), 1, lines)
+        self.assertIn("--class batch --name bordercall_complete", lines[0])
+        self.assertIn("--no-requeue", lines[0])
+        self.assertIn("--time 08:00:00", lines[0])
+        self.assertIn("bordercall-complete.sbatch", lines[0])
+        job = self.recorded()["bordercall_complete"]
+        self.live(job)
+        busy = self.gate("bordercall", "complete")
+        self.assertEqual(busy.returncode, 75, busy.stdout)
+        # while it runs, the corpus's stages wait for it too
+        self.assertEqual(self.gate("bordercall", "pilot").returncode, 75)
+        (self.fake / "queue").write_text("", encoding="utf-8")
+        # a job that ended with no report is not queued again: a second one waits for the owner's word
+        again = self.gate("bordercall", "complete")
+        self.assertEqual(again.returncode, 64, again.stdout)
+        self.assertIn("left no report", again.stdout)
+        report = self.repo / "grid" / "logs" / "BORDERCALL-complete.md"
+        report.write_text("# bordercall complete: job 1 on node, commit abc1234\n- FAILED at match: x\n- exit 1 at now\n",
+                          encoding="utf-8")
+        # a standing report is printed and queues nothing, even one that failed: a rerun is a new count
+        for _ in range(2):
+            shown = self.gate("bordercall", "complete")
+            self.assertEqual(shown.returncode, 0, shown.stdout)
+            self.assertIn("FAILED at match", shown.stdout)
         self.assertEqual(len(self.submitted()), 1)
 
     def test_census_gold3_queues_one_cpu_job_once_and_never_again_without_the_owners_word(self):
