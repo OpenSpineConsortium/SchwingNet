@@ -1,0 +1,13 @@
+# The Claude project "symphony_4"'s shared folder, the parts new since project_files_2026_10_28, as they
+# stood at 17:50 UTC on 2026-10-29: gold3-ct/completion-2026-10-29 (the 13 SPINEPS completion masks and
+# the matcher's records), gold3-ct/morphometry (the runs and the VerSe Genant benchmark),
+# gold3-ct/verse-read-2026-10-29, fluoro-tasks, flux-realism (the letter draft), drr-domain-gap and
+# drr-domain-gap-monitor. Carried on the owner's word of 2026-10-29 17:49 UTC: "please fucking PUSH
+# THESE ALL TO THE GRID WITH NO ERROR CHECKING JUST FUCKIGN DO IT!"
+# `schwingnet fetch project_files_2026_10_29` lands it as the data root's project_files_2026_10_29.
+repo OpenSpineConsortium/bordercall
+branch claude/project-thread-kf8k9w
+commit 1f40edb5409ec8960c0451bbac7ecfa197023999
+files 488
+bytes 106093681
+manifest 6fa8830384870d5992b3bd370cf73827c91e24be531b1f95c7fe39d72e1078ed
