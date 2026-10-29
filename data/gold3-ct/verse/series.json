@@ -1,0 +1,3004 @@
+{
+ "about": "VerSe's 374 image series and the 355 patients they belong to, from TUM's published demographics table as VerSeFusion carries it; tools/gold3_field.py reads the patient as the person key (verse:<patient>). Ages are years at the scan, null where the table leaves them blank. Sex is left out, as nothing here reads it.",
+ "source": {
+  "repository": "Gregory-Schwing-MD-PhD/versefusion",
+  "commit": "c55a398",
+  "file": "configs/verse_demographics.csv",
+  "sha256": "7b42cb3b409200cce95502c8e70f0d819bde173aebe62f2d3d369bddaf566a24",
+  "reader": "src/verse_pipeline/utils/demographics.py load_demographics (column A the patient, column B the series where a patient has several)"
+ },
+ "series": [
+  {
+   "series": "gl003",
+   "patient": "gl003",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 57
+  },
+  {
+   "series": "gl016",
+   "patient": "gl016",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 43
+  },
+  {
+   "series": "gl017",
+   "patient": "gl017",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 62
+  },
+  {
+   "series": "gl045",
+   "patient": "gl045",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 49
+  },
+  {
+   "series": "gl047",
+   "patient": "gl047",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 45
+  },
+  {
+   "series": "gl059",
+   "patient": "gl059",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 22
+  },
+  {
+   "series": "gl068",
+   "patient": "gl068",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 53
+  },
+  {
+   "series": "gl090",
+   "patient": "gl090",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 50
+  },
+  {
+   "series": "gl099",
+   "patient": "gl099",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 16
+  },
+  {
+   "series": "gl108",
+   "patient": "gl108",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 64
+  },
+  {
+   "series": "gl124",
+   "patient": "gl124",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 23
+  },
+  {
+   "series": "gl144",
+   "patient": "gl144",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 57
+  },
+  {
+   "series": "gl146",
+   "patient": "gl146",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 52
+  },
+  {
+   "series": "gl153",
+   "patient": "gl153",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 61
+  },
+  {
+   "series": "gl195",
+   "patient": "gl195",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 74
+  },
+  {
+   "series": "gl216",
+   "patient": "gl216",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 62
+  },
+  {
+   "series": "gl217",
+   "patient": "gl217",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 28
+  },
+  {
+   "series": "gl240",
+   "patient": "gl240",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 59
+  },
+  {
+   "series": "gl247",
+   "patient": "gl247",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 73
+  },
+  {
+   "series": "gl279",
+   "patient": "gl279",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 23
+  },
+  {
+   "series": "gl295",
+   "patient": "gl295",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 27
+  },
+  {
+   "series": "gl348",
+   "patient": "gl348",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 59
+  },
+  {
+   "series": "gl352",
+   "patient": "gl352",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 73
+  },
+  {
+   "series": "gl364",
+   "patient": "gl364",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 48
+  },
+  {
+   "series": "gl380",
+   "patient": "gl380",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 49
+  },
+  {
+   "series": "gl419",
+   "patient": "gl419",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 83
+  },
+  {
+   "series": "gl428",
+   "patient": "gl428",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 71
+  },
+  {
+   "series": "gl453",
+   "patient": "gl453",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 41
+  },
+  {
+   "series": "gl479",
+   "patient": "gl479",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 45
+  },
+  {
+   "series": "gl492",
+   "patient": "gl492",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 48
+  },
+  {
+   "series": "verse004",
+   "patient": "verse004",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 74
+  },
+  {
+   "series": "verse005",
+   "patient": "verse005",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 74
+  },
+  {
+   "series": "verse006",
+   "patient": "verse006",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": false,
+   "age": 79
+  },
+  {
+   "series": "verse007",
+   "patient": "verse007",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": false,
+   "age": 78
+  },
+  {
+   "series": "verse008",
+   "patient": "verse008",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 60
+  },
+  {
+   "series": "verse009",
+   "patient": "verse009",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": false,
+   "age": 88
+  },
+  {
+   "series": "verse010",
+   "patient": "verse010",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": false,
+   "age": 78
+  },
+  {
+   "series": "verse011",
+   "patient": "verse011",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": false,
+   "age": 71
+  },
+  {
+   "series": "verse012",
+   "patient": "verse012",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": false,
+   "age": 77
+  },
+  {
+   "series": "verse013",
+   "patient": "verse013",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 60
+  },
+  {
+   "series": "verse014",
+   "patient": "verse014",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": false,
+   "age": 72
+  },
+  {
+   "series": "verse015",
+   "patient": "verse015",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 77
+  },
+  {
+   "series": "verse016",
+   "patient": "verse016",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 65
+  },
+  {
+   "series": "verse018",
+   "patient": "verse018",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 66
+  },
+  {
+   "series": "verse020",
+   "patient": "verse020",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 86
+  },
+  {
+   "series": "verse022",
+   "patient": "verse022",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 70
+  },
+  {
+   "series": "verse023",
+   "patient": "verse023",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 74
+  },
+  {
+   "series": "verse024",
+   "patient": "verse024",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 76
+  },
+  {
+   "series": "verse026",
+   "patient": "verse026",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": false,
+   "age": 89
+  },
+  {
+   "series": "verse029",
+   "patient": "verse029",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 51
+  },
+  {
+   "series": "verse030",
+   "patient": "verse030",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": false,
+   "age": 73
+  },
+  {
+   "series": "verse031",
+   "patient": "verse031",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 53
+  },
+  {
+   "series": "verse032",
+   "patient": "verse032",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": false,
+   "age": 83
+  },
+  {
+   "series": "verse033",
+   "patient": "verse033",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 57
+  },
+  {
+   "series": "verse034",
+   "patient": "verse034",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 58
+  },
+  {
+   "series": "verse036",
+   "patient": "verse036",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": false,
+   "age": 62
+  },
+  {
+   "series": "verse038",
+   "patient": "verse038",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": false,
+   "age": 54
+  },
+  {
+   "series": "verse040",
+   "patient": "verse040",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": false,
+   "age": 56
+  },
+  {
+   "series": "verse041",
+   "patient": "verse041",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 61
+  },
+  {
+   "series": "verse043",
+   "patient": "verse043",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": false,
+   "age": 82
+  },
+  {
+   "series": "verse046",
+   "patient": "verse046",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": false,
+   "age": 79
+  },
+  {
+   "series": "verse047",
+   "patient": "verse047",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 80
+  },
+  {
+   "series": "verse048",
+   "patient": "verse048",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": false,
+   "age": 75
+  },
+  {
+   "series": "verse050",
+   "patient": "verse050",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 51
+  },
+  {
+   "series": "verse051",
+   "patient": "verse051",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": false,
+   "age": 70
+  },
+  {
+   "series": "verse053",
+   "patient": "verse053",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": false,
+   "age": 86
+  },
+  {
+   "series": "verse054",
+   "patient": "verse054",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 86
+  },
+  {
+   "series": "verse055",
+   "patient": "verse055",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 64
+  },
+  {
+   "series": "verse056",
+   "patient": "verse056",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 78
+  },
+  {
+   "series": "verse058",
+   "patient": "verse058",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": false,
+   "age": 79
+  },
+  {
+   "series": "verse059",
+   "patient": "verse059",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": false,
+   "age": 62
+  },
+  {
+   "series": "verse060",
+   "patient": "verse060",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": false,
+   "age": 80
+  },
+  {
+   "series": "verse061",
+   "patient": "verse061",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": false,
+   "age": 71
+  },
+  {
+   "series": "verse063",
+   "patient": "verse063",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": false,
+   "age": 56
+  },
+  {
+   "series": "verse064",
+   "patient": "verse064",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": false,
+   "age": 57
+  },
+  {
+   "series": "verse065",
+   "patient": "verse065",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": false,
+   "age": 78
+  },
+  {
+   "series": "verse066",
+   "patient": "verse066",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 57
+  },
+  {
+   "series": "verse067",
+   "patient": "verse067",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 61
+  },
+  {
+   "series": "verse068",
+   "patient": "verse068",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": false,
+   "age": 75
+  },
+  {
+   "series": "verse070",
+   "patient": "verse070",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 73
+  },
+  {
+   "series": "verse071",
+   "patient": "verse071",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": false,
+   "age": 57
+  },
+  {
+   "series": "verse072",
+   "patient": "verse072",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": false,
+   "age": 84
+  },
+  {
+   "series": "verse073",
+   "patient": "verse073",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 76
+  },
+  {
+   "series": "verse074",
+   "patient": "verse074",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": false,
+   "age": 64
+  },
+  {
+   "series": "verse075",
+   "patient": "verse075",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 57
+  },
+  {
+   "series": "verse076",
+   "patient": "verse076",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": false,
+   "age": 72
+  },
+  {
+   "series": "verse078",
+   "patient": "verse078",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": false,
+   "age": 80
+  },
+  {
+   "series": "verse080",
+   "patient": "verse080",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 77
+  },
+  {
+   "series": "verse081",
+   "patient": "verse081",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": false,
+   "age": 81
+  },
+  {
+   "series": "verse082",
+   "patient": "verse082",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 53
+  },
+  {
+   "series": "verse083",
+   "patient": "verse083",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 63
+  },
+  {
+   "series": "verse085",
+   "patient": "verse085",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 79
+  },
+  {
+   "series": "verse088",
+   "patient": "verse088",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 61
+  },
+  {
+   "series": "verse089",
+   "patient": "verse089",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 78
+  },
+  {
+   "series": "verse090",
+   "patient": "verse400",
+   "position": "1 of 2",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 61
+  },
+  {
+   "series": "verse091",
+   "patient": "verse091",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 77
+  },
+  {
+   "series": "verse092",
+   "patient": "verse092",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 71
+  },
+  {
+   "series": "verse093",
+   "patient": "verse093",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 75
+  },
+  {
+   "series": "verse095",
+   "patient": "verse095",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": false,
+   "age": 67
+  },
+  {
+   "series": "verse096",
+   "patient": "verse096",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 60
+  },
+  {
+   "series": "verse097",
+   "patient": "verse097",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 90
+  },
+  {
+   "series": "verse100",
+   "patient": "verse100",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": false,
+   "age": 66
+  },
+  {
+   "series": "verse101",
+   "patient": "verse101",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 53
+  },
+  {
+   "series": "verse102",
+   "patient": "verse102",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": false,
+   "age": 81
+  },
+  {
+   "series": "verse104",
+   "patient": "verse104",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 67
+  },
+  {
+   "series": "verse105",
+   "patient": "verse105",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": false,
+   "age": 74
+  },
+  {
+   "series": "verse107",
+   "patient": "verse107",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": false,
+   "age": 74
+  },
+  {
+   "series": "verse108",
+   "patient": "verse108",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 52
+  },
+  {
+   "series": "verse111",
+   "patient": "verse111",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 80
+  },
+  {
+   "series": "verse112",
+   "patient": "verse112",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 56
+  },
+  {
+   "series": "verse113",
+   "patient": "verse113",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 61
+  },
+  {
+   "series": "verse116",
+   "patient": "verse116",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": false,
+   "age": 66
+  },
+  {
+   "series": "verse119",
+   "patient": "verse119",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 81
+  },
+  {
+   "series": "verse122",
+   "patient": "verse122",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 80
+  },
+  {
+   "series": "verse124",
+   "patient": "verse124",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": false,
+   "age": 73
+  },
+  {
+   "series": "verse125",
+   "patient": "verse125",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 85
+  },
+  {
+   "series": "verse127",
+   "patient": "verse127",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 71
+  },
+  {
+   "series": "verse130",
+   "patient": "verse130",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 56
+  },
+  {
+   "series": "verse131",
+   "patient": "verse131",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 71
+  },
+  {
+   "series": "verse133",
+   "patient": "verse133",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": false,
+   "age": 67
+  },
+  {
+   "series": "verse134",
+   "patient": "verse134",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": false,
+   "age": 67
+  },
+  {
+   "series": "verse135",
+   "patient": "verse135",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 70
+  },
+  {
+   "series": "verse137",
+   "patient": "verse137",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": false,
+   "age": 72
+  },
+  {
+   "series": "verse138",
+   "patient": "verse138",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 59
+  },
+  {
+   "series": "verse139",
+   "patient": "verse139",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 79
+  },
+  {
+   "series": "verse141",
+   "patient": "verse141",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 63
+  },
+  {
+   "series": "verse143",
+   "patient": "verse143",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 85
+  },
+  {
+   "series": "verse144",
+   "patient": "verse144",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": false,
+   "age": 75
+  },
+  {
+   "series": "verse145",
+   "patient": "verse145",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 61
+  },
+  {
+   "series": "verse146",
+   "patient": "verse146",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": false,
+   "age": 70
+  },
+  {
+   "series": "verse147",
+   "patient": "verse147",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": false,
+   "age": 61
+  },
+  {
+   "series": "verse149",
+   "patient": "verse149",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 89
+  },
+  {
+   "series": "verse150",
+   "patient": "verse150",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": false,
+   "age": 76
+  },
+  {
+   "series": "verse151",
+   "patient": "verse151",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 60
+  },
+  {
+   "series": "verse152",
+   "patient": "verse152",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": false,
+   "age": 74
+  },
+  {
+   "series": "verse153",
+   "patient": "verse153",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": false,
+   "age": 75
+  },
+  {
+   "series": "verse154",
+   "patient": "verse154",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 56
+  },
+  {
+   "series": "verse155",
+   "patient": "verse400",
+   "position": "2 of 2",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": null
+  },
+  {
+   "series": "verse201",
+   "patient": "verse401",
+   "position": "1 of 2",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 59
+  },
+  {
+   "series": "verse202",
+   "patient": "verse402",
+   "position": "1 of 2",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 35
+  },
+  {
+   "series": "verse205",
+   "patient": "verse205",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": false,
+   "age": 53
+  },
+  {
+   "series": "verse207",
+   "patient": "verse207",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": false,
+   "age": 91
+  },
+  {
+   "series": "verse208",
+   "patient": "verse403",
+   "position": "1 of 2",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 54
+  },
+  {
+   "series": "verse209",
+   "patient": "verse404",
+   "position": "1 of 2",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 59
+  },
+  {
+   "series": "verse212",
+   "patient": "verse405",
+   "position": "1 of 3",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 42
+  },
+  {
+   "series": "verse214",
+   "patient": "verse406",
+   "position": "1 of 2",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 41
+  },
+  {
+   "series": "verse215",
+   "patient": "verse407",
+   "position": "1 of 2",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 19
+  },
+  {
+   "series": "verse217",
+   "patient": "verse217",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 73
+  },
+  {
+   "series": "verse221",
+   "patient": "verse221",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": false,
+   "age": 77
+  },
+  {
+   "series": "verse223",
+   "patient": "verse408",
+   "position": "1 of 2",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 74
+  },
+  {
+   "series": "verse225",
+   "patient": "verse225",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": false,
+   "age": 60
+  },
+  {
+   "series": "verse226",
+   "patient": "verse409",
+   "position": "1 of 2",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 87
+  },
+  {
+   "series": "verse227",
+   "patient": "verse410",
+   "position": "1 of 2",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 64
+  },
+  {
+   "series": "verse230",
+   "patient": "verse230",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": false,
+   "age": 79
+  },
+  {
+   "series": "verse232",
+   "patient": "verse411",
+   "position": "1 of 2",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 61
+  },
+  {
+   "series": "verse235",
+   "patient": "verse412",
+   "position": "1 of 2",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 47
+  },
+  {
+   "series": "verse236",
+   "patient": "verse236",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 88
+  },
+  {
+   "series": "verse239",
+   "patient": "verse413",
+   "position": "1 of 2",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 23
+  },
+  {
+   "series": "verse241",
+   "patient": "verse414",
+   "position": "1 of 2",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 38
+  },
+  {
+   "series": "verse242",
+   "patient": "verse242",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": false,
+   "age": 69
+  },
+  {
+   "series": "verse243",
+   "patient": "verse415",
+   "position": "1 of 2",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 35
+  },
+  {
+   "series": "verse247",
+   "patient": "verse416",
+   "position": "1 of 2",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 53
+  },
+  {
+   "series": "verse250",
+   "patient": "verse250",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": false,
+   "age": 39
+  },
+  {
+   "series": "verse251",
+   "patient": "verse402",
+   "position": "2 of 2",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": null
+  },
+  {
+   "series": "verse252",
+   "patient": "verse252",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 36
+  },
+  {
+   "series": "verse253",
+   "patient": "verse401",
+   "position": "2 of 2",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": null
+  },
+  {
+   "series": "verse254",
+   "patient": "verse254",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 27
+  },
+  {
+   "series": "verse255",
+   "patient": "verse403",
+   "position": "2 of 2",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": null
+  },
+  {
+   "series": "verse256",
+   "patient": "verse404",
+   "position": "2 of 2",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": null
+  },
+  {
+   "series": "verse257",
+   "patient": "verse257",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 47
+  },
+  {
+   "series": "verse258",
+   "patient": "verse405",
+   "position": "2 of 3",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": null
+  },
+  {
+   "series": "verse259",
+   "patient": "verse405",
+   "position": "3 of 3",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": null
+  },
+  {
+   "series": "verse260",
+   "patient": "verse260",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 58
+  },
+  {
+   "series": "verse261",
+   "patient": "verse406",
+   "position": "2 of 2",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": null
+  },
+  {
+   "series": "verse262",
+   "patient": "verse407",
+   "position": "2 of 2",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": null
+  },
+  {
+   "series": "verse264",
+   "patient": "verse264",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 29
+  },
+  {
+   "series": "verse265",
+   "patient": "verse408",
+   "position": "2 of 2",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": null
+  },
+  {
+   "series": "verse266",
+   "patient": "verse409",
+   "position": "2 of 2",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": null
+  },
+  {
+   "series": "verse267",
+   "patient": "verse410",
+   "position": "2 of 2",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": null
+  },
+  {
+   "series": "verse269",
+   "patient": "verse269",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 41
+  },
+  {
+   "series": "verse270",
+   "patient": "verse411",
+   "position": "2 of 2",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": null
+  },
+  {
+   "series": "verse271",
+   "patient": "verse271",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 50
+  },
+  {
+   "series": "verse272",
+   "patient": "verse413",
+   "position": "2 of 2",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": null
+  },
+  {
+   "series": "verse273",
+   "patient": "verse414",
+   "position": "2 of 2",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": null
+  },
+  {
+   "series": "verse275",
+   "patient": "verse415",
+   "position": "2 of 2",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": null
+  },
+  {
+   "series": "verse276",
+   "patient": "verse276",
+   "position": "1 of 1",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 74
+  },
+  {
+   "series": "verse277",
+   "patient": "verse417",
+   "position": "1 of 2",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": 27
+  },
+  {
+   "series": "verse278",
+   "patient": "verse417",
+   "position": "2 of 2",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": null
+  },
+  {
+   "series": "verse279",
+   "patient": "verse416",
+   "position": "2 of 2",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": null
+  },
+  {
+   "series": "verse290",
+   "patient": "verse412",
+   "position": "2 of 2",
+   "in_verse19": true,
+   "in_verse20": true,
+   "age": null
+  },
+  {
+   "series": "verse500",
+   "patient": "verse500",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 35
+  },
+  {
+   "series": "verse502",
+   "patient": "verse502",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 35
+  },
+  {
+   "series": "verse503",
+   "patient": "verse503",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 30
+  },
+  {
+   "series": "verse504",
+   "patient": "verse504",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 54
+  },
+  {
+   "series": "verse505",
+   "patient": "verse505",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 59
+  },
+  {
+   "series": "verse506",
+   "patient": "verse506",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 55
+  },
+  {
+   "series": "verse507",
+   "patient": "verse507",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 69
+  },
+  {
+   "series": "verse508",
+   "patient": "verse508",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 39
+  },
+  {
+   "series": "verse509",
+   "patient": "verse509",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 74
+  },
+  {
+   "series": "verse510",
+   "patient": "verse510",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 53
+  },
+  {
+   "series": "verse511",
+   "patient": "verse511",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 58
+  },
+  {
+   "series": "verse512",
+   "patient": "verse512",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 68
+  },
+  {
+   "series": "verse513",
+   "patient": "verse513",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 81
+  },
+  {
+   "series": "verse514",
+   "patient": "verse514",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 57
+  },
+  {
+   "series": "verse517",
+   "patient": "verse517",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 42
+  },
+  {
+   "series": "verse518",
+   "patient": "verse518",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 74
+  },
+  {
+   "series": "verse519",
+   "patient": "verse519",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 71
+  },
+  {
+   "series": "verse521",
+   "patient": "verse521",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 35
+  },
+  {
+   "series": "verse522",
+   "patient": "verse522",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 71
+  },
+  {
+   "series": "verse524",
+   "patient": "verse524",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 55
+  },
+  {
+   "series": "verse525",
+   "patient": "verse525",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 81
+  },
+  {
+   "series": "verse526",
+   "patient": "verse526",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 80
+  },
+  {
+   "series": "verse527",
+   "patient": "verse527",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 69
+  },
+  {
+   "series": "verse529",
+   "patient": "verse529",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 20
+  },
+  {
+   "series": "verse530",
+   "patient": "verse530",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 77
+  },
+  {
+   "series": "verse531",
+   "patient": "verse531",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 25
+  },
+  {
+   "series": "verse532",
+   "patient": "verse532",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 23
+  },
+  {
+   "series": "verse533",
+   "patient": "verse533",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 41
+  },
+  {
+   "series": "verse534",
+   "patient": "verse534",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 75
+  },
+  {
+   "series": "verse535",
+   "patient": "verse535",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 78
+  },
+  {
+   "series": "verse536",
+   "patient": "verse536",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 56
+  },
+  {
+   "series": "verse537",
+   "patient": "verse537",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 54
+  },
+  {
+   "series": "verse539",
+   "patient": "verse539",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 83
+  },
+  {
+   "series": "verse540",
+   "patient": "verse540",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 19
+  },
+  {
+   "series": "verse541",
+   "patient": "verse541",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 28
+  },
+  {
+   "series": "verse542",
+   "patient": "verse542",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 77
+  },
+  {
+   "series": "verse544",
+   "patient": "verse544",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 58
+  },
+  {
+   "series": "verse545",
+   "patient": "verse545",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 42
+  },
+  {
+   "series": "verse546",
+   "patient": "verse546",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 45
+  },
+  {
+   "series": "verse547",
+   "patient": "verse547",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 24
+  },
+  {
+   "series": "verse549",
+   "patient": "verse549",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 48
+  },
+  {
+   "series": "verse550",
+   "patient": "verse550",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 38
+  },
+  {
+   "series": "verse551",
+   "patient": "verse551",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 85
+  },
+  {
+   "series": "verse552",
+   "patient": "verse552",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 67
+  },
+  {
+   "series": "verse553",
+   "patient": "verse553",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 60
+  },
+  {
+   "series": "verse554",
+   "patient": "verse554",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 70
+  },
+  {
+   "series": "verse555",
+   "patient": "verse555",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 43
+  },
+  {
+   "series": "verse556",
+   "patient": "verse556",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 33
+  },
+  {
+   "series": "verse557",
+   "patient": "verse557",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 53
+  },
+  {
+   "series": "verse558",
+   "patient": "verse558",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 62
+  },
+  {
+   "series": "verse559",
+   "patient": "verse559",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 76
+  },
+  {
+   "series": "verse560",
+   "patient": "verse560",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 68
+  },
+  {
+   "series": "verse561",
+   "patient": "verse561",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 40
+  },
+  {
+   "series": "verse563",
+   "patient": "verse563",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 68
+  },
+  {
+   "series": "verse564",
+   "patient": "verse564",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 66
+  },
+  {
+   "series": "verse565",
+   "patient": "verse565",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 48
+  },
+  {
+   "series": "verse569",
+   "patient": "verse569",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 46
+  },
+  {
+   "series": "verse570",
+   "patient": "verse570",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 50
+  },
+  {
+   "series": "verse571",
+   "patient": "verse571",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 70
+  },
+  {
+   "series": "verse572",
+   "patient": "verse572",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 22
+  },
+  {
+   "series": "verse573",
+   "patient": "verse573",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 37
+  },
+  {
+   "series": "verse576",
+   "patient": "verse576",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 36
+  },
+  {
+   "series": "verse577",
+   "patient": "verse577",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 57
+  },
+  {
+   "series": "verse578",
+   "patient": "verse578",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 59
+  },
+  {
+   "series": "verse580",
+   "patient": "verse580",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 27
+  },
+  {
+   "series": "verse581",
+   "patient": "verse581",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 25
+  },
+  {
+   "series": "verse582",
+   "patient": "verse582",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 51
+  },
+  {
+   "series": "verse584",
+   "patient": "verse584",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 21
+  },
+  {
+   "series": "verse585",
+   "patient": "verse585",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 35
+  },
+  {
+   "series": "verse586",
+   "patient": "verse586",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 70
+  },
+  {
+   "series": "verse587",
+   "patient": "verse587",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 68
+  },
+  {
+   "series": "verse588",
+   "patient": "verse588",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 82
+  },
+  {
+   "series": "verse590",
+   "patient": "verse590",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 39
+  },
+  {
+   "series": "verse591",
+   "patient": "verse591",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 67
+  },
+  {
+   "series": "verse592",
+   "patient": "verse592",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 50
+  },
+  {
+   "series": "verse593",
+   "patient": "verse593",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 40
+  },
+  {
+   "series": "verse594",
+   "patient": "verse594",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 30
+  },
+  {
+   "series": "verse596",
+   "patient": "verse596",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 62
+  },
+  {
+   "series": "verse597",
+   "patient": "verse597",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 64
+  },
+  {
+   "series": "verse598",
+   "patient": "verse598",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 57
+  },
+  {
+   "series": "verse599",
+   "patient": "verse599",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 58
+  },
+  {
+   "series": "verse600",
+   "patient": "verse600",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 51
+  },
+  {
+   "series": "verse601",
+   "patient": "verse601",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 56
+  },
+  {
+   "series": "verse602",
+   "patient": "verse602",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 65
+  },
+  {
+   "series": "verse603",
+   "patient": "verse603",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 60
+  },
+  {
+   "series": "verse604",
+   "patient": "verse604",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 58
+  },
+  {
+   "series": "verse605",
+   "patient": "verse605",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 38
+  },
+  {
+   "series": "verse606",
+   "patient": "verse606",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 58
+  },
+  {
+   "series": "verse607",
+   "patient": "verse607",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 64
+  },
+  {
+   "series": "verse609",
+   "patient": "verse609",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 31
+  },
+  {
+   "series": "verse612",
+   "patient": "verse612",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 47
+  },
+  {
+   "series": "verse613",
+   "patient": "verse613",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 43
+  },
+  {
+   "series": "verse614",
+   "patient": "verse614",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 35
+  },
+  {
+   "series": "verse615",
+   "patient": "verse615",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 65
+  },
+  {
+   "series": "verse616",
+   "patient": "verse616",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 77
+  },
+  {
+   "series": "verse617",
+   "patient": "verse617",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 56
+  },
+  {
+   "series": "verse618",
+   "patient": "verse618",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 28
+  },
+  {
+   "series": "verse619",
+   "patient": "verse619",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 80
+  },
+  {
+   "series": "verse620",
+   "patient": "verse620",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 19
+  },
+  {
+   "series": "verse621",
+   "patient": "verse621",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 57
+  },
+  {
+   "series": "verse623",
+   "patient": "verse623",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 63
+  },
+  {
+   "series": "verse626",
+   "patient": "verse626",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 58
+  },
+  {
+   "series": "verse627",
+   "patient": "verse627",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 47
+  },
+  {
+   "series": "verse629",
+   "patient": "verse629",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 22
+  },
+  {
+   "series": "verse631",
+   "patient": "verse631",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 64
+  },
+  {
+   "series": "verse635",
+   "patient": "verse635",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 51
+  },
+  {
+   "series": "verse636",
+   "patient": "verse636",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 42
+  },
+  {
+   "series": "verse640",
+   "patient": "verse640",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 57
+  },
+  {
+   "series": "verse641",
+   "patient": "verse641",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 82
+  },
+  {
+   "series": "verse642",
+   "patient": "verse642",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 32
+  },
+  {
+   "series": "verse643",
+   "patient": "verse643",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 49
+  },
+  {
+   "series": "verse644",
+   "patient": "verse644",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 29
+  },
+  {
+   "series": "verse645",
+   "patient": "verse645",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 50
+  },
+  {
+   "series": "verse646",
+   "patient": "verse646",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 40
+  },
+  {
+   "series": "verse647",
+   "patient": "verse647",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 40
+  },
+  {
+   "series": "verse648",
+   "patient": "verse648",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 21
+  },
+  {
+   "series": "verse649",
+   "patient": "verse649",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 48
+  },
+  {
+   "series": "verse650",
+   "patient": "verse650",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 86
+  },
+  {
+   "series": "verse651",
+   "patient": "verse651",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 37
+  },
+  {
+   "series": "verse700",
+   "patient": "verse700",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 35
+  },
+  {
+   "series": "verse701",
+   "patient": "verse701",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 64
+  },
+  {
+   "series": "verse702",
+   "patient": "verse702",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 77
+  },
+  {
+   "series": "verse703",
+   "patient": "verse703",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 32
+  },
+  {
+   "series": "verse704",
+   "patient": "verse704",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 45
+  },
+  {
+   "series": "verse705",
+   "patient": "verse705",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 62
+  },
+  {
+   "series": "verse706",
+   "patient": "verse706",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 37
+  },
+  {
+   "series": "verse707",
+   "patient": "verse707",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 53
+  },
+  {
+   "series": "verse708",
+   "patient": "verse708",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 50
+  },
+  {
+   "series": "verse709",
+   "patient": "verse709",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 85
+  },
+  {
+   "series": "verse710",
+   "patient": "verse710",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 73
+  },
+  {
+   "series": "verse711",
+   "patient": "verse711",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 62
+  },
+  {
+   "series": "verse712",
+   "patient": "verse712",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 70
+  },
+  {
+   "series": "verse713",
+   "patient": "verse713",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 67
+  },
+  {
+   "series": "verse714",
+   "patient": "verse714",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 66
+  },
+  {
+   "series": "verse715",
+   "patient": "verse715",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 70
+  },
+  {
+   "series": "verse716",
+   "patient": "verse716",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 75
+  },
+  {
+   "series": "verse717",
+   "patient": "verse717",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 53
+  },
+  {
+   "series": "verse718",
+   "patient": "verse718",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 69
+  },
+  {
+   "series": "verse719",
+   "patient": "verse719",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 71
+  },
+  {
+   "series": "verse750",
+   "patient": "verse750",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 51
+  },
+  {
+   "series": "verse751",
+   "patient": "verse751",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 58
+  },
+  {
+   "series": "verse752",
+   "patient": "verse752",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 52
+  },
+  {
+   "series": "verse753",
+   "patient": "verse753",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 28
+  },
+  {
+   "series": "verse754",
+   "patient": "verse754",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 45
+  },
+  {
+   "series": "verse755",
+   "patient": "verse755",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 73
+  },
+  {
+   "series": "verse756",
+   "patient": "verse756",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 47
+  },
+  {
+   "series": "verse757",
+   "patient": "verse757",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 21
+  },
+  {
+   "series": "verse758",
+   "patient": "verse758",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 37
+  },
+  {
+   "series": "verse759",
+   "patient": "verse759",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 83
+  },
+  {
+   "series": "verse760",
+   "patient": "verse760",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 72
+  },
+  {
+   "series": "verse761",
+   "patient": "verse761",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 36
+  },
+  {
+   "series": "verse762",
+   "patient": "verse762",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 59
+  },
+  {
+   "series": "verse763",
+   "patient": "verse763",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 19
+  },
+  {
+   "series": "verse764",
+   "patient": "verse764",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 73
+  },
+  {
+   "series": "verse765",
+   "patient": "verse765",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 56
+  },
+  {
+   "series": "verse766",
+   "patient": "verse766",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 78
+  },
+  {
+   "series": "verse767",
+   "patient": "verse767",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 70
+  },
+  {
+   "series": "verse768",
+   "patient": "verse768",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 56
+  },
+  {
+   "series": "verse769",
+   "patient": "verse769",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 48
+  },
+  {
+   "series": "verse801",
+   "patient": "verse801",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 53
+  },
+  {
+   "series": "verse802",
+   "patient": "verse802",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 76
+  },
+  {
+   "series": "verse803",
+   "patient": "verse803",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 52
+  },
+  {
+   "series": "verse804",
+   "patient": "verse804",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 35
+  },
+  {
+   "series": "verse805",
+   "patient": "verse805",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 44
+  },
+  {
+   "series": "verse806",
+   "patient": "verse806",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 69
+  },
+  {
+   "series": "verse807",
+   "patient": "verse807",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 59
+  },
+  {
+   "series": "verse808",
+   "patient": "verse808",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 71
+  },
+  {
+   "series": "verse809",
+   "patient": "verse809",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 77
+  },
+  {
+   "series": "verse810",
+   "patient": "verse810",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 46
+  },
+  {
+   "series": "verse811",
+   "patient": "verse811",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 49
+  },
+  {
+   "series": "verse813",
+   "patient": "verse813",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 59
+  },
+  {
+   "series": "verse814",
+   "patient": "verse814",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 77
+  },
+  {
+   "series": "verse815",
+   "patient": "verse815",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 64
+  },
+  {
+   "series": "verse816",
+   "patient": "verse816",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 56
+  },
+  {
+   "series": "verse817",
+   "patient": "verse817",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 56
+  },
+  {
+   "series": "verse818",
+   "patient": "verse818",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 66
+  },
+  {
+   "series": "verse820",
+   "patient": "verse820",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 30
+  },
+  {
+   "series": "verse821",
+   "patient": "verse821",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 71
+  },
+  {
+   "series": "verse823",
+   "patient": "verse823",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 75
+  },
+  {
+   "series": "verse824",
+   "patient": "verse824",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 51
+  },
+  {
+   "series": "verse825",
+   "patient": "verse825",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 67
+  },
+  {
+   "series": "verse826",
+   "patient": "verse826",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 58
+  },
+  {
+   "series": "verse833",
+   "patient": "verse833",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 83
+  },
+  {
+   "series": "verse835",
+   "patient": "verse835",
+   "position": "1 of 1",
+   "in_verse19": false,
+   "in_verse20": true,
+   "age": 59
+  }
+ ]
+}
