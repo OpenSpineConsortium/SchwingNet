@@ -69,9 +69,14 @@ enforced and a page that shows its progress in the browser; a plain Slurm job is
   run's artifacts prereg_path and prereg_sha256 (`stage.hold_to_prereg`).
 - `stage.py` is what every flow's steps run for the rule: `Beat` around a step's work, its line on
   the page, `run_watched` for a command whose line moves while it runs, `Beat(self).passed()` in a
-  step that only routes the flow, `claim_report` in end, which runs tools/report.py's write and
-  check on a run folder and makes the verdict 1 where the report cannot be written or is not
-  current, and `finish`, the verdict and the report's lines on the page. An item a report counts
+  step that only routes the flow, `claim_report` in end, and `finish`, the verdict and the
+  report's lines on the page. `claim_report` checks a run folder's report with tools/report.py
+  before it writes anything, since the tool's check compares the report's files with what a write
+  would render now and so always passes right after one: a report the run left that is current is
+  well; a folder with none has it written then and checked, and the line says it was written at
+  the end; a report the run left that is not what its files give is written anew, so the folder
+  and the page hold the current one, and makes the verdict 1, as a report that cannot be written
+  does. An item a report counts
   as missing is shown, never inferred; `tools/report.py check --complete` stays the gate for a
   number that is to be published.
 - `stage_progress.py` draws the page. Each run keeps <datastore root>/progress/<Flow>/<run>/:

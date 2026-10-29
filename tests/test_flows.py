@@ -533,10 +533,15 @@ class BankFlowTest(unittest.TestCase):
 
 
 STUB_BLOCK_SWEEP = '''"""A stand-in for tools/block_sweep.py's prepare, row and results, writing the files the real
-commands write that SweepFlow reads, logging each call, and killing the flow once mid-row."""
+commands write that SweepFlow reads, logging each call, and killing the flow once mid-row. A row
+that runs leaves its run folder as tools/flow.py does, RUN.json and the report written after the
+row's last step, by the stand-in report tool beside this file; a row named in FLOW_TEST_UNREPORTED
+leaves no report, and one named in FLOW_TEST_STALE changes its RUN.json after its report, so the
+report it left is not what the run gives."""
 import json
 import os
 import signal
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -608,10 +613,22 @@ def row():
         kill_the_job()
     if slug == os.environ.get("FLOW_TEST_HOLD"):
         hold()
+    run_folder(state / slug, slug)
     entry = {"slug": slug, "outcome": "ran", "code": None, "matched": True, "predicted": "runs", "role": "cover",
              "validation_accuracy": 0.75, "test_accuracy": 0.5, "wandb": []}
     write(state / "rows" / f"{slug}.json", entry)
     print(json.dumps(entry, sort_keys=True), flush=True)
+
+
+def run_folder(folder, slug):
+    """RUN.json and the report, as tools/flow.py leaves a row's run folder."""
+    write(folder / "RUN.json", {"run_id": slug})
+    if slug in os.environ.get("FLOW_TEST_UNREPORTED", "").split():
+        return
+    report = [sys.executable, str(Path(__file__).with_name("report.py")), "write", "--run", str(folder)]
+    subprocess.run(report, env=dict(os.environ, FLOW_TEST_REPORT_BY="row"), check=True)
+    if slug in os.environ.get("FLOW_TEST_STALE", "").split():
+        write(folder / "RUN.json", {"run_id": slug, "changed": "after its report"})
 
 
 def results():
@@ -629,10 +646,13 @@ def results():
 '''
 
 
-# A stand-in for tools/report.py: write leaves the three files of a report in the run folder, and
-# check passes unless the row's slug is in FLOW_TEST_STALE, as a report not what the run gives fails;
-# each call is logged beside the stub of block_sweep's, in <its log>.reports.
+# A stand-in for tools/report.py that acts as the real one does: write renders the report's three
+# files from the run folder's RUN.json, check compares the files the folder holds with what write
+# would render now and fails, naming them, where any differs, and both refuse a folder with no
+# RUN.json. Each call is logged beside the stub of block_sweep's, in <its log>.reports, with who
+# made it: the row, as tools/flow.py writes the report after the row's last step, or the end step.
 STUB_REPORT = '''"""A stand-in for tools/report.py in SweepFlowTest."""
+import hashlib
 import json
 import os
 import sys
@@ -640,17 +660,26 @@ from pathlib import Path
 
 action, folder = sys.argv[1], Path(sys.argv[sys.argv.index("--run") + 1])
 with open(os.environ["FLOW_TEST_CALLS"] + ".reports", "a", encoding="utf-8") as calls:
-    calls.write(f"{action} {folder.name}\\n")
-if action == "write":
-    tally = {"met": 20, "declared": 3, "not applicable": 2, "missing": 4}
-    for name, checklist in (("claim.json", "CLAIM 2024"), ("reforms.json", "REFORMS")):
-        (folder / name).write_text(json.dumps({"checklist": checklist, "tally": tally}), encoding="utf-8")
-    (folder / "REPORT.md").write_text("# Report\\n", encoding="utf-8")
-elif folder.name in os.environ.get("FLOW_TEST_STALE", "").split():
-    print(f"{folder.name}: REPORT.md not what the run gives", file=sys.stderr)
+    calls.write(f"{os.environ.get('FLOW_TEST_REPORT_BY', 'end')} {action} {folder.name}\\n")
+record = folder / "RUN.json"
+if not record.is_file():
+    print(f"report: {folder}: no RUN.json, so this is not a run folder", file=sys.stderr)
     sys.exit(1)
-else:
-    print(f"{folder.name}: report current")
+digest = hashlib.sha256(record.read_bytes()).hexdigest()
+tally = {"met": 20, "declared": 3, "not applicable": 2, "missing": 4}
+rendered = {"REPORT.md": f"# The report of the run whose RUN.json is {digest}\\n"}
+for name, checklist in (("claim.json", "CLAIM 2024"), ("reforms.json", "REFORMS")):
+    rendered[name] = json.dumps({"checklist": checklist, "run_sha256": digest, "tally": tally}) + "\\n"
+if action == "write":
+    for name, text in rendered.items():
+        (folder / name).write_text(text, encoding="utf-8")
+    sys.exit(0)
+held = {name: (folder / name).read_text(encoding="utf-8") if (folder / name).is_file() else "" for name in rendered}
+stale = [name for name, text in rendered.items() if held[name] != text]
+if stale:
+    print(f"{folder}: {', '.join(stale)} not what the run gives; run python3 tools/report.py write --run {folder}", file=sys.stderr)
+    sys.exit(1)
+print(f"{folder}: report current")
 '''
 # The smoke test's PREREG as the test repository freezes it: the plans the tests run, by name.
 TEST_PREREG = "# The test's design\n\nCovers: live, gone, race, smoke, merged, faulty, nothing, reported\n"
@@ -859,19 +888,24 @@ class SweepFlowTest(unittest.TestCase):
     def test_a_sweep_ends_with_every_rows_report_checked_its_verdict_and_its_page(self):
         # the owner's rule of 2026-10-29: the run is held to the frozen PREREG, every row that ran has
         # its CLAIM and REFORMS report checked in end, and the run's page shows each step and the verdict
-        code, said, out, calls = self.sweep({"plan": "reported", "first": ["a", "b"], "second": ["c"]}, 1)
+        # a and c leave their reports as tools/flow.py does; b ended before it wrote one, so end writes it
+        code, said, out, calls = self.sweep({"plan": "reported", "first": ["a", "b"], "second": ["c"]}, 1, FLOW_TEST_UNREPORTED="b")
         self.assertEqual(code, 0, out)
         self.assertEqual((said[-1]["successful"], said[-1]["verdict"]), (True, 0), out)
-        reports = (self.tmp / "calls-reported-1.reports").read_text(encoding="utf-8").split("\n")
-        self.assertEqual(sorted(filter(None, reports)), ["check a", "check b", "check c", "write a", "write b", "write c"])
+        reports = (self.tmp / "calls-reported-1.reports").read_text(encoding="utf-8").splitlines()
+        # end checks a report the row left before it writes anything, and writes only where none is
+        self.assertEqual(sorted(reports), ["end check a", "end check b", "end check c", "end write b", "row write a", "row write c"])
+        self.assertLess(reports.index("end write b"), reports.index("end check b"))
         folder, lines = self.progress_of(said)
         self.assertRegex(lines[0], rf"^flow SweepFlow/{said[-1]['run'].split('/')[1]} sweep: succeeded, started ")
         self.assertRegex(lines[1], r"PREREG docs/research/block-smoke/PREREG\.md sha256 [0-9a-f]{12}$")
         self.assertIn("step first: done; 2 done of 2", lines)
         self.assertIn("task first a: done; Outcome: ran, matched the check.", lines)
         self.assertIn("step end: done", lines)
-        self.assertIn("report: a: current; CLAIM 2024: 20 met, 3 declared, 2 not applicable, 4 missing; "
+        self.assertIn("report: a: current as the run wrote it; CLAIM 2024: 20 met, 3 declared, 2 not applicable, 4 missing; "
                       "REFORMS: 20 met, 3 declared, 2 not applicable, 4 missing", lines)
+        self.assertIn("report: b: current, written at the end since the run left none; CLAIM 2024: 20 met, 3 declared, "
+                      "2 not applicable, 4 missing; REFORMS: 20 met, 3 declared, 2 not applicable, 4 missing", lines)
         self.assertEqual(lines[-2:], ["verdict: 0", "ended: the launcher exited 0, the flow succeeded"])
         self.assertIn("SweepFlow", (folder / "index.html").read_text(encoding="utf-8"))
         self.assertIn(f'href="SweepFlow/{folder.name}/index.html"', (self.root / "progress" / "index.html").read_text(encoding="utf-8"))
@@ -886,13 +920,22 @@ class SweepFlowTest(unittest.TestCase):
         self.assertEqual(len(reports), 3)
 
     def test_a_row_whose_report_is_not_current_makes_the_verdict_1_whatever_the_row_did(self):
+        # b's run changed after its report: the report it left is stale, whatever end could write now
         code, said, out, calls = self.sweep({"plan": "reported", "first": ["a", "b"], "second": []}, 1, FLOW_TEST_STALE="b")
         self.assertEqual(code, 1, out)
         self.assertEqual((said[-1]["successful"], said[-1]["verdict"]), (True, 1), out)
         _, lines = self.progress_of(said)
-        self.assertIn("report: b: NOT CURRENT, why: b: REPORT.md not what the run gives", lines)
+        folder = self.out / "reported" / "state" / "b"
+        self.assertIn(f"report: b: NOT CURRENT as the run wrote it, so written anew; why: {folder}: REPORT.md, claim.json, "
+                      f"reforms.json not what the run gives; run python3 tools/report.py write --run {folder}", lines)
         self.assertIn("verdict: 1", lines)
         self.assertRegex(lines[0], r" sweep: failed, started ")
+        reports = (self.tmp / "calls-reported-1.reports").read_text(encoding="utf-8").splitlines()
+        self.assertEqual([call for call in reports if call.endswith(" b")], ["row write b", "end check b", "end write b"])
+        # the report written anew is the current one, so the folder and the page show what the run gives
+        again = subprocess.run([sys.executable, str(self.repo / "tools" / "report.py"), "check", "--run", str(folder)],
+                               env=base_env(FLOW_TEST_CALLS=str(self.tmp / "calls-again")), capture_output=True, text=True, timeout=60)
+        self.assertEqual(again.returncode, 0, again.stderr)
 
     def test_a_plan_the_frozen_prereg_does_not_cover_or_a_moved_prereg_starts_nothing(self):
         code, said, out, calls = self.sweep({"plan": "trials", "first": ["a"], "second": []}, 1)

@@ -19,6 +19,7 @@ import sys
 import tempfile
 import time
 import unittest
+import warnings
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -26,6 +27,8 @@ LAUNCH = ROOT / "flows" / "launch.py"
 # The launcher imports the contracts of schwingnet.pipeline, which the plain python of the required
 # check lacks; its refusals are tested where the train environment is, as tests/test_flows.py is.
 NO_CONTRACTS = importlib.util.find_spec("icontract") is None
+# flows/stage.py imports Metaflow's current, which only the train environment carries.
+NO_METAFLOW = importlib.util.find_spec("metaflow") is None
 
 
 def load(path, name):
@@ -166,6 +169,64 @@ class LauncherPreregTest(unittest.TestCase):
         done = self.launch("sweep", "--", "--plan", "p.json")
         self.assertEqual(done.returncode, 69, done.stderr)
         self.assertIn("the registry of flows cannot be read", done.stderr)
+
+
+@unittest.skipIf(NO_METAFLOW, "needs the train environment (metaflow missing)")
+class ClaimReportTest(unittest.TestCase):
+    """stage.claim_report with the real tools/report.py on a run folder that holds only RUN.json, which
+    the tool reports with every item it cannot answer counted as missing."""
+
+    @classmethod
+    def setUpClass(cls):
+        sys.path.insert(0, str(ROOT / "flows"))
+        with warnings.catch_warnings():  # what Metaflow's own imports warn of is not this test's
+            warnings.simplefilter("ignore", DeprecationWarning)
+            cls.stage = load(ROOT / "flows" / "stage.py", "stage_under_test")
+        cls.stage.REPO = ROOT
+
+    @classmethod
+    def tearDownClass(cls):
+        sys.path.remove(str(ROOT / "flows"))
+
+    def setUp(self):
+        self.folder = Path(tempfile.mkdtemp()) / "row"
+        self.addCleanup(shutil.rmtree, self.folder.parent, ignore_errors=True)
+        self.folder.mkdir()
+        (self.folder / "RUN.json").write_text(json.dumps({"run_id": "row-1"}), encoding="utf-8")
+
+    def check(self):
+        return self.stage.report_tool("check", self.folder).returncode
+
+    def test_a_report_the_run_left_current_is_current_as_the_run_wrote_it_and_is_not_written_again(self):
+        self.assertEqual(self.stage.report_tool("write", self.folder).returncode, 0)
+        before = {name: (self.folder / name).stat().st_mtime_ns for name in ("REPORT.md", "claim.json", "reforms.json")}
+        ok, line = self.stage.claim_report(self.folder)
+        self.assertTrue(ok, line)
+        self.assertRegex(line, r"^row: current as the run wrote it; CLAIM 2024: \d+ met, \d+ declared, \d+ not applicable, \d+ missing; REFORMS: ")
+        self.assertEqual({name: (self.folder / name).stat().st_mtime_ns for name in before}, before)
+
+    def test_a_folder_with_no_report_has_it_written_at_the_end_and_says_so(self):
+        ok, line = self.stage.claim_report(self.folder)
+        self.assertTrue(ok, line)
+        self.assertRegex(line, r"^row: current, written at the end since the run left none; CLAIM 2024: ")
+        self.assertEqual(self.check(), 0)
+
+    def test_a_report_the_run_left_stale_is_written_anew_and_is_not_current(self):
+        # the run's files changed after its report: what a write gives now differs from what it left
+        self.assertEqual(self.stage.report_tool("write", self.folder).returncode, 0)
+        (self.folder / "RUN.json").write_text(json.dumps({"run_id": "row-2"}), encoding="utf-8")
+        self.assertEqual(self.check(), 1)
+        ok, line = self.stage.claim_report(self.folder)
+        self.assertFalse(ok, line)
+        self.assertEqual(line, f"row: NOT CURRENT as the run wrote it, so written anew; why: {self.folder}: REPORT.md, claim.json, "
+                               f"reforms.json not what the run gives; run python3 tools/report.py write --run {self.folder}")
+        self.assertEqual(self.check(), 0, "the folder holds the current report once end has run")
+
+    def test_a_folder_that_is_no_run_is_not_written_and_says_why(self):
+        (self.folder / "RUN.json").unlink()
+        ok, line = self.stage.claim_report(self.folder)
+        self.assertFalse(ok, line)
+        self.assertEqual(line, f"row: NOT WRITTEN at the end; why: report: {self.folder}: no RUN.json, so this is not a run folder")
 
 
 def a_run(root, flow="SweepFlow", run="1792902585286456", origin=None):

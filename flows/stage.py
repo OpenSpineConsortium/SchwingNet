@@ -14,11 +14,15 @@ steps run:
 - Beat, around a step's work: the step's line on the run's progress page (flows/stage_progress.py),
   running from its start, then done or failed, with its last lines; run_watched runs a command
   under it and rewrites that line every BEAT_SECONDS from what the work has written so far.
-- claim_report, in end: tools/report.py writes the CLAIM 2024 and REFORMS report of what the run
-  made and checks it against the run's files; a report that cannot be written or is not current
-  makes the run's verdict 1, so no run ends well without its report. Items no file of the run
-  answers are counted as missing and shown, never inferred; `check --complete`, which fails while
-  any is missing, stays the gate for numbers that are to be published (tools/report.py).
+- claim_report, in end: the CLAIM 2024 and REFORMS report (tools/report.py) of what the run made,
+  checked against the run's files before anything is written, since a check right after a write
+  only compares the files with what was just rendered. A report the run wrote and that is current
+  is the good case; a run folder with no report has one written then and checked; a report the
+  run wrote that is not what its files give is written anew, so the folder and the page hold the
+  current one, and makes the run's verdict 1, as does a report that cannot be written. So no run
+  ends well with a stale report. Items no file of the run answers are counted as missing and
+  shown, never inferred; `check --complete`, which fails while any is missing, stays the gate for
+  numbers that are to be published (tools/report.py).
 - finish, in end: the verdict and the report's lines on the page.
 
 Nothing here ever fails a step for its page: a page that cannot be written is said once on the
@@ -144,17 +148,47 @@ def tally_words(folder):
     return "; ".join(words) or "no tally read"
 
 
-def claim_report(folder, study=None):
-    """tools/report.py's report of one run folder, written and then checked against the folder's
-    files: (whether it is current, one line saying so with its counts)."""
-    tool = [sys.executable, str(REPO / "tools" / "report.py")]
+def report_tool(action, folder, study=None):
+    """tools/report.py's write or check of one run folder, run to its end with its output kept."""
     words = ["--run", str(folder), *(["--study", study] if study else [])]
-    wrote = subprocess.run([*tool, "write", *words], cwd=REPO, capture_output=True, text=True)
-    checked = subprocess.run([*tool, "check", *words], cwd=REPO, capture_output=True, text=True) if wrote.returncode == 0 else wrote
+    return subprocess.run([sys.executable, str(REPO / "tools" / "report.py"), action, *words], cwd=REPO,
+                          capture_output=True, text=True)
+
+
+def last_words(done):
+    """A tool's last line, which says why it refused."""
+    return ((done.stderr or done.stdout).strip().splitlines() or [f"exit {done.returncode}"])[-1]
+
+
+def claim_report(folder, study=None):
+    """The report of one run folder held to the folder's files: (whether the run's report is
+    current, one line saying so with its counts). The check comes first: tools/report.py's check
+    compares the report's files with what a write would render now, so a check right after a write
+    always passes, and only the report the run itself left says whether the run kept it current.
+    The reason, where there is one, comes last, after "why:", which the gate's status withholds
+    where it quotes a path or a value."""
+    name = Path(folder).name
+    if not (Path(folder) / "claim.json").is_file():
+        return report_written_now(folder, name, study)
+    checked = report_tool("check", folder, study)
+    if checked.returncode == 0:
+        return True, f"{name}: current as the run wrote it; {tally_words(folder)}"
+    wrote = report_tool("write", folder, study)
+    if wrote.returncode != 0:
+        return False, f"{name}: NOT CURRENT as the run wrote it, and not written anew; why: {last_words(checked)}"
+    return False, f"{name}: NOT CURRENT as the run wrote it, so written anew; why: {last_words(checked)}"
+
+
+def report_written_now(folder, name, study=None):
+    """A run folder that holds no report, a run that ended before it wrote one: written here and
+    then checked, which is all a check can say of a report written at the end."""
+    wrote = report_tool("write", folder, study)
+    if wrote.returncode != 0:
+        return False, f"{name}: NOT WRITTEN at the end; why: {last_words(wrote)}"
+    checked = report_tool("check", folder, study)
     if checked.returncode != 0:
-        why = ((checked.stderr or checked.stdout).strip().splitlines() or [f"exit {checked.returncode}"])[-1]
-        return False, f"{Path(folder).name}: NOT CURRENT, why: {why}"
-    return True, f"{Path(folder).name}: current; {tally_words(folder)}"
+        return False, f"{name}: NOT CURRENT once written at the end; why: {last_words(checked)}"
+    return True, f"{name}: current, written at the end since the run left none; {tally_words(folder)}"
 
 
 def finish(verdict, lines):

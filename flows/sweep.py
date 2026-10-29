@@ -22,8 +22,9 @@ it can find into the state folder's cards/ and writes METAFLOW.json there, which
 The sweep trains networks, so it keeps the owner's rule of 2026-10-29 through flows/stage.py:
 start holds the run to the block smoke test's frozen PREREG (docs/research/block-smoke-test/),
 every step keeps its line on the run's progress page, a row's line moving with its epochs, and
-end checks the CLAIM 2024 and REFORMS report (tools/report.py) of every row that ran: a row whose
-report cannot be written or is not current makes the verdict 1, whatever the row did.
+end checks the CLAIM 2024 and REFORMS report (tools/report.py) of every row that ran as the row
+left it: a row whose report is not what its run gives, or cannot be written where the row left
+none, makes the verdict 1, whatever the row did.
 Where a list is empty, Metaflow 2.19's switch, a conditional next, steps past its foreach, which
 Metaflow refuses over nothing.
 """
@@ -287,8 +288,9 @@ def verdict_of(results, faults, reports):
 
 
 def row_reports(state, results):
-    """The CLAIM 2024 and REFORMS report of every row that ran, each written and checked in the
-    row's own run folder, where tools/flow.py wrote it after the row's last step: (current, line)."""
+    """The CLAIM 2024 and REFORMS report of every row that ran, each checked in the row's own run
+    folder, where tools/flow.py wrote it after the row's last step, and written there only where
+    the row left none (stage.claim_report): (current, line)."""
     return [stage.claim_report(Path(state) / entry["slug"]) for entry in results.get("rows", [])
             if isinstance(entry, dict) and entry.get("outcome") == RAN]
 
