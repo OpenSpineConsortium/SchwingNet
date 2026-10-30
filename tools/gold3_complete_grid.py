@@ -25,7 +25,8 @@ grid/bordercall/; this tool does the grid's part around it, in three steps of on
    nearest-neighbour where the lattices differ, each recorded in the study's input record, which the
    matcher copies into its row and folds into its digest. The release is VerSe's int16 copies on the
    data root (verse_masks_2026_10_29, lossless, SchwingNet #460) or TotalSegmentator v3's
-   segmentations/ folder. A study with no row, no mask, no subregion mask or no release on the grid
+   segmentations/ folder, found wherever the release nests the subject under totalsegmentator_v300,
+   as the census finds it. A study with no row, no mask, no subregion mask or no release on the grid
    is listed with its reason and not run; ENHANCE.PET's one study is among them, since its masks are
    not on the grid and the census holds no SPINEPS mask of it.
 2. the matcher itself, over jobs.json, into OUT/matcher/ (records.jsonl, facts.jsonl, masks/).
@@ -171,13 +172,41 @@ def short_store(value):
 
 # ---- the release on the grid ----------------------------------------------------------------
 
+TS_SUBJECT = re.compile(r"^s\d{4}$")
+_TS_FOLDERS = {}
+
+
+def ts_subject_folder(ts_root, sid):
+    """The subject's folder under totalsegmentator_v300, wherever the release nests it.
+
+    The data root's copy keeps the subjects under the release's own folder, not at the root, and the
+    first completion job (40870822) left 14 TotalSegmentator studies unprepared by looking only at
+    <root>/<id>/. So <root>/<id>/ is tried first and then the root is walked once, as the census
+    finds the subjects (tools/gold3_census.py ts_subjects): the first folder of the subject's name
+    that holds a ct.nii.gz."""
+    direct = os.path.join(ts_root, sid)
+    if os.path.isdir(os.path.join(direct, "segmentations")):
+        return direct
+    if ts_root not in _TS_FOLDERS:
+        found = {}
+        for folder, dirs, files in os.walk(ts_root):
+            if TS_SUBJECT.match(os.path.basename(folder)) and "ct.nii.gz" in files:
+                found.setdefault(os.path.basename(folder), folder)
+                dirs[:] = []
+        _TS_FOLDERS[ts_root] = found
+    return _TS_FOLDERS[ts_root].get(sid)
+
+
 def release_of(member, sid, verse_masks, ts_root):
     """(path, reason): the study's release masks on the grid, or why they are not there."""
     if member == "verse":
         path = os.path.join(verse_masks, sid + ".nii.gz")
         return (path, None) if os.path.exists(path) else (None, "no int16 copy of the VerSe mask on the data root (verse_masks_2026_10_29)")
     if member == "totalsegmentator":
-        folder = os.path.join(ts_root, sid, "segmentations")
+        subject = ts_subject_folder(ts_root, sid)
+        if subject is None:
+            return None, "no folder of the subject's name with a ct.nii.gz under totalsegmentator_v300"
+        folder = os.path.join(subject, "segmentations")
         if not os.path.isdir(folder):
             return None, "no segmentations/ folder for the subject under totalsegmentator_v300"
         if not any(name.startswith("vertebrae_") for name in os.listdir(folder)):

@@ -100,6 +100,16 @@ class Releases(unittest.TestCase):
                          (str(self.dir / "s1411" / "segmentations"), None))
         self.assertIn("census holds no SPINEPS mask", G.release_of("enhance_pet", "1379", "", "")[1])
 
+    def test_a_totalsegmentator_subject_is_found_where_the_release_nests_it(self):
+        # The data root's copy keeps the subjects under the release's own folder; job 40870822 left
+        # 14 of them unprepared by looking at <root>/<id>/ alone.
+        nested = self.dir / "Totalsegmentator_dataset_v201" / "s0102"
+        (nested / "segmentations").mkdir(parents=True)
+        (nested / "ct.nii.gz").write_bytes(b"")
+        (nested / "segmentations" / "vertebrae_L1.nii.gz").write_bytes(b"")
+        self.assertEqual(G.release_of("totalsegmentator", "s0102", "", str(self.dir)), (str(nested / "segmentations"), None))
+        self.assertIn("no folder of the subject's name", G.release_of("totalsegmentator", "s0437", "", str(self.dir))[1])
+
 
 class Report(unittest.TestCase):
     def setUp(self):
