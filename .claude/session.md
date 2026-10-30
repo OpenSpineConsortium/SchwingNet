@@ -1,5 +1,7 @@
 # Session checkpoint
 
+Newest first (2026-10-30, about 20:45 UTC): the final handoff of the project symphony_3 is docs/checkpoints/2026-10-30-final/README.md, which indexes every thread's pull request and handoff, the project memory and the shared files; start there. The checkpoint below, of 2026-10-21, is older.
+
 Written 2026-10-21 about 12:40 UTC from the thread "SchwingNet video demo plan" (the owner's ask of 12:15 UTC: update the handoff for progress and what remains to be fleshed out). The first checkpoint of this repository; before it .claude/session.md was the template's blank. Everything below that is a number, a path or a date is taken from a merged pull request, a file on main or the thread's own record; what is not known says so.
 
 ## Completed work
