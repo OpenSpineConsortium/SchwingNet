@@ -1,0 +1,4 @@
+# The mask-free mode and the image import read DICOM and picture files with these, beside
+# archive/requirements.txt (numpy, scipy, nibabel). Tested with the versions pinned here.
+pydicom==3.0.2
+pillow==13.0.0

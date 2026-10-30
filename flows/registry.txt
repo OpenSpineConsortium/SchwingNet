@@ -19,3 +19,4 @@ drr_gap     DrrGapFlow      DRR_GAP_RC     drr-gap.sbatch            docs/resear
 drr_seg     DrrSegFlow      DRR_SEG_RC     drr-seg.sbatch            docs/research/drr-domain-gap/PREREG.md
 realism     RealismFlow     REALISM_RC     realism.sbatch            docs/research/flux-realism/PREREG.md
 totalseg    TotalsegFlow    TOTALSEG_RC    totalseg-complete.sbatch  docs/research/gold3-ct/completion/PREREG.md
+autoanatomist  AutoanatomistFlow  AUTOANATOMIST_RC  autoanatomist.sbatch      docs/research/autoanatomist-screen/PREREG.md

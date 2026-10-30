@@ -47,6 +47,9 @@ ICONTRACT_PINS="icontract==2.7.3 beartype==0.23.1"
 mkdir -p "$REPO/grid/logs" "$OUT"
 cd "$REPO" || exit 2
 export PYTHONNOUSERSITE=1 PYTHONPATH=$ENGINE
+# One thread a process: the measuring and the screening each fork a worker a CPU, so numpy's BLAS
+# and OpenMP pools inside every worker would oversubscribe the node CPUS-fold.
+export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1
 report() { echo "- $*" | tee -a "$REPORT.part"; }
 finish() {
   local rc=$1 ended_at
@@ -217,6 +220,22 @@ PYEOF
   fi
 }
 
+stack_one() {  # stack_one ID: the subject's structure masks stacked into one int16 volume in VerSe's ids; its verdict under $TS/stacked/
+  local id=$1 log
+  log=$TS/int16/$id.log
+  mkdir -p "$TS/int16"
+  if [ -z "$extracted" ] && [ ! -d "$subjects/$id/segmentations" ]; then
+    extract_segmentations "$zip" "$id" "$TS/raw" || { echo "$id: no segmentations in the zip" > "$log"; echo missing > "$TS/stacked/$id.verdict"; return 0; }
+  fi
+  [ -d "$subjects/$id/segmentations" ] || { echo "$id: no segmentations folder" > "$log"; echo missing > "$TS/stacked/$id.verdict"; return 0; }
+  if [ -f "$TS/masks/$id.nii.gz" ] && [ -f "$TS/manifests/$id.json" ]; then echo stacked > "$TS/stacked/$id.verdict"; return 0; fi
+  if "$PYS" -m screening int16 --labels "$subjects/$id" --scheme totalseg --out "$TS/masks/$id.nii.gz" --manifest "$TS/manifests/$id.json" > "$log" 2>&1; then
+    echo stacked > "$TS/stacked/$id.verdict"
+  else
+    rm -f "$TS/masks/$id.nii.gz" "$TS/manifests/$id.json"; echo failed > "$TS/stacked/$id.verdict"
+  fi
+}
+
 rc=0
 case "$SET" in
   enhance)
@@ -246,21 +265,18 @@ case "$SET" in
     elif [ -n "$zip" ] || [ -n "$extracted" ]; then
       if [ -n "$extracted" ]; then subjects=$(dirname "$(dirname "$extracted")"); report "TotalSegmentator release: the extracted folder $subjects"
       else subjects=$TS/raw/Totalsegmentator_dataset_v300; report "TotalSegmentator release: $zip, each admitted subject's segmentations/ taken out under $TS/raw"; fi
-      failed=0 missing=0 stacked=0
-      while read -r id; do
-        [ -n "$id" ] || continue
-        if [ -z "$extracted" ] && [ ! -d "$subjects/$id/segmentations" ]; then
-          extract_segmentations "$zip" "$id" "$TS/raw" || { missing=$((missing + 1)); echo "$id: no segmentations in the zip" >> "$TS/int16.log"; continue; }
-        fi
-        [ -d "$subjects/$id/segmentations" ] || { missing=$((missing + 1)); echo "$id: no segmentations folder" >> "$TS/int16.log"; continue; }
-        if [ -f "$TS/masks/$id.nii.gz" ] && [ -f "$TS/manifests/$id.json" ]; then stacked=$((stacked + 1)); continue; fi
-        if "$PYS" -m screening int16 --labels "$subjects/$id" --scheme totalseg --out "$TS/masks/$id.nii.gz" --manifest "$TS/manifests/$id.json" >> "$TS/int16.log" 2>&1; then
-          stacked=$((stacked + 1))
-        else
-          failed=$((failed + 1)); rm -f "$TS/masks/$id.nii.gz" "$TS/manifests/$id.json"
-        fi
-      done < "$TS/ids.txt"
-      report "TotalSegmentator: $count admitted subjects; $stacked stacked into int16 volumes in VerSe's ids (screening int16, manifests under $TS/manifests), $failed failed, $missing with no segmentations in the release; the lines in $TS/int16.log"
+      # Each subject's stack reads its hundred-odd structure files from the release, so the subjects
+      # are stacked CPUS at a time (the owner's word of 2026-10-30 13:37 UTC, after the serial loop
+      # had held the verse job for hours): one verdict file a subject under $TS/stacked/, read back
+      # into the counts, and a subject stacked by an earlier job is kept as it is.
+      mkdir -p "$TS/stacked"
+      export PYS TS subjects zip extracted
+      export -f stack_one extract_segmentations
+      grep -v '^$' "$TS/ids.txt" | xargs -P "$CPUS" -I{} bash -c 'stack_one "$1"' _ {}
+      stacked=$(cat "$TS"/stacked/*.verdict 2>/dev/null | grep -c '^stacked$' || true)
+      failed=$(cat "$TS"/stacked/*.verdict 2>/dev/null | grep -c '^failed$' || true)
+      missing=$(cat "$TS"/stacked/*.verdict 2>/dev/null | grep -c '^missing$' || true)
+      report "TotalSegmentator: $count admitted subjects; $stacked stacked into int16 volumes in VerSe's ids (screening int16, manifests under $TS/manifests, $CPUS subjects at a time), $failed failed, $missing with no segmentations in the release; the lines in $TS/int16/<id>.log"
       measure "TotalSegmentator" "$TS/masks" verse "$TS" || rc=1
       screen "TotalSegmentator" "$TS" --masks "$subjects" --scheme totalseg --member totalsegmentator --ids "$TS/ids.txt"
     else
