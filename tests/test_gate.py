@@ -2652,7 +2652,8 @@ esac
         """The checkout as a git repository whose commit holds what the job copies, less LEAVE_OUT, so the
         gate can name it; the commit's id. Its own gc and maintenance are off, as the other git tests set them."""
         for name in ("tools/gold3_covariates.py", "tools/gold3_census.py", "tools/gold3_field.py",
-                     "data/gold3-ct/admission.json"):
+                     "data/gold3-ct/admission.json", "data/gold3-ct/enhance-pet/facts.jsonl",
+                     "data/gold3-ct/verse/series.json", "data/gold3-ct/totalsegmentator/subjects.json"):
             path = self.repo / name
             path.parent.mkdir(parents=True, exist_ok=True)
             if not path.exists():
@@ -2853,7 +2854,16 @@ esac
         self.covariates_commit(leave_out=("tools/gold3_field.py",))
         refused = self.gate("morphometry", "covariates", GIT_CEILING_DIRECTORIES=str(self.tmp), **env)
         self.assertEqual(refused.returncode, 2, refused.stdout)
-        self.assertIn("holds no tools/gold3_field.py, which the job copies; nothing was queued", refused.stdout)
+        self.assertIn("holds no tools/gold3_field.py, which the job copies or reads; nothing was queued", refused.stdout)
+        self.assertEqual(self.submitted(), [])
+        self.assertFalse((logs / "MORPHOMETRY-covariates.sent").exists())
+        # and so would a commit whose records lack a file the join reads
+        for record in ("data/gold3-ct/admission.json", "data/gold3-ct/enhance-pet/facts.jsonl",
+                       "data/gold3-ct/verse/series.json", "data/gold3-ct/totalsegmentator/subjects.json"):
+            self.covariates_commit(leave_out=(record,))
+            refused = self.gate("morphometry", "covariates", GIT_CEILING_DIRECTORIES=str(self.tmp), **env)
+            self.assertEqual(refused.returncode, 2, refused.stdout)
+            self.assertIn(f"holds no {record}, which the job copies or reads; nothing was queued", refused.stdout)
         self.assertEqual(self.submitted(), [])
         self.assertFalse((logs / "MORPHOMETRY-covariates.sent").exists())
         # a report a rerun would replace stays where it is while the gate refuses
@@ -2870,6 +2880,58 @@ esac
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
         self.assertEqual(len(self.submitted()), 1)
         self.assertTrue((logs / "MORPHOMETRY-covariates-77.md").exists())
+
+    def test_morphometry_covariates_a_refused_shape_spends_nothing_and_moves_no_report(self):
+        # hpcworker's --check refusing the job's shape stops the word before anything is spent: no marker,
+        # no report set aside, nothing queued; without the check, the refused submission would leave a
+        # marker that asks the owner for a word no job took.
+        env = self.covariates_inputs()
+        logs = self.repo / "grid" / "logs"
+        report = logs / "MORPHOMETRY-covariates.md"
+        report.write_text("# morphometry covariates: job 77 on node, commit abc1234, 2026-10-30 10:00:00 UTC\n"
+                          "- exit 1 at 2026-10-30 10:20:00 UTC\n", encoding="utf-8")
+        self.allow_covariates_rerun("covariates:77")
+        self.covariates_commit()
+        refuse = self.fake / "refuse"
+        refuse.write_text("--name morphometry_covariates", encoding="utf-8")
+        refused = self.gate("morphometry", "covariates", HPCW_REFUSE=str(refuse), **env)
+        self.assertEqual(refused.returncode, 1, refused.stdout)
+        self.assertEqual(self.submitted(), [])
+        self.assertFalse((logs / "MORPHOMETRY-covariates.sent").exists())
+        self.assertTrue(report.exists())
+        self.assertFalse((logs / "MORPHOMETRY-covariates-77.md").exists())
+        refuse.write_text("", encoding="utf-8")
+        done = self.gate("morphometry", "covariates", HPCW_REFUSE=str(refuse), **env)
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertEqual(len(self.submitted()), 1)
+
+    def test_morphometry_covariates_keeps_its_marker_until_the_gates_list_names_the_job(self):
+        # A job queued while the gate's list cannot take its line leaves the marker, so the next send
+        # treats it as a lost answer and queues nothing without the owner's word; a marker the gate
+        # cannot write refuses before anything is queued.
+        env = self.covariates_inputs()
+        logs = self.repo / "grid" / "logs"
+        sent = logs / "MORPHOMETRY-covariates.sent"
+        sent.mkdir()
+        refused = self.gate("morphometry", "covariates", **env)
+        self.assertEqual(refused.returncode, 1, refused.stdout)
+        self.assertIn("the gate cannot write logs/MORPHOMETRY-covariates.sent", refused.stdout)
+        self.assertEqual(self.submitted(), [])
+        sent.rmdir()
+        state = logs / "GATE_JOBS.txt"
+        if state.exists():
+            state.unlink()
+        state.mkdir()
+        done = self.gate("morphometry", "covariates", **env)
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("does not name the job it queued", done.stdout)
+        self.assertEqual(len(self.submitted()), 1)
+        self.assertTrue(sent.is_file())
+        state.rmdir()
+        again = self.gate("morphometry", "covariates", **env)
+        self.assertEqual(again.returncode, 64, again.stdout)
+        self.assertIn("COVARIATES_RERUNS=covariates:lost", again.stdout)
+        self.assertEqual(len(self.submitted()), 1)
 
     def test_morphometry_covariates_one_word_queues_one_job_when_its_answer_is_lost(self):
         # A rerun the word allows whose answer is lost leaves its marker and no record: the job the word

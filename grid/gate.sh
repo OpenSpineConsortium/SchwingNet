@@ -276,7 +276,9 @@ CENSUS_RERUNS=""
 # The owner's word for one more join of the morphometry rows with sex and age, covariates:<job of the
 # report or the record it replaces>, or covariates:lost for a submission whose answer was lost, then
 # covariates:lost2 for the next such and on, each spent once (logs/MORPHOMETRY-covariates.lost records
-# them); one word, one more job (word_morphometry_covariates).
+# them); one word, one more job (word_morphometry_covariates). A rerun over rows that changed by a few
+# persons would print means that difference against the first report's into fewer than five, which no
+# check across reports yet refuses, so a word here waits for that check unless the rows are the same.
 COVARIATES_RERUNS=""
 # A page of the join's report: the relay keeps the last 400 lines of a send's answer (grid_accounts.py's
 # log_in) and status holds itself to 400 lines and 64 KiB, so a page is 300 of the report's lines with its
@@ -1966,7 +1968,7 @@ word_morphometry() {  # bordercall's morphometry engine over one gold tier 3 set
 }
 
 word_morphometry_covariates() {  # the morphometry rows joined with each person's sex and age (one CPU job on the owner's count): queued once, its report printed a page a send
-  local report=$LOGS/MORPHOMETRY-covariates.md sent=$LOGS/MORPHOMETRY-covariates.sent busy job missing again="" lost="" head part_job path
+  local report=$LOGS/MORPHOMETRY-covariates.md sent=$LOGS/MORPHOMETRY-covariates.sent busy job missing again="" lost="" head part_job path queued
   busy=$( { live_of morphometry_enhance; live_of morphometry_verse; live_of morphometry_covariates; } | tr '\n' ' ')
   [ -z "${busy// /}" ] || { echo "refusing: a morphometry job is still queued or running (job $busy); send morphometry covariates again once it ends"; return 75; }
   if [ -f "$report" ]; then
@@ -2009,8 +2011,10 @@ word_morphometry_covariates() {  # the morphometry rows joined with each person'
   # The job copies its code from git at this commit, so a commit the gate cannot read, or one that does
   # not hold what the job copies, would spend the one job on a failure: refused here, spending nothing.
   head=$(covariates_commit) || { echo "refusing: the gate cannot read the checkout's commit, which the job copies its code from; nothing was queued"; return 2; }
-  for path in tools/gold3_covariates.py tools/gold3_census.py tools/gold3_field.py data/gold3-ct; do
-    git -C "$REPO" cat-file -e "$head:$path" 2>/dev/null || { echo "refusing: commit ${head:0:7} holds no $path, which the job copies; nothing was queued"; return 2; }
+  for path in tools/gold3_covariates.py tools/gold3_census.py tools/gold3_field.py data/gold3-ct \
+      data/gold3-ct/admission.json data/gold3-ct/enhance-pet/facts.jsonl data/gold3-ct/verse/series.json \
+      data/gold3-ct/totalsegmentator/subjects.json; do
+    git -C "$REPO" cat-file -e "$head:$path" 2>/dev/null || { echo "refusing: commit ${head:0:7} holds no $path, which the job copies or reads; nothing was queued"; return 2; }
   done
   # The job's shape is asked before the submission is marked, so a refused shape marks nothing.
   hpcw_check morphometry_covariates batch -- morphometry-covariates.sbatch || return 1
@@ -2028,10 +2032,19 @@ word_morphometry_covariates() {  # the morphometry rows joined with each person'
     echo "covariates:$lost spent at $(date -u '+%F %T') UTC on the submission of $(cat "$sent")" >> "$LOGS/MORPHOMETRY-covariates.lost" || return 1
   fi
   [ -z "$again" ] || echo "  the join $again"
-  echo "$(date -u '+%F %T') UTC at commit $commit" > "$sent"
-  submit morphometry_covariates batch COVARIATES_COMMIT="$head" \
+  # The marker stands from before the submission until the gate's list names the job it queued, so an
+  # answer lost in between, or a list the gate could not write, leaves a marker and never a second job.
+  echo "$(date -u '+%F %T') UTC at commit $commit" > "$sent" 2>/dev/null || {
+    echo "refusing: the gate cannot write logs/$(basename "$sent"), the marker that keeps a lost answer from queueing a second job; nothing was queued"
+    return 1
+  }
+  queued=$(submit morphometry_covariates batch COVARIATES_COMMIT="$head" \
     MORPHOMETRY_ROOT="$(covariates_morphometry_root)" AUTOPET="$(covariates_autopet)" INDEX="$(samples_index)" \
-    VERSE_DEMOGRAPHICS="$(covariates_verse_table)" DATA_ROOT="$DATA_ROOT" -- morphometry-covariates.sbatch > /dev/null || return 1
+    VERSE_DEMOGRAPHICS="$(covariates_verse_table)" DATA_ROOT="$DATA_ROOT" -- morphometry-covariates.sbatch) || return 1
+  awk -v job="$queued" '$1 == job && $3 == "morphometry_covariates" { found = 1 } END { exit !found }' "$STATE" 2>/dev/null || {
+    echo "  the gate's list (logs/GATE_JOBS.txt) does not name the job it queued (${queued:-no id}), so the marker logs/$(basename "$sent") stays and no second job follows without the owner's word"
+    return 1
+  }
   rm -f "$sent"
   echo "submitted the morphometry covariates job: one CPU job that reads only, its per-person tables kept on the grid. Send morphometry covariates again once it ends to read its report, logs/MORPHOMETRY-covariates.md, a page a send."
 }

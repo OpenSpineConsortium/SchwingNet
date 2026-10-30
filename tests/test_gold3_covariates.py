@@ -400,6 +400,24 @@ class Join(unittest.TestCase):
         self.assertTrue(J.mean_shown(5, "L1", 3))
         self.assertFalse(J.mean_shown(5, J.COLUMN, 3))
 
+    def test_a_derived_mean_is_shown_only_beside_every_parts_mean_over_the_same_persons(self):
+        def numbers(shown_m=True, persons_m=("a", "b", "c", "d", "e")):
+            def sex(shown, persons):
+                return {"shown": shown, "persons": frozenset(persons), "summary": (len(persons), 5.0, 1.0)}
+            return {"M": sex(shown_m, persons_m), "F": sex(True, ("f", "g", "h", "i", "j"))}
+        whole, parts = "disc_h_mean", J.DERIVED["disc_h_mean"]
+        def withheld(**part_changes):
+            cells = {(whole, "L4-L5"): numbers()}
+            for part in parts:
+                cells[(part, "L4-L5")] = numbers(**part_changes) if part == parts[-1] else numbers()
+            J.withhold_derived(cells, whole, parts, "L4-L5")
+            mean = cells[(whole, "L4-L5")]
+            return mean["M"]["shown"], mean["F"]["shown"], mean["g"][0] is None
+        self.assertEqual(withheld(), (True, True, False))
+        self.assertEqual(withheld(shown_m=False), (False, True, True), "a part's mean withheld withholds the whole's")
+        self.assertEqual(withheld(persons_m=("a", "b", "c", "d", "z")), (False, True, True),
+                         "a part over other persons withholds the whole's")
+
     def test_the_column_summary_is_each_persons_mean_where_they_have_every_level(self):
         _, lines, _ = self.run_join()
         column = cell_lines(lines)[("autopet", "h_ant", "T10-L5")]
