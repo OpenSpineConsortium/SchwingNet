@@ -2290,6 +2290,102 @@ esac
             self.assertIn("1 failed this run", shown.stdout)
         self.assertEqual(len([line for line in self.submitted() if "totalseg-complete.sbatch" in line]), 1)
 
+    def allow_totalseg_rerun(self, word):
+        """The owner's word for one more totalseg complete job, as a pull request commits it in grid/gate.sh."""
+        gate = self.repo / "grid" / "gate.sh"
+        text, count = re.subn(r'(?m)^TOTALSEG_RERUNS="[^"]*"$', f'TOTALSEG_RERUNS="{word}"', gate.read_text(encoding="utf-8"))
+        self.assertEqual(count, 1)
+        gate.write_text(text, encoding="utf-8")
+
+    def totalseg_ready(self, job):
+        """The tool, the flow and both weights' zips whole, and the report of a first job that failed."""
+        (self.repo / "tools" / "gold3_totalseg_grid.py").write_text("", encoding="utf-8")
+        (self.repo / "flows" / "totalseg.py").write_text("", encoding="utf-8")
+        self.totalseg_weights_landed()
+        self.moose_weights_landed(self.moose_zips())
+        logs = self.repo / "grid" / "logs"
+        logs.mkdir(parents=True, exist_ok=True)
+        # the gate's list names the first job, as it names 40882547 on the grid
+        with (logs / "GATE_JOBS.txt").open("a", encoding="utf-8") as state:
+            state.write(f"{job} totalseg:complete totalseg_complete 2026-10-30T15:55:00Z\n")
+        report = logs / "TOTALSEG-complete.md"
+        report.write_text(f"# totalseg complete: job {job} on voh4, commit 2fe153f, 2026-10-30 15:55:42 UTC\n"
+                          "- run: 37 studies, 37 failed this run\n- exit 1 at 2026-10-30 15:59:25 UTC\n", encoding="utf-8")
+        return report
+
+    def totalseg_jobs(self):
+        return [line for line in self.submitted() if "totalseg-complete.sbatch" in line]
+
+    def test_totalseg_complete_reruns_a_failed_report_once_and_only_for_the_job_the_word_names(self):
+        report = self.totalseg_ready(77)
+        logs = report.parent
+        # a word for another job is not this report's: printed, nothing queued, the report kept
+        self.allow_totalseg_rerun("complete:76")
+        kept = self.gate("totalseg", "complete")
+        self.assertEqual(kept.returncode, 0, kept.stdout)
+        self.assertIn("37 failed this run", kept.stdout)
+        self.assertEqual(self.totalseg_jobs(), [])
+        self.assertTrue(report.exists())
+        # the owner's word for job 77: its report kept under its job, and one more GPU job queued
+        self.allow_totalseg_rerun("complete:77")
+        again = self.gate("totalseg", "complete")
+        self.assertEqual(again.returncode, 0, again.stdout + again.stderr)
+        self.assertIn("the totalseg complete job is job 77's, which TOTALSEG_RERUNS lets the owner's count run once more", again.stdout)
+        self.assertEqual(len(self.totalseg_jobs()), 1, self.submitted())
+        self.assertIn("--class gpu --name totalseg_complete", self.totalseg_jobs()[0])
+        self.assertFalse(report.exists())
+        self.assertTrue((logs / "TOTALSEG-complete-77.md").exists())
+        self.assertFalse((logs / "TOTALSEG-complete.sent").exists())
+        job = self.recorded()["totalseg_complete"]
+        self.assertNotEqual(job, "77")
+        # the rerun's own report names its own job, which the word does not, so it is printed and queues nothing
+        report.write_text(f"# totalseg complete: job {job} on voh4, commit abc1234, 2026-10-30 18:00:00 UTC\n- exit 0 at now\n",
+                          encoding="utf-8")
+        for _ in range(2):
+            shown = self.gate("totalseg", "complete")
+            self.assertEqual(shown.returncode, 0, shown.stdout)
+            self.assertIn(f"job {job} on voh4", shown.stdout)
+        # and a rerun that left no report is not queued again: the word was one job
+        report.unlink()
+        refused = self.gate("totalseg", "complete")
+        self.assertEqual(refused.returncode, 64, refused.stdout)
+        self.assertIn("left no report", refused.stdout)
+        self.assertIn(f"TOTALSEG_RERUNS=complete:{job} in grid/gate.sh", refused.stdout)
+        self.assertEqual(len(self.totalseg_jobs()), 1, self.submitted())
+
+    def test_totalseg_complete_queues_nothing_after_a_lost_answer_until_the_owners_word(self):
+        report = self.totalseg_ready(77)
+        logs = report.parent
+        self.allow_totalseg_rerun("complete:77")
+        # a refused shape marks nothing and queues nothing
+        (self.fake / "refuse").write_text("totalseg_complete", encoding="utf-8")
+        refused = self.gate("totalseg", "complete")
+        self.assertNotEqual(refused.returncode, 0, refused.stdout)
+        self.assertFalse((logs / "TOTALSEG-complete.sent").exists())
+        self.assertEqual(self.totalseg_jobs(), [])
+        (self.fake / "refuse").write_text("", encoding="utf-8")
+        # the controller queued it and lost its answer: the mark stands and no new job is recorded
+        (self.fake / "lossy").write_text("totalseg_complete", encoding="utf-8")
+        lost = self.gate("totalseg", "complete", HPCW_LOSSY=str(self.fake / "lossy"))
+        self.assertNotEqual(lost.returncode, 0, lost.stdout)
+        self.assertEqual(len(self.totalseg_jobs()), 1, self.submitted())
+        self.assertTrue((logs / "TOTALSEG-complete.sent").exists())
+        self.assertEqual(self.recorded()["totalseg_complete"], "77")
+        (self.fake / "lossy").write_text("", encoding="utf-8")
+        # the word for job 77 still stands and the list still names 77, yet the mark is read first
+        for _ in range(2):
+            held = self.gate("totalseg", "complete")
+            self.assertEqual(held.returncode, 64, held.stdout)
+            self.assertIn("no job id came back", held.stdout)
+            self.assertIn("TOTALSEG_RERUNS=complete:lost in grid/gate.sh", held.stdout)
+        self.assertEqual(len(self.totalseg_jobs()), 1, self.submitted())
+        self.allow_totalseg_rerun("complete:lost")
+        done = self.gate("totalseg", "complete")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("follows a submission whose answer was lost", done.stdout)
+        self.assertEqual(len(self.totalseg_jobs()), 2, self.submitted())
+        self.assertFalse((logs / "TOTALSEG-complete.sent").exists())
+
     def test_census_gold3_queues_one_cpu_job_once_and_never_again_without_the_owners_word(self):
         # the owner's count of 2026-10-29 12:26 UTC is one CPU job: no id, another id and no tool are refused
         self.assertEqual(self.gate("census").returncode, 64)

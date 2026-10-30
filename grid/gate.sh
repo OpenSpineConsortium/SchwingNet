@@ -154,7 +154,9 @@
 #                   09:33 UTC), each drawn level checked against the release's own levels and kept as a machine arm
 #                   file in the release's own label id, named by its sha256; one GPU job, queued once after `fetch
 #                   totalseg_weights` has landed its two zips whole beside moose_weights' five, the next send printing logs/TOTALSEG-complete.md and every later one printing it again;
-#                   a job that left no report is not queued again without the owner's word
+#                   a job that left no report is not queued again without the owner's word, and a second job, the
+#                   report kept as logs/TOTALSEG-complete-<job>.md, only where TOTALSEG_RERUNS, committed by pull
+#                   request, carries his word for it
 #   morphometry <set>  bordercall's morphometry engine (the packages morphometry, scanimport and screening,
 #                   pinned under grid/bordercall/ beside the archived package) over one gold tier 3 set
 #                   (the thread "Extract morphometrics from gold tier 3 CT"; the owner's count of 2026-10-29
@@ -289,6 +291,11 @@ CENSUS_RERUNS=""
 # persons would print means that difference against the first report's into fewer than five, which no
 # check across reports yet refuses, so a word here waits for that check unless the rows are the same.
 COVARIATES_RERUNS=""
+# The owner's word for one more totalseg complete job, complete:<job of the report or the record it
+# replaces>, or complete:lost for a submission whose answer was lost; one word, one more job (word_totalseg). complete:40882547 is his tap of 2026-10-30 16:49 UTC
+# on "Fix and rerun (one GPU job)": the first job failed on every study it ran, before any segmenter
+# drew, since tools/profile.py shadowed the standard library's profile (fixed in tools/gold3_totalseg_grid.py).
+TOTALSEG_RERUNS="complete:40882547"
 # A page of the join's report: the relay keeps the last 400 lines of a send's answer (grid_accounts.py's
 # log_in) and status holds itself to 400 lines and 64 KiB, so a page is 300 of the report's lines with its
 # first and last, each cut to LINE_CHARS by the masks, about 61,000 bytes at most, and the gate's own few
@@ -1822,7 +1829,7 @@ word_bordercall_complete() {  # the gold tier 3 completion (the owner's count of
 }
 
 word_totalseg() {  # the gold tier 3 completion's TotalSegmentator arm (the owner's word of 2026-10-30 08:54 UTC, "Add sacrum and c2 w total seg", and his count: one GPU job): queued once, its report printed on every later send
-  local report=$LOGS/TOTALSEG-complete.md busy job holds zip row opts=()
+  local report=$LOGS/TOTALSEG-complete.md sent=$LOGS/TOTALSEG-complete.sent busy job holds zip row opts=() again=""
   case "$id" in
     complete) ;;
     *) echo "refusing: totalseg takes complete"; return 64 ;;
@@ -1831,16 +1838,36 @@ word_totalseg() {  # the gold tier 3 completion's TotalSegmentator arm (the owne
   [ -z "$busy" ] || { echo "refusing: the totalseg complete job is still queued or running (job $busy); send totalseg complete again once it ends"; return 75; }
   if [ -f "$report" ]; then
     # Kept, so the owner's count of one job holds: a report that stands queues nothing, failed or not,
-    # since a second job is a second count and waits for his word.
+    # since a second job is a second count and waits for his word, which names the report's job in
+    # TOTALSEG_RERUNS (committed by pull request).
     echo "## $(basename "$report") ($(date -r "$report" '+%F %T'))"
     head -n 200 "$report" | LC_ALL=C tr -cd '\11\12\40-\176' | masked | head -c 30000
-    return 0
-  fi
-  job=$(awk '$3 == "totalseg_complete" { job = $1 } END { print job }' "$STATE" 2>/dev/null)
-  if [ -n "$job" ]; then
-    [ ! -f "$report.part" ] || { echo "## $(basename "$report").part, unfinished: what job $job wrote before it ended"; head -n 200 "$report.part" | LC_ALL=C tr -cd '\11\12\40-\176' | masked | head -c 30000; }
-    echo "refusing: a totalseg complete job was queued before (job $job) and left no report; the owner's count was one job, so another waits for his word"
-    return 64
+    job=$(totalseg_job_of "$report")
+    totalseg_rerun_allowed "$job" || return 0
+    mv "$report" "$LOGS/TOTALSEG-complete-$job.md" || return 1
+    again="is job $job's, which TOTALSEG_RERUNS lets the owner's count run once more"
+  elif [ -f "$sent" ]; then
+    # A submission whose answer was lost (the controller timed out after it queued the job) leaves no
+    # record and no live job the gate knows, and the record it does find is the job before, which a
+    # word for that job would let run again; so the mark is read first, and the owner's word for
+    # another is complete:lost.
+    totalseg_rerun_allowed lost || {
+      echo "refusing: a totalseg complete job was submitted at $(cat "$sent") and no job id came back, so it may be queued or ended under Slurm's name schwingnet-totalseg_complete; another waits for the owner's word, committed as TOTALSEG_RERUNS=complete:lost in grid/gate.sh"
+      return 64
+    }
+    rm -f "$sent"
+    again="follows a submission whose answer was lost, which TOTALSEG_RERUNS lets the owner's count run once more"
+  else
+    job=$(awk '$3 == "totalseg_complete" { job = $1 } END { print job }' "$STATE" 2>/dev/null)
+    if [ -n "$job" ]; then
+      [ ! -f "$report.part" ] || { echo "## $(basename "$report").part, unfinished: what job $job wrote before it ended"; head -n 200 "$report.part" | LC_ALL=C tr -cd '\11\12\40-\176' | masked | head -c 30000; }
+      totalseg_rerun_allowed "$job" || {
+        echo "refusing: a totalseg complete job was queued before (job $job) and left no report; the owner's count was one job, so another waits for his word, committed as TOTALSEG_RERUNS=complete:$job in grid/gate.sh"
+        return 64
+      }
+      [ ! -f "$report.part" ] || mv "$report.part" "$LOGS/TOTALSEG-complete-$job.part" || return 1
+      again="is job $job's, which TOTALSEG_RERUNS lets the owner's count run once more"
+    fi
   fi
   [ -f "$REPO/grid/totalseg-complete.sbatch" ] && [ -f "$REPO/tools/gold3_totalseg_grid.py" ] && [ -f "$REPO/flows/totalseg.py" ] \
     || { echo "refusing: no totalseg job script, tool or flow at this commit"; return 2; }
@@ -1864,8 +1891,23 @@ word_totalseg() {  # the gold tier 3 completion's TotalSegmentator arm (the owne
   holds=$(checkout_holders)
   [ -z "$holds" ] || echo "  the checkout: after the live runs that hold it ($holds)"
   depend_on "$holds" || return 1
+  # The job's script and shape are asked before the submission is marked, so a refusal marks nothing,
+  # and the mark stands from before the submission until its answer names the job.
+  launched_script totalseg-complete.sbatch || { echo "refusing: flows/registry.txt names no flow for totalseg-complete.sbatch, and every GPU job starts through flows/launch.py; nothing was queued"; return 90; }
+  hpcw_check totalseg_complete gpu ${opts[@]+"${opts[@]}"} --no-requeue --time 06:00:00 -- totalseg-complete.sbatch || return 1
+  [ -z "$again" ] || echo "  the totalseg complete job $again"
+  echo "$(date -u '+%F %T') UTC at commit $commit" > "$sent" || { echo "refusing: the mark $(basename "$sent") could not be written, so a lost answer could not be told from none; nothing was queued"; return 1; }
   submit totalseg_complete gpu ${opts[@]+"${opts[@]}"} --no-requeue --time 06:00:00 -- totalseg-complete.sbatch > /dev/null || return 1
+  rm -f "$sent"
   echo "submitted the totalseg complete job: one GPU job that runs TotalSegmentator (VerSe, TotalSegmentator) or MOOSE (ENHANCE.PET) on each admitted study's own CT for the C2 or sacrum its release lacks. Send totalseg complete again once it ends to read its report, logs/TOTALSEG-complete.md."
+}
+totalseg_job_of() {  # the job number a totalseg complete report's first line names
+  head -n 1 "$1" | sed -n 's/^# totalseg complete: job \([0-9][0-9]*\) .*/\1/p'
+}
+totalseg_rerun_allowed() {  # totalseg_rerun_allowed JOB: TOTALSEG_RERUNS names JOB (or lost) beside complete
+  [ -n "$1" ] || return 1
+  case " $TOTALSEG_RERUNS " in *" complete:$1 "*) return 0 ;; esac
+  return 1
 }
 
 word_census() {  # the gold tier census (the owner's tap of 2026-10-29 12:26 UTC, one CPU job): queued once, its report printed on every later send
