@@ -22,8 +22,15 @@ What each block steers, in the order a session meets them (session.py):
 - the optimiser: optimiser, lr, weight_decay, clip (a global-norm clip of the gradient, 0 for none),
   warmup (steps of linear warm-up of lr from 0, 0 for none), batch (whole phantoms a batch);
 - the loss: knee (the pseudo-Huber knee of the landmark term, in millimetres), spread_floor (the
-  floor under the heatmap's spread in the spread term), w_landmark, w_spread, w_value, w_feature
-  and w_naming (the terms' weights), naming (whether the naming term is in the loss at all);
+  floor under the heatmap's spread in the spread term), w_landmark, w_spread, w_value, w_feature,
+  w_naming, w_mask and w_name (the terms' weights), naming (whether the naming term is in the loss at all),
+  objective (landmarks, the oracle's landmarks as the decoder's target, every term above; mask, the
+  fully latent objective of the owner's ask of 2026-10-30: the decoder gives the privileged channels
+  themselves back, the target vertebra's mask and every vertebra's, from the fused features, so
+  nothing is measured anywhere and the terms are mask, feature and name, the last the cross-entropy
+  of a head that reads each crop's level name off the network's bottleneck, the latent a later
+  shape prior is fit on; it takes naming=off and calibrate=none, since it has no value and no
+  spread, and never the probe, whose decoder reads landmarks);
 - the schedule of lambda and w: schedule (lambda-then-w, the smoke run's, lambda over lam_span and
   w over w_span; joint, both over lam_span; w-first, the spans swapped, so the earlier span is w's;
   fixed, lam_fixed and w_fixed throughout), lam_span and w_span (shares of the anneal's steps),
@@ -78,7 +85,13 @@ TABLE: Tuple[Key, ...] = (
     Key("w_value", "float", "the value term's weight", low=0.0),
     Key("w_feature", "float", "the feature-matching term's weight", low=0.0),
     Key("w_naming", "float", "the naming term's weight", low=0.0),
+    Key("w_mask", "float", "the mask term's weight, under objective=mask", low=0.0),
+    Key("w_name", "float", "the name head's weight, under objective=mask: the cross-entropy of each crop's level name "
+        "read off the network's bottleneck", low=0.0),
     Key("naming", "switch", "whether the naming term is in the loss"),
+    Key("objective", "choice", "what the decoder is trained to give: the oracle's landmarks, or the privileged "
+        "mask channels themselves (the fully latent objective, with no measurement anywhere)",
+        choices=("landmarks", "mask")),
     Key("schedule", "choice", "how lambda's and w's ramps are placed", choices=("lambda-then-w", "joint", "w-first", "fixed")),
     Key("lam_span", "pair", "lambda's ramp, as shares of the anneal's steps"),
     Key("w_span", "pair", "w's ramp, as shares of the anneal's steps"),
@@ -117,7 +130,10 @@ class Blocks:
     w_value: float = 1.0
     w_feature: float = 1.0
     w_naming: float = 0.1
+    w_mask: float = 1.0
+    w_name: float = 0.1
     naming: bool = True
+    objective: str = "landmarks"
     schedule: str = "lambda-then-w"
     lam_span: Tuple[float, float] = (0.15, 0.55)
     w_span: Tuple[float, float] = (0.45, 0.85)
@@ -154,7 +170,7 @@ class Blocks:
     def weights(self) -> Dict[str, float]:
         """The loss terms' weights in train.LOSS_WEIGHTS' form."""
         return {"landmark": self.w_landmark, "spread": self.w_spread, "value": self.w_value,
-                "feature": self.w_feature, "naming": self.w_naming}
+                "feature": self.w_feature, "naming": self.w_naming, "mask": self.w_mask, "name": self.w_name}
 
     def rungs(self) -> Dict[str, float]:
         """The ladder's settings in ladder.degrade's keyword form."""
@@ -252,10 +268,25 @@ def split_word(word: str) -> Tuple[str, str]:
     return name.strip(), text
 
 
+def problems(b: Blocks) -> List[str]:
+    """What keeps the blocks from holding together, each in words: the mask objective trains no
+    landmark, so it has no value for the naming layer and no spread to calibrate, and the probe's
+    decoder reads landmarks."""
+    out = []
+    if b.objective == "mask":
+        if b.naming:
+            out.append("objective=mask gives no value for the naming layer, so it takes naming=off")
+        if b.calibrate != "none":
+            out.append("objective=mask gives no spread to calibrate, so it takes calibrate=none")
+        if b.architecture == "probe":
+            out.append("objective=mask takes no probe, whose decoder reads landmarks; the probe is the landmark framework's test piece")
+    return out
+
+
 def parse(words: Union[str, Sequence[str], Dict[str, str], None] = None) -> Blocks:
     """The Blocks the words name: a string of words, a sequence of KEY=VALUE words or a dict of key
-    to text; a key not in the table, a key named twice or a value its key refuses is refused in
-    words, and a key not named takes its default."""
+    to text; a key not in the table, a key named twice, a value its key refuses or blocks that do
+    not hold together (problems) are refused in words, and a key not named takes its default."""
     if words is None:
         words = []
     if isinstance(words, str):
@@ -269,7 +300,11 @@ def parse(words: Union[str, Sequence[str], Dict[str, str], None] = None) -> Bloc
         if name in values:
             raise ValueError("%s is named twice" % name)
         values[name] = read(key, str(text))
-    return Blocks(**values)
+    b = Blocks(**values)
+    bad = problems(b)
+    if bad:
+        raise ValueError("; ".join(bad))
+    return b
 
 
 def describe() -> str:

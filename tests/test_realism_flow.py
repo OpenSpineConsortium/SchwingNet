@@ -29,7 +29,7 @@ PREREG = "docs/research/flux-realism/PREREG.md"
 # What the scratch repository copies whole: the flow and what it runs, and the report with what it reads.
 COPIED = ("flows/realism.py", "flows/stage.py", "flows/stage_progress.py", "flows/stage_registry.py", "flows/registry.txt",
           "src/schwingnet/__init__.py", "src/schwingnet/realism.py", "tools/run_code.py", "tools/report.py",
-          "tools/realism_report.py", "data/reporting/checklists.json", "data/reporting/study.json",
+          "tools/realism_report.py", "tools/autoanatomist_report.py", "data/reporting/checklists.json", "data/reporting/study.json",
           "data/reporting/studies/flux-realism.json", "data/reporting/studies/drr-domain-gap.json", "data/licences.json",
           "grid/realism.sbatch", PREREG, PREREG + ".sha256")
 SUBJECTS = [f"s{n:02d}" for n in range(12)]

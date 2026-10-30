@@ -10,6 +10,7 @@ its catalog build (issue #252). Every job goes through hpcworker's job submit wi
 scancel and df on PATH answer for Slurm; nothing reaches a scheduler. Standard library only, so the
 required check runs it."""
 
+import ast
 import hashlib
 import importlib.util
 import io
@@ -43,7 +44,8 @@ FAKE_HPCWORKER = ROOT / "tests" / "fakes" / "hpcworker"
 NEW_SCRIPTS = ("gate.sh", "hpcw.sh", "box.sh", "bin/pixi", "bin/train-cpu-python", "00-setup.sbatch", "00-weights.sbatch",
                "00-carmlspine.sbatch", "v1-driver.sbatch", "experiment-driver.sbatch", "run-xray-chain.sh",
                "run-platform-fetch.sh", "sweep-driver.sbatch", "v1-version.sh", "realism.sbatch", "venv.sh",
-               "drr-gap.sbatch", "drr-seg.sbatch", "morphometry.sbatch", "gold3-census.sbatch", "bordercall-complete.sbatch")
+               "drr-gap.sbatch", "drr-seg.sbatch", "morphometry.sbatch", "gold3-census.sbatch", "bordercall-complete.sbatch",
+               "autoanatomist.sbatch")
 ENVS = ("default", "train-cpu", "train-gpu", "telemetry")
 # What bench flexray_drr_gap's word says of a mask folder that is there: the study reads too few CTs'
 # masks as none, which its summary says, so the word says only where the folder is.
@@ -2176,7 +2178,7 @@ esac
         self.assertNotIn("--no-requeue", lines[0])
         self.assertIn("gold3-census.sbatch", lines[0])
         # the job copies the code from the commit the gate was sent from; none here, where the copy is no repository
-        self.assertTrue(lines[0].endswith(" CENSUS_COMMIT="), lines[0])
+        self.assertRegex(lines[0], r" CENSUS_COMMIT=(?: |$)")
         self.assertFalse((self.repo / "grid" / "logs" / "CENSUS-gold3.sent").exists())
         job = self.recorded()["census_gold3"]
         self.live(job)
@@ -2808,6 +2810,382 @@ exit "${FAKE_RC:-0}"
         frozen = re.findall(r'^    "([^"]+==[^"]+)",$', (ROOT / "src" / "schwingnet" / "realism.py").read_text(encoding="utf-8"), re.M)
         self.assertTrue(frozen)
         self.assertEqual(pins.split(), frozen)
+
+    # The auto-anatomist screen (grid/gate.sh's word autoanatomist <plan>, grid/autoanatomist.sbatch).
+    SCREEN = "gold3_latent_smoke"
+
+    def set_gate_line(self, name, value):
+        """A committed setting of the copy's grid/gate.sh, as the pull request that carries the owner's word changes it."""
+        gate = self.repo / "grid" / "gate.sh"
+        text, count = re.subn(rf'(?m)^{name}="[^"]*"$', f'{name}="{value}"', gate.read_text(encoding="utf-8"))
+        self.assertEqual(count, 1)
+        gate.write_text(text, encoding="utf-8")
+
+    def screen_prereg(self):
+        """The screen's frozen PREREG and its hash in the checkout, where flows/registry.txt names them."""
+        folder = self.repo / "docs" / "research" / "autoanatomist-screen"
+        folder.mkdir(parents=True, exist_ok=True)
+        for name in ("PREREG.md", "PREREG.md.sha256"):
+            shutil.copy(ROOT / "docs" / "research" / "autoanatomist-screen" / name, folder / name)
+        return folder / "PREREG.md"
+
+    def screen_ready(self):
+        """The checkout and the data root as a send of the screen reads them: a commit, the environments,
+        the frozen PREREG and ENHANCE.PET's CTs and label maps."""
+        self.screen_prereg()
+        commit = self.git_repo()
+        self.environments_ready()
+        self.realism_inputs("ct", "truth")
+        return commit
+
+    def screen_root(self):
+        return self.tmp / "go2432" / "autoanatomist"
+
+    def test_autoanatomist_refuses_a_plan_without_the_owners_count_a_frozen_cover_or_its_inputs(self):
+        # the committed count is the owner's: the smoke of 03:20 UTC and the screen's two jobs of 08:56 UTC,
+        # and no plan is sent again on his word yet
+        gate = (ROOT / "grid" / "gate.sh").read_text(encoding="utf-8")
+        self.assertIn('\nAUTOANATOMIST_COUNTED="gold3_latent_smoke gold3_latent_screen"\n', gate)
+        self.assertIn('\nAUTOANATOMIST_RERUNS=""\n', gate)
+        self.assertEqual(self.gate("autoanatomist").returncode, 64)
+        refused = self.gate("autoanatomist", "gold3_latent_nope")
+        self.assertEqual(refused.returncode, 64, refused.stdout)
+        self.assertIn("no plan grid/screens/gold3_latent_nope.json", refused.stdout)
+        self.screen_ready()
+        # a plan the committed list does not name waits for the owner's word on its jobs, whatever else is ready
+        self.set_gate_line("AUTOANATOMIST_COUNTED", "gold3_latent_smoke")
+        refused = self.gate("autoanatomist", "gold3_latent_screen")
+        self.assertEqual(refused.returncode, 64, refused.stdout)
+        self.assertIn("AUTOANATOMIST_COUNTED", refused.stdout)
+        # a PREREG that moved since its freeze, or a plan changed since, stops the send before any card
+        prereg = self.repo / "docs" / "research" / "autoanatomist-screen" / "PREREG.md"
+        frozen = prereg.read_text(encoding="utf-8")
+        prereg.write_text(frozen + "\nA line after the freeze.\n", encoding="utf-8")
+        refused = self.gate("autoanatomist", self.SCREEN)
+        self.assertEqual(refused.returncode, 90, refused.stdout)
+        self.assertIn("is not frozen as its PREREG.md.sha256 says", refused.stdout)
+        prereg.write_text(frozen, encoding="utf-8")
+        plan = self.repo / "grid" / "screens" / f"{self.SCREEN}.json"
+        text = plan.read_text(encoding="utf-8")
+        self.assertIn('"epochs": 150', text)
+        plan.write_text(text.replace('"epochs": 150', '"epochs": 151'), encoding="utf-8")
+        refused = self.gate("autoanatomist", self.SCREEN)
+        self.assertEqual(refused.returncode, 90, refused.stdout)
+        self.assertIn("a plan changed since the freeze is another design", refused.stdout)
+        plan.write_text(text, encoding="utf-8")
+        # each input the trials read is asked for in turn
+        shutil.rmtree(self.data / "aws_enhance_pet_labels")
+        refused = self.gate("autoanatomist", self.SCREEN)
+        self.assertEqual(refused.returncode, 2, refused.stdout)
+        self.assertIn("in folders named Vertebrae (fetch aws_enhance_pet_labels first)", refused.stdout)
+        shutil.rmtree(self.data / "aws_enhance_pet_ct")
+        refused = self.gate("autoanatomist", self.SCREEN)
+        self.assertEqual(refused.returncode, 2, refused.stdout)
+        self.assertIn("(fetch aws_enhance_pet_ct first)", refused.stdout)
+        self.assertEqual(self.submitted(), [])
+
+    def test_autoanatomist_queues_the_smoke_once_as_one_gpu_job_and_then_prints_its_report(self):
+        commit = self.screen_ready()
+        done = self.gate("autoanatomist", self.SCREEN)
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        lines = self.submitted()
+        self.assertEqual(len(lines), 1, lines)
+        for said in (f"--class gpu --name autoanatomist_{self.SCREEN} --cpus 8 --mem 64G --time 12:00:00 --no-requeue autoanatomist.sbatch |",
+                     " PART=series ", f" PLAN={self.SCREEN} ", " TRIAL_TASKS=2 ", f" AUTOANATOMIST_ROOT={self.screen_root()}"):
+            self.assertIn(said, lines[0])
+        full = re.search(r" AUTOANATOMIST_COMMIT=([0-9a-f]{40}) ", lines[0])
+        self.assertTrue(full and full.group(1).startswith(commit), lines[0])
+        job = self.recorded()[f"autoanatomist_{self.SCREEN}"]
+        logs = self.repo / "grid" / "logs"
+        part = logs / f"AUTOANATOMIST-{self.SCREEN}.md.part"
+        # the send leaves its own record where the report goes, read as a job and a commit, until a part writes its own
+        self.assertTrue(part.read_text(encoding="utf-8").startswith(f"# autoanatomist {self.SCREEN}: job {job} queued, commit {commit},"))
+        self.assertFalse((logs / f"AUTOANATOMIST-{self.SCREEN}.sent").exists())
+        # while it lasts a send queues nothing and says where each trial stands, masked
+        self.live(job)
+        busy = self.gate("autoanatomist", self.SCREEN)
+        self.assertEqual(busy.returncode, 75, busy.stdout)
+        self.assertIn(f"no trial of chain {job} has written its PROGRESS.txt yet", busy.stdout)
+        trial = self.screen_root() / self.SCREEN / job / "trials" / "lambda_then_w_s1"
+        trial.mkdir(parents=True)
+        (trial / "PROGRESS.txt").write_text("crops cut for 4 of 4 rows\nepoch 20 of 150: distance 4.1 mm, enhance_pet:1541\n", encoding="utf-8")
+        busy = self.gate("autoanatomist", self.SCREEN)
+        self.assertEqual(busy.returncode, 75, busy.stdout)
+        self.assertIn("lambda_then_w_s1: epoch 20 of 150: distance 4.1 mm", busy.stdout)
+        self.assertNotIn("1541", busy.stdout)
+        (self.fake / "queue").write_text("", encoding="utf-8")
+        # a send that started and wrote no exit is printed, and queues nothing again at the same commit
+        for _ in range(2):
+            shown = self.gate("autoanatomist", self.SCREEN)
+            self.assertEqual(shown.returncode, 0, shown.stdout + shown.stderr)
+            self.assertIn(f"## AUTOANATOMIST-{self.SCREEN}.md unfinished", shown.stdout)
+        self.assertEqual(len(self.submitted()), 1)
+        part.unlink()
+        report = logs / f"AUTOANATOMIST-{self.SCREEN}.md"
+        report.write_text(f"# autoanatomist {self.SCREEN}: job {job} on node, commit {commit}, 2026-10-30 05:00:00 UTC\n"
+                          "- lambda_then_w: beats the null\n- exit 0 at 2026-10-30 06:00:00 UTC\n", encoding="utf-8")
+        for _ in range(2):
+            done = self.gate("autoanatomist", self.SCREEN)
+            self.assertEqual(done.returncode, 0, done.stdout)
+            self.assertIn("- lambda_then_w: beats the null", done.stdout)
+        self.assertEqual(len(self.submitted()), 1)
+
+    def test_autoanatomist_queues_a_counted_array_as_a_task_a_trial_and_a_cpu_join_afterany_them(self):
+        self.screen_ready()
+        plan = json.loads((ROOT / "grid" / "screens" / "gold3_latent_screen.json").read_text(encoding="utf-8"))
+        # the gate counts the trials as schwingnet.autoanatomist_screen.trials does: every arm at every seed
+        trials = len(plan["arms"]) * len(plan["seeds"])
+        self.assertEqual(trials, 8)
+        # a join refused once the array was queued cancels the array, so no trial runs with no join to read it
+        (self.fake / "refuse").write_text("--dependency=afterany:101", encoding="utf-8")
+        refused = self.gate("autoanatomist", "gold3_latent_screen")
+        self.assertEqual(refused.returncode, 1, refused.stdout)
+        self.assertIn("cancelled the trials' array 101, since its join was refused", refused.stdout)
+        self.assertEqual((self.fake / "scancel.log").read_text(encoding="utf-8").split(), ["101"])
+        logs = self.repo / "grid" / "logs"
+        self.assertFalse((logs / "AUTOANATOMIST-gold3_latent_screen.md.part").exists())
+        (self.fake / "refuse").write_text("", encoding="utf-8")
+        done = self.gate("autoanatomist", "gold3_latent_screen")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        lines = self.submitted()
+        self.assertEqual(len(lines), 3, lines)
+        array, join = lines[1:]
+        self.assertIn(f"--class gpu --name autoanatomist_gold3_latent_screen --array 0-{trials - 1} --cpus 8 --mem 64G --time 12:00:00 --no-requeue autoanatomist.sbatch |", array)
+        self.assertIn(" PART=trial ", array)
+        self.assertIn(f" TRIAL_TASKS={trials} ", array)
+        self.assertIn("--class batch --name autoanatomist_gold3_latent_screen_join --dependency=afterany:102 --kill-on-invalid-dep=yes "
+                      "--cpus 4 --mem 16G --time 02:00:00 --no-requeue autoanatomist.sbatch |", join)
+        for said in (" PART=join ", f" TRIAL_TASKS={trials} ", " TRIALS_JOB=102 "):
+            self.assertIn(said, join)
+        recorded = self.recorded()
+        self.assertEqual((recorded["autoanatomist_gold3_latent_screen"], recorded["autoanatomist_gold3_latent_screen_join"]), ("102", "103"))
+        self.assertIn("job 102 queued", (logs / "AUTOANATOMIST-gold3_latent_screen.md.part").read_text(encoding="utf-8"))
+        # while only the join lasts a send still waits, and reads the trials of the array's folder
+        self.live(103)
+        busy = self.gate("autoanatomist", "gold3_latent_screen")
+        self.assertEqual(busy.returncode, 75, busy.stdout)
+        self.assertIn("no trial of chain 102", busy.stdout)
+        self.assertEqual(len(self.submitted()), 3)
+
+    def test_autoanatomist_queues_again_only_after_a_fix_a_send_that_never_started_or_the_owners_word(self):
+        commit = self.screen_ready()
+        logs = self.repo / "grid" / "logs"
+        logs.mkdir(parents=True, exist_ok=True)
+        report = logs / f"AUTOANATOMIST-{self.SCREEN}.md"
+        failed = "# autoanatomist {}: job 4242 on node, commit {}, 2026-10-30 05:00:00 UTC\n- exit 1 at 2026-10-30 06:00:00 UTC\n"
+        # a failure at the checkout's own commit is kept and queues nothing; one on older code queues the plan once more
+        report.write_text(failed.format(self.SCREEN, commit), encoding="utf-8")
+        self.assertEqual(self.gate("autoanatomist", self.SCREEN).returncode, 0)
+        self.assertEqual(self.submitted(), [])
+        report.write_text(failed.format(self.SCREEN, "0000000"), encoding="utf-8")
+        again = self.gate("autoanatomist", self.SCREEN)
+        self.assertEqual(again.returncode, 0, again.stdout + again.stderr)
+        self.assertIn("ended in failure on older code: queueing the plan again", again.stdout)
+        self.assertEqual(len(self.submitted()), 1)
+        self.assertTrue((logs / f"AUTOANATOMIST-{self.SCREEN}-4242.md").exists())
+        # a send Slurm ended before any part of it made its folder spent nothing, so it is queued again at once
+        job = self.recorded()[f"autoanatomist_{self.SCREEN}"]
+        unstarted = self.gate("autoanatomist", self.SCREEN)
+        self.assertEqual(unstarted.returncode, 0, unstarted.stdout + unstarted.stderr)
+        self.assertIn("Slurm ended the send above before any part of it started", unstarted.stdout)
+        self.assertEqual(len(self.submitted()), 2)
+        self.assertTrue((logs / f"AUTOANATOMIST-{self.SCREEN}-{job}-unstarted.md").exists())
+        # a report that ended well queues nothing, but for the job the owner's word names
+        latest = self.recorded()[f"autoanatomist_{self.SCREEN}"]
+        (logs / f"AUTOANATOMIST-{self.SCREEN}.md.part").unlink()
+        report.write_text(f"# autoanatomist {self.SCREEN}: job {latest} on node, commit {commit}, 2026-10-30 07:00:00 UTC\n"
+                          "- exit 0 at 2026-10-30 08:00:00 UTC\n", encoding="utf-8")
+        self.set_gate_line("AUTOANATOMIST_RERUNS", f"{self.SCREEN}:4242")
+        self.assertEqual(self.gate("autoanatomist", self.SCREEN).returncode, 0)
+        self.assertEqual(len(self.submitted()), 2)
+        self.set_gate_line("AUTOANATOMIST_RERUNS", f"{self.SCREEN}:{latest}")
+        again = self.gate("autoanatomist", self.SCREEN)
+        self.assertEqual(again.returncode, 0, again.stdout + again.stderr)
+        self.assertIn(f"the record above is job {latest}'s", again.stdout)
+        self.assertEqual(len(self.submitted()), 3)
+
+    def test_autoanatomist_queues_nothing_after_a_lost_answer_until_the_owners_word(self):
+        self.screen_ready()
+        (self.fake / "lossy").write_text(f"autoanatomist_{self.SCREEN}", encoding="utf-8")
+        lost = self.gate("autoanatomist", self.SCREEN, HPCW_LOSSY=str(self.fake / "lossy"))
+        self.assertNotEqual(lost.returncode, 0, lost.stdout)
+        self.assertEqual(len(self.submitted()), 1)
+        sent = self.repo / "grid" / "logs" / f"AUTOANATOMIST-{self.SCREEN}.sent"
+        self.assertTrue(sent.exists())
+        for _ in range(2):
+            refused = self.gate("autoanatomist", self.SCREEN)
+            self.assertEqual(refused.returncode, 64, refused.stdout)
+            self.assertIn(f"AUTOANATOMIST_RERUNS={self.SCREEN}:lost", refused.stdout)
+        self.assertEqual(len(self.submitted()), 1)
+        self.set_gate_line("AUTOANATOMIST_RERUNS", f"{self.SCREEN}:lost")
+        done = self.gate("autoanatomist", self.SCREEN)
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertEqual(len(self.submitted()), 2)
+        self.assertFalse(sent.exists())
+
+    def test_the_screen_job_installs_exactly_the_pins_the_trial_holds_its_environment_to(self):
+        pins = re.search(r'^AUTOANATOMIST_PIN="([^"]*)"$', (GRID / "autoanatomist.sbatch").read_text(encoding="utf-8"), re.M).group(1)
+        tree = ast.parse((ROOT / "src" / "schwingnet" / "autoanatomist_screen.py").read_text(encoding="utf-8"))
+        frozen = [ast.literal_eval(node.value) for node in tree.body
+                  if isinstance(node, ast.Assign) and [getattr(t, "id", None) for t in node.targets] == ["PINS"]]
+        self.assertEqual(len(frozen), 1)
+        self.assertEqual(pins.split(), list(frozen[0]))
+
+    # A stand-in for the screen environment's python: the JAX check by -c, and the launcher as the job runs
+    # it, its words logged, its own lines printed as flows/launch.py prints them and the end step's as
+    # Metaflow's runtime relays them; a trial leaves its PROGRESS.txt and the join its SUMMARY.md where the
+    # flow writes them. FAKE_JAX_RC is the JAX check's exit and FAKE_RC the launcher's.
+    FAKE_SCREEN_PYTHON = """#!/bin/bash
+echo "$*" >> "$FAKE/screen-python.log"
+case "$1" in
+  -c) exit "${FAKE_JAX_RC:-0}" ;;
+  */flows/launch.py) ;;
+  *) exit 0 ;;
+esac
+part="" plan="" chain="" out="" task=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --part|--plan|--chain|--out|--task) eval "${1#--}=\\$2"; shift 2 ;;
+    *) shift ;;
+  esac
+done
+folder=$out/$(basename "$plan" .json)/$chain
+run=1761800000000001
+echo '{"code": "c0de", "decision": "run", "flow": "autoanatomist", "key": "k", "live": null, "origin": null, "root": "/rs/x/metaflow"}'
+if [ "$part" = trial ]; then
+  mkdir -p "$folder/trials/t$task"
+  echo "epoch 150 of 150: distance 3.1 mm" > "$folder/trials/t$task/PROGRESS.txt"
+  echo "2026-10-30 04:00:00.123 [$run/end/7 (pid 4242)] AutoanatomistFlow: trial t$task: exit ${FAKE_RC:-0}"
+else
+  printf -- '- join: exit 0\\n- lambda_then_w: beats the null\\n' > "$folder/SUMMARY.md"
+  echo "2026-10-30 04:00:00.123 [$run/end/7 (pid 4242)] AutoanatomistFlow: join: exit 0"
+  echo "2026-10-30 04:00:00.123 [$run/end/7 (pid 4242)] AutoanatomistFlow: report: CLAIM 2024 and REFORMS report current (the stand-in)"
+fi
+echo "2026-10-30 04:00:00.123 [$run/end/7 (pid 4242)] AutoanatomistFlow: verdict ${FAKE_RC:-0}"
+echo '{"flow": "autoanatomist", "run": "AutoanatomistFlow/'"$run"'", "successful": true, "verdict": 0}'
+echo "AUTOANATOMIST_RC=${FAKE_RC:-0} 2026-10-30 04:00:00"
+exit "${FAKE_RC:-0}"
+"""
+
+    def screen_checkout(self, moved=False):
+        """A checkout whose commit holds every path grid/autoanatomist.sbatch copies, the frozen PREREG among
+        them, each a stand-in but the grid's scripts, the plans and the split: the full commit. MOVED commits
+        a PREREG with a line added after its freeze."""
+        for path in ("src/schwingnet/__init__.py", "vendor/README.md", "data/reporting/README.md", "data/licences.json", "pixi.toml"):
+            (self.repo / path).parent.mkdir(parents=True, exist_ok=True)
+            (self.repo / path).write_text("{}\n" if path.endswith(".json") else "\n", encoding="utf-8")
+        prereg = self.screen_prereg()
+        if moved:
+            prereg.write_text(prereg.read_text(encoding="utf-8") + "\nA line after the freeze.\n", encoding="utf-8")
+        git = ["git", "-c", "gc.auto=0", "-c", "maintenance.auto=false", "-c", "user.name=t", "-c", "user.email=t@t", "-C", str(self.repo)]
+        subprocess.run([*git, "init", "-q"], check=True)
+        subprocess.run([*git, "add", "-A"], check=True)
+        subprocess.run([*git, "commit", "-q", "-m", "c"], check=True)
+        return subprocess.run([*git, "rev-parse", "HEAD"], check=True, capture_output=True, text=True).stdout.strip()
+
+    def screen_job(self, part, commit, **extra):
+        """grid/autoanatomist.sbatch run as Slurm runs it, over the stand-in python in a ready environment
+        and a stand-in nvidia-smi that names a card."""
+        pins = re.search(r'^AUTOANATOMIST_PIN="([^"]*)"$', (self.repo / "grid" / "autoanatomist.sbatch").read_text(encoding="utf-8"), re.M).group(1)
+        venv = self.tmp / "go2432" / ".cache" / "bench" / f"venv-{hashlib.sha256(pins.encode()).hexdigest()[:12]}"
+        (venv / "bin").mkdir(parents=True, exist_ok=True)
+        (venv / "READY").write_text(pins + "\n", encoding="utf-8")
+        (venv / "bin" / "python").write_text(self.FAKE_SCREEN_PYTHON, encoding="utf-8")
+        (venv / "bin" / "python").chmod(0o755)
+        (self.fake / "nvidia-smi").write_text("#!/bin/bash\necho 'NVIDIA A100-SXM4-80GB, 81920 MiB, 550.54.15'\n", encoding="utf-8")
+        (self.fake / "nvidia-smi").chmod(0o755)
+        env = dict(os.environ, PATH=f"{self.fake}:{os.environ['PATH']}", SCHWINGNET=str(self.repo), DATA_ROOT=str(self.data),
+                   LAB_VOLUME=str(self.tmp), AUTOANATOMIST_ROOT=str(self.screen_root()), FAKE=str(self.fake), SCHWINGNET_NATIVE="1",
+                   PART=part, PLAN=self.SCREEN, TRIAL_TASKS="2", AUTOANATOMIST_COMMIT=commit)
+        for name in ("SLURM_JOB_ID", "SLURM_ARRAY_JOB_ID", "SLURM_ARRAY_TASK_ID", "TRIALS_JOB", "CUDA_VISIBLE_DEVICES", "SLURM_JOB_GPUS"):
+            env.pop(name, None)
+        env.update(extra)
+        return subprocess.run(["bash", str(self.repo / "grid" / "autoanatomist.sbatch")], cwd=self.repo / "grid", env=env,
+                              capture_output=True, text=True, timeout=60)
+
+    def launches(self):
+        """Each launcher call the stand-in python logged: the script, then its words as a dict."""
+        calls = (self.fake / "screen-python.log").read_text(encoding="utf-8").splitlines()
+        return [(words[0], words[1:5], dict(zip(words[5::2], words[6::2]))) for words in (line.split() for line in calls)
+                if words[0].endswith("/flows/launch.py")]
+
+    def test_the_screen_job_refuses_words_that_name_no_part_before_touching_anything(self):
+        commit = "a" * 40
+        for part, extra, said in (("", {}, "PART is trial, join or series"), ("series", {"PLAN": "../x"}, "PLAN is the name of a plan"),
+                                  ("series", {"AUTOANATOMIST_COMMIT": "abc1234"}, "the full commit"),
+                                  ("series", {"TRIAL_TASKS": "0"}, "TRIAL_TASKS"), ("join", {}, "TRIALS_JOB"),
+                                  ("trial", {"SLURM_ARRAY_JOB_ID": "5", "SLURM_ARRAY_TASK_ID": "2"}, "outside the plan's 2 trials")):
+            with self.subTest(part=part, said=said):
+                done = self.screen_job(part, commit, SLURM_JOB_ID="4242", **extra)
+                self.assertEqual(done.returncode, 64, done.stdout + done.stderr)
+                self.assertIn(said, done.stdout)
+                self.assertIn("SN_AUTOANATOMIST_RC=64", done.stdout)
+        self.assertFalse(self.screen_root().exists())
+        self.assertFalse((self.fake / "screen-python.log").exists())
+
+    def test_the_screen_job_runs_a_series_from_its_copy_through_the_launcher_and_writes_the_report(self):
+        commit = self.screen_checkout()
+        done = self.screen_job("series", commit, SLURM_JOB_ID="4242")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("SN_AUTOANATOMIST_RC=0", done.stdout)
+        out = self.screen_root() / self.SCREEN / "4242"
+        code = out / f"code-{commit[:7]}"
+        self.assertEqual((code / "COPY.txt").read_text(encoding="utf-8").splitlines()[0], commit)
+        self.assertEqual(out.stat().st_mode & 0o777, 0o700)
+        launches = self.launches()
+        self.assertEqual([given["--part"] for _, _, given in launches], ["trial", "trial", "join"])
+        script, head, given = launches[0]
+        self.assertEqual(script, str(code / "flows" / "launch.py"))
+        self.assertEqual(head, ["autoanatomist", "--max-workers", "1", "--"])
+        # the plan the flow reads is the copy's, whatever the checkout holds by then
+        self.assertEqual(given["--plan"], str(code / "grid" / "screens" / f"{self.SCREEN}.json"))
+        self.assertEqual((given["--chain"], given["--out"], given["--data"]), ("4242", str(self.screen_root()), str(self.data)))
+        self.assertEqual((given["--task"], given["--tasks"]), ("0", "2"))
+        self.assertEqual(launches[2][2]["--tasks"], "2")
+        self.assertNotIn("--data", launches[2][2])
+        logs = self.repo / "grid" / "logs"
+        report = (logs / f"AUTOANATOMIST-{self.SCREEN}.md").read_text(encoding="utf-8")
+        lines = report.splitlines()
+        self.assertRegex(lines[0], rf"^# autoanatomist {self.SCREEN}: job 4242 on \S+, commit {commit[:7]}, ")
+        for said in ("- PREREG.md: as frozen", "- GPU: NVIDIA A100-SXM4-80GB", "- trial 0: launcher exited 0; trial t0: exit 0",
+                     "- trial 1: launcher exited 0; trial t1: exit 0", '- launcher: {"code": "c0de", "decision": "run"',
+                     "- report: CLAIM 2024 and REFORMS report current (the stand-in)", "### SUMMARY.md", "- lambda_then_w: beats the null",
+                     "- progress page: /rs/x/metaflow/progress/AutoanatomistFlow/1761800000000001/index.html"):
+            self.assertIn(said, report)
+        self.assertEqual(lines[-1][:9], "- exit 0 ")
+        self.assertEqual((out / "steps" / "join.md").read_text(encoding="utf-8"), report)
+        self.assertFalse((logs / f"AUTOANATOMIST-{self.SCREEN}.md.part").exists())
+        self.assertFalse((logs / "HOLD").exists())
+
+    def test_the_screen_jobs_trials_and_join_share_one_copy_and_the_join_reports_each_trial(self):
+        commit = self.screen_checkout()
+        for task in (0, 1):
+            done = self.screen_job("trial", commit, SLURM_JOB_ID=str(5000 + task), SLURM_ARRAY_JOB_ID="5000", SLURM_ARRAY_TASK_ID=str(task),
+                                   FAKE_RC=str(task))
+            self.assertEqual(done.returncode, task, done.stdout + done.stderr)
+            step = (self.screen_root() / self.SCREEN / "5000" / "steps" / f"trial-{task}.md").read_text(encoding="utf-8")
+            self.assertTrue(step.startswith(f"# autoanatomist {self.SCREEN} trial {task} of 2: job 5000_{task} on "), step)
+            self.assertEqual(step.splitlines()[-1][:len(f"- exit {task} ")], f"- exit {task} ")
+        self.assertEqual(len(list((self.screen_root() / self.SCREEN / "5000").glob("code-*"))), 1)
+        done = self.screen_job("join", commit, SLURM_JOB_ID="5002", TRIALS_JOB="5000")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        report = (self.repo / "grid" / "logs" / f"AUTOANATOMIST-{self.SCREEN}.md").read_text(encoding="utf-8")
+        first = report.splitlines()[0]
+        # the first line names the join's own job and commit, as the gate reads every report's
+        self.assertRegex(first, rf"^# autoanatomist {self.SCREEN}: job 5002 on \S+, commit {commit[:7]}, .*; the join of the trials' array 5000$")
+        self.assertIn("- trial 0: exit 0 at ", report)
+        self.assertIn("- trial 1: exit 1 at ", report)
+        self.assertIn("trial t1: exit 1", report)
+        self.assertEqual([given["--part"] for _, _, given in self.launches()], ["trial", "trial", "join"])
+        self.assertEqual(self.launches()[2][2]["--chain"], "5000")
+
+    def test_the_screen_job_stops_on_a_prereg_that_moved_since_its_freeze(self):
+        commit = self.screen_checkout(moved=True)
+        done = self.screen_job("series", commit, SLURM_JOB_ID="4242")
+        self.assertEqual(done.returncode, 90, done.stdout + done.stderr)
+        report = (self.repo / "grid" / "logs" / f"AUTOANATOMIST-{self.SCREEN}.md").read_text(encoding="utf-8")
+        self.assertIn("- STOP: PREREG.md changed since the freeze", report)
+        self.assertFalse((self.fake / "screen-python.log").exists())
 
     def test_select_is_refused_without_the_frozen_holdout(self):
         (self.repo / "data" / "splits" / "anomaly-holdout.json").unlink()

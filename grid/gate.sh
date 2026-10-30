@@ -164,6 +164,20 @@
 #                   one prints it again and queues nothing, a failed or unfinished one queued once more only
 #                   once a fix has moved the checkout; lora and eval are refused until they have a count and
 #                   a PREREG of their own
+#   autoanatomist <plan>  one plan of the auto-anatomist screen under grid/screens/ (the thread "Restart the
+#                   auto-anatomist probe"; the owner's words of 2026-10-30, docs/research/autoanatomist-screen/PREREG.md):
+#                   every arm of the plan trained at every seed on gold tier 3 CTs, a trial a card, each read on the
+#                   plan's validation CTs every few epochs, then the join, which decides each arm against the null;
+#                   every part runs the Metaflow flow flows/autoanatomist.py through flows/launch.py from git's copy of
+#                   the code at the gate's commit (grid/autoanatomist.sbatch), so none holds the checkout. A plan laid
+#                   out as a series is one GPU job, its trials one after another and then the join; one laid out as an
+#                   array is a GPU array of a task a trial and a CPU join afterany it, both queued or neither. A plan is
+#                   queued only where AUTOANATOMIST_COUNTED names it, the owner's word and count committed by pull
+#                   request, and only while the frozen PREREG covers its bytes (exit 90); the next send prints
+#                   logs/AUTOANATOMIST-<plan>.md, or its unfinished .part, and every later one prints it again and
+#                   queues nothing, a failed or unfinished one queued once more only once a fix has moved the
+#                   checkout, and any other only where AUTOANATOMIST_RERUNS carries the owner's word; a send while its
+#                   jobs last prints where each trial stands
 #   literature <list>  one reading list's papers fetched onto the grid (the owner's word of 2026-10-27
 #                   23:00 UTC; grid/literature.sbatch, grid/literature_fetch.py, the list grid/literature/<list>.csv):
 #                   PMC's open-access copies, Elsevier's through its API with the key and institutional token
@@ -263,20 +277,34 @@ BENCH_RERUNS="flexray_drr_gap:40859208"
 # The owner's word for one more census job, <id>:<job of the report or the record it replaces>, or
 # <id>:lost for a submission whose answer was lost; one word, one more job (word_census).
 CENSUS_RERUNS=""
+# The auto-anatomist screen's chains, <plan>/<chain>/ (grid/autoanatomist.sbatch reads the same default
+# from the lab volume), where a send while its jobs last reads each trial's PROGRESS.txt.
+AUTOANATOMIST_ROOT=${AUTOANATOMIST_ROOT:-$VOLUME/go2432/autoanatomist}
+# The plans of grid/screens/ the owner's word and count let the screen queue, each once
+# (word_autoanatomist): a committed list changed by pull request, as BENCH_RERUNS is, since a gate word
+# carries no option. gold3_latent_smoke is the one short GPU smoke of the owner's count of 2026-10-30
+# 03:20 UTC ("2 CPU 2 GPU 2 Full run plus 1 short GPU smoke is fine"): one GPU job, its two trials in
+# series and the join. gold3_latent_screen, a GPU array of eight trials and a CPU join afterany it, is
+# the two jobs of his word of 2026-10-30 08:56 UTC ("Yes to both", to the ask that named those two jobs
+# and said they were outside the 03:20 count).
+AUTOANATOMIST_COUNTED="gold3_latent_smoke gold3_latent_screen"
+# The owner's word for one more send of a plan whose record stands, <plan>:<job that record's first line
+# names>, or <plan>:lost for a submission whose answer was lost; one word, one more send.
+AUTOANATOMIST_RERUNS=""
 LOGS=$REPO/grid/logs
 STATE=$LOGS/GATE_JOBS.txt
-WORDS="start status leaks v1 latency fetch explore dropzip unpack nodequota folders samples sweep bank experiment bench anomaly bordercall census realism morphometry literature stop cancel"
+WORDS="start status leaks v1 latency fetch explore dropzip unpack nodequota folders samples sweep bank experiment bench anomaly bordercall census realism autoanatomist morphometry literature stop cancel"
 ENVS="default train-cpu train-gpu telemetry"
 
 word=${1:-}
 id=${2:-}
 # Matched whole, so one argument holding two words ("v1 latency") is refused and never runs nothing.
 case "$word" in
-  start|status|leaks|v1|latency|fetch|explore|dropzip|unpack|nodequota|folders|samples|sweep|bank|experiment|bench|anomaly|bordercall|census|realism|morphometry|literature|stop|cancel) ;;
+  start|status|leaks|v1|latency|fetch|explore|dropzip|unpack|nodequota|folders|samples|sweep|bank|experiment|bench|anomaly|bordercall|census|realism|autoanatomist|morphometry|literature|stop|cancel) ;;
   "") echo "refusing: no word; one of: $WORDS"; exit 64 ;;
   *) echo "refusing: '$word' is not one of: $WORDS"; exit 64 ;;
 esac
-if [ "$word" = fetch ] || [ "$word" = explore ] || [ "$word" = dropzip ] || [ "$word" = unpack ] || [ "$word" = sweep ] || [ "$word" = bank ] || [ "$word" = bench ] || [ "$word" = anomaly ] || [ "$word" = bordercall ] || [ "$word" = census ] || [ "$word" = realism ] || [ "$word" = morphometry ] || [ "$word" = literature ]; then
+if [ "$word" = fetch ] || [ "$word" = explore ] || [ "$word" = dropzip ] || [ "$word" = unpack ] || [ "$word" = sweep ] || [ "$word" = bank ] || [ "$word" = bench ] || [ "$word" = anomaly ] || [ "$word" = bordercall ] || [ "$word" = census ] || [ "$word" = realism ] || [ "$word" = autoanatomist ] || [ "$word" = morphometry ] || [ "$word" = literature ]; then
   [ $# -eq 2 ] || { echo "refusing: $word takes exactly one id"; exit 64; }
   case "$id" in ""|*[!a-z0-9_]*) echo "refusing: an id is lower-case letters, digits and _"; exit 64 ;; esac
   [ ${#id} -le 40 ] || { echo "refusing: an id is at most 40 characters"; exit 64; }
@@ -2034,6 +2062,220 @@ word_realism() {  # one stage of the Flux realism programme: queued once, its re
   echo "submitted the realism stage $id. Send realism $id again once it ends to read its report, logs/REALISM-$id.md."
 }
 
+autoanatomist_counted() {  # autoanatomist_counted PLAN: status 0 where AUTOANATOMIST_COUNTED names the plan
+  case " $AUTOANATOMIST_COUNTED " in *" $1 "*) return 0 ;; esac
+  return 1
+}
+autoanatomist_rerun_allowed() {  # autoanatomist_rerun_allowed WHAT: AUTOANATOMIST_RERUNS names WHAT, a job or lost, beside the plan
+  [ -n "$1" ] || return 1
+  case " $AUTOANATOMIST_RERUNS " in *" $id:$1 "*) return 0 ;; esac
+  return 1
+}
+flow_prereg() {  # flow_prereg KIND: the PREREG flows/registry.txt names for a launched flow's kind, else nothing
+  awk -v kind="$1" '$1 == kind && NF == 5 { print $5; exit }' "$REPO/flows/registry.txt" 2>/dev/null
+}
+screen_covered() {  # screen_covered PLAN NAME: status 0 where the screen's frozen PREREG covers the plan, by its name and bytes; the refusal otherwise
+  # The launcher holds every part to the same PREREG and part (flows/stage.py); a plan it would stop
+  # is refused here, before a card is spent, as sweep_covered refuses a sweep's.
+  local prereg entry frozen bytes want
+  prereg=$(flow_prereg autoanatomist)
+  case "$prereg" in
+    ""|/*|../*|*/../*) echo "refusing: flows/registry.txt names no PREREG inside the checkout for the screen, so no plan is covered; nothing was queued"; return 90 ;;
+  esac
+  frozen=$(awk 'NR == 1 && NF == 2 && ($2 == "PREREG.md" || $2 == "*PREREG.md") { print $1 }' "$REPO/$prereg.sha256" 2>/dev/null)
+  bytes=$(sha256sum < "$REPO/$prereg" 2>/dev/null | cut -c1-64)
+  if [ -z "$frozen" ] || [ "$frozen" != "$bytes" ]; then
+    echo "refusing: STOP: $prereg is not frozen as its PREREG.md.sha256 says (the Lab Recipe's freeze), so no screen runs under it; nothing was queued"
+    return 90
+  fi
+  entry=$(covers_entry "$REPO/$prereg" "$2")
+  if [ -z "$entry" ]; then
+    echo "refusing: $prereg does not cover the plan $2, which waits for a PREREG of its own, frozen before it runs; nothing was queued"
+    return 90
+  fi
+  case "$entry" in
+    *=*)
+      want=${entry#*=}
+      bytes=$(sha256sum < "$1" | cut -c1-64)
+      if [ "$want" != "$bytes" ]; then
+        echo "refusing: $prereg covers $2 as the bytes of sha256 ${want:0:16}, and grid/screens/$2.json's are ${bytes:0:16}: a plan changed since the freeze is another design, which waits for a PREREG of its own; nothing was queued"
+        return 90
+      fi ;;
+  esac
+}
+# A plan is read from the text tools/autoanatomist_plan.py writes, json.dumps with indent 2, which the
+# PREREG covers by its bytes, so the login node reads it with sed and awk and runs no python.
+screen_field() {  # screen_field PLAN KEY: a top-level word of the plan, else nothing
+  sed -n "s/^  \"$2\": \"\([a-z0-9_]*\)\",\{0,1\}\$/\1/p" "$1" | head -n 1
+}
+screen_trials() {  # screen_trials PLAN: the plan's trials, every arm at every seed, as schwingnet.autoanatomist_screen.trials counts them
+  # The arms are the keys one level inside "arms", the seeds the numbers one level inside "seeds";
+  # the flow refuses a task count other than the plan's (--tasks), so a miscount stops there.
+  awk '
+    /^  "arms": \{$/ { block = "arms"; next }
+    /^  "seeds": \[$/ { block = "seeds"; next }
+    /^  []}]/ { block = ""; next }
+    block == "arms" && /^    "[a-z0-9_]+": \[/ { arms++ }
+    block == "seeds" && /^    [0-9]+,?$/ { seeds++ }
+    END { print arms * seeds }
+  ' "$1"
+}
+screen_sources() {  # screen_sources PLAN: the sources the plan's data block names, one a line
+  awk '/^  "data": \{$/ { on = 1; next } on && /^  []}]/ { exit } on && /^    "[a-z0-9_]+": \{$/ { name = $1; gsub(/[":]/, "", name); print name }' "$1"
+}
+screen_data() {  # screen_data PLAN SOURCE KEY: one word of a source's entry in the plan's data block, else nothing
+  awk -v source="$2" -v key="$3" '
+    /^  "data": \{$/ { on = 1; next }
+    on && /^  []}]/ { exit }
+    on && /^    "[a-z0-9_]+": \{$/ { name = $1; gsub(/[":]/, "", name); next }
+    on && name == source && index($0, "      \"" key "\": \"") == 1 { value = substr($0, length(key) + 12); sub(/",?$/, "", value); print value; exit }
+  ' "$1"
+}
+autoanatomist_inputs_missing() {  # autoanatomist_inputs_missing PLAN: what the plan's sources still lack on the data root, one line, or nothing
+  # Each source's CT folder and label maps, as the plan names them and the trials read them (a label
+  # map is the file of a row's id under a folder of labels_folder's name), so no card waits on a fetch.
+  local source sources ct labels folder value
+  sources=$(screen_sources "$1")
+  [ -n "$sources" ] || { echo "a source in the plan's data block, which names none"; return; }
+  for source in $sources; do
+    ct=$(screen_data "$1" "$source" ct) labels=$(screen_data "$1" "$source" labels) folder=$(screen_data "$1" "$source" labels_folder)
+    for value in "$ct" "$labels" "$folder"; do
+      case "$value" in ""|/*|*..*|*[!A-Za-z0-9_./-]*) echo "a plain folder under the data root for the source $source's ct, labels and labels_folder"; return ;; esac
+    done
+    find "$DATA_ROOT/$ct" -name '*.nii.gz' -print -quit 2>/dev/null | grep -q . \
+      || { echo "the source $source's CTs under $ct (fetch ${ct%%/*} first)"; return; }
+    find "$DATA_ROOT/$labels" -path "*/$folder/*" -name '*.nii.gz' -print -quit 2>/dev/null | grep -q . \
+      || { echo "the source $source's label maps under $labels, in folders named $folder (fetch ${labels%%/*} first)"; return; }
+  done
+}
+autoanatomist_live() {  # the plan's live jobs, its series or trials' array and its join, space-separated
+  { live_of "autoanatomist_$id"; live_of "autoanatomist_${id}_join"; } | tr '\n' ' ' | sed 's/ $//'
+}
+autoanatomist_chain() {  # the newest chain the gate queued for the plan, its series job or trials' array, else nothing
+  awk -v what="autoanatomist_$id" '$3 == what { job = $1 } END { print job }' "$STATE" 2>/dev/null
+}
+autoanatomist_progress() {  # autoanatomist_progress CHAIN: where each trial of the chain stands, its PROGRESS.txt's last line, masked
+  local folder=$AUTOANATOMIST_ROOT/$id/$1 file
+  if ! compgen -G "$folder/trials/*/PROGRESS.txt" > /dev/null; then
+    echo "  no trial of chain $1 has written its PROGRESS.txt yet: each starts it once its card is ready"
+    return 0
+  fi
+  echo "  where each trial of chain $1 stands, the last line of its PROGRESS.txt:"
+  for file in "$folder"/trials/*/PROGRESS.txt; do
+    echo "    $(basename "$(dirname "$file")"): $(tail -n 1 "$file")"
+  done | LC_ALL=C tr -cd '\11\12\40-\176' | masked
+}
+autoanatomist_unstarted() {  # autoanatomist_unstarted PART: the record is the gate's own, of a send no part of which made its folder
+  # Every part makes its chain's folder before anything else (grid/autoanatomist.sbatch), so a send
+  # Slurm ended before it started (a cancel, or a job it waited on failed) spent nothing.
+  local job
+  head -n 1 "$1" | grep -q '; no part of it has started yet$' || return 1
+  job=$(bench_job_of "$1")
+  [ -n "$job" ] && [ ! -e "$AUTOANATOMIST_ROOT/$id/$job" ]
+}
+autoanatomist_queued() {  # autoanatomist_queued CHAIN WHAT: the send's record where its report goes, until a part of it writes its own
+  # Each part that writes the report starts it again under this name, so a send whose join never ran
+  # still leaves a record a later send reads; set -C makes the file only where no part has yet.
+  ( set -C
+    { echo "# autoanatomist $id: job $1 queued, commit ${commit:0:7}, $(date -u '+%F %T') UTC; no part of it has started yet"
+      echo "- queued: $2"
+      echo "- folder: $AUTOANATOMIST_ROOT/$id/$1, where every part works"; } > "$LOGS/AUTOANATOMIST-$id.md.part" ) 2>/dev/null
+  return 0
+}
+word_autoanatomist() {  # one plan of the auto-anatomist screen, on the owner's count: queued once, its report printed on every later send
+  local plan=$REPO/grid/screens/$id.json report=$LOGS/AUTOANATOMIST-$id.md sent=$LOGS/AUTOANATOMIST-$id.sent
+  local layout class trials busy record job kept again="" missing full setup opts screen chain join
+  [ -f "$plan" ] || { echo "refusing: no plan grid/screens/$id.json at commit $commit"; return 64; }
+  autoanatomist_counted "$id" || {
+    echo "refusing: the plan $id waits for the owner's word and count of its jobs, committed in AUTOANATOMIST_COUNTED in grid/gate.sh by pull request; nothing was queued"
+    return 64
+  }
+  screen_covered "$plan" "$id" || return
+  layout=$(screen_field "$plan" layout) class=$(screen_field "$plan" class) trials=$(screen_trials "$plan")
+  case "$layout:$class" in
+    series:gpu|array:gpu) ;;
+    *) echo "refusing: the plan $id is laid out as '${layout:-none}' on '${class:-none}', and the screen runs a series or an array on gpu; nothing was queued"; return 64 ;;
+  esac
+  [[ $trials =~ ^[1-9][0-9]?$ ]] || { echo "refusing: the plan $id holds ${trials:-no} trials as the gate counts them, and a send takes 1 to 99; nothing was queued"; return 64; }
+  busy=$(autoanatomist_live)
+  if [ -n "$busy" ]; then
+    echo "refusing: the plan $id is still queued or running (job ${busy// /, job }); send autoanatomist $id again once it ends"
+    autoanatomist_progress "$(autoanatomist_chain)"
+    return 75
+  fi
+  if [ -f "$report" ] || [ -f "$report.part" ]; then
+    # Kept, so the owner's count holds: a record that stands queues nothing, but for a send that
+    # failed or never finished, queued once more once a fix has moved the checkout, as a realism
+    # stage is, a send that never started, and one AUTOANATOMIST_RERUNS names by its job.
+    record=$report kept=""
+    [ -f "$record" ] || record=$report.part kept=-unfinished
+    if [ -z "$kept" ]; then
+      echo "## $(basename "$report") ($(date -r "$report" '+%F %T'))"
+    else
+      echo "## $(basename "$report") unfinished: the send ended before it wrote its exit ($(date -r "$record" '+%F %T'))"
+    fi
+    head -n 200 "$record" | LC_ALL=C tr -cd '\11\12\40-\176' | masked | head -c 30000
+    job=$(bench_job_of "$record")
+    if autoanatomist_rerun_allowed "$job"; then
+      again="the record above is job $job's, which AUTOANATOMIST_RERUNS lets the owner's word run once more"
+    elif [ -z "$kept" ] && bench_failed_on_older_code "$report"; then
+      again="the report above ended in failure on older code"
+    elif [ -n "$kept" ] && autoanatomist_unstarted "$record"; then
+      again="Slurm ended the send above before any part of it started" kept=-unstarted
+    elif [ -n "$kept" ] && began_on_older_code "$record"; then
+      again="the unfinished report above began on older code"
+    else
+      return 0
+    fi
+    mv "$record" "$LOGS/AUTOANATOMIST-$id-$job$kept.md" || return 1
+  elif [ -f "$sent" ]; then
+    # A submission whose answer was lost leaves no record and no live job the gate knows.
+    autoanatomist_rerun_allowed lost || {
+      echo "refusing: a send of the plan $id was submitted at $(cat "$sent") and no job id came back, so it may be queued or ended under Slurm's name schwingnet-autoanatomist_$id; another waits for the owner's word, committed as AUTOANATOMIST_RERUNS=$id:lost in grid/gate.sh"
+      return 64
+    }
+    rm -f "$sent"
+    again="a submission whose answer was lost came before, and AUTOANATOMIST_RERUNS lets the owner's word run once more"
+  fi
+  missing=$(autoanatomist_inputs_missing "$plan")
+  [ -z "$missing" ] || { echo "refusing: the plan $id needs $missing"; return 2; }
+  full=$(git -C "$REPO" rev-parse HEAD 2>/dev/null)
+  [[ $full =~ ^[0-9a-f]{40}$ ]] || { echo "refusing: the checkout's commit cannot be read, and every part of the screen copies the code at it"; return 2; }
+  setup=$(setup_dependency) || return 1
+  [ -z "$setup" ] || echo "  the environments: after the setup job that rebuilds them (${setup#afterok:})"
+  screen=(PLAN="$id" TRIAL_TASKS="$trials" AUTOANATOMIST_COMMIT="$full" AUTOANATOMIST_ROOT="$AUTOANATOMIST_ROOT" DATA_ROOT="$DATA_ROOT")
+  # Each shape is asked before the send is marked, so a refused shape marks nothing; an array is asked
+  # as one of its tasks, since job submit asks no array first (grid/hpcw.sh).
+  hpcw_check "autoanatomist_$id" gpu "${screen[@]}" PART="$([ "$layout" = series ] && echo series || echo trial)" \
+    --cpus 8 --mem 64G --time 12:00:00 --no-requeue -- autoanatomist.sbatch || return 1
+  if [ "$layout" = array ]; then
+    hpcw_check "autoanatomist_${id}_join" batch "${screen[@]}" PART=join TRIALS_JOB=1 --cpus 4 --mem 16G --time 02:00:00 --no-requeue -- autoanatomist.sbatch || return 1
+  fi
+  [ -z "$again" ] || echo "  $again: queueing the plan again at $commit"
+  depend_on "$setup" || return 1
+  echo "$(date -u '+%F %T') UTC at commit $commit" > "$sent"
+  if [ "$layout" = series ]; then
+    chain=$(submit "autoanatomist_$id" gpu "${screen[@]}" PART=series ${opts[@]+"${opts[@]}"} \
+      --cpus 8 --mem 64G --time 12:00:00 --no-requeue -- autoanatomist.sbatch) || return 1
+    rm -f "$sent"
+    autoanatomist_queued "$chain" "one GPU job, the plan's $trials trials one after another on one card, then the join on the same node"
+    echo "submitted the plan $id: one GPU job ($chain) that trains its $trials trials one after another on one card and then joins them, in $AUTOANATOMIST_ROOT/$id/$chain. Send autoanatomist $id again once it ends to read its report, logs/AUTOANATOMIST-$id.md."
+    return 0
+  fi
+  chain=$(submit "autoanatomist_$id" gpu "${screen[@]}" PART=trial ${opts[@]+"${opts[@]}"} --array "0-$((trials - 1))" \
+    --cpus 8 --mem 64G --time 12:00:00 --no-requeue -- autoanatomist.sbatch) || return 1
+  rm -f "$sent"
+  # Both or neither, as the DRR domain-gap study queues its steps: trials whose join was refused would
+  # leave no decision and no report.
+  if ! depend_on "afterany:$chain" || ! join=$(submit "autoanatomist_${id}_join" batch "${screen[@]}" PART=join TRIALS_JOB="$chain" \
+    ${opts[@]+"${opts[@]}"} --cpus 4 --mem 16G --time 02:00:00 --no-requeue -- autoanatomist.sbatch); then
+    "$SCANCEL" "$chain" && echo "  cancelled the trials' array $chain, since its join was refused"
+    return 1
+  fi
+  autoanatomist_queued "$chain" "the trials' array $chain, $trials tasks of a card each, then the join $join on a CPU node afterany it"
+  echo "submitted the plan $id: the trials' array $chain ($trials tasks, each on the first card of the gpu class that frees) and the join $join afterany it on a CPU node, in $AUTOANATOMIST_ROOT/$id/$chain. Send autoanatomist $id again once they end to read its report, logs/AUTOANATOMIST-$id.md."
+}
+
 word_samples() {
   local busy said rc
   busy=$( { live_of samples_plan; live_of samples_scan; live_of samples_merge; } | tr '\n' ' ')
@@ -2396,6 +2638,7 @@ case "$word" in
   bordercall) word_bordercall ;;
   census) word_census ;;
   realism) word_realism ;;
+  autoanatomist) word_autoanatomist ;;
   morphometry) word_morphometry ;;
   literature) word_literature ;;
   samples) word_samples ;;

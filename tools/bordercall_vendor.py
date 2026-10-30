@@ -3,7 +3,7 @@
     python3 tools/bordercall_vendor.py copy <clone of OpenSpineConsortium/bordercall> [engine|search]
     python3 tools/bordercall_vendor.py check
 
-Why a copy. The grid's jobs (grid/bordercall.sbatch, grid/morphometry.sbatch, grid/autoanatomist-driver.sbatch)
+Why a copy. The grid's jobs (grid/bordercall.sbatch, grid/morphometry.sbatch, grid/autoanatomist.sbatch)
 run bordercall's own code over the masks and phantoms the grid holds, and the gate's clone of this
 repository is the one tree a job can count on being there and at a known commit; bordercall is a
 private repository of its own that the grid has no token for. So the parts the jobs need are copied
@@ -28,14 +28,16 @@ Two copies, each pinned on its own, since the two jobs that read them move at di
   clone's root, holdings, comes the same way for grid/bordercall-complete.sbatch, with its tests/
   folder, since that job runs the matcher's own tests first and trusts nothing it reads where they
   fail.
-- search, grid/autoanatomist/, what grid/autoanatomist-driver.sbatch reads through flows/autoanatomist.py:
-  the auto-anatomist package, schwingcheck, whose chain and measures its naming layer imports, and
-  scanimport, whose intensity levels, geometry and schemes it imports, with scanimport's phantom
-  fixture (scanimport/tests/__init__.py and scanimport/tests/phantom.py), which autoanatomist.phantom
-  imports as code and which the tests/ rule would otherwise leave behind, and
-  requirements-autoanatomist.txt, the pins the search's environment is made from (grid/venv.sh). A
-  job's PYTHONPATH=$REPO/grid/autoanatomist imports each as the clone does, and the copy carries its
-  own scanimport so that the engine's copy is read by no search and the two pins stay apart.
+- search, grid/autoanatomist/, what the screen's trials import (grid/autoanatomist.sbatch, through
+  flows/autoanatomist.py and tools/autoanatomist_trial.py): the auto-anatomist package, schwingcheck,
+  whose chain and measures its naming layer imports, and scanimport, whose intensity levels, geometry
+  and schemes it imports, with scanimport's phantom fixture (scanimport/tests/__init__.py and
+  scanimport/tests/phantom.py), which autoanatomist.phantom imports as code and which the tests/ rule
+  would otherwise leave behind, and requirements-autoanatomist.txt, the clone's own pins, kept as the
+  record of what its tests ran on; the grid's trials run on train-gpu's Python 3.11 and so on
+  schwingnet.autoanatomist_screen.PINS (grid/venv.sh). A trial puts grid/autoanatomist on its
+  sys.path and imports each as the clone does, and the copy carries its own scanimport so that the
+  engine's copy is read by no trial and the two pins stay apart.
 """
 from __future__ import annotations
 

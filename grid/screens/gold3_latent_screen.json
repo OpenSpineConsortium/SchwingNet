@@ -1,0 +1,794 @@
+{
+  "screen": "gold3_latent_screen",
+  "purpose": "Whether the anneal helps the fully latent network name and outline real vertebrae: three anneal schedules against the null that never anneals and reads the CT alone from the first step, two seeds each, 50 epochs on 96 training CTs, read on 24 validation CTs by the mean surface distance.",
+  "class": "gpu",
+  "layout": "array",
+  "data": {
+    "enhance_pet": {
+      "ct": "aws_enhance_pet_ct/raw",
+      "labels": "aws_enhance_pet_labels/raw",
+      "labels_folder": "Vertebrae",
+      "names": {
+        "3": "C3",
+        "4": "C4",
+        "5": "C5",
+        "6": "C6",
+        "7": "C7",
+        "8": "T1",
+        "9": "T2",
+        "10": "T3",
+        "11": "T4",
+        "12": "T5",
+        "13": "T6",
+        "14": "T7",
+        "15": "T8",
+        "16": "T9",
+        "17": "T10",
+        "18": "T11",
+        "19": "T12",
+        "20": "L1",
+        "21": "L2",
+        "22": "L3",
+        "23": "L4",
+        "24": "L5",
+        "25": "L6"
+      }
+    }
+  },
+  "rows": [
+    {
+      "item": "enhance_pet:1541",
+      "person": "enhance_pet:1541",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:0504",
+      "person": "enhance_pet:0504",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:0039",
+      "person": "enhance_pet:0039",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:0686",
+      "person": "enhance_pet:0686",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:1322",
+      "person": "enhance_pet:1322",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:0078",
+      "person": "enhance_pet:0078",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:0337",
+      "person": "enhance_pet:0337",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:0573",
+      "person": "enhance_pet:0573",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:0579",
+      "person": "enhance_pet:0579",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:0135",
+      "person": "enhance_pet:0135",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:0760",
+      "person": "enhance_pet:0760",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:1160",
+      "person": "enhance_pet:1160",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:1044",
+      "person": "enhance_pet:1044",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:0622",
+      "person": "enhance_pet:0622",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:1441",
+      "person": "enhance_pet:1441",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:0814",
+      "person": "enhance_pet:0814",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:0838",
+      "person": "enhance_pet:0838",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:1022",
+      "person": "enhance_pet:1022",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:1168",
+      "person": "enhance_pet:1168",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:0808",
+      "person": "enhance_pet:0808",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:0042",
+      "person": "enhance_pet:0042",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:1444",
+      "person": "enhance_pet:1444",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:0479",
+      "person": "enhance_pet:0479",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:0475",
+      "person": "enhance_pet:0475",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:1366",
+      "person": "enhance_pet:1366",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:1356",
+      "person": "enhance_pet:1356",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:0377",
+      "person": "enhance_pet:0377",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:0096",
+      "person": "enhance_pet:0096",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:1128",
+      "person": "enhance_pet:1128",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:1449",
+      "person": "enhance_pet:1449",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:0051",
+      "person": "enhance_pet:0051",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:0361",
+      "person": "enhance_pet:0361",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:0978",
+      "person": "enhance_pet:0978",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:0374",
+      "person": "enhance_pet:0374",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:1239",
+      "person": "enhance_pet:1239",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:0508",
+      "person": "enhance_pet:0508",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:0866",
+      "person": "enhance_pet:0866",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:1562",
+      "person": "enhance_pet:1562",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:0354",
+      "person": "enhance_pet:0354",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:1213",
+      "person": "enhance_pet:1213",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:1131",
+      "person": "enhance_pet:1131",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:0848",
+      "person": "enhance_pet:0848",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:1505",
+      "person": "enhance_pet:1505",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:0655",
+      "person": "enhance_pet:0655",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:0792",
+      "person": "enhance_pet:0792",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:1129",
+      "person": "enhance_pet:1129",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:0994",
+      "person": "enhance_pet:0994",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:0073",
+      "person": "enhance_pet:0073",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:0151",
+      "person": "enhance_pet:0151",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:0526",
+      "person": "enhance_pet:0526",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:1053",
+      "person": "enhance_pet:1053",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:1167",
+      "person": "enhance_pet:1167",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:0136",
+      "person": "enhance_pet:0136",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:0066",
+      "person": "enhance_pet:0066",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:1266",
+      "person": "enhance_pet:1266",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:1072",
+      "person": "enhance_pet:1072",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:1215",
+      "person": "enhance_pet:1215",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:0607",
+      "person": "enhance_pet:0607",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:0436",
+      "person": "enhance_pet:0436",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:0820",
+      "person": "enhance_pet:0820",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:1312",
+      "person": "enhance_pet:1312",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:0737",
+      "person": "enhance_pet:0737",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:0788",
+      "person": "enhance_pet:0788",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:1293",
+      "person": "enhance_pet:1293",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:0602",
+      "person": "enhance_pet:0602",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:0724",
+      "person": "enhance_pet:0724",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:0372",
+      "person": "enhance_pet:0372",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:0765",
+      "person": "enhance_pet:0765",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:0366",
+      "person": "enhance_pet:0366",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:1206",
+      "person": "enhance_pet:1206",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:1226",
+      "person": "enhance_pet:1226",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:0563",
+      "person": "enhance_pet:0563",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:0898",
+      "person": "enhance_pet:0898",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:0877",
+      "person": "enhance_pet:0877",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:1209",
+      "person": "enhance_pet:1209",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:1169",
+      "person": "enhance_pet:1169",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:1395",
+      "person": "enhance_pet:1395",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:0651",
+      "person": "enhance_pet:0651",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:1076",
+      "person": "enhance_pet:1076",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:0140",
+      "person": "enhance_pet:0140",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:0542",
+      "person": "enhance_pet:0542",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:0202",
+      "person": "enhance_pet:0202",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:0247",
+      "person": "enhance_pet:0247",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:0993",
+      "person": "enhance_pet:0993",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:1137",
+      "person": "enhance_pet:1137",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:1512",
+      "person": "enhance_pet:1512",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:1503",
+      "person": "enhance_pet:1503",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:0340",
+      "person": "enhance_pet:0340",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:1381",
+      "person": "enhance_pet:1381",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:0482",
+      "person": "enhance_pet:0482",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:0163",
+      "person": "enhance_pet:0163",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:0206",
+      "person": "enhance_pet:0206",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:0044",
+      "person": "enhance_pet:0044",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:0074",
+      "person": "enhance_pet:0074",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:0462",
+      "person": "enhance_pet:0462",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:1440",
+      "person": "enhance_pet:1440",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:0022",
+      "person": "enhance_pet:0022",
+      "part": "validation",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:0493",
+      "person": "enhance_pet:0493",
+      "part": "validation",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:1428",
+      "person": "enhance_pet:1428",
+      "part": "validation",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:0241",
+      "person": "enhance_pet:0241",
+      "part": "validation",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:1204",
+      "person": "enhance_pet:1204",
+      "part": "validation",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:1376",
+      "person": "enhance_pet:1376",
+      "part": "validation",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:0298",
+      "person": "enhance_pet:0298",
+      "part": "validation",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:1042",
+      "person": "enhance_pet:1042",
+      "part": "validation",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:1227",
+      "person": "enhance_pet:1227",
+      "part": "validation",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:0507",
+      "person": "enhance_pet:0507",
+      "part": "validation",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:1275",
+      "person": "enhance_pet:1275",
+      "part": "validation",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:1297",
+      "person": "enhance_pet:1297",
+      "part": "validation",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:0707",
+      "person": "enhance_pet:0707",
+      "part": "validation",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:0331",
+      "person": "enhance_pet:0331",
+      "part": "validation",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:1153",
+      "person": "enhance_pet:1153",
+      "part": "validation",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:0584",
+      "person": "enhance_pet:0584",
+      "part": "validation",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:0323",
+      "person": "enhance_pet:0323",
+      "part": "validation",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:0253",
+      "person": "enhance_pet:0253",
+      "part": "validation",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:1252",
+      "person": "enhance_pet:1252",
+      "part": "validation",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:1121",
+      "person": "enhance_pet:1121",
+      "part": "validation",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:0287",
+      "person": "enhance_pet:0287",
+      "part": "validation",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:1077",
+      "person": "enhance_pet:1077",
+      "part": "validation",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:0105",
+      "person": "enhance_pet:0105",
+      "part": "validation",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:1468",
+      "person": "enhance_pet:1468",
+      "part": "validation",
+      "source": "enhance_pet"
+    }
+  ],
+  "split": {
+    "salt": "schwingnet-2026-10-21",
+    "validation_share": 0.1
+  },
+  "test": "off",
+  "fixed": [
+    "objective=mask",
+    "naming=off"
+  ],
+  "arms": {
+    "lambda_then_w": [
+      "schedule=lambda-then-w"
+    ],
+    "joint": [
+      "schedule=joint"
+    ],
+    "w_first": [
+      "schedule=w-first"
+    ],
+    "null": [
+      "schedule=fixed",
+      "lam_fixed=1",
+      "w_fixed=0"
+    ]
+  },
+  "null": "null",
+  "seeds": [
+    1,
+    2
+  ],
+  "epochs": 50,
+  "evaluate_every": 5,
+  "batch": 2,
+  "measure": "distance_mm"
+}

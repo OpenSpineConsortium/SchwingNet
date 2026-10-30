@@ -29,6 +29,20 @@ calibrated error is for train.py's spread loss and a held-out check to say; untr
 ct_only is the path a raw CT takes at test time: E_ct and the decoder, no mask, jitted by the
 caller (train.timing measures it).
 
+The objective is a block too (Config.objective, blocks.py's objective). landmarks is the design
+above. mask is the fully latent objective of the owner's ask of 2026-10-30 ("start with one of the
+fully latent space approaches", since the morphometrics code's state was not known): the decoder's
+two logits at the half scale are the privileged channels themselves, the target vertebra's mask and
+every vertebra's, so the mask is both what the ladder takes down and what the network must give
+back, the feature-matching term pulls the CT's features to the mask's as before, and nothing is
+measured anywhere, no oracle and no landmark. A name head (NameHead) reads each crop's level name
+off the bottleneck, the deepest fused features pooled to one vector a crop, which is the latent a
+later shape prior is fit on, so the chain's two questions, which vertebra and how many, are asked
+of the network's own representation. What the annealer leaves is then read on a held-out CT by
+the CT-only path's Dice, surface distance and names right against the mask it never saw
+(train.evaluate_masks). Under it the model's call gives the logits, the latent, the name logits and
+the two branches' features, and read() gives the logits as they are.
+
 The network itself is a block (the owner's ask of 2026-10-29: the final architecture is not
 chosen): ARCHITECTURES names each one, blocks.py's architecture word chooses it, and Model builds
 its two encoders and its decoder from the entry, so a new architecture is one entry here and one
@@ -68,6 +82,8 @@ import jax.numpy as jnp
 import numpy as np
 from flax import nnx
 
+from schwingcheck import chain as CH
+
 from . import crops, gates, ladder
 from .specs import SEVEN, landmarks, values
 
@@ -77,6 +93,8 @@ HU_SCALE = 1000.0
 
 NORMALISE = ("clip", "clip-zscore")
 DEFAULT_ARCHITECTURE = "residual-unet"
+OBJECTIVES = ("landmarks", "mask")
+MASK_CHANNELS = 2                   # the privileged channels the mask objective gives back: the target's and every vertebra's
 
 # The probe's constants (the module's docstring): the window round the body in the crop's local
 # millimetres (x to the right, y anterior, z up; the crop's centre is SHIFT_MM in front of the
@@ -108,8 +126,10 @@ class Config:
     encoders' widths at the three scales (a half, a quarter and an eighth of the crop), the crop
     it reads (crops.SHAPE at crops.SPACING_MM unless given), group norm's groups, how the CT
     channel is scaled (normalise: clip, the HU clipped to HU_RANGE over HU_SCALE; clip-zscore,
-    the same then standardised crop by crop; blocks.py's normalise), and the architecture, one of
-    ARCHITECTURES (blocks.py's architecture)."""
+    the same then standardised crop by crop; blocks.py's normalise), the architecture, one of
+    ARCHITECTURES (blocks.py's architecture), and the objective, one of OBJECTIVES (blocks.py's
+    objective): landmarks, one heatmap logit per landmark, or mask, one logit per privileged
+    channel, which the probe cannot give."""
     keys: Tuple[str, ...] = tuple(SEVEN)
     widths: Tuple[int, int, int] = (16, 32, 64)
     shape: Tuple[int, int, int] = crops.SHAPE
@@ -117,16 +137,26 @@ class Config:
     groups: int = 8
     normalise: str = "clip"
     architecture: str = DEFAULT_ARCHITECTURE
+    objective: str = "landmarks"
 
     def __post_init__(self):
         if self.normalise not in NORMALISE:
             raise ValueError("normalise takes %s, not %r" % (" or ".join(NORMALISE), self.normalise))
         if self.architecture not in ARCHITECTURES:
             raise ValueError("architecture takes %s, not %r" % (", ".join(ARCHITECTURES), self.architecture))
+        if self.objective not in OBJECTIVES:
+            raise ValueError("objective takes %s, not %r" % (" or ".join(OBJECTIVES), self.objective))
+        if self.objective == "mask" and self.architecture == "probe":
+            raise ValueError("the probe's decoder reads landmarks, so it takes no mask objective")
 
     @property
     def n_landmarks(self) -> int:
         return len(landmarks(self.keys))
+
+    @property
+    def n_outputs(self) -> int:
+        """The decoder's logits at the half scale: one per landmark, or one per privileged channel."""
+        return MASK_CHANNELS if self.objective == "mask" else self.n_landmarks
 
 
 def ct_input(hu, normalise: str = "clip"):
@@ -209,6 +239,24 @@ class Decoder(nnx.Module):
         h = self.up2(jnp.concatenate([upsample_to(f3, f2), f2], -1))
         h = self.up1(jnp.concatenate([upsample_to(h, f1), f1], -1))
         return self.head(h)
+
+
+N_NAMES = len(CH.NAMES)                 # the level names a crop can be given: naming.NAMES, the chain's
+
+
+class NameHead(nnx.Module):
+    """The mask objective's name head: the bottleneck (batch, x, y, z, C), the deepest fused features,
+    pooled to one vector a crop by its mean over the voxels, which is the latent a later shape prior
+    reads, then a hidden layer of the same width and one logit per level name (naming.NAMES), so a
+    crop's name is read off what the network keeps of its vertebra and nothing is measured."""
+
+    def __init__(self, width: int, n_names: int, rngs: nnx.Rngs):
+        self.hidden = nnx.Linear(width, width, rngs=rngs)
+        self.out = nnx.Linear(width, n_names, rngs=rngs)
+
+    def __call__(self, bottleneck) -> Tuple[jnp.ndarray, jnp.ndarray]:
+        latent = jnp.mean(bottleneck, axis=(1, 2, 3))
+        return latent, self.out(jax.nn.relu(self.hidden(latent)))
 
 
 def heatmap_grid(crop_shape: Sequence[int], spacing: float, heat_shape: Sequence[int]) -> np.ndarray:
@@ -335,7 +383,7 @@ def unet(block) -> Tuple[Callable, Callable]:
         return Encoder(1 if branch == "ct" else 2, cfg.widths, cfg.groups, rngs, block=block)
 
     def decoder(cfg: Config, rngs: nnx.Rngs) -> nnx.Module:
-        return Decoder(cfg.widths, cfg.n_landmarks, cfg.groups, rngs, block=block)
+        return Decoder(cfg.widths, cfg.n_outputs, cfg.groups, rngs, block=block)
 
     return encoder, decoder
 
@@ -366,12 +414,16 @@ class Model(nnx.Module):
         self.ct = arch.encoder(cfg, "ct", rngs)
         self.mask = arch.encoder(cfg, "mask", rngs)
         self.decoder = arch.decoder(cfg, rngs)
+        self.names = NameHead(cfg.widths[2], N_NAMES, rngs) if cfg.objective == "mask" else None
 
     def features(self, hu, masks) -> Tuple[List[jnp.ndarray], List[jnp.ndarray]]:
         return self.ct(ct_input(hu, self.cfg.normalise)), self.mask(masks)
 
     def read(self, logits) -> Dict[str, jnp.ndarray]:
-        """Landmarks, their covariances, the values and their deltas from the heatmap logits."""
+        """Landmarks, their covariances, the values and their deltas from the heatmap logits; under
+        the mask objective the logits themselves, one per privileged channel."""
+        if self.cfg.objective == "mask":
+            return {"logits": logits}
         grid = heatmap_grid(self.cfg.shape, self.cfg.spacing, logits.shape[1:4])
         points, cov = soft_argmax(logits, grid)
         return {"points": points, "cov": cov, "values": values(points, self.cfg.keys, jnp),
@@ -379,14 +431,21 @@ class Model(nnx.Module):
 
     def __call__(self, hu, masks, w) -> Dict[str, object]:
         """The fused pass: hu (batch, X, Y, Z, 1) in HU, masks (batch, X, Y, Z, 2) already down
-        the ladder, w the fusion weight; the reading of the heatmaps and both encoders' features."""
+        the ladder, w the fusion weight; the reading of the decoder's logits and both encoders'
+        features."""
         f_ct, f_mask = self.features(hu, masks)
         fused = [(1.0 - w) * a + w * b for a, b in zip(f_ct, f_mask)]
         out = self.read(self.decoder(fused))
+        if self.names is not None:
+            out["latent"], out["name_logits"] = self.names(fused[2])
         out["f_ct"], out["f_mask"] = f_ct, f_mask
         return out
 
     def ct_only(self, hu) -> Dict[str, jnp.ndarray]:
         """The test-time path: the CT alone, E_ct and the decoder, which is the fused pass at w 0
         without computing the mask's branch."""
-        return self.read(self.decoder(self.ct(ct_input(hu, self.cfg.normalise))))
+        f_ct = self.ct(ct_input(hu, self.cfg.normalise))
+        out = self.read(self.decoder(f_ct))
+        if self.names is not None:
+            out["latent"], out["name_logits"] = self.names(f_ct[2])
+        return out

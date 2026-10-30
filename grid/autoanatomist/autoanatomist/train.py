@@ -32,6 +32,22 @@ The losses, each named in the returned record:
   the measures' own with each value's delta-method spread added, its gradient stopped so the
   network cannot lower the loss by claiming more doubt.
 
+Under the mask objective (model.Config.objective, blocks.py's objective=mask; the owner's ask of
+2026-10-30 for a fully latent approach that depends on no measurement code) the decoder gives the
+privileged channels back and the loss has two terms, each named in the record:
+
+- mask: the binary cross-entropy of the two logits against the clean channels averaged onto the
+  logits' grid (pooled; a soft target, each voxel the share of its crop voxels the channel covers)
+  plus one minus their soft Dice, over the crops and the two channels; the target is always the
+  clean mask, however far down the ladder the branch's input is;
+- feature: as above.
+
+The record then carries dice and dice_every, the hard Dice of the target channel and of every
+vertebra's on the logits' grid, in place of distance_mm; evaluate reads the CT-only path's logits
+back on the crop's grid and gives the hard Dice, the mean symmetric surface distance of the target
+mask in millimetres (distance_mm, an empty prediction or truth counting as the crop's longest side)
+and the feature gap, and error_curve gives one minus the target's soft Dice as E(lambda).
+
 The weights of the terms (LOSS_WEIGHTS), the knee and the floor are this module's choices and the
 defaults; losses, landmark_terms and make_step take others as arguments (blocks.py's w_*, knee and
 spread_floor, which session.py passes), with the ladder's settings (rungs, ladder.degrade's keyword
@@ -50,14 +66,17 @@ import jax.numpy as jnp
 import numpy as np
 import optax
 from flax import nnx
+from schwingcheck import chain as CH
 
 from . import calibrate, crops, ladder, naming, phantom
 from .model import Config, Model
 from .oracle import ChordOracle
 
-LOSS_WEIGHTS = {"landmark": 1.0, "spread": 0.1, "value": 1.0, "feature": 1.0, "naming": 0.1}
+LOSS_WEIGHTS = {"landmark": 1.0, "spread": 0.1, "value": 1.0, "feature": 1.0, "naming": 0.1, "mask": 1.0, "name": 0.1}
 HUBER_KNEE_MM = 2.0
 SPREAD_FLOOR_MM = 0.5
+MASK_THRESHOLD = 0.5                # a pooled or resampled channel at or above it is the mask, for the hard Dice and the surfaces
+DICE_EPS = 1.0                      # keeps the soft Dice defined, and 1, where a channel is empty in both
 
 
 @dataclass
@@ -153,6 +172,111 @@ def feature_term(out):
     return sum(jnp.mean((a - jax.lax.stop_gradient(b)) ** 2) for a, b in zip(out["f_ct"], out["f_mask"])) / len(out["f_ct"])
 
 
+def pooled(masks, shape: Sequence[int]):
+    """The privileged channels (B, X, Y, Z, C) averaged onto the decoder's grid (B, x, y, z, C): each
+    voxel the share of its crop voxels the channel covers, a soft target in [0, 1]. The crop's
+    sides must be whole multiples of the grid's, as the encoders' strides make them."""
+    B, X, Y, Z, C = masks.shape
+    x, y, z = (int(n) for n in shape)
+    if X % x or Y % y or Z % z:
+        raise ValueError("the crop %r is no whole multiple of the logits' grid %r" % ((X, Y, Z), (x, y, z)))
+    return masks.reshape(B, x, X // x, y, Y // y, z, Z // z, C).mean(axis=(2, 4, 6))
+
+
+def soft_dice(p, t, eps: float = DICE_EPS):
+    """2 sum(p t) over sum(p) + sum(t), per crop and channel, (B, C); eps keeps it 1 where both are empty."""
+    axes = tuple(range(1, p.ndim - 1))
+    return (2.0 * jnp.sum(p * t, axes) + eps) / (jnp.sum(p, axes) + jnp.sum(t, axes) + eps)
+
+
+def hard_dice(pred, truth, eps: float = 1e-6) -> np.ndarray:
+    """The Dice of two binary masks per crop and channel, (B, C), on numpy arrays; 1 where both are empty."""
+    pred, truth = np.asarray(pred, bool), np.asarray(truth, bool)
+    axes = tuple(range(1, pred.ndim - 1))
+    inter = np.sum(pred & truth, axes)
+    return (2.0 * inter + eps) / (np.sum(pred, axes) + np.sum(truth, axes) + eps)
+
+
+def mask_terms(logits, masks):
+    """The mask term of the mask objective on one batch, and its two metrics: the binary cross-entropy
+    of the logits against the clean channels pooled onto the logits' grid plus one minus their soft
+    Dice, over the crops and both channels; the hard Dice of the target channel and of every
+    vertebra's, the logits above 0 against the pooled channel at MASK_THRESHOLD or above."""
+    t = pooled(masks, logits.shape[1:4])
+    bce = jnp.mean(optax.sigmoid_binary_cross_entropy(logits, t))
+    dice = soft_dice(jax.nn.sigmoid(logits), t)
+    loss = bce + jnp.mean(1.0 - dice)
+    hard = hard_dice_jnp(logits > 0.0, t >= MASK_THRESHOLD)
+    return loss, jnp.mean(hard[:, 0]), jnp.mean(hard[:, 1])
+
+
+def hard_dice_jnp(pred, truth, eps: float = 1e-6):
+    axes = tuple(range(1, pred.ndim - 1))
+    p, t = pred.astype(jnp.float32), truth.astype(jnp.float32)
+    return (2.0 * jnp.sum(p * t, axes) + eps) / (jnp.sum(p, axes) + jnp.sum(t, axes) + eps)
+
+
+def mask_error(logits, masks):
+    """One minus the target channel's mean soft Dice: the mask objective's E for error_curve."""
+    t = pooled(masks, logits.shape[1:4])
+    return 1.0 - jnp.mean(soft_dice(jax.nn.sigmoid(logits), t)[:, 0])
+
+
+def name_terms(logits, names):
+    """The name head's term on one batch and its metric: the cross-entropy of each crop's name logits
+    against its level name (an index into naming.NAMES), and the share of crops whose best logit
+    is their name."""
+    ce = jnp.mean(optax.softmax_cross_entropy_with_integer_labels(logits, names))
+    right = jnp.mean((jnp.argmax(logits, -1) == names).astype(jnp.float32))
+    return ce, right
+
+
+def adjacent_names() -> set:
+    """The pairs of level names that stand next to each other in some column: consecutive in the
+    chain's level sequence of any column type (schwingcheck.chain.type_levels), so T12 and L1, T12
+    and T13, T13 and L1 and L5 and L6 are all neighbours; pairs of indices into naming.NAMES."""
+    pairs = set()
+    for kind in CH.TYPES:
+        seq = CH.type_levels(kind)
+        pairs.update(frozenset((naming.NAME_INDEX[a], naming.NAME_INDEX[b])) for a, b in zip(seq, seq[1:]))
+    return pairs
+
+
+def within_one(pred: np.ndarray, truth: np.ndarray) -> np.ndarray:
+    """Whether each predicted name is the true one or its neighbour in some column (adjacent_names)."""
+    pairs = adjacent_names()
+    return np.array([int(p) == int(t) or frozenset((int(p), int(t))) in pairs for p, t in zip(pred, truth)], bool)
+
+
+def centroid_error_mm(pred: np.ndarray, truth: np.ndarray, spacing: float, bound: float) -> float:
+    """The distance in millimetres between a crop's predicted mask's centroid and its truth's, or
+    `bound` where either is empty."""
+    p, t = np.argwhere(pred), np.argwhere(truth)
+    if len(p) == 0 or len(t) == 0:
+        return bound
+    return float(np.linalg.norm((p.mean(0) - t.mean(0)) * spacing))
+
+
+def longest_side_mm(cfg: Config) -> float:
+    return float(max(cfg.shape) * cfg.spacing)
+
+
+def surface_distance_mm(pred: np.ndarray, truth: np.ndarray, spacing: float, bound: float) -> float:
+    """The mean symmetric surface distance in millimetres of two binary masks on one grid of
+    `spacing` mm: each surface voxel's distance to the other mask's surface, averaged over both
+    surfaces (a surface voxel is one of the mask with a neighbour outside it, the grid's edge
+    counting as outside); `bound` where either mask has no surface, an empty prediction or truth."""
+    from scipy import ndimage
+    pred, truth = np.asarray(pred, bool), np.asarray(truth, bool)
+    sp = pred & ~ndimage.binary_erosion(pred)
+    st = truth & ~ndimage.binary_erosion(truth)
+    if not sp.any() or not st.any():
+        return float(bound)
+    to_truth = ndimage.distance_transform_edt(~st, sampling=spacing)
+    to_pred = ndimage.distance_transform_edt(~sp, sampling=spacing)
+    return float((to_truth[sp].sum() + to_pred[st].sum()) / (sp.sum() + st.sum()))
+
+
 def naming_term(nm: naming.Naming, out, batch, fields: int):
     """naming.body_loss on the batch's phantoms, each one field of nm.n_bodies crops in order."""
     B = nm.n_bodies
@@ -169,6 +293,12 @@ def losses(model: Model, batch, w, lam, nm: Optional[naming.Naming] = None, fiel
     encoder reads batch["input"] where the batch carries one, the ladder always batch["hu"]."""
     masks = ladder.degrade(batch["masks"], batch["hu"], lam, spacing_mm=model.cfg.spacing, **(rungs or {}))
     out = model(batch.get("input", batch["hu"]), masks, w)
+    if model.cfg.objective == "mask":
+        mask_loss, dice, dice_every = mask_terms(out["logits"], batch["masks"])
+        name_loss, named = name_terms(out["name_logits"], batch["names"])
+        terms = {"mask": mask_loss, "feature": feature_term(out), "name": name_loss}
+        total = sum(weights[k] * v for k, v in terms.items())
+        return total, dict(terms, dice=dice, dice_every=dice_every, named_right=named)
     lm, spread, dist = landmark_terms(out, batch["targets"], knee, floor)
     ok = jnp.isfinite(batch["values"])
     value = masked_mean(jnp.abs(out["values"] - jnp.where(ok, batch["values"], 0.0)), ok)
@@ -226,8 +356,17 @@ def train(ex: Examples, cfg: Config, steps: int, spines_per_batch: int = 2, lr: 
         row.update({k: float(v) for k, v in terms.items()})
         record.append(row)
         if log_every and (s % log_every == 0 or s == steps - 1):
-            print("step %d w %.2f lam %.2f total %.3f distance %.2f mm" % (s, w, lam, row["total"], row["distance_mm"]))
+            print(progress_words(row))
     return Run(model=model, schedule=schedule, record=record)
+
+
+def progress_words(row: dict) -> str:
+    """One step's row in a line: its distance in millimetres, or under the mask objective its Dice
+    and the share of crops named right."""
+    head = "step %d w %.2f lam %.2f total %.3f" % (row["step"], row["w"], row["lam"], row["total"])
+    if "distance_mm" in row:
+        return head + " distance %.2f mm" % row["distance_mm"]
+    return head + " dice %.3f named %.2f" % (row.get("dice", float("nan")), row.get("named_right", float("nan")))
 
 
 def predict(model: Model, hu: np.ndarray, batch: int = 16) -> Dict[str, np.ndarray]:
@@ -247,7 +386,9 @@ def evaluate(model: Model, ex: Examples, use_naming: bool = True, calibration=No
     the values alone, with the measures' own errors, beside the share the oracle's own values name
     right. An untrained or briefly trained spread is wide and uncalibrated, and a wide spread
     flattens each body's posterior over the neighbouring levels, short of the prior, so the two
-    shares can differ widely."""
+    shares can differ widely. Under the mask objective, evaluate_masks."""
+    if model.cfg.objective == "mask":
+        return evaluate_masks(model, ex)
     out = predict(model, ex.hu)
     _, _, dist = landmark_terms(jax.tree.map(jnp.asarray, out), jnp.asarray(ex.targets))
     signed = out["values"] - ex.values
@@ -277,13 +418,63 @@ def evaluate(model: Model, ex: Examples, use_naming: bool = True, calibration=No
     return res
 
 
+def feature_gap(model: Model, ex: Examples, batch: int = 16) -> float:
+    """The feature term between the CT's features and the clean mask's over every crop, in batches:
+    how far the CT branch stands from the mask branch it was pulled toward."""
+    f = nnx.jit(lambda m, hu, masks: feature_term(dict(zip(("f_ct", "f_mask"), m.features(hu, masks)))))
+    total, count = 0.0, 0
+    for i in range(0, len(ex), batch):
+        n = len(ex.hu[i:i + batch])
+        total += float(f(model, jnp.asarray(ex.hu[i:i + batch]), jnp.asarray(ex.masks[i:i + batch]))) * n
+        count += n
+    return total / max(count, 1)
+
+
+def evaluate_masks(model: Model, ex: Examples) -> Dict[str, object]:
+    """The CT-only path on every crop under the mask objective: its logits brought back onto the
+    crop's grid trilinearly and read at 0, against the clean channels at MASK_THRESHOLD or above:
+    the hard Dice of the target vertebra's mask (dice) and of every vertebra's (dice_every), the
+    mean symmetric surface distance of the target's in millimetres (distance_mm; a crop whose
+    prediction or truth has no surface counts as the crop's longest side, and surface_missing says
+    how many did), the distance between the predicted target's centroid and the truth's
+    (centroid_mm, the same bound where either is empty), the share of crops the name head names
+    right (named_right) and right or by a neighbouring level (named_within_one, adjacent_names), the
+    feature gap (feature_gap), and the same figures by level (by_level, keyed by the level's name)."""
+    out = predict(model, ex.hu)
+    logits = out["logits"]
+    shape = (len(logits),) + tuple(model.cfg.shape) + (logits.shape[-1],)
+    up = np.asarray(jax.image.resize(jnp.asarray(logits), shape, "trilinear"))
+    pred, truth = up > 0.0, ex.masks >= MASK_THRESHOLD
+    dice = hard_dice(pred, truth)
+    bound = longest_side_mm(model.cfg)
+    distances = np.array([surface_distance_mm(pred[i, ..., 0], truth[i, ..., 0], model.cfg.spacing, bound) for i in range(len(pred))])
+    centroids = np.array([centroid_error_mm(pred[i, ..., 0], truth[i, ..., 0], model.cfg.spacing, bound) for i in range(len(pred))])
+    named = np.argmax(out["name_logits"], -1)
+    right, near = named == ex.names, within_one(named, ex.names)
+    by_level = {}
+    for name in sorted(set(int(n) for n in ex.names)):
+        m = ex.names == name
+        by_level[naming.NAMES[name]] = {"crops": int(m.sum()), "dice": float(dice[m, 0].mean()),
+                                        "distance_mm": float(distances[m].mean()), "centroid_mm": float(centroids[m].mean()),
+                                        "named_right": float(right[m].mean()), "named_within_one": float(near[m].mean())}
+    return {"dice": float(dice[:, 0].mean()), "dice_every": float(dice[:, 1].mean()),
+            "distance_mm": float(distances.mean()), "surface_missing": int((distances == bound).sum()),
+            "surface_bound_mm": bound, "centroid_mm": float(centroids.mean()),
+            "named_right": float(right.mean()), "named_within_one": float(near.mean()),
+            "feature_gap": feature_gap(model, ex), "crops": int(len(pred)), "by_level": by_level}
+
+
 def error_curve(model: Model, batch, lams: Sequence[float], w: float = 1.0) -> Tuple[np.ndarray, np.ndarray]:
     """E(lambda), the mean landmark distance in millimetres of the fused pass at weight w with the
-    mask taken down the ladder to lambda, and dE/dlambda, by automatic differentiation through
-    the ladder's soft gates, at each lambda given."""
+    mask taken down the ladder to lambda (under the mask objective, one minus the target channel's
+    soft Dice, mask_error), and dE/dlambda, by automatic differentiation through the ladder's soft
+    gates, at each lambda given."""
     def E(m, lam):
         masks = ladder.degrade(batch["masks"], batch["hu"], lam, spacing_mm=m.cfg.spacing)
-        return landmark_terms(m(batch["hu"], masks, w), batch["targets"])[2]
+        out = m(batch["hu"], masks, w)
+        if m.cfg.objective == "mask":
+            return mask_error(out["logits"], batch["masks"])
+        return landmark_terms(out, batch["targets"])[2]
 
     f = nnx.jit(lambda m, lam: jax.value_and_grad(lambda l: E(m, l))(lam))
     vals, grads = [], []

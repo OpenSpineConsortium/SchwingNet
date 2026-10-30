@@ -27,6 +27,11 @@ same loss, the same schedule (an Anneal over the first budget's steps gives Sche
 and the same draws from the same generator. The intensity blocks draw a gain, an offset and noise
 on the host with the session's generator and put the augmented CT under the batch's key "input",
 which the encoder reads while the ladder thresholds the HU as they are (train.losses).
+
+Under objective=mask (blocks.py) the session trains the fully latent objective: evaluate reports
+train.evaluate_masks's Dice, surface distance, centroid error and names right, calibrate is
+refused, since nothing has a spread, and latents(ex) gives each crop's bottleneck vector on the
+CT-only path, for a shape prior fit on them later (the planning thread's ask of 2026-10-30).
 """
 from __future__ import annotations
 
@@ -149,7 +154,7 @@ class Session:
         """A session at step 0 from its blocks: the network initialised from the seed, the optimizer
         fresh, the generator seeded, the anneal set where the blocks give its length."""
         cfg = Config(keys=tuple(keys), widths=tuple(b.widths), shape=tuple(int(n) for n in shape), spacing=float(spacing),
-                     groups=b.groups, normalise=b.normalise, architecture=b.architecture)
+                     groups=b.groups, normalise=b.normalise, architecture=b.architecture, objective=b.objective)
         model = Model(cfg, nnx.Rngs(b.seed))
         return cls(blocks=b, cfg=cfg, model=model, opt=optimiser(b, model), rng=np.random.default_rng(b.seed),
                    anneal=anneal_of(b))
@@ -194,7 +199,7 @@ class Session:
             self.record.append(row)
             self.step += 1
             if log_every and (self.step % log_every == 0 or len(rows) == steps):
-                print("step %d w %.2f lam %.2f total %.3f distance %.2f mm" % (row["step"], w, lam, row["total"], row["distance_mm"]))
+                print(train.progress_words(row))
             if on_step is not None:
                 on_step(row)
         return rows
@@ -213,6 +218,8 @@ class Session:
     def calibrate(self, ex: train.Examples) -> dict:
         """The spread's factors fit on these examples, the validation set, by the calibrate block;
         kept in the session and applied unchanged by evaluate from then on."""
+        if self.blocks.objective == "mask":
+            raise ValueError("objective=mask gives no spread to calibrate")
         out = self.predict(ex)
         factors = calibrate.fit(out["values"] - ex.values, out["sigma"], self.blocks.calibrate, self.blocks.coverage)
         self.calibration = calibrate.record(self.blocks.calibrate, self.blocks.coverage, factors, self.cfg.keys, len(ex))
@@ -222,6 +229,14 @@ class Session:
         if self.calibration is None:
             return None
         return np.array([self.calibration["factors"][k] for k in self.cfg.keys])
+
+    def latents(self, ex: train.Examples) -> np.ndarray:
+        """Each crop's latent on the CT-only path, (N, C): the bottleneck pooled to one vector a crop
+        (model.NameHead), under the mask objective alone; saved beside a validation report so a
+        shape prior can be fit on what the network kept, without the network running again."""
+        if self.blocks.objective != "mask":
+            raise ValueError("the latent is the mask objective's; objective=%s has none" % self.blocks.objective)
+        return self.predict(ex)["latent"]
 
     def evaluate(self, ex: train.Examples) -> Dict[str, object]:
         """train.evaluate on the CT-only path, with the calibration where one has been fit, and the

@@ -13,13 +13,19 @@ axes), perturbed by a random turn and shift so the network does not learn the or
 use on a raw CT, from the mask-free mode (scanimport.intensity.find: the canal's centreline and
 the discs along it), each vertebra's centre the centreline's point half way between its two
 discs and its z the centreline's tangent there. The perturbation's size is meant to cover how far
-the second lies from the first; that is not measured yet.
+the second lies from the first; that is not measured yet. The fully latent objective (blocks.py's
+objective=mask) trains with no oracle at all: its frame is the centroid frame (centroids,
+from_centroid), the crop's axes the world's and its centre the mask's centroid, jittered the same
+way, so the mask gives the frame and the privileged channels and nothing is measured.
+
+Only the box of a volume under a crop is read (window): a crop of one vertebra is a small part of
+a CT, and casting or thresholding the whole CT once a crop was most of the time a CT took to render.
 """
 from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import List, Optional, Sequence, Tuple
+from typing import Callable, Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 from scipy import ndimage
@@ -88,23 +94,84 @@ def perturbed(cf: CropFrame, rng: np.random.Generator, shift_mm: float = 4.0, tu
     return CropFrame(cf.origin + rng.uniform(-shift_mm, shift_mm, 3), R @ cf.axes, cf.spacing, cf.shape)
 
 
-def sample(volume: np.ndarray, affine: np.ndarray, cf: CropFrame, order: int = 1, fill: float = 0.0) -> np.ndarray:
-    """The volume at the crop's voxels, (nx, ny, nz), by its affine: linear for a CT, nearest for
-    labels; `fill` outside the volume."""
+def voxel_coordinates(affine: np.ndarray, cf: CropFrame) -> np.ndarray:
+    """The volume's voxel coordinates of every crop voxel's centre, (N, 3), by the volume's affine."""
     world = cf.world(cf.grid().reshape(-1, 3))
     inv = np.linalg.inv(np.asarray(affine, float))
-    ijk = world @ inv[:3, :3].T + inv[:3, 3]
-    out = ndimage.map_coordinates(np.asarray(volume, np.float32), ijk.T, order=order, mode="constant", cval=fill)
+    return world @ inv[:3, :3].T + inv[:3, 3]
+
+
+def window(volume: np.ndarray, ijk: np.ndarray, margin: int) -> Tuple[np.ndarray, np.ndarray]:
+    """The box of the volume the voxel coordinates ijk (N, 3) fall in, `margin` voxels wider each
+    way and clipped to the volume, with the box's first voxel; empty where every coordinate misses
+    the volume."""
+    shape = np.array(volume.shape[:3])
+    lo = np.maximum(np.floor(ijk.min(0)).astype(int) - margin, 0)
+    hi = np.minimum(np.ceil(ijk.max(0)).astype(int) + margin, shape - 1)
+    if np.any(hi < lo):
+        return volume[0:0, 0:0, 0:0], lo
+    return volume[lo[0]:hi[0] + 1, lo[1]:hi[1] + 1, lo[2]:hi[2] + 1], lo
+
+
+def sample(volume: np.ndarray, affine: np.ndarray, cf: CropFrame, order: int = 1, fill: float = 0.0,
+           values: Optional[Callable[[np.ndarray], np.ndarray]] = None) -> np.ndarray:
+    """The volume at the crop's voxels, (nx, ny, nz), by its affine: linear for a CT, nearest for
+    labels; `fill` outside the volume. Only the box under the crop is read (window), to the same
+    values as the whole volume would give, since map_coordinates in its constant mode interpolates
+    between the voxels at hand alone, which the box holds, and gives `fill` beyond the volume's
+    edge, which the box's edge is wherever it is the volume's; an order above 1 would prefilter
+    the whole volume and is refused. `values`, where given, maps the box to the values sampled (a
+    label box to one mask's 0-1 box, mask_channels), so the whole volume is never cast or compared."""
+    if order > 1:
+        raise ValueError("sample takes order 0 or 1; a spline's prefilter reads the whole volume")
+    ijk = voxel_coordinates(affine, cf)
+    box, lo = window(np.asarray(volume), ijk, order + 1)
+    if box.size == 0:
+        return np.full(cf.shape, fill, np.float32)
+    if values is not None:
+        box = values(box)
+    out = ndimage.map_coordinates(np.asarray(box, np.float32), (ijk - lo).T, order=order, mode="constant", cval=fill)
     return out.reshape(cf.shape).astype(np.float32)
 
 
 def mask_channels(labels: np.ndarray, affine: np.ndarray, cf: CropFrame, target: int) -> np.ndarray:
     """The privileged channels of a crop: the target vertebra's mask and every vertebra's, each
     resampled linearly from its 0-1 volume so its edge falls between voxels, (nx, ny, nz, 2)."""
-    lab = np.asarray(labels)
-    near = sample((lab == target).astype(np.float32), affine, cf, order=1)
-    every = sample((lab > 0).astype(np.float32), affine, cf, order=1)
+    near = sample(labels, affine, cf, order=1, values=lambda box: (box == target).astype(np.float32))
+    every = sample(labels, affine, cf, order=1, values=lambda box: (box > 0).astype(np.float32))
     return np.stack([near, every], -1)
+
+
+def centroids(labels: np.ndarray, affine: np.ndarray, values: Sequence[int]) -> Dict[int, np.ndarray]:
+    """The centroid of each label value's voxels in world millimetres, by the affine, for the values
+    that have a voxel; one pass over the volume a slab at a time, summing only the foreground."""
+    lab = np.asarray(labels)
+    want = sorted({int(v) for v in values})
+    sums = {v: np.zeros(3) for v in want}
+    counts = {v: 0 for v in want}
+    for i in range(lab.shape[0]):
+        j, k = np.nonzero(lab[i])
+        if len(j) == 0:
+            continue
+        v = lab[i][j, k]
+        for value in want:
+            m = v == value
+            n = int(m.sum())
+            if n:
+                counts[value] += n
+                sums[value] += (n * i, j[m].sum(), k[m].sum())
+    A = np.asarray(affine, float)
+    return {v: (sums[v] / counts[v]) @ A[:3, :3].T + A[:3, 3] for v in want if counts[v]}
+
+
+def from_centroid(centre: np.ndarray, shift: float = 0.0, spacing: float = SPACING_MM,
+                  shape: Tuple[int, int, int] = SHAPE) -> CropFrame:
+    """The centroid frame, with no oracle in it: the crop's axes the world's (x right, y anterior, z
+    up, as a NIfTI affine gives them), its centre the mask's centroid moved `shift` millimetres
+    along world y. A whole vertebra's centroid, body and arch together, lies in the back of the
+    body, so with no shift the crop holds the body in front of its centre and the arch behind; the
+    column's tilt against the world's z is left to the jitter and the network."""
+    return CropFrame(np.asarray(centre, float) + shift * np.array([0.0, 1.0, 0.0]), np.eye(3), spacing, tuple(shape))
 
 
 def ct_channel(hu: np.ndarray, affine: np.ndarray, cf: CropFrame) -> np.ndarray:

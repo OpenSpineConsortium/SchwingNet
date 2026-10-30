@@ -105,6 +105,15 @@ Metaflow's own resume rather than by anything written around it.
   edit made fewer renders, edits or FluXray images than its own draw holds, so the stats, which
   refuse an edit whose verdict was not 0 or whose PREREG differs, never read a sample short of the
   PREREG's. lora and eval are refused until they have a count and a PREREG of their own.
+- `autoanatomist.py`, AutoanatomistFlow: one part of the auto-anatomist screen
+  (docs/research/autoanatomist-screen/PREREG.md), `--part trial` or `--part join` of a plan of
+  grid/screens/ (grid word `autoanatomist <plan>`, grid/autoanatomist.sbatch). start holds the run to
+  the PREREG and to the plan's part of it by the plan's bytes, checks the plan against the frozen
+  split and the test lists and the words against the plan; work runs tools/autoanatomist_trial.py
+  for a trial or tools/autoanatomist_join.py for the join, keeping its exit; end, for a join that
+  decided, writes SUMMARY.md and RECORD.json and checks the report (`tools/report.py --study
+  autoanatomist-screen`). Each chain works in <out>/<plan>/<chain>/, every path given absolute.
+  tests/test_autoanatomist_flow.py runs the smoke through the launcher with a stand-in trial.
 
 Every flow's end step sets an int artifact `verdict`, 0 when all went well and 1 otherwise.
 
@@ -123,8 +132,9 @@ The sweep keeps it, and so do the FluXray reproduction's `realism edit` and `rea
 (RealismFlow, above; lora and eval are refused until they have a count and a PREREG of their own),
 the DRR domain-gap study, `bench flexray_drr_gap`, and the step that makes its MOOSE masks, `bench
 flexray_drr_seg` (both below), version 1's run, `start` and `v1` (V1Flow, above), a requested
-experiment, `experiment <issue>` (ExperimentFlow, above), and the latency word's three network
-parts, `latency` (LatencyFlow, above). These words of grid/gate.sh still submit a
+experiment, `experiment <issue>` (ExperimentFlow, above), the latency word's three network
+parts, `latency` (LatencyFlow, above), and the auto-anatomist screen, `autoanatomist <plan>`
+(AutoanatomistFlow, above). These words of grid/gate.sh still submit a
 plain job that trains or runs a network, each to be moved onto a flow listed in registry.txt, one
 pull request each, under a PREREG of its own:
 
