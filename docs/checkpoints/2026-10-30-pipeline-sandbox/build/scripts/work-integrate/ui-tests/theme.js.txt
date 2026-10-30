@@ -1,0 +1,37 @@
+// The artifact edition in a skeleton like the host's, and the data-theme attribute both ways.
+const {chromium} = require("playwright");
+const {serve} = require("./serve.js");
+const sleep = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); };
+(async function () {
+  const {server, url} = await serve(__dirname);
+  const browser = await chromium.launch();
+  const page = await browser.newPage({viewport: {width: 1200, height: 860}});
+  const errors = [];
+  page.on("console", function (m) { if (m.type() === "error" || m.type() === "warning") errors.push(m.text()); });
+  page.on("pageerror", function (e) { errors.push(e.message); });
+  await page.goto(url + "artifact-wrapped.html");
+  await sleep(300);
+  await page.click("#sb-new");
+  await page.click('.bchip:has-text("Gold tier 3 CTs")');
+  const n0 = await page.evaluate(function () { return window.sandbox.graph().nodes.length; });
+  const q = await page.evaluate(function () { const e = document.querySelector('.ncard[data-id="n1"]').getBoundingClientRect(); return {x: e.right + 120, y: e.top + e.height / 2}; });
+  await page.mouse.move(q.x - 20, q.y + 10, {steps: 2});
+  await page.mouse.move(q.x, q.y, {steps: 2});
+  await sleep(750);
+  const spot = q;
+  const n1 = await page.evaluate(function () { return window.sandbox.graph().nodes.length; });
+  console.log("artifact edition: nodes", n0, "->", n1, "spot", JSON.stringify(spot));
+  function bg() { return page.evaluate(function () { return getComputedStyle(document.body).backgroundColor + " / " + getComputedStyle(document.body).color; }); }
+  await page.emulateMedia({colorScheme: "light"});
+  console.log("light:", await bg());
+  await page.evaluate(function () { document.documentElement.setAttribute("data-theme", "dark"); });
+  console.log("light + data-theme=dark:", await bg());
+  await page.emulateMedia({colorScheme: "dark"});
+  await page.evaluate(function () { document.documentElement.setAttribute("data-theme", "light"); });
+  console.log("dark + data-theme=light:", await bg());
+  await page.evaluate(function () { document.documentElement.removeAttribute("data-theme"); });
+  console.log("dark:", await bg());
+  console.log("errors:", JSON.stringify(errors));
+  await browser.close();
+  server.close();
+}());

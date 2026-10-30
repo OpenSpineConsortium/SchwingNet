@@ -1,0 +1,157 @@
+// The engine over DATA's real files: every manifest checked, every template propagated and compiled
+// against its expect, its requests through experiments_panel.check_request, and the prediction's
+// three promises (after catalog_v1 a prepare block; after train_classifier evaluate_heldout or
+// calibrate/select; after evaluate_heldout report_claim).
+"use strict";
+
+var T = require("./t.js");
+var SB = T.SB;
+var fs = require("fs");
+var path = require("path");
+var cp = require("child_process");
+
+var ROOT = "/home/user/SchwingNet/tools/sandbox";
+
+function readJson(p) {
+  return JSON.parse(fs.readFileSync(p, "utf8"));
+}
+
+function folder(name) {
+  return fs.readdirSync(path.join(ROOT, name)).filter(function (f) { return /\.json$/.test(f); }).sort().map(function (f) {
+    var v = readJson(path.join(ROOT, name, f));
+    v.__file = f;
+    return v;
+  });
+}
+
+var contract = readJson(path.join(ROOT, "contract.json"));
+var blocks = folder("blocks");
+var templates = folder("templates");
+var experiment = readJson(path.join(__dirname, "experiment.json"));
+blocks.forEach(function (b) { delete b.__file; });
+var files = templates.map(function (t) { var f = t.__file; delete t.__file; return f; });
+var DATA = {contract: contract, blocks: blocks, templates: templates, experiment: experiment, repo: experiment.repo};
+var verbose = process.argv.indexOf("-v") >= 0;
+
+T.begin("manifests");
+var stageOf = {};
+blocks.forEach(function (m) {
+  stageOf[m.id] = m.stage;
+  var problems = SB.checkManifest(m, contract);
+  T.ok(problems.length === 0, m.id + " passes R1-R13", problems);
+});
+console.log("blocks: " + blocks.length + ", templates: " + templates.length);
+
+T.begin("templates");
+var report = [];
+var allRequests = [];
+templates.forEach(function (tp, i) {
+  T.ok(files[i] === tp.id + ".json", "file name " + files[i] + " is the id " + tp.id);
+  var prop = SB.propagate(tp, DATA);
+  var errors = prop.problems.filter(function (p) { return p.level === "error"; });
+  T.ok(errors.length === 0, tp.id + " propagates with no error", prop.problems);
+  var c = SB.compile(tp, DATA);
+  var gotten = {route: c.route, ready: c.ready, requests: c.requests.length, gpu_submissions: c.jobs.gpu.submissions,
+    cpu_submissions: c.jobs.cpu.submissions, gpu_tasks: c.jobs.gpu.tasks};
+  T.eq(gotten, tp.expect, tp.id + " matches its expect");
+  report.push({id: tp.id, route: c.route, ready: c.ready, requests: c.requests.length, jobs: c.jobs,
+    why: c.why.map(function (w) { return w.code; }), problems: prop.problems.map(function (p) {
+      return p.code + "|" + p.node + "|" + p.port + "|" + p.field + "|" + p.level;
+    }), digest: c.digest.slice(0, 12), plan: c.plan.map(function (r) {
+      return r.node + " " + r.block + " " + r["class"] + " x" + r.submissions + " (" + r.tasks + " tasks, " + r.hours + " h" +
+        (r.rides_with ? ", rides with " + r.rides_with : "") + ")";
+    }), named: c.requests.map(function (r) { return r.named.join(" ") || "(none)"; })});
+  c.requests.forEach(function (r) {
+    allRequests.push({template: tp.id, r: r});
+  });
+  T.eq(SB.digest(tp, DATA), c.digest, tp.id + " digest");
+  if (verbose) console.log(JSON.stringify(report[report.length - 1], null, 1));
+});
+
+T.begin("requests through check_request");
+fs.writeFileSync(path.join(__dirname, "data_requests.json"), JSON.stringify(allRequests.map(function (x) {
+  return [x.r.named, String(x.r.epochs), String(x.r.seed), x.r.hours_word, x.r.recipe];
+})));
+var py = JSON.parse(cp.execFileSync("python3.12", [path.join(__dirname, "panel.py"), "requests", path.join(__dirname, "data_requests.json")],
+  {encoding: "utf8", cwd: "/home/user/SchwingNet"}));
+allRequests.forEach(function (x, i) {
+  T.ok(x.r.body === py[i].body, x.template + " request " + i + " body is Python's");
+  T.ok(x.r.url === py[i].url, x.template + " request " + i + " url is Python's");
+  T.ok(x.r.title === py[i].title, x.template + " request " + i + " title is Python's");
+  T.eq(py[i].problems, [], x.template + " request " + i + " passes check_request");
+});
+
+T.begin("prediction on DATA");
+var stats = SB.transitionStats(templates);
+function grow(ids) {
+  var spec = {sandbox: 1, name: "grow", nodes: [], edges: []};
+  return spec;
+}
+function chainOf(tp, upto) {
+  // The template's nodes up to and including the node of block `upto`, with the edges among them.
+  var keep = new Set();
+  var target = tp.nodes.filter(function (n) { return n.block === upto; })[0];
+  var stack = [target.id];
+  while (stack.length) {
+    var id = stack.pop();
+    if (keep.has(id)) continue;
+    keep.add(id);
+    tp.edges.forEach(function (e) { if (e.to === id) stack.push(e.from); });
+  }
+  return {sandbox: 1, name: "grow", nodes: tp.nodes.filter(function (n) { return keep.has(n.id); }),
+    edges: tp.edges.filter(function (e) { return keep.has(e.from) && keep.has(e.to); }), anchor: target.id};
+}
+var v1 = templates.filter(function (t) { return t.id === "experiment_v1"; })[0];
+var lone = {sandbox: 1, name: "grow", nodes: [{id: "n1", block: "catalog_v1", version: 1, params: {}}], edges: []};
+var p1 = SB.predict(lone, "n1", DATA, stats, {});
+console.log("after catalog_v1: " + JSON.stringify(p1));
+T.eq(stageOf[p1[0].block], "prepare", "after catalog_v1 a prepare block");
+var p1b = SB.predict(lone, "n1", DATA, {}, {});
+console.log("after catalog_v1, no statistics: " + JSON.stringify(p1b));
+T.eq(stageOf[p1b[0].block], "prepare", "after catalog_v1 a prepare block, no statistics");
+if (v1) {
+  var t1 = chainOf(v1, "train_classifier");
+  var p2 = SB.predict(t1, t1.anchor, DATA, stats, {});
+  console.log("after train_classifier: " + JSON.stringify(p2));
+  T.ok(["evaluate_heldout", "calibrate_temperature", "select_on_validation"].indexOf(p2[0].block) >= 0, "after train_classifier", p2);
+  var p2b = SB.predict(t1, t1.anchor, DATA, {}, {});
+  console.log("after train_classifier, no statistics: " + JSON.stringify(p2b));
+  T.ok(["evaluate_heldout", "calibrate_temperature", "select_on_validation"].indexOf(p2b[0].block) >= 0,
+    "after train_classifier, no statistics", p2b);
+  var t2 = chainOf(v1, "evaluate_heldout");
+  var p3 = SB.predict(t2, t2.anchor, DATA, stats, {});
+  console.log("after evaluate_heldout: " + JSON.stringify(p3));
+  T.eq(p3[0].block, "report_claim", "after evaluate_heldout report_claim");
+  var p3b = SB.predict(t2, t2.anchor, DATA, {}, {});
+  console.log("after evaluate_heldout, no statistics: " + JSON.stringify(p3b));
+  T.ok(stageOf[p3b[0].block] === "report", "after evaluate_heldout, no statistics: a report block", p3b);
+}
+templates.forEach(function (tp) {
+  tp.nodes.forEach(function (n) {
+    var out = SB.predict(tp, n.id, DATA, stats, {});
+    T.ok(Array.isArray(out) && out.length <= 5, tp.id + " " + n.id + " predicts at most five");
+  });
+});
+
+T.begin("summaries");
+templates.forEach(function (tp) {
+  var prop = SB.propagate(tp, DATA);
+  tp.edges.forEach(function (e) {
+    var t = prop.nodes[e.from] && prop.nodes[e.from].outputs[e.out];
+    var s = SB.typeSummary(t);
+    T.ok(/^[\x20-\x7e]+$/.test(s), tp.id + " edge " + e.from + "->" + e.to + " summary ASCII", s);
+    if (verbose) console.log(tp.id + " " + e.from + "." + e.out + " -> " + e.to + "." + e["in"] + ": " + s);
+  });
+  tp.nodes.forEach(function (n) {
+    var m = blocks.filter(function (b) { return b.id === n.block; })[0];
+    if (!m || !m.resolve) return;
+    var firstOut = m.outputs[0].name;
+    var text = SB.resolveText(m, prop.nodes[n.id].outputs[firstOut]);
+    if (verbose) console.log(tp.id + " " + n.id + " " + m.id + " resolve: " + text);
+  });
+});
+
+console.log(JSON.stringify(report.map(function (r) {
+  return {id: r.id, route: r.route, ready: r.ready, requests: r.requests, jobs: r.jobs, why: r.why, problems: r.problems};
+})));
+T.done();

@@ -1,0 +1,1142 @@
+def check_manifest(manifest, contract):
+    """R1 to R13 on a manifest's shape, as the page checks an imported block: [{code, field, text}], at
+    most one per (code, field), its text naming every failure. The files R10 and R13 name are
+    code_problems' to check, since the page cannot see them."""
+    c = normal_contract(contract)
+    found = Problems(merge=True)
+
+    def bad(code, field, text):
+        found.add({"code": code, "node": None, "port": None, "field": field, "level": "error", "text": text})
+
+    if isinstance(manifest, dict):
+        check_shape(manifest, c, found, bad)
+    else:
+        bad("field", None, "a block manifest is a JSON object")
+    return [{"code": p["code"], "field": p["field"], "text": p["text"]} for p in found.list]
+
+
+def check_shape(m, c, found, bad):
+    """Section 13 in the engine's order. The probes run only when no port, accepts, op, ref or param
+    problem came first, since a broken port would fail every probe for the same reason."""
+    check_identity(m, c, bad)
+    params = check_param_list(m, bad)
+    input_names = check_input_ports(m, c, bad)
+    check_output_ports(m, c, bad, params, input_names)
+    check_rule_list(m, bad, params)
+    check_read_parts(m, c, bad)
+    check_job(m, c, bad, params)
+    check_determinism(m, c, bad, params)
+    check_generic(m, c, bad, any(p["code"] in STRUCTURAL for p in found.list))
+    if "resolve" in m and m["resolve"] is not None and not isinstance(m["resolve"], str):
+        bad("field", "resolve", "resolve is null or a text")
+    check_experiment(m, c, bad, params, input_names)
+    check_needs(m, c, bad)
+    check_code(m, c, bad)
+    check_today(m, c, bad)
+    check_text(m, c, bad)
+    check_card(m, bad)
+
+
+def text_length(value, low, high):
+    """A text of low to high characters, counted as JavaScript counts them."""
+    return isinstance(value, str) and low <= js_length(value) <= high
+
+
+def nonempty_text(value):
+    return isinstance(value, str) and value != ""
+
+
+def check_identity(m, c, bad):
+    """R1: the format, the id, the version, the words and the stage and glyph from the contract."""
+    if not same(m.get("block", MISSING), 1):
+        bad("field", "block", "block is 1, the manifest format")
+    block_id = m.get("id", MISSING)
+    if not isinstance(block_id, str) or not ID.fullmatch(block_id):
+        bad("id", "id", f"id {show(block_id)} is not lowercase letters, digits and _, 2 to 40 long, starting with a letter")
+    version = m.get("version", MISSING)
+    if not is_whole(version) or version < 1:
+        bad("field", "version", "version is a whole number from 1")
+    if not text_length(m.get("title", MISSING), 1, 60):
+        bad("field", "title", "title is a text of 1 to 60 characters")
+    if not contains(c.stages, m.get("stage", MISSING)):
+        bad("field", "stage", f"stage {show(m.get('stage', MISSING))} is not one of {js_join(c.stages, ', ')}")
+    if not text_length(m.get("summary", MISSING), 1, 120):
+        bad("field", "summary", "summary is one line of 1 to 120 characters")
+    if not text_length(m.get("does", MISSING), 1, 800):
+        bad("field", "does", "does is a text of 1 to 800 characters")
+    if not contains(c.glyphs, m.get("glyph", MISSING)):
+        bad("field", "glyph", f"glyph {show(m.get('glyph', MISSING))} is not one of the contract's glyphs")
+
+
+class ParamIndex:
+    """The params a manifest names well: their names, and each param by its name."""
+
+    def __init__(self):
+        self.names = set()
+        self.by_name = {}
+
+
+def check_param_list(m, bad):
+    """R3: params is a list of objects, each with a unique name, a known kind and a default its own rules take."""
+    index = ParamIndex()
+
+    def say(text):
+        bad("param", "params", text)
+
+    params = m.get("params", MISSING)
+    if not isinstance(params, list):
+        say("params is a list")
+        return index
+    for i, p in enumerate(params):
+        if not isinstance(p, dict):
+            say(f"param {i} is not an object")
+            continue
+        name = p.get("name", MISSING)
+        if not isinstance(name, str) or not PARAM.fullmatch(name):
+            say(f"param {i} has the name {show(name)}, not lowercase letters, digits and _ up to 32")
+        elif name in index.names:
+            say(f"two params are named {name}")
+        else:
+            index.names.add(name)
+            index.by_name[name] = p
+        label = name if isinstance(name, str) else f"param {i}"
+        if "vary" in p and not isinstance(p["vary"], bool):
+            say(f"{label} has vary that is not true or false")
+        if "what" in p and not isinstance(p["what"], str):
+            say(f"{label} has what that is not a text")
+        check_param(p, i, say)
+    return index
+
+
+def check_param(p, i, say):
+    """One param: its kind's own fields, then a default that its rules take."""
+    label = p["name"] if isinstance(p.get("name"), str) else f"param {i}"
+    kind = p.get("kind", MISSING)
+    if not contains(PARAM_KINDS, kind):
+        say(f"{label} has kind {show(kind)}, not one of {', '.join(PARAM_KINDS)}")
+        return
+    if not kind_fields_hold(p, kind, label, say):
+        return
+    if "default" not in p:
+        say(f"{label} has no default")
+        return
+    why = value_problem(p, p["default"])
+    if why:
+        say(f"{label} has a default that does not hold: {why}")
+
+
+def distinct_values(values):
+    """A non-empty list of distinct values of letters, digits and . _ , -."""
+    return (isinstance(values, list) and len(values) > 0 and len(unique(values)) == len(values)
+            and all(isinstance(v, str) and VALUE.fullmatch(v) for v in values))
+
+
+def kind_fields_hold(p, kind, label, say):
+    """The fields a kind needs: choices or options, low and high, a pattern that compiles."""
+    if kind in ("choice", "set"):
+        key = "choices" if kind == "choice" else "options"
+        if not distinct_values(p.get(key, MISSING)):
+            say(f"{label} needs {key}: a non-empty list of distinct values of letters, digits and . _ , -")
+            return False
+    elif kind == "int":
+        low, high = p.get("low", MISSING), p.get("high", MISSING)
+        if not (is_whole(low) and is_whole(high) and low <= high):
+            say(f"{label} needs whole numbers low and high, low at most high")
+            return False
+    elif kind == "float":
+        low, high = p.get("low", MISSING), p.get("high", MISSING)
+        if not (is_finite_number(low) and is_finite_number(high) and low <= high):
+            say(f"{label} needs numbers low and high, low at most high")
+            return False
+        if "above" in p and not isinstance(p["above"], bool):
+            say(f"{label} has above that is not true or false")
+    elif kind == "names" and "pattern" in p:
+        if not isinstance(p["pattern"], str) or full_regex(p["pattern"]) is None:
+            say(f"{label} has a pattern that is not a regular expression")
+            return False
+    return True
+
+
+def check_pattern(pattern, label, c, say):
+    """R2: an input's accepts pattern, every key known and every list drawn from the contract (section 6)."""
+    if not isinstance(pattern, dict):
+        say(f"{label} has no accepts pattern")
+        return
+    for key in js_keys(pattern):
+        if not contains(PATTERN_KEYS, key):
+            say(f"{label} accepts an unknown key {show(key)}")
+
+    def list_of(key, allowed):
+        if key in pattern and not (isinstance(pattern[key], list) and all(contains(allowed, x) for x in pattern[key])):
+            say(f"{label} accepts {key} {show(pattern[key])}, not a list from {js_join(allowed, ', ')}")
+
+    if not isinstance(pattern.get("kind"), list) or not pattern["kind"]:
+        say(f"{label} accepts no kind; kind is a non-empty list")
+    else:
+        list_of("kind", c.kinds)
+    list_of("rank", [0, 1, 2, 3])
+    if "time" in pattern and not contains(["any", "yes", "no"], pattern["time"]):
+        say(f"{label} accepts time {show(pattern['time'])}, not any, yes or no")
+    list_of("has_axes", c.axes)
+    list_of("dtype", c.dtypes)
+    list_of("targets", c.targets)
+    if "parts" in pattern and not contains(["split", "unsplit", "any"], pattern["parts"]):
+        say(f"{label} accepts parts {show(pattern['parts'])}, not split or unsplit")
+    list_of("needs_parts", c.parts)
+    list_of("modality", c.modalities)
+    if "trained" in pattern and not isinstance(pattern["trained"], bool):
+        say(f"{label} accepts trained that is not true or false")
+
+
+def port_label(word, port, i):
+    name = port.get("name", MISSING)
+    return f"{word} {name if isinstance(name, str) else i}"
+
+
+def check_input_ports(m, c, bad):
+    """R2 for the inputs: objects with unique names and patterns; none on a source, one or more elsewhere.
+    Returns the input names."""
+    names = []
+    inputs = m.get("inputs", MISSING)
+    if not isinstance(inputs, list):
+        bad("port", "inputs", "inputs is a list")
+        return names
+    for i, p in enumerate(inputs):
+        if not isinstance(p, dict):
+            bad("port", "inputs", f"input {i} is not an object")
+            continue
+        label, name = port_label("input", p, i), p.get("name", MISSING)
+        if not isinstance(name, str) or not PORT.fullmatch(name):
+            bad("port", "inputs", f"input {i} has the name {show(name)}, not lowercase letters, digits and _ up to 24")
+        elif name in names:
+            bad("port", "inputs", f"two inputs are named {name}")
+        else:
+            names.append(name)
+        if "optional" in p and not isinstance(p["optional"], bool):
+            bad("port", "inputs", f"{label} has optional that is not true or false")
+        if "what" in p and not isinstance(p["what"], str):
+            bad("port", "inputs", f"{label} has what that is not a text")
+        check_pattern(p.get("accepts", MISSING), label, c, functools.partial(bad, "accepts", "inputs"))
+    source = same(m.get("stage", MISSING), "source")
+    if source and inputs:
+        bad("port", "inputs", "a source block has no input")
+    if not source and not inputs:
+        bad("port", "inputs", "a block that is not a source has at least one input")
+    return names
+
+
+def ref_problem(value, params, input_names, c):
+    """Why a ref names nothing, or None: @param.NAME of a param, @in.PORT.FIELD of an input, @self.FIELD
+    of a type's field or sizes.AXIS."""
+    ref = parse_ref(value)
+    if ref is None or ref["scope"] == "bad":
+        return f"{show(value)} is not @param.NAME, @in.PORT.FIELD or @self.FIELD"
+    if ref["scope"] == "param":
+        return None if ref["name"] in params.names else f"{show(value)} names no param"
+    if ref["scope"] == "in" and ref["port"] not in input_names:
+        return f"{show(value)} names no input"
+    size = SIZE_REF.fullmatch(ref["field"])
+    if size:
+        return None if contains(c.axes, size.group(1)) else f"{show(value)} names no axis"
+    return None if contains(TYPE_FIELDS, ref["field"]) else f"{show(value)} names no field of a type"
+
+
+def check_op(op, label, c, params, input_names, say_op, say_ref):
+    """R2 for one op: a known name with its arity, and each slot a valid literal or a ref that names something."""
+    if not isinstance(op, list) or not isinstance(item(op, 0), str) or op[0] not in OP_ARITY:
+        say_op(f"{label} has an unknown op {show(op)}")
+        return
+    name = op[0]
+    if len(op) != OP_ARITY[name]:
+        say_op(f"{label} has {name} with {len(op)} items; it takes {OP_ARITY[name]}")
+        return
+
+    def slot(value, valid, what):
+        if is_ref(value):
+            why = ref_problem(value, params, input_names, c)
+            if why:
+                say_ref(f"{label}: {why}")
+        elif not valid(value):
+            say_op(f"{label} has {name} with {show(value)}, not {what}")
+
+    def axis(value):
+        if not contains(c.axes, value):
+            say_op(f"{label} has {name} on {show(value)}, not an axis")
+
+    if name == "kind":
+        slot(op[1], lambda v: contains(c.kinds, v), "a kind")
+    elif name == "set":
+        if not contains(SET_FIELDS, op[1]):
+            say_op(f"{label} sets {show(op[1])}, not one of {', '.join(SET_FIELDS)}")
+        else:
+            slot(op[2], lambda v: valid_set_value(op[1], v, c), f"a value {op[1]} can take")
+    elif name in ("size", "drop_axis", "add_axis"):
+        axis(op[1])
+        if name == "add_axis" and op[2] is not None and not contains(c.axes, op[2]):
+            say_op(f"{label} has add_axis before {show(op[2])}, not an axis or null")
+        if name != "drop_axis":
+            slot(op[-1], valid_size, "a whole number from 1 or null")
+    elif name == "axes":
+        slot(op[1], lambda v: valid_axis_list(v, c), "a list of distinct axes")
+    elif name == "parts":
+        slot(op[1], lambda v: valid_part_list(v, c), "a list of distinct parts")
+    else:
+        slot(op[1], lambda v: contains(c.licences, v), "a licence class")
+
+
+def check_output_ports(m, c, bad, params, input_names):
+    """R2 for the outputs: one or more, unique names, `from` an input, and every op valid."""
+    outputs = m.get("outputs", MISSING)
+    if not isinstance(outputs, list):
+        bad("port", "outputs", "outputs is a list")
+        return
+    if not outputs:
+        bad("port", "outputs", "a block has at least one output")
+    names = []
+    for i, o in enumerate(outputs):
+        if not isinstance(o, dict):
+            bad("port", "outputs", f"output {i} is not an object")
+            continue
+        label, name = port_label("output", o, i), o.get("name", MISSING)
+        if not isinstance(name, str) or not PORT.fullmatch(name):
+            bad("port", "outputs", f"output {i} has the name {show(name)}, not lowercase letters, digits and _ up to 24")
+        elif name in names:
+            bad("port", "outputs", f"two outputs are named {name}")
+        else:
+            names.append(name)
+        if "from" in o and o["from"] is not None and not contains(input_names, o["from"]):
+            bad("port", "outputs", f"{label} is from {show(o['from'])}, which is not an input")
+        if "what" in o and not isinstance(o["what"], str):
+            bad("port", "outputs", f"{label} has what that is not a text")
+        if not isinstance(o.get("ops"), list):
+            bad("op", "outputs", f"{label} has no ops list")
+            continue
+        for op in o["ops"]:
+            check_op(op, label, c, params, input_names, functools.partial(bad, "op", "outputs"),
+                     functools.partial(bad, "ref", "outputs"))
+
+
+def check_condition(cond, label, say):
+    """A rule's condition: known keys, lists for in and not_in, numbers for the bounds, true for empty and nonempty."""
+    if not isinstance(cond, dict):
+        say(f"{label} is not a condition object")
+        return
+    for key in js_keys(cond):
+        if not contains(CONDITION_KEYS, key):
+            say(f"{label} has an unknown condition {show(key)}")
+    for key in ("in", "not_in"):
+        if key in cond and not isinstance(cond[key], list):
+            say(f"{label} has {key} that is not a list")
+    for key in ("min", "max", "above", "below"):
+        if key in cond and not is_finite_number(cond[key]):
+            say(f"{label} has {key} that is not a number")
+    for key in ("empty", "nonempty"):
+        if key in cond and cond[key] is not True:
+            say(f"{label} has {key} that is not true")
+
+
+def check_rule_list(m, bad, params):
+    """R4: every rule's when and need name the block's params with valid conditions, and its say is a text."""
+    def say(text):
+        bad("rule", "rules", text)
+
+    rules = m.get("rules", MISSING)
+    if not isinstance(rules, list):
+        say("rules is a list")
+        return
+    for i, r in enumerate(rules):
+        label = f"rule {i}"
+        if not isinstance(r, dict):
+            say(f"{label} is not an object")
+            continue
+        for side in ("when", "need"):
+            conditions = r.get(side, MISSING)
+            if not isinstance(conditions, dict):
+                say(f"{label} has no {side} object")
+                continue
+            for key in js_keys(conditions):
+                if key not in params.names:
+                    say(f"{label} {side} names {show(key)}, which is not a param")
+                check_condition(conditions[key], f"{label} {side} {key}", say)
+        if not nonempty_text(r.get("say", MISSING)):
+            say(f"{label} has no say")
+
+
+def check_read_parts(m, c, bad):
+    """R5: the parts a block reads come from the contract, once each, and only evaluate and report read test."""
+    reads = m.get("reads", MISSING)
+    parts = reads.get("parts", MISSING) if isinstance(reads, dict) else MISSING
+    if (not isinstance(parts, list) or not all(contains(c.parts, p) for p in parts)
+            or len(unique(parts)) != len(parts)):
+        bad("reads", "reads", f"reads.parts is a list of distinct parts from {js_join(c.parts, ', ')}")
+        return
+    stage = m.get("stage", MISSING)
+    if contains(parts, "test") and not same(stage, "evaluate") and not same(stage, "report"):
+        bad("reads", "reads", "only evaluate and report blocks read the test part")
+
+
+def numeric_param(params, ref):
+    """A ref @param.NAME of an int or float param."""
+    parsed = parse_ref(ref)
+    if parsed is None or parsed["scope"] != "param":
+        return False
+    p = params.by_name.get(parsed["name"])
+    return p is not None and contains(["int", "float"], p.get("kind", MISSING))
+
+
+def check_job(m, c, bad, params):
+    """R6: the job's class, hours, cpus, memory, with_upstream and array (section 5)."""
+    def say(text):
+        bad("job", "job", text)
+
+    job = m.get("job", MISSING)
+    if not isinstance(job, dict):
+        say("job is an object")
+        return
+    cls = job.get("class", MISSING)
+    none = same(cls, "none")
+    if not contains(c.job_classes, cls):
+        say(f"job class {show(cls)} is not one of {js_join(c.job_classes, ', ')}")
+    hours = job.get("hours", MISSING)
+    if is_finite_number(hours):
+        if (hours < 0) if none else (hours <= 0):
+            say("job hours is above 0")
+    elif not numeric_param(params, hours):
+        say("job hours is a number above 0 or @param.NAME of an int or float param")
+    least = 0 if none else 1
+    if not whole_between(job.get("cpus", MISSING), least, 64):
+        say("job cpus is a whole number from 1 to 64")
+    if not whole_between(job.get("memory_gb", MISSING), least, 512):
+        say("job memory_gb is a whole number from 1 to 512")
+    if not isinstance(job.get("with_upstream", MISSING), bool):
+        say("job with_upstream is true or false")
+    if not isinstance(job.get("array", MISSING), bool):
+        say("job array is true or false")
+
+
+def whole_between(value, low, high):
+    return is_whole(value) and low <= value <= high
+
+
+def check_determinism(m, c, bad, params):
+    """R7: exact, seeded with an int seed param, or declared with the reason in 20 characters or more."""
+    d = m.get("deterministic", MISSING)
+    if not contains(c.deterministic, d):
+        bad("determinism", "deterministic", f"deterministic {show(d)} is not one of {js_join(c.deterministic, ', ')}")
+        return
+    if same(d, "seeded"):
+        seed = m.get("seed_param", MISSING)
+        p = params.by_name.get(seed) if isinstance(seed, str) else None
+        if p is None or not same(p.get("kind", MISSING), "int"):
+            bad("determinism", "seed_param", "a seeded block names its int seed param in seed_param")
+    if same(d, "declared") and not text_length(m.get("nondeterminism", MISSING), 20, math.inf):
+        bad("determinism", "nondeterminism",
+            "a declared block says what varies and why it is tolerated, in 20 characters or more")
+
+
+def admits(port, kind):
+    """An input whose pattern takes the kind."""
+    return (isinstance(port, dict) and isinstance(port.get("accepts"), dict)
+            and contains(array_of(port["accepts"].get("kind")), kind))
+
+
+def utf16_order(value):
+    """The key JavaScript's default sort compares by: String() of the value, in UTF-16 code units."""
+    return js_text(value).encode("utf-16-be", "surrogatepass")
+
+
+def same_numbers(a, b):
+    """The distinct values of two lists, each sorted as JavaScript's default sort does, are equal."""
+    return deep_equal(sorted(unique(a), key=utf16_order), sorted(unique(b), key=utf16_order))
+
+
+def check_generic(m, c, bad, structural):
+    """R8: what a block that takes data or a model says it takes, why when it is narrower than everything,
+    each data input's rank, and every contract probe it admits run through its first input and outputs."""
+    def say(text):
+        bad("generic", "generic", text)
+
+    inputs = array_of(m.get("inputs", MISSING))
+    g = m.get("generic", MISSING)
+    if not any(admits(p, "data") or admits(p, "model") for p in inputs):
+        if g is not None and g is not MISSING:
+            say("generic is null for a block that takes no data and no model")
+        return
+    if not isinstance(g, dict):
+        say("generic is required: the block takes data or a model")
+        return
+    if not generic_fields_hold(g, say):
+        return
+    everything = all(contains(g["rank"], r) for r in (1, 2, 3)) and same(g["channels"], "any") and same(g["sizes"], "any")
+    if not everything and not text_length(g.get("why", MISSING), 20, math.inf):
+        say("generic.why says, in 20 characters or more, what the code takes today and what would widen it")
+    for p in inputs:
+        if (admits(p, "data") and "rank" in p["accepts"] and isinstance(p["accepts"]["rank"], list)
+                and not same_numbers(p["accepts"]["rank"], g["rank"])):
+            say(f"the input {show(p.get('name', MISSING))} accepts rank {show(p['accepts']['rank'])}, "
+                f"not generic.rank {show(g['rank'])}")
+    first = inputs[0] if inputs else MISSING
+    if structural or not admits(first, "data") or not isinstance(first.get("name"), str):
+        return
+    run_probes(m, c, g, first, say)
+
+
+def generic_fields_hold(g, say):
+    """generic's rank, time, channels and sizes each valid; why, when given, a text."""
+    valid = True
+    rank = g.get("rank", MISSING)
+    if (not isinstance(rank, list) or not all(whole_between(r, 0, 3) for r in rank)
+            or len(unique(rank)) != len(rank)):
+        say("generic.rank is a list of distinct ranks from 0 to 3")
+        valid = False
+    if not contains(["any", "yes", "no"], g.get("time", MISSING)):
+        say("generic.time is any, yes or no")
+        valid = False
+    channels = g.get("channels", MISSING)
+    if not same(channels, "any") and not (isinstance(channels, list) and channels
+                                          and all(is_whole(x) and x >= 1 for x in channels)
+                                          and len(unique(channels)) == len(channels)):
+        say("generic.channels is any or a list of distinct channel counts")
+        valid = False
+    if not same(g.get("sizes", MISSING), "any") and not same(g.get("sizes", MISSING), "fixed"):
+        say("generic.sizes is any or fixed")
+        valid = False
+    if "why" in g and not isinstance(g["why"], str):
+        say("generic.why is a text")
+    return valid
+
+
+def run_probes(m, c, g, first, say):
+    """The probe test: each contract probe whose rank and time generic admits must pass the first input's
+    pattern and compute every output with no problem, the params at their defaults."""
+    defaults = effective_params(None, m)
+    for probe in c.probes:
+        t = copy_type(probe.get("type", MISSING))
+        timed = contains(t["axes"], "T")
+        if not contains(g["rank"], rank_of(t["axes"], c)):
+            continue
+        if (same(g["time"], "yes") and not timed) or (same(g["time"], "no") and timed):
+            continue
+        why = [q["text"] for q in matches(first["accepts"], t, c)]
+
+        def op_failed(port, op_name, text, why=why):
+            why.append(f"output {port}: {text}")
+
+        compute_outputs(m, {first["name"]: t}, defaults, c, op_failed)
+        if why:
+            say(f"the probe {show(probe.get('name', MISSING))} fails: {'; '.join(why)}")
+
+
+def check_experiment(m, c, bad, params, input_names):
+    """The experiment mapping, when there is one: known keys, refs that name something, and `only` over params."""
+    e = m.get("experiment", MISSING)
+    if "experiment" not in m or e is None:
+        return
+    if not isinstance(e, dict):
+        bad("field", "experiment", "experiment is null or an object")
+        return
+    for key in js_keys(e):
+        if not contains(EXPERIMENT_KEYS, key):
+            bad("field", "experiment", f"experiment has an unknown key {show(key)}")
+
+    def ref(value, label):
+        why = ref_problem(value, params, input_names, c) if is_ref(value) else None
+        if why:
+            bad("ref", "experiment", f"experiment {label}: {why}")
+
+    for key in ("recipe", "epochs", "seed", "hours"):
+        if key in e:
+            ref(e[key], key)
+    if "blocks" in e:
+        if not isinstance(e["blocks"], dict):
+            bad("field", "experiment", "experiment.blocks is an object of Blocks fields")
+        else:
+            for key in js_keys(e["blocks"]):
+                ref(e["blocks"][key], "blocks." + key)
+    if "only" in e:
+        check_only(e["only"], params, bad)
+
+
+def check_only(only, params, bad):
+    if not isinstance(only, dict):
+        bad("field", "experiment", "experiment.only is an object of params and their allowed values")
+        return
+    for key in js_keys(only):
+        if key not in params.names:
+            bad("ref", "experiment", f"experiment.only names {show(key)}, which is not a param")
+        if not isinstance(only[key], list) or not only[key]:
+            bad("field", "experiment", f"experiment.only.{key} is a non-empty list")
+
+
+def check_needs(m, c, bad):
+    """R9: the libraries a block needs come from the contract's list, once each."""
+    needs = m.get("needs", MISSING)
+    if not isinstance(needs, list):
+        bad("needs", "needs", "needs is a list")
+        return
+    outside = [x for x in needs if not contains(c.needs, x)]
+    if outside:
+        bad("needs", "needs", f"needs names {', '.join(show(x) for x in outside)}, outside the contract's list")
+    if len(unique(needs)) != len(needs):
+        bad("needs", "needs", "needs names a library twice")
+
+
+def own_code_path(block_id):
+    return f"{SANDBOX}/blocks/{js_text(block_id)}.py"
+
+
+def own_test_path(block_id):
+    return f"tests/test_sandbox_block_{js_text(block_id)}.py"
+
+
+def check_code(m, c, bad):
+    """R10's shape: the code's kind, and implemented_by as that kind needs it (code_problems checks the files)."""
+    code, paths = m.get("code", MISSING), m.get("implemented_by", MISSING)
+    if not contains(c.code, code):
+        bad("code", "code", f"code {show(code)} is not one of {js_join(c.code, ', ')}")
+    if not isinstance(paths, list) or not all(nonempty_text(p) for p in paths):
+        bad("code", "implemented_by", "implemented_by is a list of repository paths")
+        return
+    if same(code, "existing") and not paths:
+        bad("code", "implemented_by", "existing code names the files that implement it")
+    if same(code, "own") and paths != [own_code_path(m.get("id", MISSING))]:
+        bad("code", "implemented_by",
+            f"a block of its own code is implemented by exactly {own_code_path(m.get('id', MISSING))}")
+    today = m.get("today", MISSING)
+    if same(code, "planned") and not (isinstance(today, dict) and same(today.get("status", MISSING), "planned")):
+        bad("code", "code", "planned code goes with today.status planned")
+
+
+def check_today(m, c, bad):
+    """R11: what runs the block today, and the word, flow or pull request its status needs."""
+    def say(text):
+        bad("today", "today", text)
+
+    today = m.get("today", MISSING)
+    if not isinstance(today, dict):
+        say("today is an object")
+        return
+    status = today.get("status", MISSING)
+    if not contains(c.today, status):
+        say(f"today.status {show(status)} is not one of {js_join(c.today, ', ')}")
+    for key in TODAY_STRINGS:
+        if not isinstance(today.get(key, MISSING), str):
+            say(f"today.{key} is a text, possibly empty")
+    if same(status, "live") and not (same(today.get("route", MISSING), "experiment")
+                                     and isinstance(m.get("experiment"), dict)):
+        say("a live block has today.route experiment and an experiment mapping")
+    if same(status, "word") and not nonempty_text(today.get("word", MISSING)):
+        say("a word block names its gate word")
+    if same(status, "flow") and not nonempty_text(today.get("flow", MISSING)):
+        say("a flow block names its flow")
+    note = today.get("note", MISSING)
+    if same(status, "pending") and not (isinstance(note, str) and PULL_REQUEST.search(note)):
+        say("a pending block's note names its pull request as #<number>")
+    code = m.get("code", MISSING)
+    if same(status, "planned") and not same(code, "planned") and not same(code, "own"):
+        say("a planned block has code planned or own")
+
+
+def text_problems(value):
+    """A text, a list or an object anywhere in the value with a character outside printable ASCII."""
+    if isinstance(value, str):
+        return not printable(value)
+    if isinstance(value, list):
+        return any(text_problems(x) for x in value)
+    if isinstance(value, dict):
+        return any(not printable(key) or text_problems(value[key]) for key in js_keys(value))
+    return False
+
+
+def check_text(m, c, bad):
+    """R12: printable ASCII everywhere, and canonical JSON of at most limits.manifest_bytes bytes."""
+    clean = True
+    for key in js_keys(m):
+        if not printable(key):
+            bad("text", None, "a key holds a character outside printable ASCII")
+            clean = False
+        elif text_problems(m[key]):
+            bad("text", key, f"{key} holds a character outside printable ASCII")
+            clean = False
+    if not clean:
+        return
+    try:
+        text = canonical(m)
+    except CanonicalError as error:
+        bad("text", None, f"the manifest cannot be written as canonical JSON: {error}")
+        return
+    if len(text) > c.limits["manifest_bytes"]:
+        bad("size", None, f"the canonical manifest has {len(text)} bytes; at most {js_text(c.limits['manifest_bytes'])}")
+
+
+def check_card(m, bad):
+    """R13: a source block's data card, every field a non-empty text and from a list of the files it rests on."""
+    card = m.get("card", MISSING)
+    if not same(m.get("stage", MISSING), "source"):
+        if card is not None and card is not MISSING:
+            bad("card", "card", "card is null for a block that is not a source")
+        return
+    if not isinstance(card, dict):
+        bad("card", "card", "a source block has a data card")
+        return
+    for key in CARD_FIELDS:
+        if not nonempty_text(card.get(key, MISSING)):
+            bad("card", "card", f"card.{key} is a non-empty text")
+    sources = card.get("from", MISSING)
+    if not (isinstance(sources, list) and sources and all(nonempty_text(p) for p in sources)):
+        bad("card", "card", "card.from lists the repository files its facts come from")
+
+
+# ---------------------------------------------------------------------------------------------------
+# What only the repository can tell: the files R10 and R13 name (section 5).
+
+def inside_repository(path):
+    """A path relative to the repository root that stays inside it."""
+    return (isinstance(path, str) and path != "" and not path.startswith("/") and "\\" not in path
+            and ":" not in path and ".." not in path.split("/"))
+
+
+def code_problems(manifest, root=ROOT):
+    """R10 and R13 in the repository: every path a block names stays inside it; existing code's files and
+    a card's sources are there; a block of its own code has its module, with a docstring and a top-level
+    run(inputs, params, context), and its test. [{code, field, text}]"""
+    if not isinstance(manifest, dict):
+        return []
+    root, found = Path(root), []
+    code = manifest.get("code", MISSING)
+    paths = manifest.get("implemented_by", MISSING)
+    for path in paths if isinstance(paths, list) else []:
+        if not nonempty_text(path):
+            continue
+        if not inside_repository(path):
+            found.append({"code": "code", "field": "implemented_by", "text": f"{path} is not a path inside the repository"})
+        elif same(code, "existing") and not (root / path).exists():
+            found.append({"code": "code", "field": "implemented_by", "text": f"{path} is not in the repository"})
+    block_id = manifest.get("id", MISSING)
+    if same(code, "own") and isinstance(block_id, str) and ID.fullmatch(block_id):
+        found += own_code_problems(block_id, root)
+    card = manifest.get("card", MISSING)
+    sources = card.get("from", MISSING) if isinstance(card, dict) else MISSING
+    for path in sources if isinstance(sources, list) else []:
+        if nonempty_text(path) and not (inside_repository(path) and (root / path).exists()):
+            found.append({"code": "card", "field": "card", "text": f"card.from names {path}, which is not in the repository"})
+    return found
+
+
+def own_code_problems(block_id, root):
+    """A block of its own code: tools/sandbox/blocks/<id>.py with a docstring and run(inputs, params,
+    context), and tests/test_sandbox_block_<id>.py."""
+    found = []
+    module, test = own_code_path(block_id), own_test_path(block_id)
+    if not (root / module).is_file():
+        found.append({"code": "code", "field": "implemented_by", "text": f"{module} is not in the repository"})
+    else:
+        why = run_problem(root / module)
+        if why:
+            found.append({"code": "code", "field": "implemented_by", "text": f"{module} {why}"})
+    if not (root / test).is_file():
+        found.append({"code": "code", "field": "implemented_by", "text": f"{test}, the block's test, is not in the repository"})
+    return found
+
+
+def run_problem(path):
+    """Why a block's module is not one the sandbox can call, or None."""
+    try:
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+    except (OSError, SyntaxError, UnicodeDecodeError, ValueError) as error:
+        return f"cannot be read as Python ({type(error).__name__})"
+    if not ast.get_docstring(tree):
+        return "has no module docstring"
+    for node in tree.body:
+        if isinstance(node, ast.FunctionDef) and node.name == "run":
+            args = node.args
+            names = [a.arg for a in args.posonlyargs + args.args]
+            if names == ["inputs", "params", "context"] and not (args.vararg or args.kwarg or args.kwonlyargs):
+                return None
+            return "defines run with other arguments than (inputs, params, context)"
+    return "has no top-level def run(inputs, params, context)"
+
+
+def block_file_problems(manifest, contract, root=ROOT):
+    """Everything section 13 and R10's files say about one manifest: [{code, field, text}]."""
+    return check_manifest(manifest, contract) + code_problems(manifest, root)
+
+
+# ---------------------------------------------------------------------------------------------------
+# DATA and the page (section 16).
+
+def load_folder(root, folder):
+    """Every .json file of a folder in name order: [(path, stem, value, problem)], value None where the
+    file is no JSON."""
+    directory = Path(root) / folder
+    found = []
+    for path in sorted(directory.glob("*.json")) if directory.is_dir() else []:
+        rel = f"{folder}/{path.name}"
+        try:
+            found.append((rel, path.stem, load_json(path), None))
+        except (OSError, ValueError, RecursionError) as error:
+            found.append((rel, path.stem, None, f"{rel}: not JSON as JavaScript reads it ({error})"))
+    return found
+
+
+def by_id(files, problems):
+    """The objects of a folder with a text id, sorted by id; every other file a problem."""
+    kept = []
+    for rel, _stem, value, error in files:
+        if error:
+            problems.append(error)
+        elif not isinstance(value, dict) or not isinstance(value.get("id"), str):
+            problems.append(f"{rel}: not a JSON object with an id")
+        else:
+            kept.append(value)
+    return sorted(kept, key=lambda value: value["id"])
+
+
+def sandbox_data(root=ROOT):
+    """DATA as the page embeds it, and every file that kept it from being read: (data or None, problems)."""
+    root, problems = Path(root), []
+    try:
+        contract = load_json(root / CONTRACT)
+    except (OSError, ValueError, RecursionError) as error:
+        return None, [f"{CONTRACT}: cannot be read as JSON ({error})"]
+    if not isinstance(contract, dict):
+        return None, [f"{CONTRACT}: not a JSON object"]
+    blocks = by_id(load_folder(root, BLOCKS), problems)
+    templates = by_id(load_folder(root, TEMPLATES), problems)
+    try:
+        experiment = experiment_data(root)
+    except (OSError, ValueError, SyntaxError, KeyError, TypeError) as error:
+        problems.append(f"{panel.BLOCKS_PY}: the experiment route's fields cannot be read ({error})")
+        experiment = None
+    return {"contract": contract, "blocks": blocks, "templates": templates, "experiment": experiment,
+            "repo": panel.REPO}, problems
+
+
+def page_inputs(root=ROOT):
+    """The four files the page is assembled from, as text, and why any cannot go in as it is: (texts, problems)."""
+    texts, problems = {}, []
+    for name in PAGE_INPUTS:
+        rel = f"{SANDBOX}/{name}"
+        path = Path(root) / rel
+        if not path.is_file():
+            problems.append(f"{rel}: missing; the page is assembled from it")
+            continue
+        try:
+            text = path.read_bytes().decode("ascii")
+        except (OSError, UnicodeDecodeError):
+            problems.append(f"{rel}: holds a byte outside ASCII; the page is ASCII")
+            continue
+        if "\r" in text:
+            problems.append(f"{rel}: holds a carriage return; the page is LF only")
+        lowered = text.lower()
+        problems += [f"{rel}: holds {word}, which would end its element early or open a script inside it"
+                     for word in ENDS_EARLY[name] if word in lowered]
+        if name == "shell.html" and lowered.count("<!--") != lowered.count("-->"):
+            problems.append(f"{rel}: opens a comment it does not close, which would hide the script")
+        problems += loads_in(rel, lowered)
+        texts[name] = text
+    return texts, problems
+
+
+def loads_in(where, lowered):
+    """A problem for each word that would load something from elsewhere."""
+    return [f"{where}: holds {word}; the page loads nothing from elsewhere" for word in LOADS if word in lowered]
+
+
+def data_json(data):
+    """DATA as the page embeds it: keys sorted, no spaces, ASCII, and every "</" written "<\\/" so that no
+    text ends the script."""
+    return json.dumps(plain(data), sort_keys=True, separators=(",", ":"), ensure_ascii=True,
+                      allow_nan=False).replace("</", "<\\/")
+
+
+def repository_page(texts, data_text):
+    """The page as docs/sandbox/pipeline-sandbox.html holds it (section 16, byte for byte)."""
+    return ('<!doctype html>\n<html lang="en"><head><meta charset="utf-8"><meta name="viewport" '
+            'content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="robots" '
+            'content="noindex, nofollow"><title>Pipeline Sandbox</title><meta name="claude:viewport-fit-sides" '
+            'content="cover"><style>' + texts["page.css"] + "</style></head><body>" + texts["shell.html"]
+            + "<script>const SANDBOX_DATA=" + data_text + ";\n" + texts["engine.js"] + "\n" + texts["ui.js"]
+            + "</script></body></html>\n")
+
+
+def artifact_page(texts, data_text):
+    """The claude.ai edition, a fragment the Artifact tool wraps (section 16, byte for byte)."""
+    return ('<title>Pipeline Sandbox</title>\n<meta name="claude:viewport-fit-sides" content="cover">\n<style>'
+            + texts["page.css"] + "</style>\n" + texts["shell.html"] + "\n<script>const SANDBOX_DATA=" + data_text
+            + ";\n" + texts["engine.js"] + "\n" + texts["ui.js"] + "</script>\n")
+
+
+EDITIONS = {"repository": repository_page, "artifact": artifact_page}
+
+
+def build_page(root=ROOT, edition="repository"):
+    """The page from tools/sandbox/, or None and why it cannot be built: (text or None, problems). It
+    refuses a missing or unreadable input, an input that would break the page, and anything that loads."""
+    texts, problems = page_inputs(root)
+    data, data_problems = sandbox_data(root)
+    problems += data_problems
+    data_text = None
+    if data is not None:
+        try:
+            data_text = data_json(data)
+        except ValueError as error:
+            problems.append(f"{SANDBOX}: the data cannot be written as JSON ({error})")
+    if data_text is not None:
+        lowered = data_text.lower()
+        if "<script" in lowered:
+            problems.append(f"{SANDBOX}: a manifest or template holds <script, which would open a script inside the page's")
+        problems += loads_in(f"{SANDBOX} (the blocks, templates and contract)", lowered)
+    if problems:
+        return None, problems
+    return EDITIONS[edition](texts, data_text), []
+
+
+# ---------------------------------------------------------------------------------------------------
+# The repository check (section 16).
+
+def licence_problems(contract, root):
+    """The contract's licences are data/recipes/' names from the narrowest to the widest, then uncut."""
+    ordered = sorted(panel.recipes(root), key=lambda r: (len(r["allow"]), r["name"]))
+    expected = [r["name"] for r in ordered] + ["uncut"]
+    licences = contract.get("licences") if isinstance(contract, dict) else None
+    if not same_list(licences, expected):
+        return [f"{CONTRACT}: licences is {show(licences)}; data/recipes/ gives {show(expected)}"]
+    return []
+
+
+def same_list(value, expected):
+    return isinstance(value, list) and deep_equal(value, expected)
+
+
+def block_problems(root, contract):
+    """Every manifest under tools/sandbox/blocks/: section 13, R10's files, and an id that is its file's name and nobody else's."""
+    problems, seen = [], {}
+    for rel, stem, value, error in load_folder(root, BLOCKS):
+        if error:
+            problems.append(error)
+            continue
+        problems += [f"{rel}: {p['code']} {p['field'] or '-'}: {p['text']}" for p in block_file_problems(value, contract, root)]
+        block_id = value.get("id") if isinstance(value, dict) else None
+        if not isinstance(block_id, str):
+            continue
+        if block_id != stem:
+            problems.append(f"{rel}: the id {block_id} is not the file's name")
+        if block_id in seen:
+            problems.append(f"{rel}: the id {block_id} is {seen[block_id]}'s too")
+        seen.setdefault(block_id, rel)
+    return problems
+
+
+def expect_of(result):
+    """What a template's expect pins, read from its compile."""
+    return {"route": result["route"], "ready": result["ready"], "requests": len(result["requests"]),
+            "gpu_submissions": result["jobs"]["gpu"]["submissions"],
+            "cpu_submissions": result["jobs"]["cpu"]["submissions"], "gpu_tasks": result["jobs"]["gpu"]["tasks"]}
+
+
+def where_of(p):
+    """A problem's place as a short prefix: the node, the port and the field it names."""
+    parts = [js_text(p[key]) for key in ("node", "port", "field") if p.get(key) is not None]
+    return f"{' '.join(parts)}: " if parts else ""
+
+
+def template_problems(root, data):
+    """Every template: an id that is its file's name, no error, the compile its expect pins, and every
+    request one the experiment workflow accepts."""
+    problems, seen = [], set()
+    for rel, stem, value, error in load_folder(root, TEMPLATES):
+        if error:
+            problems.append(error)
+            continue
+        if not isinstance(value, dict):
+            problems.append(f"{rel}: a template is a JSON object")
+            continue
+        template_id = value.get("id")
+        if not isinstance(template_id, str) or not ID.fullmatch(template_id):
+            problems.append(f"{rel}: the id {show(value.get('id', MISSING))} is not lowercase letters, digits and _")
+        elif template_id != stem:
+            problems.append(f"{rel}: the id {template_id} is not the file's name")
+        if isinstance(template_id, str) and template_id in seen:
+            problems.append(f"{rel}: the id {template_id} is used twice")
+        if isinstance(template_id, str):
+            seen.add(template_id)
+        problems += [f"{rel}: {line}" for line in compiled_problems(value, data, root)]
+    return problems
+
+
+def compiled_problems(template, data, root):
+    """A template's errors, its expect against its compile, and its requests against the experiment workflow."""
+    result = compile_spec(template, data)
+    lines = [f"{p['code']} {where_of(p)}{p['text']}" for p in result["problems"] if p["level"] == "error"]
+    expect, got = template.get("expect"), expect_of(result)
+    if not isinstance(expect, dict):
+        lines.append(f"expect is not an object; compile gives {show(got)}")
+    else:
+        lines += [f"expect {key} is {show(expect.get(key, MISSING))}; compile gives {show(got[key])}"
+                  for key in EXPECT_KEYS if key not in expect or not deep_equal(expect[key], got[key])]
+    for n, request in enumerate(result["requests"], 1):
+        _record, refused = panel.check_request(request["body"], root)
+        lines += [f"request {n} ({request['title']}): the experiment workflow refuses it: {why}" for why in refused]
+    return lines
+
+
+def glyph_keys(ui_text):
+    """The names written as keys in ui.js: `name:`, `"name":` or `'name':`."""
+    bare = re.findall(r"(?<![\w$.])([A-Za-z_$][\w$]*)\s*:", ui_text)
+    quoted = re.findall(r"[\"']([A-Za-z_$][\w$]*)[\"']\s*:", ui_text)
+    return set(bare) | set(quoted)
+
+
+def glyph_problems(root, contract):
+    """Every glyph of the contract is drawn: its name is a key in ui.js."""
+    path = Path(root) / SANDBOX / "ui.js"
+    glyphs = contract.get("glyphs") if isinstance(contract, dict) else None
+    if not path.is_file() or not isinstance(glyphs, list):
+        return []
+    keys = glyph_keys(path.read_text(encoding="utf-8", errors="replace"))
+    missing = [js_text(name) for name in glyphs if not isinstance(name, str) or name not in keys]
+    return [f"{SANDBOX}/ui.js: no glyph for {', '.join(missing)} (a key `name:` of its glyph table)"] if missing else []
+
+
+def page_problems(root):
+    """The page builds, and the file holds exactly what it builds."""
+    text, problems = build_page(root)
+    if text is None:
+        return problems
+    path = Path(root) / PAGE
+    if not path.is_file():
+        return [f"{PAGE}: missing; run {WRITE}"]
+    if path.read_bytes() != text.encode("ascii"):
+        return [f"{PAGE}: not what tools/sandbox/ gives; run {WRITE}"]
+    return []
+
+
+def repository_problems(root=ROOT):
+    """Everything `check` holds (section 16), as lines "path: why"."""
+    root = Path(root)
+    data, problems = sandbox_data(root)
+    if data is None:
+        return list(dict.fromkeys(problems + page_problems(root)))
+    contract = data["contract"]
+    problems = licence_problems(contract, root) + block_problems(root, contract)
+    if data["experiment"] is not None:
+        problems += template_problems(root, data)
+    problems += glyph_problems(root, contract)
+    problems += page_problems(root)
+    return list(dict.fromkeys(problems))
+
+
+# ---------------------------------------------------------------------------------------------------
+# The command line.
+
+def refuse(problems):
+    for line in problems:
+        print(line, file=sys.stderr)
+    return 1
+
+
+def run_write(args):
+    text, problems = build_page(args.root)
+    if text is None:
+        return refuse(problems + [f"{PAGE}: not written; the page is never written broken"])
+    path = Path(args.root) / PAGE
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(text.encode("ascii"))
+    print(f"wrote {PAGE}")
+    return 0
+
+
+def run_check(args):
+    problems = repository_problems(args.root)
+    if problems:
+        return refuse(problems)
+    data, _ = sandbox_data(args.root)
+    print(f"{SANDBOX}: {len(data['blocks'])} blocks and {len(data['templates'])} templates hold; {PAGE}: current")
+    return 0
+
+
+def run_check_block(args):
+    data, problems = sandbox_data(args.root)
+    if data is None:
+        return refuse(problems)
+    target = Path(args.path)
+    paths = sorted(target.glob("*.json")) if target.is_dir() else [target]
+    found = []
+    for path in paths:
+        try:
+            manifest = load_json(path)
+        except (OSError, ValueError, RecursionError) as error:
+            found.append(f"{path}: not JSON as JavaScript reads it ({error})")
+            continue
+        found += [f"{path}: {p['code']} {p['field'] or '-'}: {p['text']}"
+                  for p in block_file_problems(manifest, data["contract"], args.root)]
+        if isinstance(manifest, dict) and manifest.get("id") != path.stem:
+            found.append(f"{path}: the id {show(manifest.get('id', MISSING))} is not the file's name")
+    if found:
+        return refuse(found)
+    print(f"{len(paths)} manifest(s) hold")
+    return 0
+
+
+def spec_and_data(args):
+    """The spec a command names and DATA, or the lines that say why they cannot be read."""
+    data, problems = sandbox_data(args.root)
+    if data is None:
+        return None, None, problems
+    try:
+        return load_json(args.spec), data, []
+    except (OSError, ValueError, RecursionError) as error:
+        return None, None, [f"{args.spec}: not JSON as JavaScript reads it ({error})"]
+
+
+def run_compile(args):
+    spec, data, problems = spec_and_data(args)
+    if problems:
+        return refuse(problems)
+    print(json.dumps(plain(compile_spec(spec, data)), indent=1, sort_keys=True))
+    return 0
+
+
+def run_digest(args):
+    spec, data, problems = spec_and_data(args)
+    if problems:
+        return refuse(problems)
+    hex_digest = digest(spec, data)
+    if not hex_digest:
+        return refuse([f"{args.spec}: holds what canonical JSON cannot write; propagate says where"])
+    print(hex_digest)
+    return 0
+
+
+def run_artifact(args):
+    text, problems = build_page(args.root, "artifact")
+    if text is None:
+        return refuse(problems)
+    Path(args.out).parent.mkdir(parents=True, exist_ok=True)
+    Path(args.out).write_bytes(text.encode("ascii"))
+    print(f"wrote {args.out}")
+    return 0
+
+
+COMMANDS = {"write": run_write, "check": run_check, "check-block": run_check_block, "compile": run_compile,
+            "digest": run_digest, "artifact": run_artifact}
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    commands = parser.add_subparsers(dest="command", required=True)
+    for name, words in (("write", "write " + PAGE), ("check", "exit 1 with every problem")):
+        commands.add_parser(name, help=words)
+    commands.add_parser("check-block", help="a manifest file, or a folder of them").add_argument("path")
+    commands.add_parser("compile", help="section 12 as JSON").add_argument("spec")
+    commands.add_parser("digest", help="the SHA-256 of the canonical pipeline").add_argument("spec")
+    commands.add_parser("artifact", help="the claude.ai edition, a fragment").add_argument("--out", required=True)
+    for command in commands.choices.values():
+        command.add_argument("--root", type=Path, default=ROOT, help="the repository to read (a worktree, for a test)")
+    args = parser.parse_args(argv)
+    return COMMANDS[args.command](args)
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -1,0 +1,89 @@
+"""Helpers shared by the DATA generators: they build the manifests and templates as ordered dicts
+and write them as JSON with a 1-space indent, ASCII only, LF and a final newline."""
+
+import json
+import os
+
+REPO = "/home/user/SchwingNet"
+SANDBOX = os.path.join(REPO, "tools", "sandbox")
+PARTS = ["train", "validation", "test"]
+ALL_RANKS = [0, 1, 2, 3]
+
+
+def write_json(path, value):
+    text = json.dumps(value, indent=1, ensure_ascii=True) + "\n"
+    with open(path, "w", encoding="ascii", newline="\n") as handle:
+        handle.write(text)
+
+
+def job(cls="none", hours=0, cpus=0, memory=0, with_upstream=False, array=False):
+    return {"class": cls, "hours": hours, "with_upstream": with_upstream, "array": array,
+            "cpus": cpus, "memory_gb": memory}
+
+
+def today(status, route="", word="", flow="", note=""):
+    return {"status": status, "route": route, "word": word, "flow": flow, "note": note}
+
+
+def generic(rank, time="any", channels="any", sizes="any", why=""):
+    return {"rank": rank, "time": time, "channels": channels, "sizes": sizes, "why": why}
+
+
+def port_in(name, accepts, what, optional=False):
+    return {"name": name, "accepts": accepts, "optional": optional, "what": what}
+
+
+def port_out(name, source, ops, what):
+    return {"name": name, "from": source, "ops": ops, "what": what}
+
+
+def choice(name, choices, default, vary, what):
+    return {"name": name, "kind": "choice", "choices": choices, "default": default, "vary": vary, "what": what}
+
+
+def integer(name, low, high, default, vary, what):
+    return {"name": name, "kind": "int", "low": low, "high": high, "default": default, "vary": vary, "what": what}
+
+
+def number(name, low, high, default, vary, what, above=False):
+    param = {"name": name, "kind": "float", "low": low, "high": high}
+    if above:
+        param["above"] = True
+    param.update({"default": default, "vary": vary, "what": what})
+    return param
+
+
+def boolean(name, default, vary, what):
+    return {"name": name, "kind": "bool", "default": default, "vary": vary, "what": what}
+
+
+def options(name, values, default, vary, what):
+    return {"name": name, "kind": "set", "options": values, "default": default, "vary": vary, "what": what}
+
+
+def names(name, default, vary, what, pattern="^[a-z0-9_]{1,40}$"):
+    return {"name": name, "kind": "names", "pattern": pattern, "default": default, "vary": vary, "what": what}
+
+
+def rule(when, need, say):
+    return {"when": when, "need": need, "say": say}
+
+
+def manifest(ident, title, stage, summary, does, glyph, inputs, outputs, params=(), rules=(),
+             reads=(), job_=None, deterministic="exact", seed_param="", nondeterminism="",
+             generic_=None, resolve=None, needs=("python",), code="existing", implemented_by=(),
+             today_=None, experiment=None, card=None):
+    return {
+        "block": 1, "id": ident, "version": 1, "title": title, "stage": stage, "summary": summary,
+        "does": does, "glyph": glyph, "inputs": list(inputs), "outputs": list(outputs),
+        "params": list(params), "rules": list(rules), "reads": {"parts": list(reads)},
+        "job": job_ or job(), "deterministic": deterministic, "seed_param": seed_param,
+        "nondeterminism": nondeterminism, "generic": generic_, "resolve": resolve,
+        "needs": list(needs), "code": code, "implemented_by": list(implemented_by),
+        "today": today_, "experiment": experiment, "card": card,
+    }
+
+
+def card(origin, where, count, persons, split, held_out, licence, sources):
+    return {"origin": origin, "where": where, "count": count, "persons": persons, "split": split,
+            "held_out": held_out, "licence": licence, "from": sources}

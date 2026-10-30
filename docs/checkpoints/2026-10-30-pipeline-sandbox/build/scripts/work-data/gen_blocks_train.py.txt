@@ -1,0 +1,349 @@
+"""The train, calibrate, select, evaluate, analyse and report blocks."""
+
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from gen_common import (ALL_RANKS, choice, generic, integer, job, manifest, number, port_in,  # noqa: E402
+                        port_out, rule, today)
+
+TRAINED = {"kind": ["checkpoint"], "trained": True}
+TO_METRICS = [["kind", "metrics"], ["axes", []]]
+TO_REPORT = [["kind", "report"], ["axes", []]]
+
+
+def train_classifier():
+    blocks = ["optimiser", "weight_decay", "schedule", "warmup_epochs", "backbone_lr_scale", "sampler",
+              "loss_weights", "select"]
+    return manifest(
+        "train_classifier", "Train the classifier", "train",
+        "Trains the classifier on the train part, keeps every epoch, and picks the best epoch on validation.",
+        "tools/train.py through the flow: the optimiser (adam or adamw, weight decay only with adamw), the "
+        "schedule (constant or cosine, after warm-up epochs), a learning-rate scale for the backbone, the "
+        "sampler, the loss weights and the measure that picks the kept epoch on validation. Every epoch's "
+        "weights are kept, epoch 0 included, so the witness frames are drawn at every checkpoint. On the "
+        "experiment route training and evaluation run in one GPU job (grid/experiment-driver.sbatch: 8 "
+        "CPUs, 64 GB) whose wall time is hours.",
+        "train",
+        inputs=[port_in("model", {"kind": ["model"], "rank": [2], "needs_parts": ["train", "validation"]},
+                        "A 2-D classifier built for split data.")],
+        outputs=[port_out("checkpoint", "model", [["kind", "checkpoint"], ["set", "trained", True]],
+                          "The trained weights of every epoch and the kept one.")],
+        params=[
+            choice("optimiser", ["adam", "adamw"], "adam", True, "the optimiser"),
+            number("weight_decay", 0, 1, 0.0, True,
+                   "the weight decay, above 0 only with adamw; src/schwingnet/blocks.py sets no upper bound, "
+                   "1 is the sandbox's cap"),
+            choice("schedule", ["constant", "cosine"], "constant", True, "the learning rate's schedule"),
+            integer("warmup_epochs", 0, 100000, 0, True, "whole epochs of linear warm-up"),
+            number("backbone_lr_scale", 0, 1, 1.0, True, "the backbone's learning rate over the head's, above 0 "
+                                                         "and at most 1", above=True),
+            choice("sampler", ["uniform", "balanced"], "uniform", True, "how training batches are drawn"),
+            choice("loss_weights", ["none", "inverse-frequency"], "none", True, "the level loss's class weights"),
+            choice("select", ["accuracy", "balanced-accuracy"], "accuracy", True,
+                   "the validation measure that picks the kept epoch"),
+            integer("epochs", 1, 200, 20, True, "epochs to train (the experiment route takes 1 to 200)"),
+            integer("seed", 0, 999999999, 1, True, "the run's seed"),
+            number("hours", 0.1, 48, 4.0, False, "the GPU job's wall time, at most 48 hours"),
+        ],
+        rules=[rule({"weight_decay": {"above": 0}}, {"optimiser": {"in": ["adamw"]}},
+                    "weight_decay above 0 needs optimiser=adamw")],
+        reads=["train", "validation"],
+        job_=job("gpu", "@param.hours", 8, 64),
+        deterministic="seeded", seed_param="seed",
+        nondeterminism="torch's deterministic kernels are asked for with warn_only, so a GPU run may differ "
+                       "in its last bits (tools/train.py).",
+        generic_=generic([2], "no", why="The trainer reads 2-D crops of the catalog (tools/train.py); volumes "
+                                        "and clips would need a reader and a network of their own."),
+        resolve="a trained {family} whose {rank}-D stem takes {sizes.C} channel(s) of {sizes.H} x {sizes.W}; head of {classes}",
+        needs=["python", "numpy", "torch", "torchvision", "metaflow"],
+        implemented_by=["tools/train.py", "tools/train_blocks.py", "tools/flow.py", "flows/experiment.py",
+                        "grid/experiment-driver.sbatch"],
+        today_=today("live", route="experiment", word="experiment <issue>", flow="ExperimentFlow",
+                     note="one GPU job a request, on the owner's word"),
+        experiment={"epochs": "@param.epochs", "seed": "@param.seed", "hours": "@param.hours",
+                    "blocks": {name: f"@param.{name}" for name in blocks}})
+
+
+def train_annealer():
+    return manifest(
+        "train_annealer", "Train the annealer", "train",
+        "One auto-anatomist trial: trains while the mask input is annealed away, one array task a trial.",
+        "One trial of the auto-anatomist screen (#483): the anneal schedule (lambda-then-w, joint, "
+        "w-first, or fixed, the null), the objective (the oracle's landmarks, or the mask channels "
+        "themselves), the naming term, the calibration of the spreads, the epochs, whole phantoms a batch "
+        "and the seed. Each trial is one task of a GPU array (grid/autoanatomist.sbatch there: 8 CPUs, 64 "
+        "GB, 12 h). A plan's epochs are at most 1000 and its batch at most 64; objective=mask needs naming "
+        "off and calibrate none.",
+        "train",
+        inputs=[port_in("model", {"kind": ["model"], "rank": [3], "needs_parts": ["train", "validation"]},
+                        "The auto-anatomist network, built for split CT crops.")],
+        outputs=[port_out("checkpoint", "model", [["kind", "checkpoint"], ["set", "trained", True]],
+                          "The trial's weights and its curve.")],
+        params=[
+            choice("schedule", ["lambda-then-w", "joint", "w-first", "fixed"], "lambda-then-w", True,
+                   "how lambda's and w's ramps are placed; fixed is the null"),
+            choice("objective", ["landmarks", "mask"], "landmarks", True,
+                   "what the decoder is trained to give"),
+            choice("naming", ["on", "off"], "on", True, "whether the naming term is in the loss"),
+            choice("calibrate", ["none", "scale", "quantile"], "none", True, "the calibration of the spreads"),
+            integer("epochs", 1, 1000, 50, True, "epochs a trial; a plan takes at most 1000"),
+            integer("batch", 1, 64, 2, False, "whole phantoms a batch; a plan takes at most 64"),
+            integer("seed", 0, 999999999, 1, True, "the network's initialisation and the session's draws"),
+        ],
+        rules=[
+            rule({"objective": {"in": ["mask"]}}, {"naming": {"in": ["off"]}}, "objective=mask needs naming=off"),
+            rule({"objective": {"in": ["mask"]}}, {"calibrate": {"in": ["none"]}},
+                 "objective=mask needs calibrate=none"),
+        ],
+        reads=["train", "validation"],
+        job_=job("gpu", 12, 8, 64, array=True),
+        deterministic="seeded", seed_param="seed",
+        nondeterminism="JAX on a GPU may differ in its last bits between runs; each trial records its words "
+                       "and their digest.",
+        generic_=generic([3], "no", why="It trains on 3-D CT crops (#483); 2-D frames would need a 2-D network "
+                                        "and crops of their own."),
+        needs=["python", "numpy", "jax", "metaflow"],
+        code="planned", implemented_by=[],
+        today_=today("planned", note="Built on the unmerged pull request #483 (flows/autoanatomist.py and "
+                                      "grid/screens/ on its branch); planned here until it merges, since "
+                                      "nothing on main runs it."),
+        experiment=None)
+
+
+def calibrate_temperature():
+    return manifest(
+        "calibrate_temperature", "Temperature scaling", "calibrate",
+        "Fits one temperature on the validation part so the classifier's confidence matches its accuracy.",
+        "Planned: divides the logits by one temperature fitted to the validation part's negative log "
+        "likelihood, which changes no prediction, only how sure each one is. Test is never read. No "
+        "SchwingNet code fits one yet; the auto-anatomist calibrates its spreads inside training instead "
+        "(calibrate none, scale or quantile, #483).",
+        "calibrate",
+        inputs=[port_in("checkpoint", TRAINED, "A trained classifier.")],
+        outputs=[port_out("checkpoint", "checkpoint", [], "The same checkpoint with its temperature.")],
+        reads=["validation"],
+        needs=["python", "torch"],
+        code="planned", implemented_by=[],
+        today_=today("planned", note="waits for the pipeline route"),
+        experiment=None)
+
+
+def select_on_validation():
+    return manifest(
+        "select_on_validation", "Keep one arm by validation", "select",
+        "Joins the arms of a screen and keeps the best by its validation score; the test part stays shut.",
+        "Planned as a block: every arm's checkpoint is ranked by its validation score and one is kept, "
+        "so the test part is read once, after the choice. The experiments' pre-registration chooses the "
+        "next combination from the validation part alone; today tools/block_sweep.py ledger reads the "
+        "recorded runs that way, by hand. Its job (1 CPU, 8 GB, 1 hour) is the sandbox's allowance; "
+        "nothing has measured it.",
+        "select",
+        inputs=[port_in("trials", TRAINED, "The arms' checkpoints.")],
+        outputs=[port_out("checkpoint", "trials", [], "The kept arm's checkpoint.")],
+        reads=["validation"],
+        job_=job("cpu", 1, 1, 8),
+        needs=["python"],
+        code="planned", implemented_by=[],
+        today_=today("planned", note="tools/block_sweep.py ledger ranks recorded runs on validation by hand"),
+        experiment=None)
+
+
+def evaluate_heldout():
+    return manifest(
+        "evaluate_heldout", "Evaluate on held-out test", "evaluate",
+        "Reads the test part once: accuracy with Wilson intervals, and the witness frames at every epoch.",
+        "tools/evaluate.py over the run: the test part read once, each number a result row with its "
+        "Wilson interval and stamp, and the witness frames drawn over every kept epoch. A second data "
+        "input adds another held-out set, such as the catalog's real test frames beside a synthetic run. "
+        "On the experiment route it runs in the training job; in the v1 flow its own job gets a quarter of "
+        "the training hours, at least 0.25 (tools/flow.py), so 1 hour at the default 4.",
+        "evaluate",
+        inputs=[
+            port_in("checkpoint", TRAINED, "The trained checkpoint."),
+            port_in("data", {"kind": ["data"], "rank": [2], "time": "no", "needs_parts": ["test"]},
+                    "Another held-out set with a test part.", optional=True),
+        ],
+        outputs=[port_out("metrics", "checkpoint", TO_METRICS, "Test scores with intervals, and the witness frames.")],
+        reads=["test"],
+        job_=job("gpu", 1, 8, 64, with_upstream=True),
+        deterministic="declared",
+        nondeterminism="A GPU forward pass may differ in its last bits between cards, so a borderline "
+                       "crop's guess can move; the scores are counted again, never assumed.",
+        generic_=generic([2], "no", why="It reads 2-D crops of a catalog's test part (tools/evaluate.py); a "
+                                        "volume or a clip would need a reader of its own."),
+        needs=["python", "numpy", "torch", "torchvision"],
+        implemented_by=["tools/evaluate.py", "tools/witness.py", "tools/flow.py"],
+        today_=today("live", route="experiment", note="in the request's GPU job"),
+        experiment={})
+
+
+def latency_onnx():
+    return manifest(
+        "latency_onnx", "Latency and ONNX parity", "evaluate",
+        "Exports the checkpoint to ONNX, checks its parity with PyTorch, and times it against the 97 ms budget.",
+        "The latency flow's parts (tools/latency.py): gpu exports best.pt to ONNX, checks ONNX Runtime and "
+        "PyTorch on CPU and GPU against PyTorch on the CPU over validation crops (the same labels, "
+        "probabilities within 1e-5), and times them; cpu times both on CPU threads; sweep runs a recorded "
+        "sweep through the frame path with its overlay (tools/sweep.py). No latency is quoted without "
+        "parity for the same file. The word latency queues the jobs; the sandbox counts the GPU job "
+        "(grid/latency-sweep.sbatch: 8 CPUs, 32 GB, 1 h 30).",
+        "latency",
+        inputs=[
+            port_in("checkpoint", TRAINED, "The trained checkpoint."),
+            port_in("sweeps", {"kind": ["data"], "rank": [2], "time": "yes"}, "Recorded sweeps to play through.",
+                    optional=True),
+        ],
+        outputs=[port_out("metrics", "checkpoint", TO_METRICS, "Parity, latency and the sweep's overlay.")],
+        reads=["validation", "test"],
+        job_=job("gpu", 1.5, 8, 32),
+        deterministic="declared",
+        nondeterminism="Timings vary from run to run and card to card, which is what is measured; parity "
+                       "is held to 1e-5 on the same file.",
+        generic_=generic([2], "yes", why="The sweep input is a clip of 2-D frames (tools/sweep.py) and the "
+                                         "network reads 2-D crops; a volume has no sweep to play."),
+        needs=["python", "numpy", "torch", "onnxruntime", "metaflow"],
+        implemented_by=["tools/latency.py", "tools/sweep.py", "flows/latency.py", "grid/latency-sweep.sbatch",
+                        "grid/run-latency-sweep.sh"],
+        today_=today("flow", flow="LatencyFlow", note="the word latency queues its jobs for one v1 run"),
+        experiment=None)
+
+
+def domain_gap():
+    frames = {"kind": ["data"], "rank": [2], "time": "no"}
+    return manifest(
+        "domain_gap", "DRR domain gap", "evaluate",
+        "Calibrated separation tests of synthetic DRRs against real images: how far apart the two sets are.",
+        "tools/domain_gap.py: calibrated separation tests between a set of synthetic images and a set of "
+        "real ones, with the replication test of FleXray's renderer, under the frozen "
+        "docs/research/drr-domain-gap/PREREG.md. It trains no network on either set, so it reads no split "
+        "part. Today it is three GPU jobs of the drr_gap flow, a prepare, a 16-task shard array and a "
+        "merge (grid/gate.sh); the sandbox counts it inside the render job, with the merge's 4 hours.",
+        "gap",
+        inputs=[port_in("synthetic", frames, "Synthetic 2-D images."),
+                port_in("real", frames, "Real 2-D images.")],
+        outputs=[port_out("metrics", "synthetic", TO_METRICS, "The separation tests with their calibration.")],
+        job_=job("gpu", 4, 4, 64, with_upstream=True),
+        deterministic="declared",
+        nondeterminism="Its draws come from the study's salt (data/domain_gap/groups.json), so a rerun "
+                       "repeats them; a GPU's arithmetic may differ in its last bits.",
+        generic_=generic([2], "no", why="The tests compare 2-D images (tools/domain_gap.py); volumes would "
+                                        "first need projecting."),
+        needs=["python", "numpy", "scipy", "torch", "metaflow"],
+        implemented_by=["tools/domain_gap.py", "tools/domain_gap_stats.py", "flows/drr_gap.py",
+                        "grid/drr-gap.sbatch", "data/domain_gap/groups.json"],
+        today_=today("flow", flow="DrrGapFlow", note="the word bench flexray_drr_gap"),
+        experiment=None)
+
+
+def morphometry():
+    return manifest(
+        "morphometry", "Vertebral morphometry", "analyse",
+        "bordercall's morphometry engine measures every vertebra of a mask into rows of a table.",
+        "bordercall's morphometry engine, the copy pinned under grid/bordercall/ and imported by path, "
+        "measures each labelled vertebra of a CT's mask into a row: its level and its measurements. The "
+        "rows stay on the grid and only aggregates leave (logs/MORPHOMETRY-<set>.md). Today the word runs "
+        "it over the gold tier 3 masks as two CPU jobs, enhance and verse (grid/morphometry.sbatch: 32 "
+        "CPUs, 64 GB, 24 h); morphometry covariates then joins each person's sex and age.",
+        "morphometry",
+        inputs=[port_in("masks", {"kind": ["data"], "rank": [3], "time": "no", "modality": ["ct"]},
+                        "CT volumes with vertebra masks.")],
+        outputs=[port_out("table", "masks", [
+            ["axes", ["N", "F"]], ["set", "dtype", "float32"], ["set", "targets", "level"],
+            ["set", "classes", None], ["set", "modality", "table"]],
+            "One row per vertebra: its level and its measurements.")],
+        params=[choice("collection", ["enhance", "verse"], "enhance", True,
+                       "the word's set: ENHANCE.PET's label maps, or VerSe's with TotalSegmentator's")],
+        job_=job("cpu", 24, 32, 64),
+        generic_=generic([3], "no", why="It measures labelled 3-D masks (grid/bordercall/); a frame or a clip "
+                                        "has no vertebra to measure in 3-D. The probe test hands it unlabelled "
+                                        "volumes too, so the pattern does not ask for masks; a volume without one "
+                                        "gives no rows."),
+        needs=["python", "numpy", "scipy", "nibabel"],
+        implemented_by=["grid/morphometry.sbatch", "grid/bordercall/morphometry/__init__.py",
+                        "tools/bordercall_vendor.py"],
+        today_=today("word", word="morphometry enhance",
+                     note="also morphometry verse, and morphometry covariates once both end 0"),
+        experiment=None)
+
+
+def bordercall_naming():
+    return manifest(
+        "bordercall_naming", "Name levels by bordercall", "analyse",
+        "Names each vertebra counting from C2 with no network: the count, the ribs and VERIDAH kept apart.",
+        "bordercall's own commands over a label tree counted from C2 (tools/bordercall_corpus.py, "
+        "grid/bordercall.sbatch): a column without C2 is set aside, a gap rule catches a missed body, and "
+        "three namings are kept and never pooled, the count, the ribs and VERIDAH's. Only the lumbar "
+        "measurements are validated. Today the word runs it over the census's existing SPINEPS masks, a "
+        "pilot and then the full corpus (8 CPUs, 32 GB, 12 h). Naming from a morphometry table's rows, "
+        "the features step of the latent prior evaluation, has no word yet.",
+        "naming",
+        inputs=[port_in("data", {"kind": ["data"], "rank": [0, 3], "time": "no", "modality": ["ct", "table"]},
+                        "Masks counted from C2, or (planned) a morphometry table.")],
+        outputs=[port_out("names", "data", TO_METRICS, "Each column's naming, with counts that leave the grid.")],
+        params=[choice("stage", ["pilot", "full"], "pilot", False, "the word's stage: the pilot first")],
+        job_=job("cpu", 12, 8, 32),
+        generic_=generic([0, 3], "no", why="It counts vertebrae in 3-D masks, or, planned, reads a table of "
+                                           "their measurements; a 2-D frame shows no column to count from C2."),
+        needs=["python", "numpy", "scipy", "nibabel"],
+        implemented_by=["tools/bordercall_corpus.py", "tools/bordercall_vendor.py", "grid/bordercall.sbatch"],
+        today_=today("word", word="bordercall pilot",
+                     note="then bordercall full; bordercall complete is the gold tier 3 completion"),
+        experiment=None)
+
+
+def report_claim():
+    accepts = {"kind": ["data", "metrics", "checkpoint", "report"]}
+    return manifest(
+        "report_claim", "CLAIM and REFORMS report", "report",
+        "The CLAIM 2024 and REFORMS report every launched flow writes and checks at its end.",
+        "The end step of every launched flow (flows/stage.py) writes the run's CLAIM 2024 and REFORMS "
+        "report from its records (tools/report.py) and checks that it is current; a run whose report is "
+        "not current ends with a failed verdict. CLAIM is the checklist for reporting imaging AI, REFORMS "
+        "the one for machine-learning science. It rides with every flow at no cost of its own.",
+        "report",
+        inputs=[port_in("results", accepts, "What the run made."),
+                port_in("more", accepts, "Another result of the same run.", optional=True)],
+        outputs=[port_out("report", "results", TO_REPORT, "The report, beside the run's records.")],
+        generic_=generic(ALL_RANKS),
+        needs=["python", "metaflow"],
+        implemented_by=["tools/report.py", "flows/stage.py"],
+        today_=today("live", route="experiment", note="the experiment flow's end step writes it"),
+        experiment={})
+
+
+def wandb_log():
+    return manifest(
+        "wandb_log", "Log to Weights and Biases", "report",
+        "Pushes a run's numbers and witness frames to W&B: online where the grid's key is found, else offline.",
+        "The run logs to W&B online where the grid's key is found (WANDB_API_KEY, ~/.wandb/token.env or "
+        "~/.netrc), and offline otherwise; the flow then pushes the offline run after each step and says "
+        "so loudly when it is not pushed (docs/memory/evaluation-and-wandb.md). The block holds no key.",
+        "wandb",
+        inputs=[port_in("results", {"kind": ["metrics", "checkpoint"]}, "A run's checkpoint or metrics.")],
+        outputs=[port_out("log", "results", TO_REPORT, "The W&B run.")],
+        needs=["python", "wandb"],
+        implemented_by=["tools/wandb_log.py"],
+        today_=today("live", route="experiment", note="every flow run logs"),
+        experiment={})
+
+
+def model_card():
+    return manifest(
+        "model_card", "Model card", "report",
+        "Writes MODEL.md beside the checkpoint: the network, what it saw, what it scored and what it is not.",
+        "tools/train.py writes MODEL.md with the checkpoint: the run and its commit, the architecture with "
+        "its 27-way head and crop size, the initial weights, seed, epochs and blocks, the training and "
+        "validation crops (no test row is read), the prior head where used, the best epoch's validation "
+        "accuracy with its interval, best.pt's sha256 and the levels. It rides with every training run.",
+        "card",
+        inputs=[port_in("checkpoint", TRAINED, "The trained checkpoint.")],
+        outputs=[port_out("card", "checkpoint", TO_REPORT, "MODEL.md.")],
+        needs=["python", "torch"],
+        implemented_by=["tools/train.py"],
+        today_=today("live", route="experiment", note="every training run writes it"),
+        experiment={})
+
+
+TRAIN = [train_classifier, train_annealer, calibrate_temperature, select_on_validation, evaluate_heldout,
+         latency_onnx, domain_gap, morphometry, bordercall_naming, report_claim, wandb_log, model_card]

@@ -1,0 +1,53 @@
+// A tiny test harness for the engine's scratch tests: checks are counted, failures printed.
+"use strict";
+
+var SB = require("/home/user/SchwingNet/tools/sandbox/engine.js");
+
+var counts = {pass: 0, fail: 0};
+var failures = [];
+var section = "";
+
+function begin(name) {
+  section = name;
+}
+
+function ok(cond, what, detail) {
+  if (cond) {
+    counts.pass += 1;
+  } else {
+    counts.fail += 1;
+    failures.push("[" + section + "] " + what + (detail === undefined ? "" : " :: " + JSON.stringify(detail)));
+  }
+  return cond;
+}
+
+function eq(actual, expected, what) {
+  var a = JSON.stringify(actual), e = JSON.stringify(expected);
+  return ok(a === e, what, {actual: actual, expected: expected});
+}
+
+// The sorted (code, node, port, field, level) keys of a problem list, the comparison SPEC 10 asks for.
+function keys(problems) {
+  return problems.map(function (p) {
+    return [p.code, p.node, p.port, p.field, p.level].map(function (x) { return x === null ? "-" : String(x); }).join("|");
+  }).sort();
+}
+
+function codes(problems) {
+  return Array.from(new Set(problems.map(function (p) { return p.code; }))).sort();
+}
+
+function has(problems, code, node, port, field, level) {
+  return problems.some(function (p) {
+    return p.code === code && (node === undefined || p.node === node) && (port === undefined || p.port === port) &&
+      (field === undefined || p.field === field) && (level === undefined || p.level === level);
+  });
+}
+
+function done() {
+  failures.forEach(function (f) { console.log("FAIL " + f); });
+  console.log(counts.pass + " passed, " + counts.fail + " failed");
+  if (counts.fail) process.exitCode = 1;
+}
+
+module.exports = {SB: SB, begin: begin, ok: ok, eq: eq, keys: keys, codes: codes, has: has, done: done, counts: counts};

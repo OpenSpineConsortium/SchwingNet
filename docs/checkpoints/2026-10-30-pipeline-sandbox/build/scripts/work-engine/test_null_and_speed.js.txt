@@ -1,0 +1,66 @@
+// A null value from an unconnected port, and the engine's speed on the largest board the limits allow.
+"use strict";
+
+var T = require("./t.js");
+var F = require("./fixtures.js");
+var SB = T.SB;
+
+var D = F.data();
+var nullOps = F.manifest("op_null", "prepare", "fallback", {
+  inputs: [{name: "data", accepts: {kind: ["data"]}, optional: false, what: "x"},
+    {name: "other", accepts: {kind: ["data"]}, optional: true, what: "x"}],
+  outputs: [{name: "data", from: "data", what: "x", ops: [["axes", "@in.other.axes"], ["parts", "@in.other.parts"],
+    ["kind", "@in.other.kind"], ["set", "dtype", "@in.other.dtype"], ["set", "classes", "@in.other.classes"],
+    ["licence", "@in.other.licence"], ["cut", "@in.other.licence"], ["size", "C", "@in.other.sizes.C"],
+    ["add_axis", "K", null, "@in.other.sizes.K"], ["set", "family", "@in.other.family"], ["set", "trained", "@in.other.trained"]]}],
+  generic: F.EVERYTHING, experiment: null, today: F.today("flow", {flow: "x"})});
+D.blocks.push(nullOps);
+
+T.begin("null values");
+T.eq(SB.checkManifest(nullOps, F.contract), [], "the manifest passes");
+var spec = {sandbox: 1, name: "nulls", nodes: [F.node("n1", "catalog_v1"), F.node("n2", "op_null")],
+  edges: [F.edge("n1", "data", "n2", "data")]};
+var P = SB.propagate(spec, D);
+T.eq(P.problems, [], "no problem from refs to an unconnected port");
+var t = P.nodes.n2.outputs.data;
+T.eq([t.kind, t.axes, t.sizes, t.parts, t.dtype, t.classes, t.licence, t.family, t.trained],
+  ["data", ["N", "C", "H", "W", "K"], {}, ["train", "validation", "test"], "uint8", null, "uncut", null, false],
+  "axes, parts, kind, dtype, licence and trained kept; size C removed; K added with no size; classes and family null");
+var connected = {sandbox: 1, name: "nulls2", nodes: [F.node("n1", "catalog_v1"), F.node("n2", "vol_source"), F.node("n3", "op_null")],
+  edges: [F.edge("n1", "data", "n3", "data"), F.edge("n2", "data", "n3", "other")]};
+var P2 = SB.propagate(connected, D);
+T.eq(P2.problems, [], "no problem when connected");
+var t2 = P2.nodes.n3.outputs.data;
+T.eq([t2.axes, t2.sizes, t2.parts, t2.dtype, t2.classes, t2.licence, t2.sources],
+  [["N", "C", "D", "H", "W", "K"], {C: 1}, [], "int16", 28, "non-commercial", ["catalog_v1", "vol_source"]],
+  "the values read from the connected port (licence keeps uncut, cut narrows it); lineage merged after the ops");
+T.ok(SB.checkManifest(F.manifest("op_lit", "prepare", "fallback", {
+  inputs: [{name: "data", accepts: {kind: ["data"]}, optional: false, what: "x"}],
+  outputs: [{name: "data", from: "data", what: "x", ops: [["set", "dtype", null]]}], generic: F.EVERYTHING, experiment: null,
+  today: F.today("flow", {flow: "x"})}), F.contract).some(function (p) { return p.code === "op"; }), "a written null dtype is an R2 op problem");
+
+T.begin("speed");
+var big = {sandbox: 1, name: "big", nodes: [F.node("n1", "catalog_v1")], edges: []};
+for (var k = 2; k <= 60; k++) {
+  big.nodes.push(F.node("n" + k, k % 2 ? "normalise" : "op_mix"));
+  big.edges.push(F.edge("n" + (k - 1), "data", "n" + k, "data"));
+}
+var start = process.hrtime.bigint();
+for (var i = 0; i < 50; i++) {
+  SB.compile(big, D);
+}
+var compileMs = Number(process.hrtime.bigint() - start) / 1e6 / 50;
+start = process.hrtime.bigint();
+var stats = SB.transitionStats([F.chain("a"), F.chain("b")]);
+for (var j = 0; j < 50; j++) {
+  SB.predict(big, "n30", D, stats, {});
+}
+var predictMs = Number(process.hrtime.bigint() - start) / 1e6 / 50;
+var chain = F.chain("chain");
+start = process.hrtime.bigint();
+for (var c = 0; c < 500; c++) SB.compile(chain, D);
+var chainMs = Number(process.hrtime.bigint() - start) / 1e6 / 500;
+console.log("compile of 60 nodes: " + compileMs.toFixed(2) + " ms; predict on it: " + predictMs.toFixed(2) + " ms; compile of the chain: " +
+  chainMs.toFixed(3) + " ms");
+T.ok(compileMs < 50 && predictMs < 50, "fast enough for a hover", [compileMs, predictMs]);
+T.done();

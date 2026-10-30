@@ -1,0 +1,94 @@
+{
+ "block": 1,
+ "id": "level_prior_head",
+ "version": 1,
+ "title": "Level-map prior head",
+ "stage": "model",
+ "summary": "Adds the training-only head that learns each frame's projected level map beside the level loss.",
+ "does": "The prior block (#228): a head on the backbone learns a frame's projected level map, 28 classes at every pixel (the 27 levels and the background), its loss weighted by weight beside the level loss. Only crops whose frame has a map teach it. The head is not in best.pt (prior_head.pt lies beside it), so the network that names levels is unchanged (tools/train.py).",
+ "glyph": "prior",
+ "inputs": [
+  {
+   "name": "model",
+   "accepts": {
+    "kind": [
+     "model"
+    ],
+    "rank": [
+     2
+    ]
+   },
+   "optional": false,
+   "what": "A 2-D level classifier."
+  }
+ ],
+ "outputs": [
+  {
+   "name": "model",
+   "from": "model",
+   "ops": [],
+   "what": "The same network with the prior head for training."
+  }
+ ],
+ "params": [
+  {
+   "name": "weight",
+   "kind": "float",
+   "low": 0,
+   "high": 100,
+   "above": true,
+   "default": 0.5,
+   "vary": true,
+   "what": "the prior loss's weight beside the level loss, above 0 (grid/sweeps/real.json uses 0.5); 100 is the sandbox's cap"
+  }
+ ],
+ "rules": [],
+ "reads": {
+  "parts": []
+ },
+ "job": {
+  "class": "none",
+  "hours": 0,
+  "with_upstream": false,
+  "array": false,
+  "cpus": 0,
+  "memory_gb": 0
+ },
+ "deterministic": "declared",
+ "seed_param": "",
+ "nondeterminism": "The new head starts from a random draw made under its trainer's seed, so the network repeats only with that seed.",
+ "generic": {
+  "rank": [
+   2
+  ],
+  "time": "no",
+  "channels": "any",
+  "sizes": "any",
+  "why": "The level map is a 2-D frame's projected map (tools/train.py); a volume would need a 3-D map and a 3-D head."
+ },
+ "resolve": "{family} with a level-map prior head",
+ "needs": [
+  "python",
+  "torch"
+ ],
+ "code": "existing",
+ "implemented_by": [
+  "tools/train.py",
+  "tools/train_blocks.py",
+  "src/schwingnet/blocks.py"
+ ],
+ "today": {
+  "status": "live",
+  "route": "experiment",
+  "word": "",
+  "flow": "",
+  "note": "the request's block lines prior and prior_weight"
+ },
+ "experiment": {
+  "blocks": {
+   "prior": "level-map",
+   "prior_weight": "@param.weight"
+  }
+ },
+ "card": null
+}

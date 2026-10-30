@@ -1,0 +1,142 @@
+{
+ "sandbox": 1,
+ "id": "experiment_v1",
+ "name": "Version 1 on the experiment route",
+ "about": "Version 1 of SchwingNet as the experiment route runs it today: the catalog's frames cropped to 64-pixel grey boxes, no normalising and no augmentation, resnet18 with ImageNet weights and a 27-way head, trained 20 epochs with seed 1 in a 4-hour GPU job, evaluated once on the held-out test persons in the same job, and reported. Every block is at its default, so the request names no block; the owner's word and count decide whether it runs.",
+ "nodes": [
+  {
+   "id": "n1",
+   "block": "catalog_v1",
+   "version": 1,
+   "params": {}
+  },
+  {
+   "id": "n2",
+   "block": "crop_boxes",
+   "version": 1,
+   "params": {}
+  },
+  {
+   "id": "n3",
+   "block": "normalise",
+   "version": 1,
+   "params": {}
+  },
+  {
+   "id": "n4",
+   "block": "augment",
+   "version": 1,
+   "params": {}
+  },
+  {
+   "id": "n5",
+   "block": "classifier",
+   "version": 1,
+   "params": {}
+  },
+  {
+   "id": "n6",
+   "block": "train_classifier",
+   "version": 1,
+   "params": {}
+  },
+  {
+   "id": "n7",
+   "block": "evaluate_heldout",
+   "version": 1,
+   "params": {}
+  },
+  {
+   "id": "n8",
+   "block": "report_claim",
+   "version": 1,
+   "params": {}
+  }
+ ],
+ "edges": [
+  {
+   "from": "n1",
+   "out": "data",
+   "to": "n2",
+   "in": "frames"
+  },
+  {
+   "from": "n2",
+   "out": "crops",
+   "to": "n3",
+   "in": "data"
+  },
+  {
+   "from": "n3",
+   "out": "data",
+   "to": "n4",
+   "in": "data"
+  },
+  {
+   "from": "n4",
+   "out": "data",
+   "to": "n5",
+   "in": "data"
+  },
+  {
+   "from": "n5",
+   "out": "model",
+   "to": "n6",
+   "in": "model"
+  },
+  {
+   "from": "n6",
+   "out": "checkpoint",
+   "to": "n7",
+   "in": "checkpoint"
+  },
+  {
+   "from": "n7",
+   "out": "metrics",
+   "to": "n8",
+   "in": "results"
+  }
+ ],
+ "layout": {
+  "n1": [
+   40,
+   40
+  ],
+  "n2": [
+   340,
+   40
+  ],
+  "n3": [
+   640,
+   40
+  ],
+  "n4": [
+   940,
+   40
+  ],
+  "n5": [
+   1240,
+   40
+  ],
+  "n6": [
+   1540,
+   40
+  ],
+  "n7": [
+   1840,
+   40
+  ],
+  "n8": [
+   2140,
+   40
+  ]
+ },
+ "expect": {
+  "route": "experiment",
+  "ready": true,
+  "requests": 1,
+  "gpu_submissions": 1,
+  "cpu_submissions": 0,
+  "gpu_tasks": 1
+ }
+}

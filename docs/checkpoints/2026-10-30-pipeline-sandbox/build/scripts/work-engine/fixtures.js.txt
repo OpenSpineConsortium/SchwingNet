@@ -1,0 +1,305 @@
+// Small manifests and a contract of the scratch tests' own, written to the format of SPEC.md 3-7;
+// the block ids the experiment route names (catalog_v1, classifier, train_classifier) keep their ids.
+"use strict";
+
+var fs = require("fs");
+var path = require("path");
+
+var PARTS = ["train", "validation", "test"];
+
+function probeType(axes, sizes, dtype) {
+  var rank = axes.filter(function (a) { return ["D", "H", "W"].indexOf(a) >= 0; }).length;
+  return {kind: "data", axes: axes, sizes: sizes, dtype: dtype, targets: "level", classes: 27, parts: PARTS.slice(),
+    persons: true, modality: "any", licence: "uncut", sources: [], family: null, rank: rank, trained: false};
+}
+
+var contract = {
+  contract: 1,
+  stages: ["source", "prepare", "split", "augment", "model", "train", "calibrate", "select", "evaluate", "analyse",
+    "report"].map(function (id) { return {id: id, title: id.charAt(0).toUpperCase() + id.slice(1), what: "w"}; }),
+  kinds: {data: "d", model: "m", checkpoint: "c", metrics: "x", report: "r"},
+  axes: {N: "samples", T: "time", C: "channels", D: "depth", H: "height", W: "width", F: "features", K: "points",
+    P: "coordinates"},
+  spatial: ["D", "H", "W"],
+  dtypes: ["uint8", "int16", "int32", "float16", "float32", "bool"],
+  targets: ["none", "level", "mask", "points", "value"],
+  parts: PARTS.slice(),
+  modalities: ["any", "fluoro", "radiograph", "mixed", "ct", "drr", "table"],
+  licences: ["commercial", "commercial-share-alike", "non-commercial", "research-internal", "uncut"],
+  job_classes: ["none", "cpu", "gpu"],
+  today: ["live", "word", "flow", "pending", "planned"],
+  code: ["existing", "own", "planned"],
+  deterministic: ["exact", "seeded", "declared"],
+  needs: ["python", "numpy", "scipy", "nibabel", "torch", "torchvision", "monai", "onnxruntime", "jax", "pymc",
+    "metaflow", "wandb"],
+  glyphs: ["catalog", "ct", "video", "folder", "synthetic", "recipe", "samples", "normalise", "denoise", "crop",
+    "segment", "render", "realism", "features", "split", "splitFamilies", "augment", "network", "unet", "prior", "train",
+    "calibrate", "select", "evaluate", "latency", "gap", "morphometry", "naming", "report", "wandb", "card", "fallback"],
+  limits: {combinations: 64, array_tasks: 1000, nodes: 60, edges: 120, epochs_most: 200, hours_most: 48,
+    manifest_bytes: 16384},
+  probes: [
+    {name: "frames, 2-D grey 64", type: probeType(["N", "C", "H", "W"], {C: 1, H: 64, W: 64}, "uint8")},
+    {name: "frames, 2-D colour 224", type: probeType(["N", "C", "H", "W"], {C: 3, H: 224, W: 224}, "float32")},
+    {name: "volumes, 3-D grey 96", type: probeType(["N", "C", "D", "H", "W"], {C: 1, D: 96, H: 96, W: 96}, "int16")},
+    {name: "clips, 2-D grey", type: probeType(["N", "T", "C", "H", "W"], {T: 16, C: 1, H: 64, W: 64}, "uint8")},
+    {name: "a table", type: probeType(["N", "F"], {F: 32}, "float32")}
+  ],
+  requirements: []
+};
+
+function job(cls, hours, extra) {
+  var j = {"class": cls || "none", hours: hours === undefined ? 0 : hours, with_upstream: false, array: false,
+    cpus: cls && cls !== "none" ? 4 : 0, memory_gb: cls && cls !== "none" ? 16 : 0};
+  Object.keys(extra || {}).forEach(function (k) { j[k] = extra[k]; });
+  return j;
+}
+
+function today(status, extra) {
+  var t = {status: status, route: "", word: "", flow: "", note: ""};
+  Object.keys(extra || {}).forEach(function (k) { t[k] = extra[k]; });
+  return t;
+}
+
+var EVERYTHING = {rank: [0, 1, 2, 3], time: "any", channels: "any", sizes: "any", why: ""};
+
+function manifest(id, stage, glyph, fields) {
+  var m = {
+    block: 1, id: id, version: 1, title: fields.title || id.replace(/_/g, " "), stage: stage,
+    summary: "The " + id + " block of the scratch tests.", does: "It does what the " + id + " test needs.", glyph: glyph,
+    inputs: [], outputs: [], params: [], rules: [], reads: {parts: []}, job: job(), deterministic: "exact",
+    seed_param: "", nondeterminism: "", generic: null, resolve: null, needs: ["python"], code: "existing",
+    implemented_by: ["tools/train.py"], today: today("live", {route: "experiment"}), experiment: {}, card: null
+  };
+  Object.keys(fields).forEach(function (k) { m[k] = fields[k]; });
+  return m;
+}
+
+var CARD = {origin: "o", where: "w", count: "c", persons: "p", split: "s", held_out: "h", licence: "l",
+  from: ["docs/research/v1-demo/README.md"]};
+
+var dataIn = function (name, accepts, optional) {
+  return {name: name, accepts: accepts, optional: optional === true, what: "the " + name};
+};
+var out = function (name, from, ops) {
+  return {name: name, from: from, ops: ops, what: "the " + name};
+};
+
+var blocks = [
+  manifest("catalog_v1", "source", "catalog", {
+    outputs: [out("data", null, [["axes", ["N", "C", "H", "W"]], ["size", "C", 1], ["set", "dtype", "uint8"],
+      ["set", "targets", "level"], ["set", "classes", 27], ["parts", PARTS.slice()], ["set", "persons", true],
+      ["set", "modality", "mixed"]])],
+    card: CARD
+  }),
+  manifest("vol_source", "source", "ct", {
+    outputs: [out("data", null, [["axes", ["N", "C", "D", "H", "W"]], ["size", "C", 1], ["set", "dtype", "int16"],
+      ["set", "targets", "mask"], ["set", "classes", 28], ["set", "persons", true], ["set", "modality", "ct"],
+      ["cut", "non-commercial"]])],
+    experiment: null, today: today("word", {word: "census gold3"}), card: CARD
+  }),
+  manifest("clip_source", "source", "video", {
+    outputs: [out("data", null, [["axes", ["N", "T", "C", "H", "W"]], ["size", "T", 16], ["size", "C", 1],
+      ["set", "dtype", "uint8"], ["set", "targets", "level"], ["parts", ["test"]], ["set", "persons", true],
+      ["set", "modality", "fluoro"], ["cut", "commercial"]])],
+    experiment: null, today: today("flow", {flow: "latency"}), card: CARD
+  }),
+  manifest("recipe_cut", "prepare", "recipe", {
+    inputs: [dataIn("data", {kind: ["data"]})],
+    outputs: [out("data", "data", [["cut", "@param.recipe"]])],
+    params: [{name: "recipe", kind: "choice", choices: ["commercial", "commercial-share-alike", "non-commercial",
+      "research-internal"], default: "research-internal", vary: true, what: "r"}],
+    generic: EVERYTHING, experiment: {recipe: "@param.recipe"}
+  }),
+  manifest("crop_boxes", "prepare", "crop", {
+    inputs: [dataIn("data", {kind: ["data"], rank: [2], has_axes: ["H", "W"]})],
+    outputs: [out("data", "data", [["size", "H", "@param.size"], ["size", "W", "@param.size"]])],
+    params: [{name: "size", kind: "int", low: 32, high: 512, default: 64, vary: true, what: "s"}],
+    generic: {rank: [2], time: "any", channels: "any", sizes: "any", why: "the trainer crops 2-D boxes only today"},
+    experiment: {only: {size: [64]}}
+  }),
+  manifest("normalise", "prepare", "normalise", {
+    inputs: [dataIn("data", {kind: ["data"]})],
+    outputs: [out("data", "data", [["set", "dtype", "float32"]])],
+    params: [{name: "normalise", kind: "choice", choices: ["none", "imagenet"], default: "none", vary: true, what: "n"}],
+    generic: EVERYTHING, experiment: {blocks: {normalise: "@param.normalise"}}
+  }),
+  manifest("augment", "augment", "augment", {
+    inputs: [dataIn("data", {kind: ["data"], parts: "split", needs_parts: ["train"]})],
+    outputs: [out("data", "data", [])],
+    params: [{name: "augment", kind: "set", options: ["box-jitter", "intensity", "blur", "noise", "strong"], default: [],
+      vary: true, what: "a"}],
+    reads: {parts: ["train"]},
+    generic: EVERYTHING, experiment: {blocks: {augment: "@param.augment"}}
+  }),
+  manifest("classifier", "model", "network", {
+    inputs: [dataIn("data", {kind: ["data"], rank: [2], has_axes: ["C"], parts: "split", time: "no"})],
+    outputs: [out("model", "data", [["kind", "model"], ["set", "family", "@param.architecture"]])],
+    params: [{name: "architecture", kind: "choice", choices: ["resnet18", "resnet34", "resnet50"], default: "resnet18",
+      vary: true, what: "a"}, {name: "weights", kind: "choice", choices: ["imagenet", "none"], default: "imagenet",
+      vary: false, what: "w"}],
+    generic: {rank: [2], time: "no", channels: "any", sizes: "any", why: "2-D torchvision nets today, grey tiled to 3"},
+    resolve: "a {family} whose {rank}-D stem takes {sizes.C} channel(s) of {sizes.H} x {sizes.W}; head of {classes}",
+    experiment: {blocks: {architecture: "@param.architecture"}, only: {architecture: ["resnet18"], weights: ["imagenet"]}}
+  }),
+  manifest("prior_head", "model", "prior", {
+    inputs: [dataIn("model", {kind: ["model"], trained: false})],
+    outputs: [out("model", "model", [])],
+    params: [{name: "weight", kind: "float", low: 0, high: 10, above: true, default: 0.5, vary: true, what: "w"}],
+    generic: {rank: [2], time: "no", channels: "any", sizes: "any", why: "the level map head is 2-D only today"},
+    experiment: {blocks: {prior: "level-map", prior_weight: "@param.weight"}}
+  }),
+  manifest("train_classifier", "train", "train", {
+    inputs: [dataIn("model", {kind: ["model"], trained: false})],
+    outputs: [out("checkpoint", "model", [["kind", "checkpoint"], ["set", "trained", true]])],
+    params: [
+      {name: "optimiser", kind: "choice", choices: ["adam", "adamw"], default: "adam", vary: true, what: "o"},
+      {name: "weight_decay", kind: "float", low: 0, high: 1, default: 0, vary: true, what: "w"},
+      {name: "backbone_lr_scale", kind: "float", low: 0, high: 1, above: true, default: 1, vary: true, what: "b"},
+      {name: "epochs", kind: "int", low: 1, high: 200, default: 20, vary: true, what: "e"},
+      {name: "seed", kind: "int", low: 0, high: 999999999, default: 1, vary: true, what: "s"},
+      {name: "hours", kind: "float", low: 0.1, high: 48, default: 4, vary: false, what: "h"}
+    ],
+    rules: [{when: {weight_decay: {above: 0}}, need: {optimiser: {"in": ["adamw"]}},
+      say: "weight_decay is for adamw"}],
+    reads: {parts: ["train", "validation"]},
+    job: job("gpu", "@param.hours", {cpus: 8, memory_gb: 64}),
+    deterministic: "seeded", seed_param: "seed",
+    generic: EVERYTHING,
+    experiment: {epochs: "@param.epochs", seed: "@param.seed", hours: "@param.hours",
+      blocks: {optimiser: "@param.optimiser", weight_decay: "@param.weight_decay", backbone_lr_scale: "@param.backbone_lr_scale"}}
+  }),
+  manifest("calibrate_temperature", "calibrate", "calibrate", {
+    inputs: [dataIn("checkpoint", {kind: ["checkpoint"], trained: true})],
+    outputs: [out("checkpoint", "checkpoint", [])],
+    reads: {parts: ["validation"]}, job: job("cpu", 1),
+    generic: null, code: "planned", implemented_by: [], today: today("planned"), experiment: null
+  }),
+  manifest("select_on_validation", "select", "select", {
+    inputs: [dataIn("checkpoint", {kind: ["checkpoint"], trained: true})],
+    outputs: [out("checkpoint", "checkpoint", [])],
+    reads: {parts: ["validation"]}, generic: null, code: "planned", implemented_by: [], today: today("planned"),
+    experiment: null
+  }),
+  manifest("evaluate_heldout", "evaluate", "evaluate", {
+    inputs: [dataIn("checkpoint", {kind: ["checkpoint"], trained: true}), dataIn("data", {kind: ["data"]}, true)],
+    outputs: [out("metrics", "checkpoint", [["kind", "metrics"], ["axes", []]])],
+    reads: {parts: ["test"]}, job: job("gpu", 0.5, {with_upstream: true}),
+    generic: EVERYTHING
+  }),
+  manifest("report_claim", "report", "report", {
+    inputs: [dataIn("results", {kind: ["data", "metrics", "checkpoint", "report"]}),
+      dataIn("more", {kind: ["data", "metrics", "checkpoint", "report"]}, true)],
+    outputs: [out("report", "results", [["kind", "report"], ["axes", []]])],
+    generic: EVERYTHING
+  }),
+  manifest("wandb_log", "report", "wandb", {
+    inputs: [dataIn("results", {kind: ["metrics"]})],
+    outputs: [out("report", "results", [["kind", "report"]])],
+    generic: null
+  }),
+  manifest("trial_array", "train", "train", {
+    inputs: [dataIn("data", {kind: ["data"]})],
+    outputs: [out("checkpoint", "data", [["kind", "checkpoint"], ["set", "trained", true]])],
+    params: [{name: "trial", kind: "int", low: 0, high: 99999, default: 0, vary: true, what: "t"},
+      {name: "hours", kind: "float", low: 0.25, high: 48, default: 2.5, vary: true, what: "h"}],
+    reads: {parts: []}, job: job("gpu", "@param.hours", {array: true}), generic: EVERYTHING,
+    code: "planned", implemented_by: [], today: today("planned"), experiment: null
+  }),
+  manifest("cpu_measure", "analyse", "morphometry", {
+    inputs: [dataIn("data", {kind: ["data"], targets: ["mask"], parts: "unsplit", rank: [3]})],
+    outputs: [out("table", "data", [["axes", ["N", "F"]], ["size", "F", 64], ["set", "dtype", "float32"],
+      ["set", "modality", "table"]])],
+    job: job("cpu", 1.5, {with_upstream: true}),
+    generic: {rank: [3], time: "no", channels: [1], sizes: "any", why: "the engine reads 3-D label maps only"},
+    experiment: null, today: today("word", {word: "morphometry enhance"})
+  }),
+  manifest("gpu_render", "prepare", "render", {
+    inputs: [dataIn("volumes", {kind: ["data"], rank: [3]})],
+    outputs: [out("data", "volumes", [["drop_axis", "D"], ["size", "H", "@param.detector"], ["size", "W", "@param.detector"],
+      ["set", "modality", "drr"], ["add_axis", "K", null, 4], ["drop_axis", "K"]])],
+    params: [{name: "detector", kind: "int", low: 32, high: 1024, default: 256, vary: true, what: "d"}],
+    job: job("gpu", 0.75), generic: {rank: [3], time: "no", channels: "any", sizes: "any", why: "renders CT volumes only"},
+    experiment: null, today: today("flow", {flow: "drr_gap"})
+  }),
+  manifest("gpu_follow", "prepare", "realism", {
+    inputs: [dataIn("data", {kind: ["data"]})],
+    outputs: [out("data", "data", [])],
+    job: job("gpu", 0.25, {with_upstream: true}), generic: EVERYTHING,
+    experiment: null, today: today("flow", {flow: "realism"})
+  }),
+  // Every op of SPEC 7, refs of every scope, and the merge of a second input's lineage.
+  manifest("op_mix", "prepare", "features", {
+    inputs: [dataIn("data", {kind: ["data"]}), dataIn("other", {kind: ["data"]}, true)],
+    outputs: [
+      out("data", "data", [["add_axis", "T", "C", "@param.frames"], ["add_axis", "P", null, null],
+        ["add_axis", "T", null, 9], ["size", "H", "@in.other.sizes.H"], ["size", "W", "@self.sizes.H"],
+        ["set", "classes", "@in.data.classes"], ["licence", "research-internal"], ["cut", "@param.cut"],
+        ["parts", ["test", "train"]], ["set", "persons", false], ["set", "family", "mix"], ["drop_axis", "Q"]]),
+      out("flat", "other", [["axes", ["N", "F"]], ["size", "F", "@param.frames"], ["kind", "metrics"],
+        ["set", "dtype", "any"], ["set", "classes", null]])
+    ],
+    params: [{name: "frames", kind: "int", low: 1, high: 64, default: 8, vary: true, what: "f"},
+      {name: "cut", kind: "choice", choices: ["commercial", "non-commercial", "uncut"], default: "non-commercial",
+        vary: true, what: "c"}],
+    generic: EVERYTHING, experiment: null, today: today("flow", {flow: "x"})
+  }),
+  // Ops that fail when they run: the bad refs and values the propagation reports as "op".
+  manifest("op_bad", "prepare", "fallback", {
+    inputs: [dataIn("data", {kind: ["data"]})],
+    outputs: [out("data", "data", [["size", "D", 4], ["set", "dtype", "@param.word"], ["kind", "@param.word"],
+      ["licence", "@param.word"], ["axes", "@param.word"], ["parts", "@param.word"], ["set", "classes", "@param.word"],
+      ["add_axis", "Z", null, 2], ["frobnicate", 1], ["size", "H", "@param.nothing"]])],
+    params: [{name: "word", kind: "choice", choices: ["blue", "red"], default: "blue", vary: false, what: "w"}],
+    generic: EVERYTHING, experiment: null, today: today("flow", {flow: "x"})
+  }),
+  // Reads test outside evaluate and report (an R5 breach the propagation must still report).
+  manifest("peeker", "prepare", "fallback", {
+    inputs: [dataIn("data", {kind: ["data"]})],
+    outputs: [out("data", "data", [])],
+    reads: {parts: ["test", "validation"]}, generic: EVERYTHING, experiment: null, today: today("flow", {flow: "x"})
+  }),
+  // A pattern that names every key, for the type problems.
+  manifest("picky", "prepare", "fallback", {
+    inputs: [dataIn("data", {kind: ["data"], rank: [3], time: "yes", has_axes: ["D", "K"], dtype: ["float16"],
+      targets: ["points"], parts: "unsplit", needs_parts: ["validation"], modality: ["radiograph"], trained: true})],
+    outputs: [out("data", "data", [])],
+    generic: {rank: [3], time: "yes", channels: "any", sizes: "any", why: "a pattern that names every key, on purpose"},
+    experiment: null, today: today("flow", {flow: "x"})
+  })
+];
+
+function experiment() {
+  return JSON.parse(fs.readFileSync(path.join(__dirname, "experiment.json"), "utf8"));
+}
+
+function data(extra) {
+  var d = {contract: contract, blocks: blocks, templates: [], experiment: experiment()};
+  Object.keys(extra || {}).forEach(function (k) { d[k] = extra[k]; });
+  return d;
+}
+
+function node(id, block, params, vary) {
+  var n = {id: id, block: block, version: 1, params: params || {}};
+  if (vary) n.vary = vary;
+  return n;
+}
+
+function edge(from, outPort, to, inPort) {
+  return {from: from, out: outPort, to: to, "in": inPort};
+}
+
+// The experiment chain of DATA's experiment_v1, from the scratch blocks.
+function chain(name) {
+  return {
+    sandbox: 1, name: name || "chain",
+    nodes: [node("n1", "catalog_v1"), node("n2", "crop_boxes"), node("n3", "normalise"), node("n4", "augment"),
+      node("n5", "classifier"), node("n6", "train_classifier"), node("n7", "evaluate_heldout"), node("n8", "report_claim")],
+    edges: [edge("n1", "data", "n2", "data"), edge("n2", "data", "n3", "data"), edge("n3", "data", "n4", "data"),
+      edge("n4", "data", "n5", "data"), edge("n5", "model", "n6", "model"), edge("n6", "checkpoint", "n7", "checkpoint"),
+      edge("n7", "metrics", "n8", "results")],
+    layout: {n1: [40, 40]}
+  };
+}
+
+module.exports = {contract: contract, blocks: blocks, data: data, node: node, edge: edge, chain: chain, manifest: manifest,
+  job: job, today: today, CARD: CARD, EVERYTHING: EVERYTHING};

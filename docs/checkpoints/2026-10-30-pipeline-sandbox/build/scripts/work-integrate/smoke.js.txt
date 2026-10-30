@@ -1,0 +1,394 @@
+// Integrator's browser smoke of the pipeline sandbox (SPEC.md step 4 and 5 of the integrator's task).
+// Usage: node smoke.js PAGE_FILE [label]
+// Serves PAGE_FILE from a local origin (so localStorage works), drives it with Playwright's Chromium and
+// compares what the page computes with tools/pipeline_sandbox.py. Prints PASS/FAIL lines and exits 1 on
+// any failure.
+"use strict";
+const {chromium} = require("playwright");
+const http = require("http");
+const fs = require("fs");
+const path = require("path");
+const {execFileSync} = require("child_process");
+
+const REPO = "/home/user/SchwingNet";
+const WORK = __dirname;
+const PAGE_FILE = process.argv[2];
+const LABEL = process.argv[3] || path.basename(PAGE_FILE);
+const sleep = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); };
+
+const results = [];
+function check(name, ok, seen) {
+  results.push({name: name, ok: !!ok});
+  console.log((ok ? "PASS " : "FAIL ") + "[" + LABEL + "] " + name + (seen !== undefined ? "  " + JSON.stringify(seen).slice(0, 600) : ""));
+}
+
+function serve(file) {
+  return new Promise(function (resolve) {
+    const server = http.createServer(function (req, res) {
+      fs.readFile(file, function (err, body) {
+        if (err) { res.writeHead(404); res.end("not found"); return; }
+        res.writeHead(200, {"Content-Type": "text/html; charset=utf-8"});
+        res.end(body);
+      });
+    });
+    server.listen(0, "127.0.0.1", function () {
+      resolve({server: server, url: "http://127.0.0.1:" + server.address().port + "/page.html"});
+    });
+  });
+}
+
+let specCount = 0;
+function writeSpec(spec) {
+  specCount += 1;
+  const file = path.join(WORK, "spec-" + LABEL.replace(/[^a-z0-9]+/gi, "_") + "-" + specCount + ".json");
+  fs.writeFileSync(file, JSON.stringify(spec, null, 1) + "\n");
+  return file;
+}
+function pyDigest(spec) {
+  return execFileSync("python3.12", ["tools/pipeline_sandbox.py", "digest", writeSpec(spec)], {cwd: REPO, encoding: "utf8"}).trim();
+}
+function pyCompile(spec) {
+  return JSON.parse(execFileSync("python3.12", ["tools/pipeline_sandbox.py", "compile", writeSpec(spec)], {cwd: REPO, encoding: "utf8"}));
+}
+
+function templatesOnDisk() {
+  const dir = path.join(REPO, "tools/sandbox/templates");
+  return fs.readdirSync(dir).filter(function (f) { return f.endsWith(".json"); }).sort().map(function (f) {
+    return JSON.parse(fs.readFileSync(path.join(dir, f), "utf8"));
+  });
+}
+
+function darkBg() {
+  const css = fs.readFileSync(path.join(REPO, "tools/sandbox/page.css"), "utf8");
+  const block = css.match(/:root\[data-theme="dark"\]\s*\{([^}]*)\}/)[1];
+  const hex = block.match(/--bg:\s*(#[0-9a-fA-F]{6})/)[1];
+  const lightHex = css.match(/:root\s*\{[^}]*?--bg:\s*(#[0-9a-fA-F]{6})/)[1];
+  function rgb(h) { return "rgb(" + [1, 3, 5].map(function (i) { return parseInt(h.slice(i, i + 2), 16); }).join(", ") + ")"; }
+  return {dark: rgb(hex), light: rgb(lightHex)};
+}
+
+function watch(page, errors, warnings) {
+  page.on("console", function (m) {
+    if (m.type() === "error") errors.push("console: " + m.text());
+    else if (m.type() === "warning") warnings.push("console: " + m.text());
+  });
+  page.on("pageerror", function (e) { errors.push("pageerror: " + e.message); });
+}
+
+async function graph(page) { return page.evaluate(function () { return window.sandbox.graph(); }); }
+
+// The rightmost card on the board, scrolled into the board's view with room for its grow zone.
+async function lastCardReady(page) {
+  return page.evaluate(function () {
+    // Cards are placed by a transform, so the spec's layout says where each sits on the stage.
+    const spec = window.sandbox.graph(), layout = spec.layout || {};
+    let best = null;
+    spec.nodes.forEach(function (n) {
+      const at = layout[n.id];
+      if (!at) return;
+      if (!best || at[0] > best.x || (at[0] === best.x && at[1] > best.y)) best = {id: n.id, x: at[0], y: at[1]};
+    });
+    if (!best) return null;
+    best.el = document.querySelector('.ncard[data-id="' + best.id + '"]');
+    const board = document.getElementById("sb-board");
+    board.scrollLeft = Math.max(0, best.x - 120);
+    board.scrollTop = Math.max(0, best.y - 60);
+    const r = best.el.getBoundingClientRect(), b = board.getBoundingClientRect();
+    return {id: best.id, x: r.left, y: r.top, w: r.width, h: r.height, right: r.right, bottom: r.bottom,
+      boardRight: b.right, boardBottom: b.bottom, boardTop: b.top};
+  });
+}
+
+async function ghostState(page) {
+  return page.evaluate(function () {
+    const g = document.getElementById("sb-ghost"), s = document.getElementById("sb-strip");
+    const entries = Array.from(s.querySelectorAll(".sug")).filter(function (b) { return !b.hidden; });
+    return {
+      up: !g.hidden, none: g.classList.contains("none"), title: document.getElementById("sb-ghost-title").textContent,
+      current: entries.findIndex(function (b) { return b.getAttribute("aria-current") === "true"; }),
+      entries: entries.map(function (b) { const t = b.querySelector(".stitle"); return t ? t.textContent : b.textContent; })
+    };
+  });
+}
+
+async function clickChip(page, title) {
+  await page.fill("#sb-search", title);
+  await page.click('.bchip:has-text("' + title + '")');
+  await page.fill("#sb-search", "");
+  await page.evaluate(function () { if (document.activeElement) document.activeElement.blur(); });
+}
+
+async function holdRightOfLast(page, what) {
+  const before = await graph(page);
+  const card = await lastCardReady(page);
+  await sleep(50);
+  const x = card.right + 120, y = card.y + card.h / 2;
+  check(what + ": the hold point is inside the board's view", x < card.boardRight && y < card.boardBottom && y > card.boardTop, {x: x, y: y, card: card});
+  await page.mouse.move(x - 40, y + 30, {steps: 2});
+  await page.mouse.move(x, y, {steps: 4});
+  await sleep(700);
+  const after = await graph(page);
+  const added = after.nodes.filter(function (n) { return !before.nodes.some(function (m) { return m.id === n.id; }); });
+  const edge = added.length === 1 && after.edges.find(function (e) { return e.from === card.id && e.to === added[0].id; });
+  check(what + ": a real hold 120 px right of the last card (" + card.id + ") for 700 ms adds one node", added.length === 1, added.map(function (n) { return n.id + ":" + n.block; }));
+  check(what + ": the new node is piped from the last card", !!edge, after.edges.filter(function (e) { return added.length && e.to === added[0].id; }));
+  // Move away so the next hold starts fresh.
+  await page.mouse.move(5, 5, {steps: 2});
+  await sleep(80);
+  return {anchor: card.id, added: added.map(function (n) { return n.id; })};
+}
+
+async function desktop(browser, url, templates) {
+  const context = await browser.newContext({viewport: {width: 1400, height: 900}});
+  const page = await context.newPage();
+  const errors = [], warnings = [];
+  watch(page, errors, warnings);
+  await page.goto(url);
+  await sleep(400);
+
+  // A fresh origin loads experiment_v1.
+  let g = await graph(page);
+  check("a fresh page loads the experiment_v1 template", g.nodes.length === 8 && g.nodes[0].block === "catalog_v1", g.nodes.map(function (n) { return n.block; }));
+
+  // Every template loads with its node and edge count; the digest and the route agree with Python.
+  const ids = await page.evaluate(function () { return SANDBOX_DATA.templates.map(function (t) { return t.id; }); });
+  check("the page carries every template on disk", JSON.stringify(ids) === JSON.stringify(templates.map(function (t) { return t.id; })), ids);
+  for (const t of templates) {
+    await page.evaluate(function (id) { window.sandbox.load(id); }, t.id);
+    await sleep(60);
+    g = await graph(page);
+    const cards = await page.evaluate(function () { return document.querySelectorAll(".ncard[data-id]").length; });
+    check("template " + t.id + " loads " + t.nodes.length + " nodes and " + t.edges.length + " edges, drawn as cards",
+      g.nodes.length === t.nodes.length && g.edges.length === t.edges.length && cards === t.nodes.length,
+      {nodes: g.nodes.length, edges: g.edges.length, cards: cards});
+    const jsDigest = await page.evaluate(function () { return window.sandbox.digest(); });
+    const py = pyDigest(g);
+    check("template " + t.id + ": the page's digest is Python's", jsDigest === py, {js: jsDigest, py: py});
+    const comp = await page.evaluate(function () { return window.sandbox.compile(); });
+    const e = t.expect;
+    const seen = {route: comp.route, ready: comp.ready, requests: comp.requests.length, gpu_submissions: comp.jobs.gpu.submissions,
+      cpu_submissions: comp.jobs.cpu.submissions, gpu_tasks: comp.jobs.gpu.tasks};
+    check("template " + t.id + ": the page's compile matches its expect", JSON.stringify(seen) === JSON.stringify({route: e.route, ready: e.ready,
+      requests: e.requests, gpu_submissions: e.gpu_submissions, cpu_submissions: e.cpu_submissions, gpu_tasks: e.gpu_tasks}), {seen: seen, expect: e});
+    const errs = await page.evaluate(function () { return window.sandbox.problems().filter(function (p) { return p.level === "error"; }); });
+    check("template " + t.id + ": no error problem", errs.length === 0, errs);
+  }
+
+  // The experiment template's request links are Python's urls.
+  await page.evaluate(function () { window.sandbox.load("experiment_v1"); window.sandbox.select(null); });
+  await sleep(80);
+  g = await graph(page);
+  let py = pyCompile(g);
+  const tool = await page.evaluate(function () { const a = document.getElementById("sb-request"); return {href: a.getAttribute("href"), text: a.textContent, hidden: a.hidden}; });
+  check("experiment_v1: the toolbar's request link is Python's url", tool.href === py.requests[0].url && !tool.hidden, {js: tool, py: py.requests[0].url.slice(0, 200)});
+  const panelLinks = await page.evaluate(function () { return Array.from(document.querySelectorAll('#sb-detail a[data-req]')).map(function (a) { return a.getAttribute("href"); }); });
+  check("experiment_v1: the panel's request link is Python's url", panelLinks.length === 1 && panelLinks[0] === py.requests[0].url, panelLinks.length);
+  await page.evaluate(function () { window.sandbox.load("screen_arms"); window.sandbox.select(null); });
+  await sleep(80);
+  g = await graph(page);
+  py = pyCompile(g);
+  const arms = await page.evaluate(function () { return Array.from(document.querySelectorAll('#sb-detail a[data-req]')).map(function (a) { return a.getAttribute("href"); }); });
+  check("screen_arms: the four request links are Python's urls, in order", arms.length === 4 && arms.every(function (h, i) { return h === py.requests[i].url; }), {js: arms.length, py: py.requests.length});
+  const jsReq = await page.evaluate(function () { return window.sandbox.compile().requests.map(function (r) { return {title: r.title, body: r.body, url: r.url}; }); });
+  check("screen_arms: titles, bodies and urls equal Python's", JSON.stringify(jsReq) === JSON.stringify(py.requests.map(function (r) { return {title: r.title, body: r.body, url: r.url}; })), jsReq.map(function (r) { return r.title; }));
+  await page.evaluate(function () { window.sandbox.load("drr_gap"); window.sandbox.select(null); });
+  await sleep(80);
+  const pipe = await page.evaluate(function () { const a = document.querySelector('#sb-detail a[data-req="pipeline"]'); return a ? a.getAttribute("href") : null; });
+  g = await graph(page);
+  py = pyCompile(g);
+  const pipeWant = "https://github.com/OpenSpineConsortium/SchwingNet/issues/new?" + new URLSearchParams({title: py.pipeline_issue.title, body: py.pipeline_issue.body}).toString();
+  check("drr_gap: the pipeline request link carries Python's pipeline issue", pipe === pipeWant, {js: pipe && pipe.slice(0, 160)});
+
+  // A real hold on a fresh board, twice, then the wheel.
+  await page.click("#sb-new");
+  await sleep(80);
+  g = await graph(page);
+  check("New empties the board", g.nodes.length === 0 && g.edges.length === 0, g.nodes.length);
+  await clickChip(page, "The frame catalog (version 1)");
+  g = await graph(page);
+  check("a chip adds the catalog", g.nodes.length === 1 && g.nodes[0].block === "catalog_v1", g.nodes.map(function (n) { return n.block; }));
+  const hold1 = await holdRightOfLast(page, "fresh board");
+  const hold2 = await holdRightOfLast(page, "fresh board, second hold");
+
+  // The wheel changes the ghost's block (and does not scroll the board).
+  await page.click("#sb-new");
+  await clickChip(page, "The frame catalog (version 1)");
+  const card = await lastCardReady(page);
+  await sleep(50);
+  const wx = card.right + 120, wy = card.y + card.h / 2;
+  await page.mouse.move(wx - 30, wy + 20, {steps: 2});
+  await page.mouse.move(wx, wy, {steps: 3});
+  await sleep(260);
+  const g1 = await ghostState(page);
+  const scroll0 = await page.evaluate(function () { const b = document.getElementById("sb-board"); return [b.scrollLeft, b.scrollTop, window.scrollY]; });
+  await page.mouse.wheel(0, 120);
+  await sleep(60);
+  const g2 = await ghostState(page);
+  const scroll1 = await page.evaluate(function () { const b = document.getElementById("sb-board"); return [b.scrollLeft, b.scrollTop, window.scrollY]; });
+  check("the ghost is up with several suggestions before the wheel", g1.up && !g1.none && g1.entries.length >= 2, g1);
+  check("the wheel changes the ghost's block", g2.up && g2.title !== g1.title && g2.current !== g1.current, {before: g1.title, after: g2.title, cur: [g1.current, g2.current]});
+  check("the wheel does not scroll the board or the page while the ghost is up", JSON.stringify(scroll0) === JSON.stringify(scroll1), {before: scroll0, after: scroll1});
+  await page.mouse.wheel(0, -120);
+  await sleep(60);
+  const g3 = await ghostState(page);
+  check("the wheel back returns to the first suggestion", g3.title === g1.title, g3.title);
+  await page.keyboard.press("Escape");
+  await sleep(60);
+  const g4 = await ghostState(page);
+  g = await graph(page);
+  check("Escape cancels the ghost and adds nothing", !g4.up && g.nodes.length === 1, {ghost: g4.up, nodes: g.nodes.length});
+  await page.mouse.move(5, 5, {steps: 2});
+  await sleep(60);
+
+  // The wheel, then the ring fills: the chosen (second) suggestion is committed.
+  await lastCardReady(page);
+  await page.mouse.move(wx - 30, wy + 20, {steps: 2});
+  await page.mouse.move(wx, wy, {steps: 3});
+  await sleep(260);
+  await page.mouse.wheel(0, 120);
+  const chosen = (await ghostState(page)).title;
+  await sleep(700);
+  g = await graph(page);
+  const titles = await page.evaluate(function () { const m = {}; SANDBOX_DATA.blocks.forEach(function (b) { m[b.id] = b.title; }); return m; });
+  check("after the wheel the ring commits the suggestion the wheel chose", g.nodes.length === 2 && titles[g.nodes[1].block] === chosen, {chosen: chosen, got: g.nodes.map(function (n) { return n.block; })});
+  await page.mouse.move(5, 5, {steps: 2});
+
+  // Grow by hook and hold on a loaded template: drop the report, hold right of the last card.
+  await page.evaluate(function () { window.sandbox.load("experiment_v1"); });
+  await page.evaluate(function () { window.sandbox.select("n8"); });
+  await page.evaluate(function () { if (document.activeElement) document.activeElement.blur(); });
+  await page.keyboard.press("Delete");
+  await sleep(80);
+  g = await graph(page);
+  check("Delete removes the selected report node", g.nodes.length === 7 && !g.nodes.some(function (n) { return n.id === "n8"; }), g.nodes.map(function (n) { return n.id; }));
+  const hold3 = await holdRightOfLast(page, "experiment_v1 without its report");
+  g = await graph(page);
+  const grown = g.nodes.find(function (n) { return n.id === hold3.added[0]; });
+  check("the hold after evaluate grows the report", grown && grown.block === "report_claim", grown && grown.block);
+  let jsD = await page.evaluate(function () { return window.sandbox.digest(); });
+  check("after the holds the page's digest is Python's", jsD === pyDigest(g), jsD);
+  const jsComp = await page.evaluate(function () { return window.sandbox.compile(); });
+  const pyComp = pyCompile(g);
+  check("after the holds the page's route and request url are Python's", jsComp.route === pyComp.route && jsComp.requests.length === pyComp.requests.length &&
+    (jsComp.requests.length === 0 || jsComp.requests[0].url === pyComp.requests[0].url), {js: jsComp.route, py: pyComp.route});
+
+  // Undo takes the grown node back; the digest follows.
+  await page.keyboard.press("Control+z");
+  await sleep(80);
+  g = await graph(page);
+  check("Ctrl+Z takes the grown node back", g.nodes.length === 7, g.nodes.length);
+  jsD = await page.evaluate(function () { return window.sandbox.digest(); });
+  check("after undo the page's digest is Python's", jsD === pyDigest(g), jsD);
+
+  // Shift+ArrowRight on a focused card opens the ghost; Enter commits.
+  await page.focus('.ncard[data-id="n7"]');
+  await page.keyboard.press("Shift+ArrowRight");
+  await sleep(200);
+  const kg = await ghostState(page);
+  check("Shift+ArrowRight on a focused card opens the ghost", kg.up && !kg.none, kg);
+  await page.keyboard.press("Enter");
+  await sleep(120);
+  g = await graph(page);
+  check("Enter commits the keyboard ghost", g.nodes.length === 8 && g.edges.some(function (e) { return e.from === "n7"; }), g.nodes.length);
+
+  // A varied param: the fan badge and the digest still agree.
+  await page.evaluate(function () { window.sandbox.load("screen_arms"); });
+  g = await graph(page);
+  jsD = await page.evaluate(function () { return window.sandbox.digest(); });
+  check("screen_arms after the holds: the digest is Python's", jsD === pyDigest(g), jsD);
+
+  // A reload keeps the board (localStorage).
+  await page.reload();
+  await sleep(400);
+  const g5 = await graph(page);
+  check("a reload keeps the board", g5.nodes.length === g.nodes.length && JSON.stringify(g5.nodes) === JSON.stringify(g.nodes), g5.nodes.length);
+
+  // Dark tokens in a light context through data-theme.
+  const bg = darkBg();
+  const forced = await page.evaluate(function () {
+    document.documentElement.setAttribute("data-theme", "dark");
+    const v = getComputedStyle(document.body).backgroundColor;
+    document.documentElement.removeAttribute("data-theme");
+    return v;
+  });
+  check("data-theme=dark gives the dark body background in a light context", forced === bg.dark, {got: forced, want: bg.dark});
+  const plain = await page.evaluate(function () { return getComputedStyle(document.body).backgroundColor; });
+  check("the light body background is the light token", plain === bg.light, {got: plain, want: bg.light});
+
+  check("no console error or page error at 1400 px", errors.length === 0, errors);
+  if (warnings.length) console.log("NOTE [" + LABEL + "] console warnings: " + JSON.stringify(warnings).slice(0, 800));
+  await context.close();
+}
+
+async function phone(browser, url, templates) {
+  const context = await browser.newContext({viewport: {width: 400, height: 860}, hasTouch: true, isMobile: false});
+  const page = await context.newPage();
+  const errors = [], warnings = [];
+  watch(page, errors, warnings);
+  await page.goto(url);
+  await sleep(400);
+  async function width(what) {
+    const w = await page.evaluate(function () { return {scroll: document.documentElement.scrollWidth, body: document.body.scrollWidth, inner: window.innerWidth}; });
+    check("at 400 px, " + what + ": no sideways page scroll", w.scroll <= 400 && w.body <= 400, w);
+  }
+  await width("on load");
+  for (const t of templates) {
+    await page.evaluate(function (id) { window.sandbox.load(id); window.sandbox.select(null); }, t.id);
+    await sleep(60);
+    await width("template " + t.id + " with the summary");
+  }
+  await page.evaluate(function () { window.sandbox.load("ct_to_xray"); window.sandbox.select("n9"); });
+  await sleep(120);
+  await width("a node selected (the sheet)");
+  await page.evaluate(function () { window.sandbox.select(null); });
+  await page.click("#sb-import");
+  await sleep(120);
+  await width("the import dialog open");
+  await page.click("#sb-import-close");
+  await page.click("#sb-new");
+  await sleep(60);
+  await width("an empty board");
+  check("no console error or page error at 400 px", errors.length === 0, errors);
+  await context.close();
+}
+
+async function dark(browser, url) {
+  const context = await browser.newContext({viewport: {width: 1200, height: 900}, colorScheme: "dark"});
+  const page = await context.newPage();
+  const errors = [], warnings = [];
+  watch(page, errors, warnings);
+  await page.goto(url);
+  await sleep(400);
+  const bg = darkBg();
+  const got = await page.evaluate(function () { return getComputedStyle(document.body).backgroundColor; });
+  check("in dark mode the body background is the dark token", got === bg.dark, {got: got, want: bg.dark});
+  const light = await page.evaluate(function () {
+    document.documentElement.setAttribute("data-theme", "light");
+    const v = getComputedStyle(document.body).backgroundColor;
+    document.documentElement.removeAttribute("data-theme");
+    return v;
+  });
+  check("data-theme=light gives the light body background in dark mode", light === bg.light, {got: light, want: bg.light});
+  const scheme = await page.evaluate(function () { return getComputedStyle(document.documentElement).colorScheme; });
+  check("dark mode sets color-scheme dark", /dark/.test(scheme), scheme);
+  check("no console error or page error in dark mode", errors.length === 0, errors);
+  await context.close();
+}
+
+(async function () {
+  const templates = templatesOnDisk();
+  const {server, url} = await serve(PAGE_FILE);
+  const browser = await chromium.launch();
+  try {
+    await desktop(browser, url, templates);
+    await phone(browser, url, templates);
+    await dark(browser, url);
+  } catch (e) {
+    check("the run finished without an exception", false, String(e && e.stack || e));
+  }
+  await browser.close();
+  server.close();
+  const bad = results.filter(function (r) { return !r.ok; });
+  console.log("[" + LABEL + "] " + (results.length - bad.length) + " of " + results.length + " checks passed");
+  process.exit(bad.length ? 1 : 0);
+})();

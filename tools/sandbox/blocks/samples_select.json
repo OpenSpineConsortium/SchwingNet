@@ -1,0 +1,178 @@
+{
+ "block": 1,
+ "id": "samples_select",
+ "version": 1,
+ "title": "Choose the training samples",
+ "stage": "prepare",
+ "summary": "Keeps every training crop, only some sources, all but some sources, or a cap of crops per person.",
+ "does": "The samples block of training (src/schwingnet/blocks.py kept): all keeps every training crop; only-sources keeps the named sources; drop-sources drops them; cap-per-person keeps the first per_person crops of each person in the catalog's fixed order, so no person outweighs the rest and two runs differ in one thing at a time. Sources are the catalog's source ids. The validation part never comes here.",
+ "glyph": "samples",
+ "inputs": [
+  {
+   "name": "data",
+   "accepts": {
+    "kind": [
+     "data"
+    ]
+   },
+   "optional": false,
+   "what": "Data with sources and a person key."
+  }
+ ],
+ "outputs": [
+  {
+   "name": "data",
+   "from": "data",
+   "ops": [],
+   "what": "The same data; training reads only the kept crops."
+  }
+ ],
+ "params": [
+  {
+   "name": "samples",
+   "kind": "choice",
+   "choices": [
+    "all",
+    "only-sources",
+    "drop-sources",
+    "cap-per-person"
+   ],
+   "default": "all",
+   "vary": true,
+   "what": "which training crops the run sees"
+  },
+  {
+   "name": "sources",
+   "kind": "names",
+   "pattern": "^[a-z0-9_]{1,40}$",
+   "default": [],
+   "vary": true,
+   "what": "the catalog's source ids, with samples=only-sources or drop-sources"
+  },
+  {
+   "name": "per_person",
+   "kind": "int",
+   "low": 0,
+   "high": 999999,
+   "default": 0,
+   "vary": true,
+   "what": "crops kept per person, 1 or more, with samples=cap-per-person; 0 otherwise"
+  }
+ ],
+ "rules": [
+  {
+   "when": {
+    "samples": {
+     "in": [
+      "only-sources",
+      "drop-sources"
+     ]
+    }
+   },
+   "need": {
+    "sources": {
+     "nonempty": true
+    }
+   },
+   "say": "samples=only-sources or drop-sources needs the sources it names"
+  },
+  {
+   "when": {
+    "samples": {
+     "not_in": [
+      "only-sources",
+      "drop-sources"
+     ]
+    }
+   },
+   "need": {
+    "sources": {
+     "empty": true
+    }
+   },
+   "say": "sources are named only with samples=only-sources or drop-sources"
+  },
+  {
+   "when": {
+    "samples": {
+     "in": [
+      "cap-per-person"
+     ]
+    }
+   },
+   "need": {
+    "per_person": {
+     "min": 1
+    }
+   },
+   "say": "samples=cap-per-person needs per_person 1 or more"
+  },
+  {
+   "when": {
+    "samples": {
+     "not_in": [
+      "cap-per-person"
+     ]
+    }
+   },
+   "need": {
+    "per_person": {
+     "empty": true
+    }
+   },
+   "say": "per_person is set only with samples=cap-per-person"
+  }
+ ],
+ "reads": {
+  "parts": [
+   "train"
+  ]
+ },
+ "job": {
+  "class": "none",
+  "hours": 0,
+  "with_upstream": false,
+  "array": false,
+  "cpus": 0,
+  "memory_gb": 0
+ },
+ "deterministic": "exact",
+ "seed_param": "",
+ "nondeterminism": "",
+ "generic": {
+  "rank": [
+   0,
+   1,
+   2,
+   3
+  ],
+  "time": "any",
+  "channels": "any",
+  "sizes": "any",
+  "why": ""
+ },
+ "resolve": null,
+ "needs": [
+  "python"
+ ],
+ "code": "existing",
+ "implemented_by": [
+  "src/schwingnet/blocks.py",
+  "tools/train.py"
+ ],
+ "today": {
+  "status": "live",
+  "route": "experiment",
+  "word": "",
+  "flow": "",
+  "note": "the request's block lines samples, sources and per_person"
+ },
+ "experiment": {
+  "blocks": {
+   "samples": "@param.samples",
+   "sources": "@param.sources",
+   "per_person": "@param.per_person"
+  }
+ },
+ "card": null
+}

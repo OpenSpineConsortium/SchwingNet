@@ -1,0 +1,68 @@
+"""Scratch: pipelines whose varied combinations and fans pass 2 ** 53, so the doubles path of times and
+plus is compared with the JavaScript engine."""
+
+import copy
+import json
+import subprocess
+import sys
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+sys.argv = [sys.argv[0], "1", "1"]
+sys.path.insert(0, str(HERE))
+import fuzz  # noqa: E402
+
+t, sandbox = fuzz.t, fuzz.sandbox
+
+
+def big_specs(data):
+    blocks = sandbox.block_map(data)
+    out = []
+    for size in (7, 300, 3001, 20011):
+        for template in data["templates"]:
+            spec = copy.deepcopy(template)
+            spec["name"] = f"big {size} {template['name']}"
+            for node in spec["nodes"]:
+                params = sandbox.params_of(blocks.get(node["block"]))
+                if not params:
+                    continue
+                varied = [p for p in params if p.get("vary")] or params[:1]
+                p = varied[0]
+                value = node.get("params", {}).get(p["name"], p.get("default"))
+                node["vary"] = {p["name"]: [value] * size}
+                if len(varied) > 1:
+                    q = varied[1]
+                    node["vary"][q["name"]] = [node.get("params", {}).get(q["name"], q.get("default"))] * size
+            out.append(spec)
+    return out
+
+
+def main():
+    data = t.real_data()
+    data["blocks"] = data["blocks"] + [t.good_manifest(), t.peeking_manifest()]
+    specs = big_specs(data)
+    payload = {"data": data, "specs": specs, "manifests": [], "contract": data["contract"]}
+    given_path = HERE / "big_given.json"
+    given_path.write_text(json.dumps(sandbox.plain(payload)), encoding="ascii")
+    (HERE / "fuzz_same.js").write_text(t.NODE_SCRIPT, encoding="ascii")
+    run = subprocess.run(["node", str(HERE / "fuzz_same.js"), str(t.ENGINE), str(given_path)], capture_output=True,
+                         text=True, timeout=1200)
+    if run.returncode:
+        print("node failed", run.stderr[-3000:])
+        return 1
+    theirs = t.whole_numbers(json.loads(run.stdout))
+    given = sandbox.load_json(given_path)
+    bad, largest = 0, 0
+    for at, (spec, other) in enumerate(zip(given["specs"], theirs["specs"], strict=True)):
+        why = fuzz.compare_spec(spec, other, given["data"])
+        fans = [entry["fan"] for entry in other["propagate"]["nodes"].values()]
+        largest = max([largest] + fans)
+        if why:
+            bad += 1
+            print(f"spec {at} ({spec['name']}): {why[:600]}")
+    print(f"{len(specs)} big specs, largest fan {largest!r}, {bad} disagreements")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

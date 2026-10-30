@@ -1,0 +1,199 @@
+{
+ "block": 1,
+ "id": "render_drr",
+ "version": 1,
+ "title": "Render DRRs",
+ "stage": "prepare",
+ "summary": "Projects each CT into 2-D synthetic X-rays (DRRs) by the render blocks: views, detector, rays, preset.",
+ "does": "The render blocks (src/schwingnet/render_blocks.py) run by tools/flexray_render.py: each CT gives views projections on a detector of detector x detector pixels with ray_samples samples a ray, by FleXray's recipe or one of the presets. Images are 16-bit grey PNGs (65535 is 1), so the dtype is left as it came. With a segmenter's masks each view keeps its levels' projected labels; physical-ct reads no mask and renders pixels alone. Today it runs inside the DRR study's flow on its render groups (data/domain_gap/groups.json), on TotalSegmentator v2.0.1 CTs.",
+ "glyph": "render",
+ "inputs": [
+  {
+   "name": "volumes",
+   "accepts": {
+    "kind": [
+     "data"
+    ],
+    "rank": [
+     3
+    ],
+    "time": "no",
+    "modality": [
+     "ct"
+    ]
+   },
+   "optional": false,
+   "what": "CT volumes, with masks unless labels is none."
+  }
+ ],
+ "outputs": [
+  {
+   "name": "data",
+   "from": "volumes",
+   "ops": [
+    [
+     "drop_axis",
+     "D"
+    ],
+    [
+     "size",
+     "H",
+     "@param.detector"
+    ],
+    [
+     "size",
+     "W",
+     "@param.detector"
+    ],
+    [
+     "set",
+     "modality",
+     "drr"
+    ],
+    [
+     "set",
+     "targets",
+     "@param.labels"
+    ]
+   ],
+   "what": "2-D DRRs N x C x detector x detector, with projected level masks unless labels is none."
+  }
+ ],
+ "params": [
+  {
+   "name": "views",
+   "kind": "int",
+   "low": 1,
+   "high": 100,
+   "default": 4,
+   "vary": true,
+   "what": "projections a CT"
+  },
+  {
+   "name": "detector",
+   "kind": "int",
+   "low": 32,
+   "high": 1024,
+   "default": 256,
+   "vary": true,
+   "what": "pixels a side of the detector"
+  },
+  {
+   "name": "ray_samples",
+   "kind": "int",
+   "low": 16,
+   "high": 4000,
+   "default": 500,
+   "vary": true,
+   "what": "samples along each ray"
+  },
+  {
+   "name": "preset",
+   "kind": "choice",
+   "choices": [
+    "default",
+    "flexray",
+    "physical",
+    "physical-ct",
+    "fluxray-raw"
+   ],
+   "default": "default",
+   "vary": true,
+   "what": "the render recipe of src/schwingnet/render_blocks.py"
+  },
+  {
+   "name": "labels",
+   "kind": "choice",
+   "choices": [
+    "mask",
+    "none"
+   ],
+   "default": "mask",
+   "vary": false,
+   "what": "mask: each view keeps the segmenter's levels projected; none: pixels alone"
+  }
+ ],
+ "rules": [
+  {
+   "when": {
+    "preset": {
+     "in": [
+      "physical-ct"
+     ]
+    }
+   },
+   "need": {
+    "labels": {
+     "in": [
+      "none"
+     ]
+    }
+   },
+   "say": "physical-ct reads no mask, so its views carry no labels: set labels to none"
+  },
+  {
+   "when": {
+    "preset": {
+     "in": [
+      "fluxray-raw"
+     ]
+    }
+   },
+   "need": {
+    "detector": {
+     "in": [
+      1024
+     ]
+    }
+   },
+   "say": "fluxray-raw renders on a detector of 1024 pixels"
+  }
+ ],
+ "reads": {
+  "parts": []
+ },
+ "job": {
+  "class": "gpu",
+  "hours": 12,
+  "with_upstream": false,
+  "array": false,
+  "cpus": 16,
+  "memory_gb": 64
+ },
+ "deterministic": "declared",
+ "seed_param": "",
+ "nondeterminism": "A view's crop and pose come from the salt, the subject and the view alone, so a render repeats them; the GPU's arithmetic may differ in its last bits.",
+ "generic": {
+  "rank": [
+   3
+  ],
+  "time": "no",
+  "channels": "any",
+  "sizes": "any",
+  "why": "It projects CT volumes (tools/flexray_render.py); a 2-D image has nothing to project, and a volume of another modality would need its own attenuation model."
+ },
+ "resolve": null,
+ "needs": [
+  "python",
+  "numpy",
+  "nibabel",
+  "torch"
+ ],
+ "code": "existing",
+ "implemented_by": [
+  "src/schwingnet/render_blocks.py",
+  "tools/render_blocks.py",
+  "tools/flexray_render.py",
+  "flows/drr_gap.py",
+  "data/domain_gap/groups.json"
+ ],
+ "today": {
+  "status": "flow",
+  "route": "",
+  "word": "",
+  "flow": "DrrGapFlow",
+  "note": "the word bench flexray_drr_gap renders the study's groups"
+ },
+ "experiment": null,
+ "card": null
+}

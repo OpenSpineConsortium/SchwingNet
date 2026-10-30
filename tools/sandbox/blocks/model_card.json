@@ -1,0 +1,75 @@
+{
+ "block": 1,
+ "id": "model_card",
+ "version": 1,
+ "title": "Model card",
+ "stage": "report",
+ "summary": "Writes MODEL.md beside the checkpoint: the network, what it saw, what it scored and what it is not.",
+ "does": "tools/train.py writes MODEL.md with the checkpoint: the run and its commit, the architecture with its 27-way head and crop size, the initial weights, seed, epochs and blocks, the training and validation crops (no test row is read), the prior head where used, the best epoch's validation accuracy with its interval, best.pt's sha256 and the levels. It rides with every training run.",
+ "glyph": "card",
+ "inputs": [
+  {
+   "name": "checkpoint",
+   "accepts": {
+    "kind": [
+     "checkpoint"
+    ],
+    "trained": true
+   },
+   "optional": false,
+   "what": "The trained checkpoint."
+  }
+ ],
+ "outputs": [
+  {
+   "name": "card",
+   "from": "checkpoint",
+   "ops": [
+    [
+     "kind",
+     "report"
+    ],
+    [
+     "axes",
+     []
+    ]
+   ],
+   "what": "MODEL.md."
+  }
+ ],
+ "params": [],
+ "rules": [],
+ "reads": {
+  "parts": []
+ },
+ "job": {
+  "class": "none",
+  "hours": 0,
+  "with_upstream": false,
+  "array": false,
+  "cpus": 0,
+  "memory_gb": 0
+ },
+ "deterministic": "exact",
+ "seed_param": "",
+ "nondeterminism": "",
+ "generic": null,
+ "resolve": null,
+ "needs": [
+  "python",
+  "torch"
+ ],
+ "code": "existing",
+ "implemented_by": [
+  "tools/train.py"
+ ],
+ "today": {
+  "status": "live",
+  "route": "experiment",
+  "word": "",
+  "flow": "",
+  "note": "every training run writes it"
+ },
+ "experiment": {},
+ "card": null
+}

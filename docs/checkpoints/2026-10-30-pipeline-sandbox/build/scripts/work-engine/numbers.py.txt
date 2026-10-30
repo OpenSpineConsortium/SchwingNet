@@ -1,0 +1,9 @@
+import json, sys
+vals = json.load(open(sys.argv[1]))
+out = []
+for s in vals:
+    v = float(s)
+    whole = v == int(v) and abs(v) < 1e15
+    canon = str(int(v)) if whole else format(v, '.6f').rstrip('0').rstrip('.')
+    out.append({'canon': canon, 'f6': format(v, '.6f'), 'g': f'{v:g}', 'r2': repr(round(v, 2)), 'r3': repr(round(v, 3))})
+print(json.dumps(out))

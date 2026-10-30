@@ -1,0 +1,29 @@
+const {chromium} = require("playwright");
+(async function () {
+  const browser = await chromium.launch();
+  const page = await (await browser.newContext({viewport: {width: 1300, height: 900}})).newPage();
+  const errors = [];
+  page.on("pageerror", function (e) { errors.push(e.message); });
+  page.on("console", function (m) { if (m.type() === "error") errors.push(m.text()); });
+  await page.goto("file:///home/user/SchwingNet/docs/sandbox/pipeline-sandbox.html");
+  await page.waitForTimeout(300);
+  const out = await page.evaluate(function () {
+    const S = window.sandbox, r = {};
+    r.keys = Object.keys(S).sort();
+    S.load("drr_gap");
+    r.loaded = S.graph().nodes.length;
+    r.growExplicit = S.grow("n4", "wandb_log");
+    r.afterExplicit = S.graph().edges.filter(function (e) { return e.to === r.growExplicit; });
+    r.growBad = (function () { try { return S.grow("n1", "train_classifier"); } catch (e) { return "throws " + e.message; } })();
+    r.growUnknown = (function () { try { return S.grow("n99"); } catch (e) { return "throws " + e.message; } })();
+    r.selectBad = (function () { try { return S.select("n99"); } catch (e) { return "throws " + e.message; } })();
+    r.problems = S.problems().length;
+    S.reset();
+    r.afterReset = S.graph().nodes.map(function (n) { return n.block; });
+    r.digestAfterReset = S.digest();
+    return r;
+  });
+  console.log(JSON.stringify(out, null, 1));
+  console.log((errors.length ? "FAIL" : "PASS") + " no errors " + JSON.stringify(errors));
+  await browser.close();
+})();
