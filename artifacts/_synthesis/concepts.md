@@ -6,13 +6,13 @@ A concept is a figure and the words that say what it is a figure of. Two kinds a
 
 Every artifact's text, every research note under docs/research/ and each dataset record's own words are then rid of e-mail addresses and phone numbers, as extract.py rids an artifact's, scrubbed of what the folder's rule keeps out of the records (redact.py) and read passage by passage, so that no passage, no words a check keeps and no check's key holds any of it, whole or cut; a check's key therefore changes with those patterns, and `synth.py rekey` carries the stamp's word over such a change. In a passage that names a dataset, each figure goes to the nearest name within 160 characters, or to every name equally near: equal to one of those sets' counts it agrees, and where a count's noun follows it, it is rounded when it is that count written with fewer digits and differs when it is within a tenth of it (a thirtieth for a size). A dataset record's own words are checked against its own counts the same way. A passage that carries at least two of a settled figure's anchors, half of their weight by rarity, and one of its values written the same way or rounded agrees, is superseded or is open as that value is; a passage in the figure's own two artifacts is its evidence and is not checked. Nothing here judges: a check is a script's match, for a person or a skeptic to read.
 
-Rendered on 2026-10-29 from 335 texts by work/tools/synth.py concepts, or by the join of a run of .github/workflows/synthesis.yml that read something. That workflow checks every text against the ledger daily, on Run workflow and on a push a person or an App makes that changes an artifact, a research note or a dataset record, and the issue labelled synthesis lists what each run found that the stamp of 2026-10-29 had not seen. Edit the records and render again rather than editing this file.
+Rendered on 2026-10-30 from 354 texts by work/tools/synth.py concepts, or by the join of a run of .github/workflows/synthesis.yml that read something. That workflow checks every text against the ledger daily, on Run workflow and on a push a person or an App makes that changes an artifact, a research note or a dataset record, and the issue labelled synthesis lists what each run found that the stamp of 2026-10-30 had not seen. Edit the records and render again rather than editing this file.
 
 ## Summary
 
 - Dataset counts: 182, from 91 records under data/sources/.
 - Settled figures: 63, 27 used and 36 not used (listed at the end).
-- Checks: 1008 agrees, 3 rounded, 6 superseded, 56 open, 36 differs.
+- Checks: 1011 agrees, 3 rounded, 6 superseded, 56 open, 37 differs.
 
 ## Dataset counts
 
@@ -405,7 +405,7 @@ Called ; counts images_about 110000; 1 lines agree.
 
 ### VerSe 19 and 20 (verse)
 
-Called 'verse 19'; counts series 374, subjects 355; 10 lines agree.
+Called 'verse 19'; counts series 374, subjects 355; 11 lines agree.
 
 ### Veterinary: pig lower limb CT, CBCT and planar images (Goswami 2020, IEEE DataPort) (veterinary_pig_levelcheck)
 
@@ -441,7 +441,11 @@ Called 'pet ct', 'tmtv benchmark'; counts subjects 60, size_gb 6.85; 10 lines ag
 
 ### TotalSegmentator task data 'hip_implant' (71 CT) (zenodo_ts_task_hip_implant)
 
-Called 'totalsegmentator'; counts subjects 71, size_gb 9.03; 12 lines agree.
+Called 'totalsegmentator'; counts subjects 71, size_gb 9.03; 13 lines agree.
+
+| Count | Outcome | Gives | Where | Line | Passage |
+|---|---|---|---|---|---|
+| subjects | differs | 69 | [docs/research/gold3-ct/README.md](../../docs/research/gold3-ct/README.md) | 78 | Their lists stay on the grid, since most are not public sets; only counts by collection leave it. The census job read them on 2026-10-29 (section 7): of the 17,198 masks 16,668 were read and 530 set a |
 
 ### TotalSegmentator task data 'liver_lesions' (842 CT) (zenodo_ts_task_liver_lesions)
 
@@ -450,13 +454,13 @@ Called 'totalsegmentator'; counts subjects 842, size_gb 38.87; 9 lines agree.
 | Count | Outcome | Gives | Where | Line | Passage |
 |---|---|---|---|---|---|
 | subjects | differs | 802 | [state-of-the-literature-datasets-held-missing-size-and-power-8hg1ay](../state-of-the-literature-datasets-held-missing-size-and-power-8hg1ay/) | 55 | \| CT labelling with anomalies \| VerSe (Sekuboyina 2021); VERIDAH (Moller 2026); TotalSegmentator (Wasserthal 2023) \| 355 patients; 1,536 CTs; 1,204 CTs \| 802 patients; 129 count-changing transitional |
-| subjects | differs | 865 | [docs/research/README.md](../../docs/research/README.md) | 21 | - [gold3-ct](gold3-ct/README.md): the thread "Finish scan import and tier counts", the owner's ask of 27 October 2026 at 22:49 UTC for all the gold tier 3 CT data as its own dataset: since 2026-10-29 |
+| subjects | differs | 865 | [docs/research/README.md](../../docs/research/README.md) | 24 | - [gold3-ct](gold3-ct/README.md): the thread "Finish scan import and tier counts", the owner's ask of 27 October 2026 at 22:49 UTC for all the gold tier 3 CT data as its own dataset: since 2026-10-29 |
 | subjects | differs | 865 | [docs/research/project-status-2026-10-28.md](../../docs/research/project-status-2026-10-28.md) | 92 | - Exists: no held set is exactly 2,000. The nearest are TotalSegmentator v3 (1,935 persons), ENHANCE.PET (1,557 whole studies of 865 to 1,478 persons), VerSe (355 persons), and the census of 21,622 SP |
 | size_gb | differs | 39.6 | [docs/research/data-manifest/MANIFEST.md](../../docs/research/data-manifest/MANIFEST.md) | 51 | \| unmapped totalsegmentator_v201 \| 153322 \| 39.6 GB \| 1631 \| 0 \| 1631 \| nifti-gz 146936, json 2824, npy 2330 \|  \| |
 
 ### TotalSegmentator task data 'pleural_pericard_effusion' (600 CT) (zenodo_ts_task_pleural_effusion)
 
-Called 'totalsegmentator'; counts subjects 600, size_gb 8.99; 12 lines agree.
+Called 'totalsegmentator'; counts subjects 600, size_gb 8.99; 13 lines agree.
 
 ### UniToChest chest CT (623 patients; distributed as slices) (zenodo_unitochest)
 
@@ -472,11 +476,11 @@ Each number verdict's figures with their status, and the other texts that give o
 
 ### Row 0: number of C-ArmLSpine cases scored in the five-fold lateral whole-frame evaluation (98.2%)
 
-confirmed-contradiction; 148 (open, side a); 141 (open, side b); 617 (open, side b); anchors cv, fold, armlspine, lateral, frame, cases; read from [or-readiness-ledger](../or-readiness-ledger/) and [counting-from-the-sacrum](../counting-from-the-sacrum/).
+confirmed-contradiction; 148 (open, side a); 141 (open, side b); 617 (open, side b); anchors cv, fold, armlspine, lateral, cases, frame; read from [or-readiness-ledger](../or-readiness-ledger/) and [counting-from-the-sacrum](../counting-from-the-sacrum/).
 
 ### Row 10: sacrum recall on real DeepFluoro frames, detector trained on renders of DeepFluoro's own CTs
 
-confirmed-contradiction; 96% (open, side a); 98% (open, side a); 90% (open, side b); 97% (open, side b); anchors deepfluoro, finds, detector, cts, trained, sacrum, renders; read from [aidas-seed-grant-proposal](../aidas-seed-grant-proposal/) and [counting-levels-under-fluoroscopy](../counting-levels-under-fluoroscopy/).
+confirmed-contradiction; 96% (open, side a); 98% (open, side a); 90% (open, side b); 97% (open, side b); anchors deepfluoro, finds, detector, cts, trained, renders, sacrum; read from [aidas-seed-grant-proposal](../aidas-seed-grant-proposal/) and [counting-levels-under-fluoroscopy](../counting-levels-under-fluoroscopy/).
 
 | Outcome | Gives | Where | Line | Passage |
 |---|---|---|---|---|
@@ -711,7 +715,7 @@ confirmed-contradiction; 19 (open, side a); 20 (open, side b); anchors anomalous
 
 ### Row 206: sweep chain survival with the detector's own boxes
 
-cannot-tell; 20% (open, side a); 100% (open, side a); 40% (open, side b); anchors survives, instead, boxes, detector, chain, films, sweep; read from [vertebral-levels-without-ct-a4rydj](../vertebral-levels-without-ct-a4rydj/) and [naming-vertebrae-without-ct-hjy4vc](../naming-vertebrae-without-ct-hjy4vc/).
+cannot-tell; 20% (open, side a); 100% (open, side a); 40% (open, side b); anchors survives, instead, detector, boxes, films, chain, sweep; read from [vertebral-levels-without-ct-a4rydj](../vertebral-levels-without-ct-a4rydj/) and [naming-vertebrae-without-ct-hjy4vc](../naming-vertebrae-without-ct-hjy4vc/).
 
 ### Row 226: number of coordbench task pairs
 
