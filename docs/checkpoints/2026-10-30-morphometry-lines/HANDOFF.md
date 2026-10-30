@@ -4,7 +4,7 @@ Thread "Run morphometry on gold tier 3 masks" of the claude.ai project symphony_
 
 ## 1. What was asked
 
-- 14:28 UTC: "yes do all these\nmerge PR 44, re-pin the engine in SchwingNet, and give a count for the next grid run." Done: bordercall PR 44 merged (main ee495d5 then), and SchwingNet e95e5fa pins grid/bordercall/ at ee495d5.
+- 14:28 UTC: "yes do all these\nmerge PR 44, re-pin the engine in SchwingNet, and give a count for the next grid run." Done: bordercall PR 44 merged (main ee495d5 then), and SchwingNet e95e5fa pins grid/bordercall/ at ee495d5, on this branch and not yet on main: it first reached origin with this checkpoint, in the draft pull request below.
 - 14:33 UTC, the count card: "Three: enhance, verse, covariates": one more job a set on the merged engine and the join once more. 14:34 UTC: "wait take this other sessions activity into accoubnt", the thread of bordercall PR 45 ("Plan the evaluation of latent shape priors against explainable measurements"), which asked that its stage 1 export, each measure's line and each vertebra's frame, ride in the morphometry jobs. "please make sure this runs on the grid and not the cloud."
 - 14:45 UTC, the hold, verbatim: "dont do these steps i want to resynthesize everything first\n\n* Send enhance, then verse, then covariates, one at a time\n* Read each report and send plots, old engine against new". So no grid send, no report read and no plot until the owner says the resynthesis is done. It stands.
 - 16:49 UTC, verbatim: "make sure these lines can be projected from 3D to 2D natively, surviving a conversion by flexray to a fluroscopic xray, further, there should be basic functioanlity for non-linear arcs/curves/planes/volumes/ect". Done in bordercall draft PR 49 (below).
