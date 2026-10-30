@@ -155,7 +155,14 @@
 #                   beside the rows; each set queued once as one batch job once its inputs have landed, the
 #                   next send printing logs/MORPHOMETRY-<set>.md, aggregates alone, and every later one
 #                   printing it again and queueing nothing, a set that failed queued once more only once a
-#                   fix has moved the checkout
+#                   fix has moved the checkout; or covariates, the join of both sets' rows with each person's
+#                   sex and age (grid/morphometry-covariates.sbatch, tools/gold3_covariates.py), one CPU job on
+#                   the owner's count, refused while any morphometry job is live or either set's report is
+#                   missing or ended in failure, queued once from git's copy of its code at the gate's commit,
+#                   so it holds no checkout, the per-person tables staying on the grid; the next send printing
+#                   logs/MORPHOMETRY-covariates.md, aggregates alone, a page a send (COVARIATES_PAGE_LINES),
+#                   and every later one the next page and queueing nothing; a second job only where
+#                   COVARIATES_RERUNS, committed by pull request, carries the owner's word for it
 #   realism <stage> one stage of the FluXray reproduction (docs/research/flux-realism/PREREG.md; the owner's
 #                   count of 2026-10-29 02:35 UTC, two GPU jobs): edit, then stats, each one GPU job that runs
 #                   the Metaflow flow flows/realism.py through flows/launch.py (grid/realism.sbatch) once its
@@ -263,6 +270,14 @@ BENCH_RERUNS="flexray_drr_gap:40859208"
 # The owner's word for one more census job, <id>:<job of the report or the record it replaces>, or
 # <id>:lost for a submission whose answer was lost; one word, one more job (word_census).
 CENSUS_RERUNS=""
+# The owner's word for one more join of the morphometry rows with sex and age, covariates:<job of the
+# report or the record it replaces>, or covariates:lost; one word, one more job (word_morphometry_covariates).
+COVARIATES_RERUNS=""
+# A page of the join's report: the relay keeps the last 400 lines of a send's answer (grid_accounts.py's
+# log_in) and status holds itself to 400 lines and 64 KiB, so a page is 300 of the report's lines with its
+# first and last, each cut to LINE_CHARS by the masks, about 61,000 bytes at most, and the gate's own few
+# lines around it; the report's about 1,100 lines take four sends.
+COVARIATES_PAGE_LINES=300
 LOGS=$REPO/grid/logs
 STATE=$LOGS/GATE_JOBS.txt
 WORDS="start status leaks v1 latency fetch explore dropzip unpack nodequota folders samples sweep bank experiment bench anomaly bordercall census realism morphometry literature stop cancel"
@@ -430,9 +445,10 @@ checkout_holders() {  # afterany:<job> for every live job of the gate's that hol
   # study's three jobs (bench_flexray_drr_gap, _shard, _merge) match too, though they run from a copy
   # of their code and hold no HOLD, so a run sent while the study lasts waits for it as it waited for
   # the study's one job before: bench flexray_drr_seg among them, which writes the masks it reads.
+  # The morphometry join, morphometry_covariates, runs from git's copy of its code and holds none.
   local job waits=""
   [ -f "$STATE" ] || return 0
-  for job in $(awk '$3 == "v1_driver" || $3 == "sweep" || $3 ~ /^experiment_[0-9]+$/ || $3 ~ /^bench_[a-z_]+$/ || $3 ~ /^anomaly_[a-z_]+$/ || $3 ~ /^bordercall_[a-z]+$/ || $3 ~ /^realism_[a-z]+$/ || $3 ~ /^morphometry_[a-z]+$/ { print $1 }' "$STATE" | sort -u); do
+  for job in $(awk '$3 == "v1_driver" || $3 == "sweep" || $3 ~ /^experiment_[0-9]+$/ || $3 ~ /^bench_[a-z_]+$/ || $3 ~ /^anomaly_[a-z_]+$/ || $3 ~ /^bordercall_[a-z]+$/ || $3 ~ /^realism_[a-z]+$/ || ($3 ~ /^morphometry_[a-z]+$/ && $3 != "morphometry_covariates") { print $1 }' "$STATE" | sort -u); do
     case "$QUEUED" in *" $job "*) waits=$(joined "$waits" "afterany:$job") ;; esac
   done
   echo "$waits"
@@ -1911,10 +1927,12 @@ word_morphometry() {  # bordercall's morphometry engine over one gold tier 3 set
   local report=$LOGS/MORPHOMETRY-$id.md busy missing holds opts setup
   case "$id" in
     enhance|verse) ;;
-    *) echo "refusing: morphometry takes enhance or verse"; return 64 ;;
+    covariates) word_morphometry_covariates; return ;;
+    *) echo "refusing: morphometry takes enhance or verse, or covariates once both have run"; return 64 ;;
   esac
-  # One at a time: both sets hold the checkout and write under one root, and the count is one job a set.
-  busy=$( { live_of morphometry_enhance; live_of morphometry_verse; } | tr '\n' ' ')
+  # One at a time: both sets hold the checkout and write under one root, and the count is one job a set;
+  # the join reads both sets' rows, so neither set is measured again while it runs.
+  busy=$( { live_of morphometry_enhance; live_of morphometry_verse; live_of morphometry_covariates; } | tr '\n' ' ')
   [ -z "${busy// /}" ] || { echo "refusing: a morphometry job is still queued or running (job $busy); send morphometry $id again once it ends"; return 75; }
   if [ -f "$report" ]; then
     # Kept, so the owner's count of one job a set holds: a report that stands queues nothing.
@@ -1937,6 +1955,127 @@ word_morphometry() {  # bordercall's morphometry engine over one gold tier 3 set
   depend_on "$(joined "$setup" "$holds")" || return 1
   submit "morphometry_$id" batch SET="$id" DATA_ROOT="$DATA_ROOT" ${opts[@]+"${opts[@]}"} --no-requeue --time 24:00:00 -- morphometry.sbatch > /dev/null || return 1
   echo "submitted the morphometry job for $id. Send morphometry $id again once it ends to read its report, logs/MORPHOMETRY-$id.md."
+}
+
+word_morphometry_covariates() {  # the morphometry rows joined with each person's sex and age (one CPU job on the owner's count): queued once, its report printed a page a send
+  local report=$LOGS/MORPHOMETRY-covariates.md sent=$LOGS/MORPHOMETRY-covariates.sent busy job missing again=""
+  busy=$( { live_of morphometry_enhance; live_of morphometry_verse; live_of morphometry_covariates; } | tr '\n' ' ')
+  [ -z "${busy// /}" ] || { echo "refusing: a morphometry job is still queued or running (job $busy); send morphometry covariates again once it ends"; return 75; }
+  if [ -f "$report" ]; then
+    # Kept, so the owner's count of one job holds: a report that stands queues nothing, unless the
+    # owner's word for one more job names the report's job in COVARIATES_RERUNS (committed by pull request).
+    covariates_page "$report"
+    job=$(bench_job_of "$report")
+    covariates_rerun_allowed "$job" || return 0
+    mv "$report" "$LOGS/MORPHOMETRY-covariates-$job.md" || return 1
+    rm -f "$LOGS/MORPHOMETRY-covariates.page"
+    again="is job $job's, which COVARIATES_RERUNS lets the owner's count run once more"
+  elif [ -f "$report.part" ]; then
+    # A job that ended past its trap (killed outright, a node lost) leaves what it wrote here.
+    echo "## $(basename "$report").part, unfinished ($(date -r "$report.part" '+%F %T')): what the job wrote before it ended"
+    head -n 200 "$report.part" | LC_ALL=C tr -cd '\11\12\40-\176' | report_shapes | masked | head -c 30000
+  fi
+  if [ -z "$again" ]; then
+    job=$(awk '$3 == "morphometry_covariates" { job = $1 } END { print job }' "$STATE" 2>/dev/null)
+    if [ -n "$job" ]; then
+      covariates_rerun_allowed "$job" || {
+        echo "refusing: a morphometry covariates job was queued before (job $job) and left no report; the owner's count was one job, so another waits for his word, committed as COVARIATES_RERUNS=covariates:$job in grid/gate.sh"
+        return 64
+      }
+      [ ! -f "$report.part" ] || mv "$report.part" "$LOGS/MORPHOMETRY-covariates-$job.part" || return 1
+      again="is job $job's, which COVARIATES_RERUNS lets the owner's count run once more"
+    elif [ -f "$sent" ]; then
+      # A submission whose answer was lost (the controller timed out after it queued the job) leaves no
+      # record and no live job the gate knows; the owner's word, as above, is what queues another.
+      covariates_rerun_allowed lost || {
+        echo "refusing: a morphometry covariates job was submitted at $(cat "$sent") and no job id came back, so it may be queued or ended under Slurm's name schwingnet-morphometry_covariates; another waits for the owner's word, committed as COVARIATES_RERUNS=covariates:lost in grid/gate.sh"
+        return 64
+      }
+      rm -f "$sent"
+      again="follows a submission whose answer was lost, which COVARIATES_RERUNS lets the owner's count run once more"
+    fi
+  fi
+  [ -f "$REPO/tools/gold3_covariates.py" ] && [ -f "$REPO/grid/morphometry-covariates.sbatch" ] || { echo "refusing: no join tool or job script at this commit"; return 2; }
+  missing=$(covariates_inputs_missing)
+  [ -z "$missing" ] || { echo "refusing: morphometry covariates needs $missing"; return 2; }
+  # The job's shape is asked before the submission is marked, so a refused shape marks nothing.
+  hpcw_check morphometry_covariates batch -- morphometry-covariates.sbatch || return 1
+  [ -z "$again" ] || echo "  the join $again"
+  echo "$(date -u '+%F %T') UTC at commit $commit" > "$sent"
+  submit morphometry_covariates batch COVARIATES_COMMIT="$(git -C "$REPO" rev-parse HEAD 2>/dev/null || echo "")" \
+    MORPHOMETRY_ROOT="$(covariates_morphometry_root)" AUTOPET="$(covariates_autopet)" INDEX="$(samples_index)" \
+    VERSE_DEMOGRAPHICS="$(covariates_verse_table)" DATA_ROOT="$DATA_ROOT" -- morphometry-covariates.sbatch > /dev/null || return 1
+  rm -f "$sent"
+  echo "submitted the morphometry covariates job: one CPU job that reads only, its per-person tables kept on the grid. Send morphometry covariates again once it ends to read its report, logs/MORPHOMETRY-covariates.md, a page a send."
+}
+covariates_rerun_allowed() {  # covariates_rerun_allowed JOB: COVARIATES_RERUNS names JOB beside covariates
+  case " $COVARIATES_RERUNS " in *" covariates:$1 "*) return 0 ;; esac
+  return 1
+}
+covariates_morphometry_root() {  # where grid/morphometry.sbatch writes both sets' rows
+  echo "${MORPHOMETRY_ROOT:-$VOLUME/go2432/morphometry}"
+}
+covariates_verse_table() {  # VerSeFusion's demographics table, whose sha256 data/gold3-ct/verse/series.json records
+  echo "${VERSE_DEMOGRAPHICS:-$HOME/VerSeFusion/configs/verse_demographics.csv}"
+}
+covariates_autopet() {  # the census job's map of autoPET's studies to PETCT keys, by the job its report names
+  local job
+  job=$(census_job_of "$LOGS/CENSUS-gold3.md" 2>/dev/null)
+  [ -n "$job" ] || return 1
+  echo "${CENSUS_ROOT:-$VOLUME/go2432/gold3_census}/$job/autopet.json"
+}
+covariates_inputs_missing() {  # what the join would find no file of, one line, or nothing
+  # Each set's report must stand and have ended 0, since the rows of a set that failed or never ran are
+  # no rows to join; then each input the job reads, tested on the login node so the one job is never
+  # spent on a root that moved.
+  local what="" set root autopet
+  lacks() { what="${what:+$what; }$1"; }
+  for set in enhance verse; do
+    if [ ! -f "$LOGS/MORPHOMETRY-$set.md" ]; then
+      lacks "the morphometry $set report (send morphometry $set first)"
+    elif ! tail -n 1 "$LOGS/MORPHOMETRY-$set.md" | grep -q '^- exit 0 at '; then
+      lacks "a morphometry $set report that ended 0 (the one standing ended in failure)"
+    fi
+  done
+  root=$(covariates_morphometry_root)
+  for set in enhance/rows.csv verse/rows.csv verse/totalseg/rows.csv; do
+    [ -f "$root/$set" ] || lacks "the morphometry rows $set under the morphometry root"
+  done
+  if autopet=$(covariates_autopet); then
+    [ -f "$autopet" ] || lacks "the census job's autopet map (autopet.json under the census root)"
+  else
+    lacks "the census report logs/CENSUS-gold3.md naming its job (send census gold3 first)"
+  fi
+  samples_index > /dev/null || lacks "a whole sample index (send samples first)"
+  [ -f "$(covariates_verse_table)" ] || lacks "VerSeFusion's demographics table (configs/verse_demographics.csv in the VerSeFusion clone)"
+  for root in totalsegmentator_v300 aws_enhance_pet_ct/raw; do
+    [ -d "$DATA_ROOT/$root" ] || lacks "$DATA_ROOT/$root"
+  done
+  echo "$what"
+}
+covariates_page() {  # covariates_page REPORT: one page of the join's report, the next page on the next send, cycling
+  # The report's first line (job, host, commit) and last (the exit) go with every page, so each page
+  # says whose it is and how the job ended; the page number is kept beside the report by its job, so a
+  # new report starts at page 1. Every line goes through report_shapes and the masks, as a census's does.
+  local report=$1 mark=$LOGS/MORPHOMETRY-covariates.page job page=1 kept_job kept_page total body pages first last
+  job=$(bench_job_of "$report")
+  if [ -f "$mark" ] && read -r kept_job kept_page < "$mark" && [ "$kept_job" = "$job" ] && [[ $kept_page =~ ^[1-9][0-9]{0,5}$ ]]; then
+    page=$kept_page
+  fi
+  total=$(wc -l < "$report")
+  body=$(( total > 2 ? total - 2 : 0 ))
+  pages=$(( body > 0 ? (body + COVARIATES_PAGE_LINES - 1) / COVARIATES_PAGE_LINES : 1 ))
+  [ "$page" -le "$pages" ] || page=1
+  first=$(( 2 + (page - 1) * COVARIATES_PAGE_LINES ))
+  last=$(( first + COVARIATES_PAGE_LINES - 1 ))
+  [ "$last" -le $(( total - 1 )) ] || last=$(( total - 1 ))
+  echo "## $(basename "$report") ($(date -r "$report" '+%F %T')), page $page of $pages: its first line, lines $first to $last of $total, its last line; the next send prints page $(( page < pages ? page + 1 : 1 ))"
+  {
+    head -n 1 "$report"
+    [ "$last" -lt "$first" ] || sed -n "${first},${last}p" "$report"
+    [ "$total" -lt 2 ] || tail -n 1 "$report"
+  } | LC_ALL=C tr -cd '\11\12\40-\176' | report_shapes | masked | head -c 64000
+  echo "$job $(( page < pages ? page + 1 : 1 ))" > "$mark"
 }
 
 word_literature() {  # one reading list fetched onto the grid: queued once, its report printed and kept on the next send

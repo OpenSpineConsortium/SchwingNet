@@ -43,7 +43,8 @@ FAKE_HPCWORKER = ROOT / "tests" / "fakes" / "hpcworker"
 NEW_SCRIPTS = ("gate.sh", "hpcw.sh", "box.sh", "bin/pixi", "bin/train-cpu-python", "00-setup.sbatch", "00-weights.sbatch",
                "00-carmlspine.sbatch", "v1-driver.sbatch", "experiment-driver.sbatch", "run-xray-chain.sh",
                "run-platform-fetch.sh", "sweep-driver.sbatch", "v1-version.sh", "realism.sbatch", "venv.sh",
-               "drr-gap.sbatch", "drr-seg.sbatch", "morphometry.sbatch", "gold3-census.sbatch", "bordercall-complete.sbatch")
+               "drr-gap.sbatch", "drr-seg.sbatch", "morphometry.sbatch", "gold3-census.sbatch", "bordercall-complete.sbatch",
+               "morphometry-covariates.sbatch")
 ENVS = ("default", "train-cpu", "train-gpu", "telemetry")
 # What bench flexray_drr_gap's word says of a mask folder that is there: the study reads too few CTs'
 # masks as none, which its summary says, so the word says only where the folder is.
@@ -154,6 +155,34 @@ echo "900000000000000"
 case " $* " in *" -f "*) echo "ext2/ext3" ;; *) exec stat "$@" ;; esac
 """,
 }
+
+
+def shell_text(quoted):
+    """The text a double-quoted shell word after its opening quote prints, each $(...) standing in as
+    ValueError, the kind of error a job quotes, and each $name or ${...} as 3, up to its closing quote."""
+    out, i = [], 0
+    while i < len(quoted):
+        char = quoted[i]
+        if quoted.startswith("$(", i):
+            depth, i = 1, i + 2
+            while depth:
+                depth += {"(": 1, ")": -1}.get(quoted[i], 0)
+                i += 1
+            out.append("ValueError")
+        elif quoted.startswith("${", i):
+            i = quoted.index("}", i) + 1
+            out.append("3")
+        elif char == "$":
+            i += 1
+            while i < len(quoted) and (quoted[i].isalnum() or quoted[i] == "_"):
+                i += 1
+            out.append("3")
+        elif char == '"':
+            break
+        else:
+            out.append(char)
+            i += 1
+    return "".join(out)
 
 
 class GateTest(unittest.TestCase):
@@ -2586,6 +2615,247 @@ esac
             self.assertIn("enhance or verse", done.stdout)
         self.assertFalse((self.repo / "grid" / "logs").exists())
         self.assertFalse(list((self.tmp).glob("**/MORPHOMETRY-*")))
+
+    def covariates_inputs(self, ended=(0, 0)):
+        """What the join reads, as the lab volume and the data root would hold it once both sets have run:
+        each set's report ending with its exit, the three rows files, the census report and its job's
+        autoPET map, a whole sample index, VerSeFusion's table and the two data-root folders; and the
+        tool. Returns the environment that points the gate at the table, which lives in the owner's home."""
+        logs = self.repo / "grid" / "logs"
+        logs.mkdir(parents=True, exist_ok=True)
+        for which, rc in zip(("enhance", "verse"), ended):
+            (logs / f"MORPHOMETRY-{which}.md").write_text(
+                f"# morphometry {which}: job 40 on node, commit 0000000, 2026-10-29 16:00:00 UTC\n"
+                f"- exit {rc} at 2026-10-30 01:00:00 UTC\n", encoding="utf-8")
+        for rows in ("enhance/rows.csv", "verse/rows.csv", "verse/totalseg/rows.csv"):
+            path = self.tmp / "go2432" / "morphometry" / rows
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("study,level,key,value,note\n", encoding="utf-8")
+        (logs / "CENSUS-gold3.md").write_text("# census gold3: job 7 on node, commit abc1234, 2026-10-29 19:02:20 UTC\n"
+                                              "- exit 0 at 2026-10-29 22:27:54 UTC\n", encoding="utf-8")
+        autopet = self.tmp / "go2432" / "gold3_census" / "7" / "autopet.json"
+        autopet.parent.mkdir(parents=True, exist_ok=True)
+        autopet.write_text("{}\n", encoding="utf-8")
+        index = self.data / "_samples" / "run1" / "samples.sqlite"
+        index.parent.mkdir(parents=True, exist_ok=True)
+        index.write_bytes(b"")
+        (self.data / "_samples" / "CURRENT").write_text("run1\n", encoding="utf-8")
+        for root in ("totalsegmentator_v300", "aws_enhance_pet_ct/raw"):
+            (self.data / root).mkdir(parents=True, exist_ok=True)
+        table = self.tmp / "home" / "VerSeFusion" / "configs" / "verse_demographics.csv"
+        table.parent.mkdir(parents=True, exist_ok=True)
+        table.write_text("patient,series,sex,age\n", encoding="utf-8")
+        (self.repo / "tools" / "gold3_covariates.py").write_text("", encoding="utf-8")
+        return {"VERSE_DEMOGRAPHICS": str(table)}
+
+    def allow_covariates_rerun(self, word):
+        """The owner's word for one more join, as a pull request commits it in grid/gate.sh."""
+        gate = self.repo / "grid" / "gate.sh"
+        text, count = re.subn(r'(?m)^COVARIATES_RERUNS="[^"]*"$', f'COVARIATES_RERUNS="{word}"', gate.read_text(encoding="utf-8"))
+        self.assertEqual(count, 1)
+        gate.write_text(text, encoding="utf-8")
+
+    def test_morphometry_covariates_waits_for_both_sets_to_end_0_and_for_every_input(self):
+        # no tool at this commit: nothing is read and nothing queued
+        refused = self.gate("morphometry", "covariates")
+        self.assertEqual(refused.returncode, 2, refused.stdout)
+        self.assertIn("no join tool or job script at this commit", refused.stdout)
+        (self.repo / "tools" / "gold3_covariates.py").write_text("", encoding="utf-8")
+        # with nothing of the sets', the census or the index there, each is named
+        refused = self.gate("morphometry", "covariates")
+        self.assertEqual(refused.returncode, 2, refused.stdout)
+        for said in ("the morphometry enhance report (send morphometry enhance first)",
+                     "the morphometry verse report (send morphometry verse first)",
+                     "the morphometry rows enhance/rows.csv under the morphometry root",
+                     "the census report logs/CENSUS-gold3.md naming its job (send census gold3 first)",
+                     "a whole sample index (send samples first)", "VerSeFusion's demographics table",
+                     f"{self.data}/totalsegmentator_v300", f"{self.data}/aws_enhance_pet_ct/raw"):
+            self.assertIn(said, refused.stdout)
+        # a set whose report ended in failure measured nothing the join may read
+        env = self.covariates_inputs(ended=(0, 1))
+        refused = self.gate("morphometry", "covariates", **env)
+        self.assertEqual(refused.returncode, 2, refused.stdout)
+        self.assertIn("refusing: morphometry covariates needs a morphometry verse report that ended 0 "
+                      "(the one standing ended in failure)", refused.stdout)
+        self.assertNotIn("enhance report", refused.stdout)
+        # the census job's own map, by the job its report names
+        self.covariates_inputs()
+        (self.tmp / "go2432" / "gold3_census" / "7" / "autopet.json").unlink()
+        refused = self.gate("morphometry", "covariates", **env)
+        self.assertEqual(refused.returncode, 2, refused.stdout)
+        self.assertIn("the census job's autopet map", refused.stdout)
+        # the table in the owner's home is looked for where VerSeFusion's clone keeps it, not elsewhere
+        self.covariates_inputs()
+        refused = self.gate("morphometry", "covariates", HOME=str(self.tmp / "nobody"))
+        self.assertEqual(refused.returncode, 2, refused.stdout)
+        self.assertIn("VerSeFusion's demographics table", refused.stdout)
+        # while any morphometry job is live the join waits, since it reads both sets' rows
+        self.state_line(4100, "morphometry:verse", "morphometry_verse")
+        self.live(4100)
+        busy = self.gate("morphometry", "covariates", **env)
+        self.assertEqual(busy.returncode, 75, busy.stdout)
+        self.assertIn("job 4100", busy.stdout)
+        self.assertEqual(self.submitted(), [])
+
+    def test_morphometry_covariates_queues_one_requeueable_cpu_job_once_that_holds_no_checkout(self):
+        env = self.covariates_inputs()
+        done = self.gate("morphometry", "covariates", **env)
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("submitted the morphometry covariates job", done.stdout)
+        lines = self.submitted()
+        # no setup job goes with it, and nothing it waits on: it holds no checkout and finds its own python
+        self.assertEqual(len(lines), 1, lines)
+        self.assertIn("--class batch --name morphometry_covariates ", lines[0])
+        self.assertNotIn("--no-requeue", lines[0])
+        self.assertNotIn("--dependency", lines[0])
+        self.assertIn("morphometry-covariates.sbatch", lines[0])
+        self.assertIn(f" INDEX={self.data}/_samples/run1/samples.sqlite ", lines[0])
+        self.assertIn(f" DATA_ROOT={self.data} ", lines[0])
+        self.assertIn(f" COVARIATES_COMMIT= AUTOPET={self.tmp}/go2432/gold3_census/7/autopet.json "
+                      f"MORPHOMETRY_ROOT={self.tmp}/go2432/morphometry VERSE_DEMOGRAPHICS={env['VERSE_DEMOGRAPHICS']}", lines[0])
+        self.assertFalse((self.repo / "grid" / "logs" / "MORPHOMETRY-covariates.sent").exists())
+        job = self.recorded()["morphometry_covariates"]
+        self.live(job)
+        # while it runs, neither it nor a set is queued again, since a set would rewrite the rows it reads
+        for which in ("covariates", "enhance", "verse"):
+            busy = self.gate("morphometry", which, **env)
+            self.assertEqual(busy.returncode, 75, busy.stdout)
+            self.assertIn(f"job {job}", busy.stdout)
+        # and a run that holds the checkout does not wait for it, since it holds none
+        self.state_line(4200, "morphometry:enhance", "morphometry_enhance")
+        self.live(job, 4200)
+        (self.repo / "tools" / "gold3_complete_grid.py").write_text("", encoding="utf-8")
+        matcher = self.repo / "grid" / "bordercall" / "holdings" / "fullspine_complete.py"
+        matcher.parent.mkdir(parents=True, exist_ok=True)
+        matcher.touch()
+        holds = self.gate("bordercall", "complete")
+        self.assertEqual(holds.returncode, 0, holds.stdout + holds.stderr)
+        self.assertIn("the checkout: after the live runs that hold it (afterany:4200)", holds.stdout)
+        self.assertNotIn(f"afterany:{job}", holds.stdout)
+        (self.fake / "queue").write_text("", encoding="utf-8")
+        # a job that ended with no report is not queued again: a second one waits for the owner's word
+        again = self.gate("morphometry", "covariates", **env)
+        self.assertEqual(again.returncode, 64, again.stdout)
+        self.assertIn("left no report", again.stdout)
+        self.assertIn(f"COVARIATES_RERUNS=covariates:{job}", again.stdout)
+        self.assertEqual(len(self.line_of("morphometry-covariates.sbatch")), 1)
+
+    def test_morphometry_covariates_prints_its_report_a_page_a_send_and_queues_nothing(self):
+        env = self.covariates_inputs()
+        logs = self.repo / "grid" / "logs"
+        report = logs / "MORPHOMETRY-covariates.md"
+        body = [f"- all measure_{i:04d} L1 M 14 23.04 0.3046 F 12 21.08 0.4149 g 5.283 0.682 r 0.107 14 -0.099 12 "
+                f"a 0.09797 0.05746 14 0.08261 0.08668 11" for i in range(1, 651)]
+        report.write_text("# morphometry covariates: job 77 on node, commit abc1234, 2026-10-30 10:00:00 UTC\n"
+                          + "".join(line + "\n" for line in body) + "- exit 0 at 2026-10-30 10:20:00 UTC\n", encoding="utf-8")
+        pages, headings = [], []
+        for _ in range(4):
+            done = self.gate("morphometry", "covariates", **env)
+            self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+            out = done.stdout.splitlines()
+            # within what the relay keeps of a send's answer and what status holds itself to
+            self.assertLessEqual(len(out), 400)
+            self.assertLessEqual(len(done.stdout.encode()), 64 * 1024)
+            self.assertIn("# morphometry covariates: job 77 on node, commit abc1234, 2026-10-30 10:00:00 UTC", out)
+            self.assertIn("- exit 0 at 2026-10-30 10:20:00 UTC", out)
+            self.assertNotIn("No such file", done.stdout)
+            pages.append([line for line in out if line.startswith("- all measure_")])
+            headings += [line for line in out if line.startswith("## MORPHOMETRY-covariates.md ")]
+        self.assertEqual([h.split("), ")[1].split(":")[0] for h in headings], ["page 1 of 3", "page 2 of 3", "page 3 of 3", "page 1 of 3"])
+        self.assertTrue(headings[2].endswith("lines 602 to 651 of 652, its last line; the next send prints page 1"), headings[2])
+        self.assertEqual(pages[0], body[:300])
+        self.assertEqual(pages[1], body[300:600])
+        self.assertEqual(pages[2], body[600:])
+        self.assertEqual(pages[3], body[:300], "the fourth send starts over")
+        self.assertEqual(self.submitted(), [])
+        # a new report, of another job, starts at its first page whatever the mark says
+        report.write_text("# morphometry covariates: job 78 on node, commit abc1234, 2026-10-30 11:00:00 UTC\n"
+                          + "".join(line + "\n" for line in body) + "- exit 0 at 2026-10-30 11:20:00 UTC\n", encoding="utf-8")
+        done = self.gate("morphometry", "covariates", **env)
+        self.assertIn("page 1 of 3: its first line, lines 2 to 301 of 652, its last line; the next send prints page 2",
+                      done.stdout)
+        self.assertEqual([line for line in done.stdout.splitlines() if line.startswith("- all measure_")], body[:300])
+        # its lines go through the masks as a census's do: a line naming a DICOM element is withheld
+        report.write_text("# morphometry covariates: job 79 on node, commit abc1234, 2026-10-30 12:00:00 UTC\n"
+                          "- PatientAge 054Y\n- exit 0 at 2026-10-30 12:20:00 UTC\n", encoding="utf-8")
+        done = self.gate("morphometry", "covariates", **env)
+        self.assertIn("[a line withheld: it names a DICOM element]", done.stdout)
+        self.assertNotIn("054Y", done.stdout)
+        self.assertEqual(self.submitted(), [])
+
+    def test_morphometry_covariates_queues_nothing_after_a_lost_answer_until_the_owners_word(self):
+        env = self.covariates_inputs()
+        (self.fake / "lossy").write_text("morphometry_covariates", encoding="utf-8")
+        lost = self.gate("morphometry", "covariates", HPCW_LOSSY=str(self.fake / "lossy"), **env)
+        self.assertNotEqual(lost.returncode, 0, lost.stdout)
+        self.assertEqual(len(self.submitted()), 1)
+        self.assertTrue((self.repo / "grid" / "logs" / "MORPHOMETRY-covariates.sent").exists())
+        self.assertNotIn("morphometry_covariates", self.recorded())
+        (self.fake / "lossy").write_text("", encoding="utf-8")
+        for _ in range(2):
+            refused = self.gate("morphometry", "covariates", **env)
+            self.assertEqual(refused.returncode, 64, refused.stdout)
+            self.assertIn("no job id came back", refused.stdout)
+            self.assertIn("COVARIATES_RERUNS=covariates:lost", refused.stdout)
+        self.allow_covariates_rerun("covariates:4242")
+        self.assertEqual(self.gate("morphometry", "covariates", **env).returncode, 64)
+        self.allow_covariates_rerun("covariates:lost")
+        done = self.gate("morphometry", "covariates", **env)
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("follows a submission whose answer was lost", done.stdout)
+        self.assertEqual(len(self.submitted()), 2)
+        self.assertFalse((self.repo / "grid" / "logs" / "MORPHOMETRY-covariates.sent").exists())
+
+    def test_morphometry_covariates_prints_an_unfinished_part_and_reruns_only_for_the_job_the_word_names(self):
+        env = self.covariates_inputs()
+        self.assertEqual(self.gate("morphometry", "covariates", **env).returncode, 0)
+        job = self.recorded()["morphometry_covariates"]
+        logs = self.repo / "grid" / "logs"
+        part = logs / "MORPHOMETRY-covariates.md.part"
+        part.write_text(f"# morphometry covariates: job {job} on node, commit abc1234, 2026-10-30 10:00:00 UTC\n"
+                        "- interpreter: python, Python 3.11.4, numpy 1.26.4\n", encoding="utf-8")
+        shown = self.gate("morphometry", "covariates", **env)
+        self.assertEqual(shown.returncode, 64, shown.stdout)
+        self.assertIn("MORPHOMETRY-covariates.md.part, unfinished", shown.stdout)
+        self.assertIn("interpreter: python, Python 3.11.4", shown.stdout)
+        self.allow_covariates_rerun(f"covariates:{job}")
+        again = self.gate("morphometry", "covariates", **env)
+        self.assertEqual(again.returncode, 0, again.stdout + again.stderr)
+        self.assertIn(f"is job {job}'s", again.stdout)
+        self.assertEqual(len(self.submitted()), 2)
+        self.assertFalse(part.exists())
+        self.assertTrue((logs / f"MORPHOMETRY-covariates-{job}.part").exists())
+        # a finished report is kept and queues nothing, unless the word names its own job
+        second = self.recorded()["morphometry_covariates"]
+        report = logs / "MORPHOMETRY-covariates.md"
+        report.write_text(f"# morphometry covariates: job {second} on node, commit abc1234, 2026-10-30 11:00:00 UTC\n"
+                          "- exit 0 at 2026-10-30 11:20:00 UTC\n", encoding="utf-8")
+        kept = self.gate("morphometry", "covariates", **env)
+        self.assertEqual(kept.returncode, 0, kept.stdout)
+        self.assertEqual(len(self.submitted()), 2)
+        self.assertTrue(report.exists())
+        self.allow_covariates_rerun(f"covariates:{second}")
+        again = self.gate("morphometry", "covariates", **env)
+        self.assertEqual(again.returncode, 0, again.stdout + again.stderr)
+        self.assertEqual(len(self.submitted()), 3)
+        self.assertTrue((logs / f"MORPHOMETRY-covariates-{second}.md").exists())
+        self.assertFalse((logs / "MORPHOMETRY-covariates.page").exists())
+
+    def test_every_failed_line_the_covariates_job_writes_is_shown_by_the_gate(self):
+        # a reason after FAILED: that could quote a value is withheld (grid/report-shapes.awk), so each the
+        # job writes is worded with none: its shell values stand in as a number or an error's kind
+        text = (GRID / "morphometry-covariates.sbatch").read_text(encoding="utf-8")
+        reasons = []
+        for line in text.splitlines():
+            at = line.find('report "FAILED: ')
+            if at < 0:
+                continue
+            reasons.append(shell_text(line[at + len('report "'):]))
+        self.assertGreaterEqual(len(reasons), 6, reasons)
+        shown = subprocess.run(["awk", "-v", f"data={self.data}", "-v", f"runs={self.runs}", "-v", f"models={self.models}",
+                                "-v", f"repo={self.repo}", "-f", str(GRID / "shape-words.awk"), "-f", str(GRID / "report-shapes.awk")],
+                               input="".join(f"- {r}\n" for r in reasons), capture_output=True, text=True, check=True)
+        self.assertEqual(shown.stdout.splitlines(), [f"- {r}" for r in reasons])
 
     def test_the_realism_job_refuses_a_stage_it_does_not_know_before_touching_anything(self):
         for stage in ("", "train", "lora", "eval"):
