@@ -2195,6 +2195,53 @@ esac
             self.assertIn("gold4: idc rows 2, admitted 1", done.stdout)
         self.assertEqual(len(self.submitted()), 1)
 
+    def test_census_gold3_report_brings_the_padded_planes_and_verses_missing_names(self):
+        # the owner's rule of 2026-10-29 23:46 UTC: a CT that shows C2 and the sacrum is in, and VerSe's
+        # missing masks are repaired; both need names the report's counts leave out, read with no job
+        (self.repo / "tools" / "gold3_census.py").write_text("", encoding="utf-8")
+        self.census_inputs()
+        report = self.repo / "grid" / "logs" / "CENSUS-gold3.md"
+        report.parent.mkdir(exist_ok=True)
+        report.write_text("# census gold3: job 7 on node, commit abc1234, 2026-10-29 19:02:20 UTC\n"
+                          "- extent: re-judged with the CT's own planes 3; verdicts or ends that change 1\n"
+                          "- exit 0 at 2026-10-29 22:27:54 UTC\n", encoding="utf-8")
+        detail = self.tmp / "go2432" / "gold3_census" / "7"
+        detail.mkdir(parents=True)
+        (detail / "extent.json").write_text(json.dumps({
+            "judged": {"s0102": {"ends": ["CT only", "neither"], "foot": "in_view", "head": "in_view", "planes": [1416.9, None],
+                                 "verdict": "admitted", "was": ["not_admitted", "out", "out"]},
+                       "s0213": {"ends": ["neither", "neither"], "planes": [None, None], "verdict": "not_admitted"},
+                       "s1310": {"ends": ["CT only", "CT only"], "planes": [-12.5, -400.0], "verdict": "admitted"}},
+            "reads": [{"id": "s0102", "planes": 214, "flat_high": True}], "root_is_canonical": True}, indent=1, sort_keys=True) + "\n",
+            encoding="utf-8")
+        facts = self.repo / "data" / "gold3-ct" / "verse"
+        facts.mkdir(parents=True)
+        facts.joinpath("facts.jsonl").write_text(
+            '{"id": "verse020", "files": {"verse020_CT-sag_seg.nii.gz": {"sha256": "aa"}}}\n'
+            '{"id": "verse547", "files": {"verse547_seg.nii.gz": {"sha256": "bb"}}, "other_release": {"file": {"verse047_seg.nii.gz": {"sha256": "cc"}}}}\n',
+            encoding="utf-8")
+        copy = self.data / "versefusion" / "raw" / "VerSeFusion_data" / "raw" / "dataset-verse20" / "verse547"
+        copy.mkdir(parents=True)
+        (copy / "verse547_seg.nii.gz").write_bytes(b"x")
+        done = self.gate("census", "gold3")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertEqual(self.submitted(), [])
+        lines = done.stdout.splitlines()
+        self.assertIn("  planes s0102 1416.9 none", lines)
+        self.assertIn("  planes s1310 -12.5 -400.0", lines)
+        self.assertNotIn("  planes s0213 none none", lines)
+        self.assertIn("  planes listed 2; every other subject the report says it judged again has no padded end and keeps its field", lines)
+        self.assertIn("  not found verse020_CT-sag_seg.nii.gz", lines)
+        self.assertIn("  not found verse047_seg.nii.gz", lines)
+        self.assertNotIn("  not found verse547_seg.nii.gz", lines)
+        self.assertIn("  (the names are the facts' 3 recorded, matched by name alone; the report's count matched the bytes too)", lines)
+        # a census that kept no detail says so and still prints the report
+        shutil.rmtree(detail)
+        again = self.gate("census", "gold3")
+        self.assertEqual(again.returncode, 0, again.stdout)
+        self.assertIn("  no extent detail for job 7 where the census keeps it; the planes are not read", again.stdout)
+        self.assertIn("re-judged with the CT's own planes 3", again.stdout)
+
     def allow_census_rerun(self, word):
         """The owner's word for one more census job, as a pull request commits it in grid/gate.sh."""
         gate = self.repo / "grid" / "gate.sh"
