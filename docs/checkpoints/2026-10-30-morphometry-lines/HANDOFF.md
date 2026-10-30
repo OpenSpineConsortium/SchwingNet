@@ -25,6 +25,10 @@ Thread "Run morphometry on gold tier 3 masks" of the claude.ai project symphony_
 6. Tell the thread of bordercall PR 45, through the coordinator, that the lines and frames ride in the jobs once step 4 lands, and that morphoview project carries them onto FleXray's renders and the realism edits (PR 49).
 7. Only on the owner's word after the resynthesis: send enhance, then verse, then the covariates join, one at a time (the count of 14:33 UTC covers one job each), read each report and send plots of the old engine against the new, short notes on how to read them.
 
-## 4. The rules this work runs under
+## 4. Where the old session's files are
+
+The container this thread ran in is reclaimed when the session ends, so on the owner's word of 20:24 UTC ("make sure all files local to this account and session are pushed") its own files went to bordercall's branch claude/project-thread-gv744i, research_notes/morphometry/session-2026-10-30/, in a commit of their own (b1103d0, with 2a80945): the scratchpad's own text files, the background commands' logs, the workflows' scripts and run records, the verse plot from the Claude project's files, the four environments' package lists, and MANIFEST.tsv, every one of its 12,244 own files with the reason each one not pushed was left (virtual environments, third-party sources, rebuildable caches and binaries). Its README says what each folder held. The project memory this account kept is copied in memory/ here, and FIRST-PROMPT.md here is the new account's first message. Transcripts were not pushed.
+
+## 5. The rules this work runs under
 
 The owner's standing rules for every thread are in docs/checkpoints/2026-10-29-final/memory/, in the symphony_2 handoff of PR #491 (its branch claude/project-thread-r4iyuy until it merges) and in the project's memory: never run archived code; test what a change touches before pushing; start only the threads the owner names; every grid job needs the owner's word and the number of jobs, under the size rule; reports are plots with short notes; the CTSpinoPelvic1K cross-check is dropped; phantoms are deferred, evaluate on real spines; the auto-anatomist's network is a swappable block. No real mask or CT is read in a container; torch and FleXray are test-only in bordercall; no usage credits; nothing public.
