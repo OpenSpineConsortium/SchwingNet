@@ -1,0 +1,8 @@
+#!/bin/sh
+# symphony-usage: adds the Claude Code session's usage and profile since
+# its last commit to this commit as the Symphony-Usage and Symphony-Profile
+# trailers (tools/usage.py). It never stops a commit.
+root=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
+[ -f "$root/tools/usage.py" ] || exit 0
+python3 "$root/tools/usage.py" trailer "$1" >/dev/null 2>&1 || true
+exit 0
