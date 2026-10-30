@@ -1,0 +1,44 @@
+"""Build the page's DATA object from the DATA writer's files and tools/experiments_panel.py, as section 16
+describes, and write it beside this script for the engine cross-check."""
+
+import json
+import os
+import sys
+
+REPO = "/home/user/SchwingNet"
+SANDBOX = os.path.join(REPO, "tools", "sandbox")
+HERE = os.path.dirname(os.path.abspath(__file__))
+
+
+def load(path):
+    with open(path, encoding="ascii") as handle:
+        return json.load(handle)
+
+
+def folder(name):
+    path = os.path.join(SANDBOX, name)
+    return [load(os.path.join(path, f)) for f in sorted(os.listdir(path)) if f.endswith(".json")]
+
+
+def experiment():
+    sys.path.insert(0, os.path.join(REPO, "tools"))
+    import experiments_panel as panel
+    catalog = panel.block_catalog(REPO)
+    return {"repo": panel.REPO, "new": f"https://github.com/{panel.REPO}/issues/new", "label": panel.ISSUE_LABEL,
+            "marker": panel.ISSUE_MARKER, "flow": panel.FLOW_HEAD, "fields": catalog["fields"],
+            "defaults": catalog["defaults"], "epochs_most": panel.EPOCHS_MOST, "hours_most": panel.HOURS_MOST,
+            "recipes": [r["name"] for r in panel.recipes(REPO)]}
+
+
+def main():
+    data = {"contract": load(os.path.join(SANDBOX, "contract.json")),
+            "blocks": sorted(folder("blocks"), key=lambda m: m["id"]),
+            "templates": sorted(folder("templates"), key=lambda t: t["id"]),
+            "experiment": experiment(), "repo": "OpenSpineConsortium/SchwingNet"}
+    with open(os.path.join(HERE, "data.json"), "w", encoding="ascii") as handle:
+        json.dump(data, handle, sort_keys=True, ensure_ascii=True)
+    print(len(data["blocks"]), "blocks;", len(data["templates"]), "templates;", "recipes", data["experiment"]["recipes"])
+
+
+if __name__ == "__main__":
+    main()

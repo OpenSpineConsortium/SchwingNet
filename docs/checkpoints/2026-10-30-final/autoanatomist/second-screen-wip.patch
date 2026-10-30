@@ -1,0 +1,1872 @@
+From c15800c07e2d96d852f6b7821c62977c46739621 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 30 Oct 2026 18:30:48 +0000
+Subject: [PATCH 1/3] The second screen: four changes to the anneal, read
+ against lambda_then_w
+
+greg chose at 16:52 UTC on 2026-10-30 to build four arms after the demo,
+as blocks with tests and a frozen plan for a second screen; bordercall
+8e966e4 holds them (schedule=cyclic, schedule=adaptive,
+ladder=overlapping, restraint=abf, each changing nothing where it is
+not named), and this brings them here and plans their screen. At 18:05
+UTC, going into the operating room, he asked for whatever a training
+run on gold tier 3 needs while he is out.
+
+The copy under grid/autoanatomist/ is bordercall 8e966e4 (tools/
+bordercall_vendor.py copy). Two plans: gold3_latent_smoke2, the five
+anneals in series on the first smoke's four CTs, so the new blocks run
+on a card before twelve trials take one each; and gold3_latent_screen2,
+lambda_then_w as the null, cyclic, adaptive, overlapping, restraint and
+ct_only (the first screen's null under its own name), two seeds each, on
+the first screen's own rows. tools/autoanatomist_plan.py takes the rows
+from the committed plans (rows_of) and writes only the plans --plan
+names, so the frozen plans keep their bytes.
+
+PREREG.md gains section 8, which says the arms, the hypotheses, the
+second smoke and four known limits, and is frozen a fourth time with the
+two plans on its Covers line; sections 1 to 6 and the first two plans'
+bytes are unchanged. A send copies the code at the gate's commit, so a
+plan sent before this commit runs afe1952's copy, and each screen reads
+its arms against a null trained at its own commit.
+
+The gate counts both plans and orders them: the second smoke after the
+first, the second screen after the second smoke. The report says the
+second smoke answers no hypothesis and restates section 8's limits for
+the second screen's plans; its DESIGN is the new PREREG sha256.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01CfV9zXZuntmLhnVi2um3df
+---
+ docs/memory/MEMORY.md                         |   2 +-
+ docs/memory/the-auto-anatomist-screen.md      |   4 +-
+ docs/research/autoanatomist-screen/PREREG.md  |  21 +-
+ .../autoanatomist-screen/PREREG.md.sha256     |   2 +-
+ docs/research/autoanatomist-screen/README.md  |   6 +-
+ grid/README.md                                |   2 +-
+ grid/gate.sh                                  |  14 +-
+ grid/screens/gold3_latent_screen2.json        | 803 ++++++++++++++++++
+ grid/screens/gold3_latent_smoke2.json         | 100 +++
+ tests/test_autoanatomist_report.py            |  30 +
+ tests/test_gate.py                            |  41 +-
+ tools/autoanatomist_plan.py                   |  85 +-
+ tools/autoanatomist_report.py                 |  32 +-
+ 13 files changed, 1103 insertions(+), 39 deletions(-)
+ create mode 100644 grid/screens/gold3_latent_screen2.json
+ create mode 100644 grid/screens/gold3_latent_smoke2.json
+
+diff --git a/docs/memory/MEMORY.md b/docs/memory/MEMORY.md
+index bf508b8..eb74e64 100644
+--- a/docs/memory/MEMORY.md
++++ b/docs/memory/MEMORY.md
+@@ -45,7 +45,7 @@ One line per fact under docs/memory/: a dash, the fact's title as a link to its
+ - [SWE-bench runs from GitHub and PyPI](swe-bench-runs-from-github-and-pypi.md): the task repository SWE-bench/swe-bench-tasks, compiled by `swebench dataset build`, scores an instance where huggingface.co is unreachable; never --task-repo, which rebuilds the image; the images pull through mirror.gcr.io; OpenSpineConsortium/flowbench builds on it.
+ - [Symphony versus competitors](symphony-versus-competitors.md): the comparison of 2026-10-16 is docs/research/symphony-versus-competitors.md (and a Claude Doc); its three claims are better by design and graded Inferred, no outcome is measured yet, and coordbench numbers stay out until the owner lifts the hold; the site's /symphony/compare.html sets the general powers beside familiar tools in seven kinds of work, and /symphony/use-cases.html gives the use cases (docs/research/symphony-compared-by-domain.md).
+ - [The anomaly pack](the-anomaly-pack.md): stage 3 of the SPINEPS to FleXray route packs the selection as two whole-volume FleXray packages under the landing flexray_pack (schwingnet_spine for masks complete from C2 to the sacrum, schwingnet_spine_partial for the rest), every mask rewritten to the 28 canonical ids by tools/nifti_label.py, the existing relabelled SPINEPS copies through spineps_ids.py check --strict and never a segmenter run, countable measured per CT, uncounted and g3_excluded rows packed and trained on by nothing, the validation draw under data/splits/anomaly-validation.json, the admission before any byte and no HOLD (docs/research/spineps-anomaly-route.md, section 5).
+-- [The auto-anatomist screen](the-auto-anatomist-screen.md): the grid word `autoanatomist <plan>` runs AutoanatomistFlow under the frozen docs/research/autoanatomist-screen/PREREG.md, gold3_latent_smoke on the owner's count of 2026-10-30 03:20 UTC and gold3_latent_screen's two jobs (a GPU array of eight trials and a CPU join) on his word of 08:56 UTC, each sent once, the screen only after the smoke's report ends in exit 0; normal spines alone in the first run; the grid's Python 3.11 pins jax 0.10.2, flax 0.12.8 and optax 0.2.8; every path the job passes is absolute; the plans keep the latent-prior evaluation's test reserve out and each repeat-scan unit in one part.
++- [The auto-anatomist screen](the-auto-anatomist-screen.md): the grid word `autoanatomist <plan>` runs AutoanatomistFlow under the frozen docs/research/autoanatomist-screen/PREREG.md: gold3_latent_smoke (the owner's count of 2026-10-30 03:20 UTC), gold3_latent_screen's GPU array of eight trials and CPU join (his word of 08:56 UTC) once the smoke ends in exit 0, and the second screen's gold3_latent_smoke2 and twelve-trial gold3_latent_screen2 (section 8, his words of 16:52 and 18:05 UTC), each sent once in its gate order, by a session while he is away; normal spines alone; the grid's Python 3.11 pins jax 0.10.2, flax 0.12.8 and optax 0.2.8; every path the job passes is absolute; the plans keep the latent-prior evaluation's test reserve out and each repeat-scan unit in one part.
+ - [The control panel](the-control-panel.md): the site's /symphony/control/ drives a Symphony repository through GitHub's API as the signed-in person (the board, tasks, @claude, workers, pull requests, workflow runs) and /symphony/cost.html prices the work against the alternatives, unsorry first; Sign in with GitHub first (the App's user token through a stateless Worker), a pasted fine-grained token the fallback; it took no Claude token until the owner dropped that rule on 2026-10-18 for the Tokens page's Add a slot box, which saves a pasted token as an organization secret through the App; its assistant is an issue labelled assistant that claude.yml answers read-only in ten turns with .github/symphony/assistant.md appended, and the Ask Claude bar at the console's foot asks it and offers the panel actions its answer names as buttons the person presses (site #28, 2026-10-18; docs/research/ask-claude-bar.md); the research note is docs/research/control-panel.md.
+ - [The drive organizer](drive-organizer.md): a whole drive read into a catalog on the branch drive-catalog, Claude proposing projects as epics whose tasks carry proposed and no todo until a person runs accept, which adds the folders to the sync, and the sync's run starts the tasks once the files are in; private repositories only, nothing scheduled; tools/file_digest.py reads any file as text; a session does it through the Microsoft 365 connector too (tools/drive_connector.py, the drive-organize skill), moving files only on the owner's go and undoably; Wayne State approved the Folders app for native Graph access on 2026-10-19, confirmed live 2026-10-20, so the drive is read only through Graph under the owner's sign-in and the connector walk is retired (docs/research/onedrive-direct-graph.md); docs/research/drive-organizer.md.
+ - [The data catalog](the-data-catalog.md): the frame catalog of task #10 is a read-only versioned SQLite store (catalog-NNNNNN-<hash>.sqlite under versions/, 0444, VERSIONS.jsonl and CURRENT; unchanged bytes make no version) built from content-hashed shard manifests and data/registry/, with the person-keyed split under data/splits/; the data root lists sources alphabetically, tools/ingest.py turns a bank into a shard, split-check holds every version to the REFORMS split rule; images stay on the grid, Metaflow steps read a version by path and pass its hash; tools/catalog.py, docs/research/data-catalog.md, docs/research/dataset-organisation-at-scale.md.
+diff --git a/docs/memory/the-auto-anatomist-screen.md b/docs/memory/the-auto-anatomist-screen.md
+index 154b383..3812ff6 100644
+--- a/docs/memory/the-auto-anatomist-screen.md
++++ b/docs/memory/the-auto-anatomist-screen.md
+@@ -1,4 +1,4 @@
+-The auto-anatomist screen runs on the grid as the word `autoanatomist <plan>`, the smoke on the owner's count of 2026-10-30 03:20 UTC and the screen's two jobs on his word of 08:56 UTC, each plan sent once.
++The auto-anatomist screen runs on the grid as the word `autoanatomist <plan>`, the smoke on the owner's count of 2026-10-30 03:20 UTC, the screen's two jobs on his word of 08:56 UTC and the second screen's smoke and screen on his choice of 16:52 UTC and word of 18:05 UTC, each plan sent once.
+ 
+ - The flow is AutoanatomistFlow (flows/autoanatomist.py), a trial or the join of a plan under grid/screens/, held to docs/research/autoanatomist-screen/PREREG.md and to the plan's bytes; the job script is grid/autoanatomist.sbatch and the network bordercall's copy under grid/autoanatomist/ (tools/bordercall_vendor.py copy, never a hand edit).
+ - grid/gate.sh queues a plan only where AUTOANATOMIST_COUNTED names it, sends gold3_latent_screen only once the smoke's report ends in exit 0 (AUTOANATOMIST_AFTER), and sends a plan again only after a fix moved the checkout, after a send Slurm ended before any part started, or on the owner's word in AUTOANATOMIST_RERUNS; gold3_latent_smoke is one GPU job, gold3_latent_screen a GPU array of eight trials and a CPU join afterany it, the join waiting for the setup as the trials do.
+@@ -9,4 +9,6 @@ The auto-anatomist screen runs on the grid as the word `autoanatomist <plan>`, t
+ - Decision: the null trains with w_feature=0, the CT branch alone on the mask and name terms, since at w 0 the mask encoder takes no gradient and the feature term would pull the CT encoder towards a random network's features; a trial whose loss, weights or CT-only outputs stop being finite stops with exit 1 and entry_problems refuses a reading with no finite loss, so a diverged trial is failed, never a finite worst distance (the second review, 2026-10-30).
+ - Decision: the annealed arms keep the feature term to the last step, so once w reaches 0 it distils from a frozen teacher, KD-Net's form; w_first is read as a handover on clean masks followed by that distillation, not as the ladder's order, and a term that ends with the handover is a later pre-registration's, with a change to the vendored network (the third review, 2026-10-30).
+ - A plan's row names one study as its item and its person, and its source is one the gold 3 store spells (enhance_pet, totalsegmentator, verse), since the trial reads files by the item and the split's guards check the person (schwingnet.autoanatomist_screen.plan_problems).
++- The second screen (PREREG.md section 8): gold3_latent_smoke2, five anneals in series on the smoke's rows, after the first smoke's exit 0, then gold3_latent_screen2, a GPU array of twelve trials (lambda_then_w as its null, cyclic, adaptive, overlapping, restraint and ct_only, the first screen's null renamed, at two seeds) and a CPU join, after the second smoke's exit 0, both on the first screen's rows (tools/autoanatomist_plan.py write --plan, rows_of) and on bordercall 8e966e4's copy; a plan sent before that copy's commit runs afe1952's, so each screen reads its arms against a null of its own commit.
++- Constraint: the owner's word of 2026-10-30 18:05 UTC, going into the operating room, is that a session sends the plans itself, each in its gate order, and fixes and resends a failed one; tools/autoanatomist_report.py's DESIGN is PREREG.md's sha256, so a refreeze changes both together.
+ - docs/research/autoanatomist-screen/README.md says where the screen stands.
+diff --git a/docs/research/autoanatomist-screen/PREREG.md b/docs/research/autoanatomist-screen/PREREG.md
+index cba9cb9..e431a95 100644
+--- a/docs/research/autoanatomist-screen/PREREG.md
++++ b/docs/research/autoanatomist-screen/PREREG.md
+@@ -1,6 +1,6 @@
+ # Pre-registration: the auto-anatomist screen on gold tier 3 CTs
+ 
+-Covers: gold3_latent_smoke=80bcdc9dc4ccb397f35ca1fa52496fc48220b6c93104fb097664cccb848a3639, gold3_latent_screen=b338d9158db5d54508ef474e87e1c4a3e888aa45423063b7b26e4cc119ea6b6b
++Covers: gold3_latent_smoke=80bcdc9dc4ccb397f35ca1fa52496fc48220b6c93104fb097664cccb848a3639, gold3_latent_screen=b338d9158db5d54508ef474e87e1c4a3e888aa45423063b7b26e4cc119ea6b6b, gold3_latent_smoke2=9a3ccee993db5c9783a181bb0b1125a5da7e98090be543be66d35dddde726637, gold3_latent_screen2=bb1f0ad181dd9c7b455af6ce99ae312da28a86d799efe6340cf8cc2d171fb1f1
+ 
+ Source: the thread "Restart the auto-anatomist probe", 2026-10-30, on the owner's words that day: "please just get me to a point where i am training on this gold tier 3 dataset on the grid and can start evaluating performance of the annealer", "start with one of the fully latent space approaches", every arm "a block" of the Metaflow pipeline evaluated "as many in parallel as possible on short 50 epoch runs", his count of 03:20 UTC (two CPU, two GPU screen and two full-run jobs for the latent shape priors, plus one short GPU smoke, which this screen's smoke is, counted once), his word of 08:56 UTC for the screen's two jobs ("Yes to both"), and his rule of 09:43 UTC that the first run is "constrained to only normal spines" while the anomalous spines (four lumbar, six lumbar, T13 and the rib anomalies) are split across test and train; the protocol is the Lab Recipe (artifacts/the-lab-recipe-1t2gvp/index.md, "Pre-register and freeze") and the owner's rule of 2026-10-29 that every deep learning job on the grid runs on a launched flow under a frozen pre-registration. Label: confidential-method.
+ 
+@@ -49,6 +49,21 @@ Known limits, stated before the run:
+ 
+ ## 7. Freeze
+ 
+-`sha256sum PREREG.md > PREREG.md.sha256` in this folder, both committed with the two plans the Covers line names; the launcher refuses a run whose PREREG or plan moved (exit 90), and every part checks the hash on its node before it reads anything.
++`sha256sum PREREG.md > PREREG.md.sha256` in this folder, both committed with the plans the Covers line names; the launcher refuses a run whose PREREG or plan moved (exit 90), and every part checks the hash on its node before it reads anything.
+ 
+-First frozen on 2026-10-30 at sha256 648c0829944..., and frozen again the same day at 04f54cd35d4..., before any job of the screen was queued or any number of it read, after a second review of what the trials run: the null's feature term (section 4), which changed the null's words in both plans and so their bytes on the Covers line; the trial that diverges (section 5); the steady step's timing (section 3); full float32 on every card (section 2); and the two known limits on the crop's z side and on GPU sums (section 6). Frozen a third time the same day, still before any send, after a third review: the frozen teacher of the annealed arms and what w_first tests (sections 4 and 6), a chance pass at most one time in six (section 4), the placement answered only by which arms pass (section 1), the step's own time (section 3), the outputs a reading checks (section 5) and the record a stopped trial keeps (section 2). The plans' bytes did not change, so the Covers line stands.
++First frozen on 2026-10-30 at sha256 648c0829944..., and frozen again the same day at 04f54cd35d4..., before any job of the screen was queued or any number of it read, after a second review of what the trials run: the null's feature term (section 4), which changed the null's words in both plans and so their bytes on the Covers line; the trial that diverges (section 5); the steady step's timing (section 3); full float32 on every card (section 2); and the two known limits on the crop's z side and on GPU sums (section 6). Frozen a third time the same day, still before any send, after a third review: the frozen teacher of the annealed arms and what w_first tests (sections 4 and 6), a chance pass at most one time in six (section 4), the placement answered only by which arms pass (section 1), the step's own time (section 3), the outputs a reading checks (section 5) and the record a stopped trial keeps (section 2). The plans' bytes did not change, so the Covers line stands. Frozen a fourth time the same day to add section 8 and its two plans, gold3_latent_smoke2 and gold3_latent_screen2, to the Covers line, before any job of the screen or of the second screen was queued and before any number of either was read; sections 1 to 6 and the first two plans' bytes did not change.
++
++## 8. The second screen
++
++Added on 2026-10-30 on the owner's choice of 16:52 UTC that day, "Build 4 arms after the demo" (the four arms as blocks with tests, and a frozen plan for a second screen), and his word of 18:05 UTC, going into the operating room, for whatever a training run on gold tier 3 needs while he is out. Sections 1 to 7 hold for the second screen as for the first, except where this section says otherwise.
++
++- The code: the vendored package at bordercall 8e966e4 (grid/autoanatomist/VENDORED), which adds four words, each changing nothing where it is not named (grid/autoanatomist/autoanatomist/README.md, "The second screen's arms"), taken at their defaults. A send copies the code at the gate's commit, so a plan sent before this section's commit runs the package at afe1952 and one sent after runs 8e966e4; every arm of the second screen is read against the lambda_then_w trained in the same screen at the same commit, so no reading crosses commits.
++- The arms (gold3_latent_screen2): lambda_then_w, the first screen's lambda-then-w and here the arm every other is read against (its null); cyclic, lambda-then-w twice, each pass in half the steps, going back between the passes to lambda 0.5 and w 0.3; adaptive, w on lambda-then-w's clock and lambda moved every 20 steps from its span's start by the error's own slope on the batch just trained, never behind a floor that reaches lambda 1 a tenth of the steps after lambda's span ends; overlapping, lambda-then-w with each rung of the ladder over half of lambda, a quarter apart, so the target's fade, the blur and the threshold move together in places; restraint, lambda-then-w with an adaptive biasing force at weight 1 that holds the target vertebra's predicted volume, as a share of the crop, towards the clean mask's, scaled by (1 - cos 2 pi lambda) / 2, which is 0 where the mask is whole and where it is gone and greatest half way; and ct_only, the first screen's null under a name of its own, the CT branch alone with lambda 1, w 0 and the feature term's weight 0 throughout. Two seeds each, 12 trials of 50 epochs (2,400 steps), on the first screen's rows (its 96 training and 24 validation persons, taken from its plan file), with the same crops, readings and measure.
++- The hypotheses: for each of cyclic, adaptive, overlapping and restraint, H: it beats lambda_then_w, by the bar of section 4 with lambda_then_w as the null. ct_only is read against lambda_then_w the same way, and its pass would say the CT branch alone ends below the anneal. Five arms are read against one null, each passing by chance at most one time in six, so a chance pass of some arm is likely: as in section 4, a pass selects an arm for a longer run under a pre-registration of its own and is never reported as an effect, and the screen ranks no arm against another.
++- The second smoke (gold3_latent_smoke2): lambda_then_w and the four changes to it, one seed, on the first smoke's three training CTs and one validation CT, 150 epochs (300 steps), five trials in series on one card, then the join. It runs the new words' code on a card and times a crop, answers no hypothesis, and is sent only once the first smoke's report ends in exit 0; the second screen is sent only once the second smoke's report ends in exit 0 (AUTOANATOMIST_AFTER in grid/gate.sh).
++
++Known limits of the second screen, beside section 6's, stated before the run:
++- The four words run at their defaults, chosen on phantoms in bordercall's tests and tuned on nothing here.
++- Under objective=mask the restraint's variable is the target's volume share alone, since no measure is read.
++- The adaptive schedule moves lambda by the batches a seed draws, so its path differs from seed to seed by design.
++- The feature term of every annealed arm runs to the last step, as in section 4, so wherever w stands at 0, in cyclic between its passes as at every arm's end, it distils from a mask branch that takes no gradient.
+diff --git a/docs/research/autoanatomist-screen/PREREG.md.sha256 b/docs/research/autoanatomist-screen/PREREG.md.sha256
+index 8c0b6f7..b59ab08 100644
+--- a/docs/research/autoanatomist-screen/PREREG.md.sha256
++++ b/docs/research/autoanatomist-screen/PREREG.md.sha256
+@@ -1 +1 @@
+-29c846c25a46adc19b082a08ef350a8fbf71d810db62b043b55a5873942359a9  PREREG.md
++659b8e15f43f08daed79b5039031b9af05aea3f7e98787a814ea16ed51ec621f  PREREG.md
+diff --git a/docs/research/autoanatomist-screen/README.md b/docs/research/autoanatomist-screen/README.md
+index 8660e25..b38d6ab 100644
+--- a/docs/research/autoanatomist-screen/README.md
++++ b/docs/research/autoanatomist-screen/README.md
+@@ -4,11 +4,11 @@ Source: the thread "Restart the auto-anatomist probe", 30 October 2026. Confiden
+ 
+ The screen asks whether annealing the auto-anatomist's privileged input helps the fully latent network name and outline real vertebrae on gold tier 3 CTs, under PREREG.md beside this file, frozen before any send. It runs as the launched flow autoanatomist (flows/autoanatomist.py, flows/README.md): each trial is one run of the flow on a card, and the join is one run on a CPU node that decides each arm against the null and writes the CLAIM 2024 and REFORMS report (tools/report.py with tools/autoanatomist_report.py).
+ 
+-- The plans: grid/screens/gold3_latent_smoke.json, two short trials in series on one card, an anneal and the null, then the join, which tries the code path end to end and whose numbers are read as nothing; and grid/screens/gold3_latent_screen.json, three anneal schedules against the null that never anneals, two seeds each, 50 epochs on 96 training CTs, read on 24 validation CTs by the mean surface distance. tools/autoanatomist_plan.py writes them from the gold 3 store and checks them against the frozen split, the test lists and the units of probable repeat scans, and PREREG.md's Covers line holds each by its bytes.
++- The plans: grid/screens/gold3_latent_smoke.json, two short trials in series on one card, an anneal and the null, then the join, which tries the code path end to end and whose numbers are read as nothing; and grid/screens/gold3_latent_screen.json, three anneal schedules against the null that never anneals, two seeds each, 50 epochs on 96 training CTs, read on 24 validation CTs by the mean surface distance. tools/autoanatomist_plan.py writes them from the gold 3 store and checks them against the frozen split, the test lists and the units of probable repeat scans, and PREREG.md's Covers line holds each by its bytes. The second screen, PREREG.md section 8, reads four changes to the anneal (cyclic, adaptive, overlapping rungs and a restraint, bordercall's blocks at 8e966e4) against lambda_then_w, with the CT branch alone beside them: grid/screens/gold3_latent_smoke2.json, the five anneals in series on the smoke's four CTs, and grid/screens/gold3_latent_screen2.json, six arms at two seeds on the screen's own rows, both taking their rows from the first screen's plans (`write --plan`, rows_of).
+ - The rows: normal ENHANCE.PET spines alone, the store's class for twelve rib pairs whose lowest ribs meet T12 with C2 to L5 named, confirmed by the masks, as the owner asked on 2026-10-30 at 09:43 UTC for the first run; the anomalous spines (four and six lumbar, T13, the rib anomalies) wait for later runs, split by family across test and training by the latent shape priors' evaluation. At 3abc2fa 781 rows are eligible (657 training, 124 validation).
+ - The split: data/splits/rule.json gives each person its part; no person on data/splits/test-persons.json or on the latent shape priors' reserve, data/splits/latent-prior-test-reserve.json (584 studies), is read, so both studies keep one person split; and every study of a unit of data/splits/latent-prior-repeat-groups.json (85 units) keeps its unit's part, a study whose own part differs left out. Both lists come from that evaluation's draw_test_reserve.py (bordercall PR 45) and reserve-report.json pins their inputs; each run's RECORD.json carries the sha256 of the rule and of the three lists.
+-- The grid words: `autoanatomist gold3_latent_smoke`, then `autoanatomist gold3_latent_screen` (grid/gate.sh, grid/autoanatomist.sbatch); the gate refuses the screen until the smoke's report ends in exit 0 (AUTOANATOMIST_AFTER). The owner's counts: the smoke is the one short GPU smoke of his count of 2026-10-30 03:20 UTC, and the screen is the two jobs of his word of 08:56 UTC, a GPU array of eight trials and a CPU join afterany it. A plan is sent once; it is sent again only once a fix has moved the checkout after a send that failed, or on his word in AUTOANATOMIST_RERUNS.
++- The grid words: `autoanatomist gold3_latent_smoke`, then `autoanatomist gold3_latent_screen` (grid/gate.sh, grid/autoanatomist.sbatch); the gate refuses the screen until the smoke's report ends in exit 0 (AUTOANATOMIST_AFTER). The owner's counts: the smoke is the one short GPU smoke of his count of 2026-10-30 03:20 UTC, and the screen is the two jobs of his word of 08:56 UTC, a GPU array of eight trials and a CPU join afterany it. A plan is sent once; it is sent again only once a fix has moved the checkout after a send that failed, or on his word in AUTOANATOMIST_RERUNS. Then `autoanatomist gold3_latent_smoke2` once the first smoke ends in exit 0, and `autoanatomist gold3_latent_screen2`, a GPU array of twelve trials and a CPU join, once the second smoke does, on the owner's choice of 16:52 UTC and his word of 18:05 UTC for whatever a training run on gold tier 3 needs while he is in the operating room.
+ - The network: bordercall's auto-anatomist, its copy under grid/autoanatomist/ (tools/bordercall_vendor.py), a block the plans' words choose. The trials run on the grid's Python 3.11, in a venv over the train-gpu environment with the versions schwingnet.autoanatomist_screen.PINS names (jax 0.10.2, flax 0.12.8, optax 0.2.8, orbax-checkpoint 0.12.8).
+ - How to read a result: the join's finals.png and curves.png, each with a line under it on how to read it, and SUMMARY.md; RECORD.json names every file the decision read by its sha256. An arm beats the null only where every one of its seeds ends below every one of the null's; the screen answers which placement of the ramps does best only by which arms pass, and ranks none.
+ 
+-Where it stands on 30 October 2026: nothing has been sent. The plans and the PREREG were written again over the latent-prior evaluation's reserve and units and frozen, and frozen once more the same day after a second review of what the trials run: the null now trains without the feature term, which at w 0 pulled it towards a random network, and a trial that diverges fails rather than reading a finite worst distance; and frozen a third time after a third review: the annealed arms' feature term distils from a frozen teacher once w reaches 0, so w_first tests a handover on clean masks followed by that distillation rather than the ladder's order, a reading whose outputs are not finite stops the trial, and a plan's row must name one study as its item and its person (PREREG.md, section 7, says what changed). Once SchwingNet PR 483 merges, the smoke is sent first, and the screen once the smoke's report says exit 0.
++Where it stands on 30 October 2026: SchwingNet PR 483 and bordercall PR 40 merged at 18:05 UTC, and the smoke was sent at 18:25 UTC; until then nothing had been sent. The plans and the PREREG were written again over the latent-prior evaluation's reserve and units and frozen, and frozen once more the same day after a second review of what the trials run: the null now trains without the feature term, which at w 0 pulled it towards a random network, and a trial that diverges fails rather than reading a finite worst distance; and frozen a third time after a third review: the annealed arms' feature term distils from a frozen teacher once w reaches 0, so w_first tests a handover on clean masks followed by that distillation rather than the ladder's order, a reading whose outputs are not finite stops the trial, and a plan's row must name one study as its item and its person (PREREG.md, section 7, says what changed). The screen goes once the smoke's report says exit 0. PREREG.md was frozen a fourth time the same day to add the second screen (section 8), sections 1 to 6 and the first two plans' bytes unchanged.
+diff --git a/grid/README.md b/grid/README.md
+index 635b66a..f870ce9 100644
+--- a/grid/README.md
++++ b/grid/README.md
+@@ -23,7 +23,7 @@ Nobody types a command on the grid. Every grid run of this repository goes throu
+ | `experiment <issue>` | One requested combination of data and blocks (experiment-driver.sbatch, job submit's gpu class, never requeued): issue #<issue> labelled experiment, whose request the experiment workflow (.github/workflows/experiment.yml, tools/experiment_run.py) checked against data/recipes/ and src/schwingnet/blocks.py and recorded as <issue>.request on the branch experiments. The word fetches that file from origin, checks each line's shape on the login node, needs the version 1 inputs to be there (the environments, the ImageNet weights, C-ArmLSpine's shards and a qualifying catalog version, which start or v1 make) and submits one job, its wall time the request's hours with the evaluation's quarter and an hour more, 24 hours at least, which checks the values again inside the container (tools/experiments_panel.py check --request) before it runs the request as the launched flow experiment (`flows/launch.py experiment`, flows/experiment.py; the owner's rule of 2026-10-29 02:39 UTC), held to the frozen docs/research/experiments/PREREG.md with its CLAIM 2024 and REFORMS report checked at its end and a progress page, whose one step runs tools/flow.py with the request's recipe, blocks, epochs, seed and hours on the version grid/v1-version.sh chooses, as v1 does; the launcher's key holds the request's bytes, so a request edited after its run began is a run of its own; refused while a run for the same issue is queued or running, and afterany every other live version 1 run, sweep, experiment run and benchmark, since each holds the checkout (grid/logs/HOLD) while it runs. Sent as schwingnet-experiment-<issue> from symphony-template's grid-accounts.yml, or as `bash ~/SchwingNet/grid/gate.sh experiment <issue>` from the grid's shell; the report is logs/experiment-<issue>-STAGE-REPORT.md and the run lands under the runs folder, from where its record comes into docs/research/ by pull request. |
+ | `bench <name>` | One public model's benchmark as its authors published it (bench.sbatch, job submit's gpu class, never requeued; tools/bench_public.py; issue #287, the owner's word and count of 2026-10-25, three jobs): `flexray_carmlspine` names the level of each C-ArmLSpine truth box with FleXray's open weights, `flexray_deepfluoro` scores FleXray's Dice on DeepFluoro against its published 0.916, and `xvr_deepfluoro` runs xvr's own register and evaluate scripts on its DeepFluoro models against its published 1.1 mm. Each is refused until its fetch (`fetch hf_flexray_weights`, `fetch hf_xvr_models`, `fetch hf_xvr_data`) has landed; the public package goes into a throwaway environment on the lab volume beside train-gpu's, never into pixi.lock. `flexray_drr_gap` is the DRR domain-gap study (tools/domain_gap.py, docs/research/drr-domain-gap/README.md), on the owner's ask of 2026-10-25: FleXray's recipe rendered through this project's render blocks and through FleXray's own code from the same TotalSegmentator CTs, set beside every held real X-ray corpus and FluXray in three feature spaces, with the replication test. Since the owner's word of 2026-10-27 17:51 UTC ("cancel and shard requesting h200 / see the beethoven protocol for doing so") it runs as three jobs of grid/drr-gap.sbatch, each job submit's gpu class with no partition asked, so each starts on whichever of the class's partitions frees first (since the owner's words of 2026-10-28 00:23 UTC, "shard it to more gpus like 16" and "drop the requirement for h200 unless its a memory problem"), never requeued, and queued all or none (a later one refused cancels the earlier ones): prepare (16 CPUs, 64 GB, 12 hours), every stage up to the features and the analysis cut into units; an array of DRR_GAP_TASKS shard tasks (16, a committed default in grid/gate.sh changed by pull request; 16 CPUs, 64 GB and 12 hours each) afterany prepare, each claiming units atomically, beating, taking over a stale claim, testing its GPU before its first unit and stopping after three failures in a row; and the merge (4 CPUs, 64 GB, 4 hours) afterany the array, which joins the units and alone writes the report. Since the owner's rule of 2026-10-29 02:39 UTC each of the three steps, every task of the array among them, and `flexray_drr_seg`'s job each start their own run of a launched flow, drr_gap or drr_seg (flows/README.md), held to the frozen PREREG.md with a progress page, and a job ends with the launcher's code where its body ended 0 and its flow did not, so a merge whose CLAIM report is not current fails. Each run of the study has a folder of its own under the bench root, grid/gate.sh's DRR_GAP_FOLDER handed to the three steps as DRR_GAP_OUT: the third run's, flexray_drr_gap_run3, makes it a full recomputation while run 2's flexray_drr_gap stays as it was (docs/research/drr-domain-gap/DEVIATIONS.md, item 12), and the send and `status` read the progress of that folder alone. Every step runs from the copy of the code prepare takes at the commit it starts on, checks the frozen PREREG.md against its hash first (exit 90 where it moved, the freeze of the Lab Recipe, artifacts/the-lab-recipe-1t2gvp/index.md) and holds no HOLD, so the checkout may move while the study runs; a shard that finds nothing prepared exits 0 and the merge reports why. While any of the three is queued or running a send prints the study's PROGRESS.txt (counts and group ids, masked, at most 60 lines, the last ten the run log's newest) and refuses, and `status` shows the same file as its section "bench <folder>, progress", the run's folder named (bench flexray_drr_gap_run3, progress for the third run), the study's live view; each step's own lines are kept under the run folder's analysis/steps/. A DRR's pixels are a projection of the CT alone, so the render groups whose recipe reads no label (the render block `segmenter=none`) need no mask (the owner's word of 2026-10-27); the others take the CTs' labels from existing masks, never from a segmenter the job runs, under the render block `segmenter` (the owner's word of 2026-10-26: MOOSE's labels when replicating FleXray's own data, SPINEPS's for production): SPINEPS's from the data root's spineps and MOOSE's from its moose, which `bench flexray_drr_seg` writes. Prepare passes both folders to the study (--spineps, --moose), which reads each where it is there and enough CTs have them, skips a render group whose segmenter's masks are absent, or too few CTs have, with that reason, and chooses each CT folder's CTs among those with masks under the segmenters its groups still need; its prepare, sent while `bench flexray_drr_seg` is queued or running, waits afterany on it, as on every run that holds the checkout, so the study reads the MOOSE masks that job wrote once it has ended, however it ended, and a mask folder that holds fewer CTs' masks than a group needs to be tested is read as no masks; but while a bench holds the checkout the gate itself is at the commit that bench started from, so the word is sent once the segmentation job has ended and its report has been read. Refused until FleXray's weights (`fetch hf_flexray_weights`), a whole sample index (`samples`), the TotalSegmentator CTs at totalsegmentator_v201 and the ImageNet ResNet-18 file (`start`) are on the volume; FluXray, read from hf_flexray_data/raw when its fetch has landed it and its group skipped with that reason otherwise, and where each segmenter's masks are, or that their folder is not there, is said by the send and in the report, while the study's summary says how many CTs have them and which groups it skipped; its environment adds flexray[train] 1.0.2, nanodrr, scikit-learn and umap-learn over train-gpu's torch. The report, logs/BENCH-flexray_drr_gap.md, opens with prepare's lines, whose first line names prepare's job and commit, then one line per shard task, the merge's lines, the summary and the run log, at most 50 lines of what each step of the tool wrote as it ran with its time, the units' quarter marks in place of each unit, every quarter mark kept and, before any routine line, every failure the 50 lines can hold (the first and the last of them where they cannot); only summary.txt, five record lines and at most 80 lines of numbers and group names, and the run log, lines of times, steps, nodes, cards, counts and unit names, leave the grid, each line through grid/redact.sed, while results.json, the plan, which names files, and the steps' own output stay in its run folder on the lab volume under umask 077, and the figures go to W&B where the grid's key is found. `flexray_drr_seg` is the job before it, grid/drr-seg.sbatch (which grid/bench.sbatch refuses since both DRR words moved onto launched flows): the owner's count of 2026-10-26 is two fetches and two GPU jobs, this job after `fetch moose_weights`, then the study job, with `fetch hf_flexray_data` the second fetch, optional and never waited for. The job is the study's choice of CTs made without rendering (`tools/domain_gap.py plan`, which writes render-subjects.json into the job's folder, choosing among the CTs with SPINEPS masks as the study will choose among those with the masks its groups need), then MOOSE on exactly those CTs (`tools/flexray_render.py segment --segmenter moose`: moosez's Python entry in a throwaway environment pinned to moosez 3.2.2, with flexray 1.0.2 and nanodrr 0.1.5 since the choice of CTs loads the render blocks, over train-gpu's torch, its models read from the fetched zips under moose_weights/raw and never downloaded), the masks written under the data root's moose in moosez's own layout, where the study's locator finds them; refused until the TotalSegmentator CTs, the SPINEPS masks and every one of the five model zips are on the volume and whole: while `fetch moose_weights` is still queued or running, and for a zip that is there as a part, still landing or left when a download was cut short, which a test of the file's size alone would pass and the unpack would die on, the send names it and a resend of `fetch moose_weights` resumes it (the end-of-central-directory record read as zipfile.is_zipfile reads it, with awk and coreutils, since the login node runs no python; the job reads each zip again where it runs, through unzip too where the node has it). SPINEPS is run by no bench, since its production array is not approved. The report carries the segment's one summary line (subjects run, models, files found and not found, where written), through grid/redact.sed, while the plan and the record it prints as JSON stay in the job's log and the plan's log stays in the job's folder. The job holds the checkout while it runs (grid/logs/HOLD, as a version 1 run does) and waits afterany on every live version 1 run, sweep, experiment run and other benchmark, which in turn wait for it, up to its 12 hours (the study's three jobs hold no HOLD, but the others wait for them all the same, and its prepare waits for them); a benchmark whose checkout moved anyway fails with exit 3, since its report names the commit it began on. The next send prints logs/BENCH-<name>.md, and every later send prints it again and queues nothing, so each runs once, save two cases, each keeping the report under its job's number (logs/BENCH-<name>-<job>.md) and queueing the benchmark once more: a report that ended in failure on a commit the checkout has moved past (#312), and a report whose job BENCH_RERUNS in grid/gate.sh lists beside the name, the owner's count for one more run committed by pull request (flexray_drr_gap:40859208, the DRR study's third run, on launched flows, the owner's count of 2026-10-29 12:51 UTC; flexray_drr_gap:40828920, the rerun of 2026-10-28, was spent by prepare 40859208), whose new report names its own job and so queues nothing more. |
+ | `realism <stage>` | One stage of the FluXray reproduction (docs/research/flux-realism/PREREG.md, frozen), on the owner's count of 2026-10-29 02:35 UTC: two GPU jobs, `edit` and then `stats`, each once (realism.sbatch, job submit's gpu class, never requeued). The job runs the stage only as a run of RealismFlow through flows/launch.py (flows/README.md), the owner's rule of 02:39 UTC: held to the frozen PREREG (exit 90 where it moved), its CLAIM 2024 and REFORMS report written and checked in the end step, and its progress page at /rs/rs_grp_oschome/go2432/metaflow/progress/RealismFlow/<run>/index.html. `edit` renders raw DRRs of ENHANCE.PET CTs at FluXray's recorded poses with exact masks, edits them zero-shot with FLUX.2 klein-9B as the paper did in the plan's seed arms, runs FluXray's paired filter with the flux000 member, exports FluXray's own images of the same samples and measures what 256 pixels cost an endplate angle; `stats` sets the kept edits and the raw renders against FluXray in the three feature spaces and reads the replication's one word. `lora` and `eval` are refused (exit 64) until they have a count and a PREREG of their own. `edit` is refused until `hf_flux2_klein_9b`, `hf_flexray_weights`, `hf_flexray_data`, `aws_enhance_pet_ct` and `aws_enhance_pet_labels` have landed and ResNet-18's ImageNet weights are at $WEIGHTS; `stats` until the edit's report says exit 0. The public packages go into a throwaway environment beside train-gpu's, the pins the PREREG froze, never into pixi.lock. The job holds the checkout while it runs (grid/logs/HOLD), and other runs wait for it. The next send prints logs/REALISM-<stage>.md, with the launcher's decision, the flow's lines, the run's SUMMARY.md and its page; a report that stands queues nothing, so each stage runs once; a stage that failed is queued once more only after a fix has moved the checkout, and the launcher resumes its run where the code the run executes is unchanged. |
+-| `autoanatomist <plan>` | One plan of the auto-anatomist screen under grid/screens/ (docs/research/autoanatomist-screen/PREREG.md, frozen; autoanatomist.sbatch), each part a run of AutoanatomistFlow through flows/launch.py (flows/README.md): held to the frozen PREREG and to the plan's bytes (exit 90 where either moved), its CLAIM 2024 and REFORMS report written and checked by the join. A plan laid out as a series, `gold3_latent_smoke`, is one GPU job, its trials one after another and then the join; one laid out as an array, `gold3_latent_screen`, is a GPU array of a task a trial and a CPU join afterany it, both queued or neither, the join waiting for the setup as the trials do (job submit's gpu and batch classes, never requeued). A plan is queued only where AUTOANATOMIST_COUNTED in gate.sh names it: the smoke on the owner's count of 2026-10-30 03:20 UTC, the screen's two jobs on his word of 08:56 UTC; and the screen only once the smoke's report ends in exit 0 (AUTOANATOMIST_AFTER), as the PREREG says. Each plan is sent once; a send that failed or never finished is sent again only once a fix has moved the checkout, a send Slurm ended before any part started is sent again freely, and any other only where AUTOANATOMIST_RERUNS carries the owner's word. The trials read ENHANCE.PET's CTs and label maps under the data root, refused (exit 2) until both have landed; the join writes grid/logs/AUTOANATOMIST-<plan>.md, and a send while the jobs last prints where each trial stands. |
++| `autoanatomist <plan>` | One plan of the auto-anatomist screen under grid/screens/ (docs/research/autoanatomist-screen/PREREG.md, frozen; autoanatomist.sbatch), each part a run of AutoanatomistFlow through flows/launch.py (flows/README.md): held to the frozen PREREG and to the plan's bytes (exit 90 where either moved), its CLAIM 2024 and REFORMS report written and checked by the join. A plan laid out as a series, `gold3_latent_smoke`, is one GPU job, its trials one after another and then the join; one laid out as an array, `gold3_latent_screen`, is a GPU array of a task a trial and a CPU join afterany it, both queued or neither, the join waiting for the setup as the trials do (job submit's gpu and batch classes, never requeued). A plan is queued only where AUTOANATOMIST_COUNTED in gate.sh names it: the smoke on the owner's count of 2026-10-30 03:20 UTC, the screen's two jobs on his word of 08:56 UTC; and the screen only once the smoke's report ends in exit 0 (AUTOANATOMIST_AFTER), as the PREREG says. The second screen (PREREG section 8; the owner's words of 16:52 and 18:05 UTC) follows the same order: `gold3_latent_smoke2`, five trials in series, once the first smoke ends in exit 0, then `gold3_latent_screen2`, an array of twelve trials and its join, once the second smoke does. Each plan is sent once; a send that failed or never finished is sent again only once a fix has moved the checkout, a send Slurm ended before any part started is sent again freely, and any other only where AUTOANATOMIST_RERUNS carries the owner's word. The trials read ENHANCE.PET's CTs and label maps under the data root, refused (exit 2) until both have landed; the join writes grid/logs/AUTOANATOMIST-<plan>.md, and a send while the jobs last prints where each trial stands. |
+ | `census gold3` | The gold tier census (gold3-census.sbatch, job submit's batch class, requeueable, a requeue carrying on after the parts already done; tools/gold3_census.py; the owner's tap of 2026-10-29 12:26 UTC, one CPU job that reads only and segments nothing): the older list of 142 TotalSegmentator subjects beside rule 3's admitted, autoPET's CTs matched to ENHANCE.PET's studies by their grids, gold 4 over the census's SPINEPS masks with counts by collection the only thing that leaves the grid, every TotalSegmentator CT's own padded planes with the field test run again on them, and the members' files on the data root against the sums the repository records (docs/research/gold3-ct/README.md sections 2b and 7). It runs from its own copy of the code, so it holds no checkout; the next send prints logs/CENSUS-gold3.md, or an unfinished report's .part, and every later one prints it again; a job that left no report, or a submission whose answer was lost, is not queued again without the owner's word, committed as CENSUS_RERUNS=gold3:<job or lost> in grid/gate.sh. After the report, every send prints two readings the report only counts (census_detail, no job): the padded TotalSegmentator CTs' own planes from the job's extent.json, which a pull request writes into data/gold3-ct/totalsegmentator/planes.json so that the field test reads the CT's own extent in place of the cord's guess (the owner's rule of 2026-10-29 23:46 UTC: a CT whose image shows C2 and the sacrum is in), and VerSe's recorded mask names not found under the data root's VerSeFusion copy, which the repair fetches. |
+ | `totalseg complete` | The gold tier 3 completion's TotalSegmentator arm (totalseg-complete.sbatch, job submit's gpu class, never requeued, 4 CPUs, 50G, 6 hours; tools/gold3_totalseg_grid.py; the launched flow totalseg, flows/totalseg.py, under the frozen docs/research/gold3-ct/completion/PREREG.md), on the owner's word of 2026-10-30 08:54 UTC, "Add sacrum and c2 w total seg", and his count of one GPU job: each release's own segmenter on the own CT of every admitted or held study whose release lacks C2 or the sacrum (38 at the freeze: VerSe's 27, 10 TotalSegmentator subjects, ENHANCE.PET's 1379): TotalSegmentator 2.18.0's total task with roi_subset vertebrae_C2 sacrum for the VerSe series and the TotalSegmentator subjects, MOOSE's vertebrae model (moosez 3.2.2 clin_ct_vertebrae, the DRR study's segment environment and the zip `fetch moose_weights` landed) for ENHANCE.PET's, whose masks MOOSE made (the owner's word of 09:33 UTC, each release's segmentations consistent); each drawn level checked against the release's own levels on the same grid (at least 200 voxels, at most 5 percent on the release's levels, C2 above its topmost level and the sacrum below its lowest) and kept as an arm file in the release's own label id (VerSe 2 and 26, MOOSE 2 and 28, TotalSegmentator one file at 1), named by its segmenter and sha256 under the lab volume's gold3-totalseg/, never pooled with the release's masks or the SPINEPS arm and never raising a tier. It is refused until `fetch totalseg_weights` has landed the two weight zips whole (the vertebrae part and the 6 mm model, from the project's release, under the size rule) beside moose_weights' five, and while that fetch is live; the job unpacks them once and never downloads. It holds the checkout while it runs, and other runs wait for it. The next send prints logs/TOTALSEG-complete.md: the counts, a line per study with each target kept or refused and its arm file, each kept target's gap in mm to the release's nearest level, every refusal's reason cut to 160 characters, and the studies not prepared with why; store and file names only, no path under the data root. A report that stands queues nothing, and a job that left no report is not queued again, unless TOTALSEG_RERUNS in gate.sh names that job (complete:40882547, the first job, which failed before any segmenter drew, is named for one rerun on the owner's tap of 2026-10-30 16:49 UTC). |
+ | `morphometry <set>` | bordercall's morphometry engine, the packages morphometry, scanimport and screening pinned under grid/bordercall/ beside the archived package (tools/bordercall_vendor.py copy, held to grid/bordercall/VENDORED), over one gold tier 3 set, on the owner's count of 2026-10-29 15:19 UTC: two CPU jobs, `enhance` and `verse`, each once (morphometry.sbatch, job submit's batch class, never requeued, 32 CPUs for 24 hours). `enhance` measures every ENHANCE.PET vertebra label map under the data root's aws_enhance_pet_labels; `verse` measures VerSe's 374 int16 copies the carry grid/carry/verse_masks_2026_10_29.txt landed and then, in the same job, TotalSegmentator's 154 admitted subjects (data/gold3-ct/admission.json), each one's structure masks taken from the Zenodo release under the data root's totalsegmentator_v300 and stacked by `screening int16` into one int16 volume in VerSe's ids. The job imports the pinned copy (PYTHONPATH=$REPO/grid/bordercall), writes rows/<id>.csv and rows.csv under /rs/rs_grp_oschome/go2432/morphometry/<set>, and beside them the generalised screening's facts.jsonl and whole-spine verdicts.csv, whose failure is reported and not fatal; icontract and beartype, which the screening needs and no grid environment holds, go into a throwaway venv under the set's folder, never into pixi.lock. `enhance` is refused until `aws_enhance_pet_labels` has landed, `verse` until `verse_masks_2026_10_29` and `totalsegmentator_v300` have, and either until the pinned copy carries morphometry. The job holds the checkout while it runs (grid/logs/HOLD), and other runs wait for it. The next send prints logs/MORPHOMETRY-<set>.md: the interpreters, the copy's commit, the code stamp, and for each run the studies chosen, measured and flagged, the wall time, the files' paths, bytes and digests, the verdict counts and a per-level table of counts and medians; only those aggregates come back, never a row of a study. A report that stands queues nothing, so each set runs once; a set that failed is queued once more only after a fix has moved the checkout. |
+diff --git a/grid/gate.sh b/grid/gate.sh
+index a50ecef..9d19408 100755
+--- a/grid/gate.sh
++++ b/grid/gate.sh
+@@ -309,12 +309,18 @@ AUTOANATOMIST_ROOT=${AUTOANATOMIST_ROOT:-$VOLUME/go2432/autoanatomist}
+ # 03:20 UTC ("2 CPU 2 GPU 2 Full run plus 1 short GPU smoke is fine"): one GPU job, its two trials in
+ # series and the join. gold3_latent_screen, a GPU array of eight trials and a CPU join afterany it, is
+ # the two jobs of his word of 2026-10-30 08:56 UTC ("Yes to both", to the ask that named those two jobs
+-# and said they were outside the 03:20 count).
+-AUTOANATOMIST_COUNTED="gold3_latent_smoke gold3_latent_screen"
++# and said they were outside the 03:20 count). gold3_latent_smoke2 (one GPU job, five trials in series
++# and the join) and gold3_latent_screen2 (a GPU array of twelve trials and a CPU join afterany it), the
++# second screen of the PREREG's section 8, are the owner's choice of 2026-10-30 16:52 UTC ("Build 4
++# arms after the demo", with a frozen plan for a second screen), his rule of 17:00 UTC that a job
++# within agreed work is sent without asking, and his word of 18:05 UTC for whatever a training run on
++# gold tier 3 needs while he is in the operating room.
++AUTOANATOMIST_COUNTED="gold3_latent_smoke gold3_latent_screen gold3_latent_smoke2 gold3_latent_screen2"
+ # The plans sent only once another plan's report ends in exit 0, <plan>:<the plan before it>
+ # (word_autoanatomist): the PREREG (section 5) sends the screen only after the smoke's two trials and
+-# its join end in exit 0, so the screen's eight cards wait for the smoke to show the code runs.
+-AUTOANATOMIST_AFTER="gold3_latent_screen:gold3_latent_smoke"
++# its join end in exit 0, so the screen's eight cards wait for the smoke to show the code runs; its
++# section 8 sends the second smoke after the first and the second screen after the second smoke.
++AUTOANATOMIST_AFTER="gold3_latent_screen:gold3_latent_smoke gold3_latent_smoke2:gold3_latent_smoke gold3_latent_screen2:gold3_latent_smoke2"
+ # The owner's word for one more send of a plan whose record stands, <plan>:<job that record's first line
+ # names>, or <plan>:lost for a submission whose answer was lost; one word, one more send.
+ AUTOANATOMIST_RERUNS=""
+diff --git a/grid/screens/gold3_latent_screen2.json b/grid/screens/gold3_latent_screen2.json
+new file mode 100644
+index 0000000..482a31a
+--- /dev/null
++++ b/grid/screens/gold3_latent_screen2.json
+@@ -0,0 +1,803 @@
++{
++  "screen": "gold3_latent_screen2",
++  "purpose": "Whether a change to the anneal helps beyond lambda_then_w: the anneal twice, w held by a check of the CT branch, overlapping rungs and a restraint mid-anneal, each read against lambda_then_w, with the CT branch alone beside them, two seeds each, 50 epochs on the first screen's 96 training CTs, read on its 24 validation CTs by the mean surface distance.",
++  "class": "gpu",
++  "layout": "array",
++  "data": {
++    "enhance_pet": {
++      "ct": "aws_enhance_pet_ct/raw",
++      "labels": "aws_enhance_pet_labels/raw",
++      "labels_folder": "Vertebrae",
++      "names": {
++        "3": "C3",
++        "4": "C4",
++        "5": "C5",
++        "6": "C6",
++        "7": "C7",
++        "8": "T1",
++        "9": "T2",
++        "10": "T3",
++        "11": "T4",
++        "12": "T5",
++        "13": "T6",
++        "14": "T7",
++        "15": "T8",
++        "16": "T9",
++        "17": "T10",
++        "18": "T11",
++        "19": "T12",
++        "20": "L1",
++        "21": "L2",
++        "22": "L3",
++        "23": "L4",
++        "24": "L5",
++        "25": "L6"
++      }
++    }
++  },
++  "rows": [
++    {
++      "item": "enhance_pet:0504",
++      "person": "enhance_pet:0504",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:0039",
++      "person": "enhance_pet:0039",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:0337",
++      "person": "enhance_pet:0337",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:0573",
++      "person": "enhance_pet:0573",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:0579",
++      "person": "enhance_pet:0579",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:0135",
++      "person": "enhance_pet:0135",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:0760",
++      "person": "enhance_pet:0760",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:1044",
++      "person": "enhance_pet:1044",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:0622",
++      "person": "enhance_pet:0622",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:0814",
++      "person": "enhance_pet:0814",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:0838",
++      "person": "enhance_pet:0838",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:1022",
++      "person": "enhance_pet:1022",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:1168",
++      "person": "enhance_pet:1168",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:0808",
++      "person": "enhance_pet:0808",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:0042",
++      "person": "enhance_pet:0042",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:1444",
++      "person": "enhance_pet:1444",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:1366",
++      "person": "enhance_pet:1366",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:1356",
++      "person": "enhance_pet:1356",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:0377",
++      "person": "enhance_pet:0377",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:1128",
++      "person": "enhance_pet:1128",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:1449",
++      "person": "enhance_pet:1449",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:0361",
++      "person": "enhance_pet:0361",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:1239",
++      "person": "enhance_pet:1239",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:0866",
++      "person": "enhance_pet:0866",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:1562",
++      "person": "enhance_pet:1562",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:0354",
++      "person": "enhance_pet:0354",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:1213",
++      "person": "enhance_pet:1213",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:1131",
++      "person": "enhance_pet:1131",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:0848",
++      "person": "enhance_pet:0848",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:1129",
++      "person": "enhance_pet:1129",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:0151",
++      "person": "enhance_pet:0151",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:1053",
++      "person": "enhance_pet:1053",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:1167",
++      "person": "enhance_pet:1167",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:0136",
++      "person": "enhance_pet:0136",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:0066",
++      "person": "enhance_pet:0066",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:1072",
++      "person": "enhance_pet:1072",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:1215",
++      "person": "enhance_pet:1215",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:0607",
++      "person": "enhance_pet:0607",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:0436",
++      "person": "enhance_pet:0436",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:0820",
++      "person": "enhance_pet:0820",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:1312",
++      "person": "enhance_pet:1312",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:0788",
++      "person": "enhance_pet:0788",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:0724",
++      "person": "enhance_pet:0724",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:0372",
++      "person": "enhance_pet:0372",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:0563",
++      "person": "enhance_pet:0563",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:0898",
++      "person": "enhance_pet:0898",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:1395",
++      "person": "enhance_pet:1395",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:0542",
++      "person": "enhance_pet:0542",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:0202",
++      "person": "enhance_pet:0202",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:0247",
++      "person": "enhance_pet:0247",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:0993",
++      "person": "enhance_pet:0993",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:1137",
++      "person": "enhance_pet:1137",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:1512",
++      "person": "enhance_pet:1512",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:1503",
++      "person": "enhance_pet:1503",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:1381",
++      "person": "enhance_pet:1381",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:0206",
++      "person": "enhance_pet:0206",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:0074",
++      "person": "enhance_pet:0074",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:0462",
++      "person": "enhance_pet:0462",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:1440",
++      "person": "enhance_pet:1440",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:0046",
++      "person": "enhance_pet:0046",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:1433",
++      "person": "enhance_pet:1433",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:0317",
++      "person": "enhance_pet:0317",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:0740",
++      "person": "enhance_pet:0740",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:0029",
++      "person": "enhance_pet:0029",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:0177",
++      "person": "enhance_pet:0177",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:0059",
++      "person": "enhance_pet:0059",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:0459",
++      "person": "enhance_pet:0459",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:1173",
++      "person": "enhance_pet:1173",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:0775",
++      "person": "enhance_pet:0775",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:1107",
++      "person": "enhance_pet:1107",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:1265",
++      "person": "enhance_pet:1265",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:0169",
++      "person": "enhance_pet:0169",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:0708",
++      "person": "enhance_pet:0708",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:1316",
++      "person": "enhance_pet:1316",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:0471",
++      "person": "enhance_pet:0471",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:0845",
++      "person": "enhance_pet:0845",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:0342",
++      "person": "enhance_pet:0342",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:0977",
++      "person": "enhance_pet:0977",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:0456",
++      "person": "enhance_pet:0456",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:1203",
++      "person": "enhance_pet:1203",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:0609",
++      "person": "enhance_pet:0609",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:1529",
++      "person": "enhance_pet:1529",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:0422",
++      "person": "enhance_pet:0422",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:1221",
++      "person": "enhance_pet:1221",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:0144",
++      "person": "enhance_pet:0144",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:1157",
++      "person": "enhance_pet:1157",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:0008",
++      "person": "enhance_pet:0008",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:1481",
++      "person": "enhance_pet:1481",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:1087",
++      "person": "enhance_pet:1087",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:1482",
++      "person": "enhance_pet:1482",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:0252",
++      "person": "enhance_pet:0252",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:0689",
++      "person": "enhance_pet:0689",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:0889",
++      "person": "enhance_pet:0889",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:1500",
++      "person": "enhance_pet:1500",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:0712",
++      "person": "enhance_pet:0712",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:0365",
++      "person": "enhance_pet:0365",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:0022",
++      "person": "enhance_pet:0022",
++      "part": "validation",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:0493",
++      "person": "enhance_pet:0493",
++      "part": "validation",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:1428",
++      "person": "enhance_pet:1428",
++      "part": "validation",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:0241",
++      "person": "enhance_pet:0241",
++      "part": "validation",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:1204",
++      "person": "enhance_pet:1204",
++      "part": "validation",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:1376",
++      "person": "enhance_pet:1376",
++      "part": "validation",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:0298",
++      "person": "enhance_pet:0298",
++      "part": "validation",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:1042",
++      "person": "enhance_pet:1042",
++      "part": "validation",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:1227",
++      "person": "enhance_pet:1227",
++      "part": "validation",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:0507",
++      "person": "enhance_pet:0507",
++      "part": "validation",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:1275",
++      "person": "enhance_pet:1275",
++      "part": "validation",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:1297",
++      "person": "enhance_pet:1297",
++      "part": "validation",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:0707",
++      "person": "enhance_pet:0707",
++      "part": "validation",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:0331",
++      "person": "enhance_pet:0331",
++      "part": "validation",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:1153",
++      "person": "enhance_pet:1153",
++      "part": "validation",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:0584",
++      "person": "enhance_pet:0584",
++      "part": "validation",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:0323",
++      "person": "enhance_pet:0323",
++      "part": "validation",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:0253",
++      "person": "enhance_pet:0253",
++      "part": "validation",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:1252",
++      "person": "enhance_pet:1252",
++      "part": "validation",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:1121",
++      "person": "enhance_pet:1121",
++      "part": "validation",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:0287",
++      "person": "enhance_pet:0287",
++      "part": "validation",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:1077",
++      "person": "enhance_pet:1077",
++      "part": "validation",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:0105",
++      "person": "enhance_pet:0105",
++      "part": "validation",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:1468",
++      "person": "enhance_pet:1468",
++      "part": "validation",
++      "source": "enhance_pet"
++    }
++  ],
++  "split": {
++    "salt": "schwingnet-2026-10-21",
++    "validation_share": 0.1
++  },
++  "test": "off",
++  "fixed": [
++    "objective=mask",
++    "naming=off"
++  ],
++  "arms": {
++    "lambda_then_w": [
++      "schedule=lambda-then-w"
++    ],
++    "cyclic": [
++      "schedule=cyclic"
++    ],
++    "adaptive": [
++      "schedule=adaptive"
++    ],
++    "overlapping": [
++      "schedule=lambda-then-w",
++      "ladder=overlapping"
++    ],
++    "restraint": [
++      "schedule=lambda-then-w",
++      "restraint=abf"
++    ],
++    "ct_only": [
++      "schedule=fixed",
++      "lam_fixed=1",
++      "w_fixed=0",
++      "w_feature=0"
++    ]
++  },
++  "null": "lambda_then_w",
++  "seeds": [
++    1,
++    2
++  ],
++  "epochs": 50,
++  "evaluate_every": 5,
++  "batch": 2,
++  "measure": "distance_mm"
++}
+diff --git a/grid/screens/gold3_latent_smoke2.json b/grid/screens/gold3_latent_smoke2.json
+new file mode 100644
+index 0000000..ab10010
+--- /dev/null
++++ b/grid/screens/gold3_latent_smoke2.json
+@@ -0,0 +1,100 @@
++{
++  "screen": "gold3_latent_smoke2",
++  "purpose": "The second screen's arms on the grid, end to end on the smoke's four CTs: lambda_then_w and the four changes to it, five short trials in series on one card, then the join, so the new blocks' code runs on a card before twelve trials take one each. Nothing it measures is read as a result.",
++  "class": "gpu",
++  "layout": "series",
++  "data": {
++    "enhance_pet": {
++      "ct": "aws_enhance_pet_ct/raw",
++      "labels": "aws_enhance_pet_labels/raw",
++      "labels_folder": "Vertebrae",
++      "names": {
++        "3": "C3",
++        "4": "C4",
++        "5": "C5",
++        "6": "C6",
++        "7": "C7",
++        "8": "T1",
++        "9": "T2",
++        "10": "T3",
++        "11": "T4",
++        "12": "T5",
++        "13": "T6",
++        "14": "T7",
++        "15": "T8",
++        "16": "T9",
++        "17": "T10",
++        "18": "T11",
++        "19": "T12",
++        "20": "L1",
++        "21": "L2",
++        "22": "L3",
++        "23": "L4",
++        "24": "L5",
++        "25": "L6"
++      }
++    }
++  },
++  "rows": [
++    {
++      "item": "enhance_pet:0504",
++      "person": "enhance_pet:0504",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:0039",
++      "person": "enhance_pet:0039",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:0337",
++      "person": "enhance_pet:0337",
++      "part": "train",
++      "source": "enhance_pet"
++    },
++    {
++      "item": "enhance_pet:0022",
++      "person": "enhance_pet:0022",
++      "part": "validation",
++      "source": "enhance_pet"
++    }
++  ],
++  "split": {
++    "salt": "schwingnet-2026-10-21",
++    "validation_share": 0.1
++  },
++  "test": "off",
++  "fixed": [
++    "objective=mask",
++    "naming=off"
++  ],
++  "arms": {
++    "lambda_then_w": [
++      "schedule=lambda-then-w"
++    ],
++    "cyclic": [
++      "schedule=cyclic"
++    ],
++    "adaptive": [
++      "schedule=adaptive"
++    ],
++    "overlapping": [
++      "schedule=lambda-then-w",
++      "ladder=overlapping"
++    ],
++    "restraint": [
++      "schedule=lambda-then-w",
++      "restraint=abf"
++    ]
++  },
++  "null": "lambda_then_w",
++  "seeds": [
++    1
++  ],
++  "epochs": 150,
++  "evaluate_every": 10,
++  "batch": 2,
++  "measure": "distance_mm"
++}
+diff --git a/tests/test_autoanatomist_report.py b/tests/test_autoanatomist_report.py
+index 1401c5b..2fa8aac 100644
+--- a/tests/test_autoanatomist_report.py
++++ b/tests/test_autoanatomist_report.py
+@@ -25,6 +25,8 @@ TRIALS = (("lambda_then_w_s1", "lambda_then_w", 1), ("null_s1", "null", 1))
+ # restatement (tools/autoanatomist_report.py, LIMITS).
+ LIMIT_WORDS = ("centroid", "a person is a study", "one population", "normal spines", "mean over",
+                "64 mm along z", "same to the bit", "frozen teacher")
++# The same for section 8's known limits of the second screen (SECOND_LIMITS).
++SECOND_LIMIT_WORDS = ("defaults", "volume share", "seed to seed", "takes no gradient")
+ 
+ 
+ def load_module():
+@@ -159,6 +161,24 @@ class ReportTest(unittest.TestCase):
+         self.assertIn("at most one time in 6 at 2 seeds a side", chance)
+         self.assertNotIn("no hypothesis", sizes + chance)
+ 
++    def test_the_second_smoke_answers_no_hypothesis_and_the_second_screen_says_its_own_limits(self):
++        smoke = {"record": {"prereg_sha256": self.module.DESIGN,
++                            "plan": {"screen": "gold3_latent_smoke2", "rows": {"train": 3, "validation": 1}, "seeds": [1]}}}
++        sizes = self.module.fact_sample_size(smoke)[1]
++        self.assertIn("the smoke answers no hypothesis (PREREG.md section 8)", sizes)
++        self.assertIn("no verdict of it is read as a result (PREREG.md section 8)", self.module.fact_uncertainty(smoke)[1])
++        screen = {"record": {"prereg_sha256": self.module.DESIGN,
++                             "plan": {"screen": "gold3_latent_screen2", "rows": {"train": 96, "validation": 24}, "seeds": [1, 2]}}}
++        chance = self.module.fact_uncertainty(screen)[1]
++        self.assertIn("five arms are read against one null, so a chance pass of some arm is likely", chance)
++        self.assertNotIn("no hypothesis", chance + self.module.fact_sample_size(screen)[1])
++        limits = self.module.fact_limitations(screen)[1]
++        self.assertIn("(PREREG.md sections 6 and 8)", limits)
++        for restated in self.module.LIMITS + self.module.SECOND_LIMITS:
++            self.assertIn(restated, limits)
++        self.assertNotIn(self.module.SECOND_LIMITS[0], self.module.fact_limitations(
++            {"record": {"prereg_sha256": self.module.DESIGN, "plan": {"screen": "gold3_latent_screen"}}})[1])
++
+     def test_every_known_limit_of_the_prereg_is_restated_in_its_order(self):
+         section = self.module.PREREG.read_text(encoding="utf-8").split("## 6.", 1)[1].split("## 7.", 1)[0]
+         limits = [line for line in section.split("Known limits", 1)[1].splitlines() if line.startswith("- ")]
+@@ -169,6 +189,16 @@ class ReportTest(unittest.TestCase):
+                 self.assertIn(word, limit.lower())
+                 self.assertIn(word, restated.lower())
+ 
++    def test_every_known_limit_of_the_second_screen_is_restated_in_its_order(self):
++        section = self.module.PREREG.read_text(encoding="utf-8").split("## 8.", 1)[1]
++        limits = [line for line in section.split("Known limits", 1)[1].splitlines() if line.startswith("- ")]
++        self.assertEqual(len(limits), len(self.module.SECOND_LIMITS))
++        self.assertEqual(len(limits), len(SECOND_LIMIT_WORDS))
++        for word, limit, restated in zip(SECOND_LIMIT_WORDS, limits, self.module.SECOND_LIMITS, strict=True):
++            with self.subTest(word=word):
++                self.assertIn(word, limit.lower())
++                self.assertIn(word, restated.lower())
++
+     def test_a_report_the_files_moved_under_is_not_current(self):
+         write_chain(self.folder, self.module.DESIGN)
+         self.assertEqual(report("write", self.folder).returncode, 0)
+diff --git a/tests/test_gate.py b/tests/test_gate.py
+index 70e7f26..400cb86 100644
+--- a/tests/test_gate.py
++++ b/tests/test_gate.py
+@@ -3573,13 +3573,15 @@ exit "${FAKE_RC:-0}"
+         return report
+ 
+     def test_autoanatomist_refuses_a_plan_without_the_owners_count_a_frozen_cover_or_its_inputs(self):
+-        # the committed count is the owner's: the smoke of 03:20 UTC and the screen's two jobs of 08:56 UTC,
+-        # and no plan is sent again on his word yet
++        # the committed count is the owner's: the smoke of 03:20 UTC, the screen's two jobs of 08:56 UTC and
++        # the second screen's smoke and screen of 16:52 and 18:05 UTC, and no plan is sent again on his word yet
+         gate = (ROOT / "grid" / "gate.sh").read_text(encoding="utf-8")
+-        self.assertIn('\nAUTOANATOMIST_COUNTED="gold3_latent_smoke gold3_latent_screen"\n', gate)
++        self.assertIn('\nAUTOANATOMIST_COUNTED="gold3_latent_smoke gold3_latent_screen gold3_latent_smoke2 '
++                      'gold3_latent_screen2"\n', gate)
+         self.assertIn('\nAUTOANATOMIST_RERUNS=""\n', gate)
+-        # and the screen waits for the smoke, as its PREREG says (section 5)
+-        self.assertIn('\nAUTOANATOMIST_AFTER="gold3_latent_screen:gold3_latent_smoke"\n', gate)
++        # and each screen waits for its smoke, the second smoke for the first, as its PREREG says (sections 5, 8)
++        self.assertIn('\nAUTOANATOMIST_AFTER="gold3_latent_screen:gold3_latent_smoke gold3_latent_smoke2:gold3_latent_smoke '
++                      'gold3_latent_screen2:gold3_latent_smoke2"\n', gate)
+         self.assertEqual(self.gate("autoanatomist").returncode, 64)
+         refused = self.gate("autoanatomist", "gold3_latent_nope")
+         self.assertEqual(refused.returncode, 64, refused.stdout)
+@@ -3803,6 +3805,35 @@ exit "${FAKE_RC:-0}"
+         # the smoke itself waits for nothing
+         self.assertEqual(self.gate("autoanatomist", self.SCREEN).returncode, 0)
+ 
++    def test_autoanatomist_sends_the_second_smoke_after_the_first_and_the_second_screen_after_it(self):
++        commit = self.screen_ready()
++        logs = self.repo / "grid" / "logs"
++        # the second smoke waits for the first smoke, and the second screen for the second smoke (PREREG.md, section 8)
++        refused = self.gate("autoanatomist", "gold3_latent_smoke2")
++        self.assertEqual(refused.returncode, 2, refused.stdout)
++        self.assertIn(f"once the report of {self.SCREEN} (logs/AUTOANATOMIST-{self.SCREEN}.md) ends in exit 0", refused.stdout)
++        self.smoke_report(commit, 0)
++        refused = self.gate("autoanatomist", "gold3_latent_screen2")
++        self.assertEqual(refused.returncode, 2, refused.stdout)
++        self.assertIn("once the report of gold3_latent_smoke2 (logs/AUTOANATOMIST-gold3_latent_smoke2.md) ends in exit 0",
++                      refused.stdout)
++        self.assertEqual(self.submitted(), [])
++        # the second smoke is one GPU job, its five trials in series on one card
++        done = self.gate("autoanatomist", "gold3_latent_smoke2")
++        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
++        self.assertIn("trains its 5 trials one after another on one card", done.stdout)
++        self.assertEqual(len(self.submitted()), 1)
++        (logs / "AUTOANATOMIST-gold3_latent_smoke2.md.part").unlink()
++        (logs / "AUTOANATOMIST-gold3_latent_smoke2.md").write_text(
++            f"# autoanatomist gold3_latent_smoke2: job 4041 on node, commit {commit}, 2026-10-30 12:00:00 UTC\n"
++            "- exit 0 at 2026-10-30 13:00:00 UTC\n", encoding="utf-8")
++        # then the second screen is an array of twelve trials and its join
++        done = self.gate("autoanatomist", "gold3_latent_screen2")
++        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
++        self.assertEqual(len(self.submitted()), 3)
++        self.assertIn("the trials' array", done.stdout)
++        self.assertIn("(12 tasks,", done.stdout)
++
+     def test_autoanatomist_join_waits_for_the_setup_as_the_trials_do(self):
+         # environments not made from this lock: the setup job rebuilds them, and both parts of the screen wait for it,
+         # so a setup that fails ends the trials and the join before either starts
+diff --git a/tools/autoanatomist_plan.py b/tools/autoanatomist_plan.py
+index 4079d90..69b7deb 100644
+--- a/tools/autoanatomist_plan.py
++++ b/tools/autoanatomist_plan.py
+@@ -2,7 +2,7 @@
+ """Write and check the auto-anatomist screen's plans under grid/screens/ from the gold 3 store
+ (docs/research/autoanatomist-screen/README.md).
+ 
+-    python3 tools/autoanatomist_plan.py write [--export FILE]
++    python3 tools/autoanatomist_plan.py write [--export FILE] [--plan NAME ...]
+     python3 tools/autoanatomist_plan.py check
+ 
+ write takes the store's training rows (`tools/gold3_ct.py export --tier gold3 --training-only`, or
+@@ -15,7 +15,9 @@ their own under SUBSET_SALT and keeps the first of each part, so the smoke's row
+ first rows and a person's place never depends on the other rows. One label scheme for every row:
+ ENHANCE.PET's C3 to L6 masks, labels 3 to 25, named as the vendored name head names them. The
+ plans are frozen by docs/research/autoanatomist-screen/PREREG.md's Covers lines, so write is run
+-before the freeze and never after.
++before the freeze and never after: --plan writes only the plans it names, so a plan added later is
++written with the frozen ones left as they are, and a plan whose rows are another's (rows_of) takes
++them from that plan's committed file, so two screens read the same persons.
+ 
+ check reads the committed plans and fails where one does not hold (plan_problems), where a row
+ has left the frozen split or stands on a test list (rows_problems), or where a row sits outside its
+@@ -76,6 +78,16 @@ SCHEDULES = {
+     # random start, so the feature term would pull the CT encoder towards a random network's
+     # features, a weight only the null would carry; w_feature=0 takes it out.
+     "null": ["schedule=fixed", "lam_fixed=1", "w_fixed=0", "w_feature=0"],
++    # The second screen's arms (bordercall's blocks at the vendored commit): lambda-then-w twice in
++    # half the steps each; w held where the network has not yet learnt the CT branch; the rungs
++    # half of lambda each, overlapping; and an adaptive biasing force mid-anneal. ct_only is the
++    # first screen's null under a name of its own, since the second screen reads every arm against
++    # lambda_then_w.
++    "cyclic": ["schedule=cyclic"],
++    "adaptive": ["schedule=adaptive"],
++    "overlapping": ["schedule=lambda-then-w", "ladder=overlapping"],
++    "restraint": ["schedule=lambda-then-w", "restraint=abf"],
++    "ct_only": ["schedule=fixed", "lam_fixed=1", "w_fixed=0", "w_feature=0"],
+ }
+ PLANS = {
+     "gold3_latent_smoke": {
+@@ -106,6 +118,35 @@ PLANS = {
+         "epochs": 50,
+         "evaluate_every": 5,
+     },
++    "gold3_latent_smoke2": {
++        "purpose": (
++            "The second screen's arms on the grid, end to end on the smoke's four CTs: lambda_then_w and the "
++            "four changes to it, five short trials in series on one card, then the join, so the new blocks' code "
++            "runs on a card before twelve trials take one each. Nothing it measures is read as a result."
++        ),
++        "layout": "series",
++        "rows_of": "gold3_latent_smoke",
++        "arms": ("lambda_then_w", "cyclic", "adaptive", "overlapping", "restraint"),
++        "null": "lambda_then_w",
++        "seeds": [1],
++        "epochs": 150,
++        "evaluate_every": 10,
++    },
++    "gold3_latent_screen2": {
++        "purpose": (
++            "Whether a change to the anneal helps beyond lambda_then_w: the anneal twice, w held by a check "
++            "of the CT branch, overlapping rungs and a restraint mid-anneal, each read against lambda_then_w, "
++            "with the CT branch alone beside them, two seeds each, 50 epochs on the first screen's 96 "
++            "training CTs, read on its 24 validation CTs by the mean surface distance."
++        ),
++        "layout": "array",
++        "rows_of": "gold3_latent_screen",
++        "arms": ("lambda_then_w", "cyclic", "adaptive", "overlapping", "restraint", "ct_only"),
++        "null": "lambda_then_w",
++        "seeds": [1, 2],
++        "epochs": 50,
++        "evaluate_every": 5,
++    },
+ }
+ 
+ 
+@@ -167,20 +208,30 @@ def chosen(rows, part, count):
+     raise SystemExit(f"only {len(picked)} {part} persons are eligible, and the plan asks {count}")
+ 
+ 
++def rows_of(screen):
++    """The rows of a committed plan, as another plan takes them."""
++    return read_json(f"{SCREENS}/{screen}.json")["rows"]
++
++
+ def plan_record(screen, spec, rows, rule):
+-    taken = chosen(rows, "train", spec["train"]) + chosen(rows, "validation", spec["validation"])
++    if "rows_of" in spec:
++        taken = rows_of(spec["rows_of"])
++    else:
++        taken = chosen(rows, "train", spec["train"]) + chosen(rows, "validation", spec["validation"])
+     return {
+         "screen": screen,
+         "purpose": spec["purpose"],
+         "class": "gpu",
+         "layout": spec["layout"],
+         "data": {DATA_KEY: ENHANCE_DATA},
+-        "rows": [{"item": r["item"], "person": r["person"], "part": r["part"], "source": DATA_KEY} for r in taken],
++        "rows": [{"item": r["item"], "person": r["person"], "part": r["part"], "source": r.get("source", DATA_KEY)}
++                 if "rows_of" in spec else
++                 {"item": r["item"], "person": r["person"], "part": r["part"], "source": DATA_KEY} for r in taken],
+         "split": {"salt": rule.salt, "validation_share": rule.validation_share},
+         "test": "off",
+         "fixed": FIXED,
+         "arms": {arm: SCHEDULES[arm] for arm in spec["arms"]},
+-        "null": "null",
++        "null": spec.get("null", "null"),
+         "seeds": spec["seeds"],
+         "epochs": spec["epochs"],
+         "evaluate_every": spec["evaluate_every"],
+@@ -199,14 +250,20 @@ def problems_of(record, rule, units):
+ 
+ def command_write(args):
+     rule, units = split_inputs()
+-    unit_part = unit_parts(rule, units)
+-    exported = export_rows(args.export)
+-    rows = [r for r in exported if eligible(r, rule, unit_part)]
+-    split_off = [r for r in exported if eligible(r, rule, {}) and r not in rows]
+-    print(f"{len(rows)} eligible rows ({sum(r['part'] == 'train' for r in rows)} train); {len(split_off)} left out "
+-          f"since their unit's part is not their own")
++    unknown = sorted(set(args.plan or ()) - set(PLANS))
++    if unknown:
++        raise SystemExit(f"autoanatomist_plan: no plan {', '.join(unknown)}; the plans are {', '.join(PLANS)}")
++    wanted = {screen: spec for screen, spec in PLANS.items() if not args.plan or screen in args.plan}
++    rows = []
++    if any("rows_of" not in spec for spec in wanted.values()):
++        unit_part = unit_parts(rule, units)
++        exported = export_rows(args.export)
++        rows = [r for r in exported if eligible(r, rule, unit_part)]
++        split_off = [r for r in exported if eligible(r, rule, {}) and r not in rows]
++        print(f"{len(rows)} eligible rows ({sum(r['part'] == 'train' for r in rows)} train); {len(split_off)} left out "
++              f"since their unit's part is not their own")
+     assert set(ENHANCE_DATA["names"].values()) <= set(NAMES)
+-    for screen, spec in PLANS.items():
++    for screen, spec in wanted.items():
+         record = plan_record(screen, spec, rows, rule)
+         found = problems_of(record, rule, units)
+         if found:
+@@ -214,7 +271,8 @@ def command_write(args):
+         path = ROOT / SCREENS / f"{screen}.json"
+         path.parent.mkdir(parents=True, exist_ok=True)
+         path.write_text(plan_text(record), encoding="utf-8")
+-        print(f"wrote {path.relative_to(ROOT)}: {len(record['rows'])} rows of {len(rows)} eligible")
++        where = f"the rows of {spec['rows_of']}" if "rows_of" in spec else f"{len(rows)} eligible"
++        print(f"wrote {path.relative_to(ROOT)}: {len(record['rows'])} rows of {where}")
+     return 0
+ 
+ 
+@@ -239,6 +297,7 @@ def main(argv=None):
+     sub = top.add_subparsers(dest="command", required=True)
+     write = sub.add_parser("write", help="write the plans from the gold 3 store's training rows")
+     write.add_argument("--export", help="a file of the store's export, JSON lines, in place of running it")
++    write.add_argument("--plan", action="append", help="write only this plan (again for more); every plan when none is named")
+     sub.add_parser("check", help="exit 1 where a committed plan does not hold or leaves the frozen split")
+     args = top.parse_args(argv)
+     return {"write": command_write, "check": command_check}[args.command](args)
+diff --git a/tools/autoanatomist_report.py b/tools/autoanatomist_report.py
+index d521713..c865af9 100644
+--- a/tools/autoanatomist_report.py
++++ b/tools/autoanatomist_report.py
+@@ -27,12 +27,15 @@ STUDY = "autoanatomist-screen"
+ PREREG = ROOT / "docs" / "research" / "autoanatomist-screen" / "PREREG.md"
+ # The pre-registration the design answers restate, by its sha256: PREREG.md as frozen, the digest
+ # PREREG.md.sha256 beside it holds (tests/test_autoanatomist_report.py holds the two together).
+-DESIGN = "29c846c25a46adc19b082a08ef350a8fbf71d810db62b043b55a5873942359a9"
++DESIGN = "659b8e15f43f08daed79b5039031b9af05aea3f7e98787a814ea16ed51ec621f"
+ LICENCES = ROOT / "data" / "licences.json"
+ SOURCE = "scidb_enhance_pet_1_6k"
+-# The plan PREREG.md section 4 reads no result from: it tests the code path on the grid and times a
+-# crop, so its report says its sizes and its chance answer no hypothesis.
+-SMOKE = "gold3_latent_smoke"
++# The plans PREREG.md reads no result from, each with the section that says so: each tests the code
++# path on the grid and times a crop, so its report says its sizes and its chance answer no hypothesis.
++SMOKES = {"gold3_latent_smoke": "section 4", "gold3_latent_smoke2": "section 8"}
++# The plans of PREREG.md section 8, the second screen, whose known limits are section 8's beside
++# section 6's.
++SECOND = ("gold3_latent_smoke2", "gold3_latent_screen2")
+ # PREREG.md section 6's known limits, one restatement each in the section's order;
+ # tests/test_autoanatomist_report.py holds them to the section's bullets, so a limit added there and
+ # not here fails the check.
+@@ -49,6 +52,14 @@ LIMITS = (
+     "the feature term runs to the last step, so once w reaches 0 it distils from a frozen teacher, and an anneal "
+     "whose feature term ends with the handover is not tested",
+ )
++# PREREG.md section 8's known limits of the second screen, one restatement each in its order, held to
++# its bullets the same way.
++SECOND_LIMITS = (
++    "the four new words run at their defaults, chosen on phantoms and tuned on nothing here",
++    "under objective=mask the restraint's variable is the target's volume share alone",
++    "the adaptive schedule's lambda path differs from seed to seed by design",
++    "wherever w stands at 0 the feature term distils from a mask branch that takes no gradient",
++)
+ 
+ ITEMS = {
+     "claim": {
+@@ -257,8 +268,13 @@ def fact_uncertainty(run):
+             f"every one of the null's, which an arm no different passes by chance at most one time in "
+             f"{math.comb(2 * seeds, seeds)} at {seeds_said(seeds)} a side, since each seed gives the arm and the null one "
+             "start and one draw of batches")
+-    if plan(run).get("screen") == SMOKE:
++    screen = plan(run).get("screen")
++    if screen in SMOKES:
+         said += "; the smoke answers no hypothesis, so no verdict of it is read as a result"
++        return restated(run, f"{said} (PREREG.md {SMOKES[screen]})")
++    if screen in SECOND:
++        said += "; five arms are read against one null, so a chance pass of some arm is likely"
++        return restated(run, f"{said} (PREREG.md sections 4 and 8)")
+     return restated(run, f"{said} (PREREG.md section 4)")
+ 
+ 
+@@ -295,6 +311,8 @@ def fact_failure_analysis(run):
+ 
+ 
+ def fact_limitations(run):
++    if plan(run).get("screen") in SECOND:
++        return restated(run, "; ".join(LIMITS + SECOND_LIMITS) + " (PREREG.md sections 6 and 8)")
+     return restated(run, "; ".join(LIMITS) + " (PREREG.md section 6)")
+ 
+ 
+@@ -357,9 +375,9 @@ def fact_sample_size(run):
+     rows = p.get("rows") or {}
+     sizes = (f"{rows.get('train')} training and {rows.get('validation')} validation studies at "
+              f"{seeds_said(len(p.get('seeds') or []))} an arm")
+-    if p.get("screen") == SMOKE:
++    if p.get("screen") in SMOKES:
+         return restated(run, f"the smoke's sizes, {sizes}, try the code path on the grid and time a crop; the smoke answers "
+-                             "no hypothesis (PREREG.md section 4)")
++                             f"no hypothesis (PREREG.md {SMOKES[p.get('screen')]})")
+     return restated(run, f"the screen's sizes are its budget, {sizes}, chosen to select arms for a longer run, not powered "
+                          "for an effect")
+ 
+-- 
+2.43.0
+
+
+From 35008a66de5a642697029b7caaa1763acd0a55e0 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 30 Oct 2026 18:40:52 +0000
+Subject: [PATCH 2/3] The join's summary carries the numbers its two plots draw
+
+The figures stay on the grid and the gate's report carries only the summary, so a reader off the
+grid saw each arm's verdict and none of the values behind it. The summary now lists, under the
+verdicts, each seed's final distance by arm with the null first and each trial's distance at
+every reading as epoch=value, in lines the gate's 200-character cut leaves whole and in no
+word:value shape its redaction withholds. The decision, the plots and the training are untouched.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01CfV9zXZuntmLhnVi2um3df
+---
+ docs/research/autoanatomist-screen/README.md |  2 +-
+ tests/test_autoanatomist_join.py             | 79 ++++++++++++++++++++
+ tests/test_autoanatomist_trial.py            | 12 +++
+ tools/autoanatomist_join.py                  | 47 ++++++++++--
+ 4 files changed, 133 insertions(+), 7 deletions(-)
+ create mode 100644 tests/test_autoanatomist_join.py
+
+diff --git a/docs/research/autoanatomist-screen/README.md b/docs/research/autoanatomist-screen/README.md
+index b38d6ab..3b16042 100644
+--- a/docs/research/autoanatomist-screen/README.md
++++ b/docs/research/autoanatomist-screen/README.md
+@@ -9,6 +9,6 @@ The screen asks whether annealing the auto-anatomist's privileged input helps th
+ - The split: data/splits/rule.json gives each person its part; no person on data/splits/test-persons.json or on the latent shape priors' reserve, data/splits/latent-prior-test-reserve.json (584 studies), is read, so both studies keep one person split; and every study of a unit of data/splits/latent-prior-repeat-groups.json (85 units) keeps its unit's part, a study whose own part differs left out. Both lists come from that evaluation's draw_test_reserve.py (bordercall PR 45) and reserve-report.json pins their inputs; each run's RECORD.json carries the sha256 of the rule and of the three lists.
+ - The grid words: `autoanatomist gold3_latent_smoke`, then `autoanatomist gold3_latent_screen` (grid/gate.sh, grid/autoanatomist.sbatch); the gate refuses the screen until the smoke's report ends in exit 0 (AUTOANATOMIST_AFTER). The owner's counts: the smoke is the one short GPU smoke of his count of 2026-10-30 03:20 UTC, and the screen is the two jobs of his word of 08:56 UTC, a GPU array of eight trials and a CPU join afterany it. A plan is sent once; it is sent again only once a fix has moved the checkout after a send that failed, or on his word in AUTOANATOMIST_RERUNS. Then `autoanatomist gold3_latent_smoke2` once the first smoke ends in exit 0, and `autoanatomist gold3_latent_screen2`, a GPU array of twelve trials and a CPU join, once the second smoke does, on the owner's choice of 16:52 UTC and his word of 18:05 UTC for whatever a training run on gold tier 3 needs while he is in the operating room.
+ - The network: bordercall's auto-anatomist, its copy under grid/autoanatomist/ (tools/bordercall_vendor.py), a block the plans' words choose. The trials run on the grid's Python 3.11, in a venv over the train-gpu environment with the versions schwingnet.autoanatomist_screen.PINS names (jax 0.10.2, flax 0.12.8, optax 0.2.8, orbax-checkpoint 0.12.8).
+-- How to read a result: the join's finals.png and curves.png, each with a line under it on how to read it, and SUMMARY.md; RECORD.json names every file the decision read by its sha256. An arm beats the null only where every one of its seeds ends below every one of the null's; the screen answers which placement of the ramps does best only by which arms pass, and ranks none.
++- How to read a result: the join's finals.png and curves.png, each with a line under it on how to read it, and SUMMARY.md, which gives under the verdicts the numbers the two plots draw, each seed's final value and each trial's value at every reading, so the gate's report carries them off the grid where the figures stay; RECORD.json names every file the decision read by its sha256. An arm beats the null only where every one of its seeds ends below every one of the null's; the screen answers which placement of the ramps does best only by which arms pass, and ranks none.
+ 
+ Where it stands on 30 October 2026: SchwingNet PR 483 and bordercall PR 40 merged at 18:05 UTC, and the smoke was sent at 18:25 UTC; until then nothing had been sent. The plans and the PREREG were written again over the latent-prior evaluation's reserve and units and frozen, and frozen once more the same day after a second review of what the trials run: the null now trains without the feature term, which at w 0 pulled it towards a random network, and a trial that diverges fails rather than reading a finite worst distance; and frozen a third time after a third review: the annealed arms' feature term distils from a frozen teacher once w reaches 0, so w_first tests a handover on clean masks followed by that distillation rather than the ladder's order, a reading whose outputs are not finite stops the trial, and a plan's row must name one study as its item and its person (PREREG.md, section 7, says what changed). The screen goes once the smoke's report says exit 0. PREREG.md was frozen a fourth time the same day to add the second screen (section 8), sections 1 to 6 and the first two plans' bytes unchanged.
+diff --git a/tests/test_autoanatomist_join.py b/tests/test_autoanatomist_join.py
+new file mode 100644
+index 0000000..16d8228
+--- /dev/null
++++ b/tests/test_autoanatomist_join.py
+@@ -0,0 +1,79 @@
++"""The numbers under the auto-anatomist join's verdicts (tools/autoanatomist_join.py, numbers_text):
++each seed's final value by arm with the null first, each trial's readings as epoch=value in lines
++of ten that the gate's 200 characters never cut, none for a reading with no value, and a failed
++trial said to have no readings, read on the second smoke's plan, the longest a report carries.
++
++It imports the package's contracts, so it needs beartype and icontract, which CI's python3 does
++not hold: it is skipped there, and runs in the locked environment as
++    pixi run python -m unittest tests.test_autoanatomist_join -v
++"""
++
++import importlib.util
++import json
++import sys
++import unittest
++from pathlib import Path
++
++ROOT = Path(__file__).resolve().parent.parent
++NEEDED = ("beartype", "icontract")
++MISSING = [name for name in NEEDED if importlib.util.find_spec(name) is None]
++PLAN = ROOT / "grid" / "screens" / "gold3_latent_smoke2.json"
++
++
++def load_join():
++    kept = list(sys.path)
++    try:
++        spec = importlib.util.spec_from_file_location("autoanatomist_join_under_test", ROOT / "tools" / "autoanatomist_join.py")
++        module = importlib.util.module_from_spec(spec)
++        spec.loader.exec_module(module)
++    finally:
++        sys.path[:] = kept
++    return module
++
++
++@unittest.skipIf(MISSING, f"needs the package's contracts ({', '.join(MISSING)} missing)")
++class NumbersTest(unittest.TestCase):
++    @classmethod
++    def setUpClass(cls):
++        cls.join = load_join()
++        from schwingnet.autoanatomist_screen import decide, evaluation_epochs, plan_of, trials
++
++        cls.plan = plan_of(json.loads(PLAN.read_text(encoding="utf-8")))
++        cls.epochs = evaluation_epochs(cls.plan)
++        cls.entries = {}
++        for at, trial in enumerate(trials(cls.plan)):
++            if trial.arm == "restraint":
++                continue  # failed: it wrote no entry
++            readings = [{"epoch": e, "distance_mm": 10.0 - at - e / 100} for e in cls.epochs]
++            if trial.arm == "adaptive":
++                readings[0]["distance_mm"] = None
++            cls.entries[trial.id] = {"epochs": readings, "final": {"distance_mm": readings[-1]["distance_mm"]}}
++        cls.decision = decide(cls.plan, cls.entries)
++        cls.lines = cls.join.numbers_text(cls.plan, cls.decision, cls.entries)
++
++    def test_the_plan_reads_more_than_ten_times_so_a_trial_takes_two_lines(self):
++        self.assertGreater(len(self.epochs), self.join.READINGS_A_LINE)
++        first, cont = [line for line in self.lines if line.startswith("- cyclic_s1")]
++        self.assertEqual(first, "- cyclic_s1: " + " ".join(f"{e}={9.0 - e / 100:.2f}" for e in self.epochs[:10]))
++        self.assertEqual(cont, "- cyclic_s1 (cont.): " + " ".join(f"{e}={9.0 - e / 100:.2f}" for e in self.epochs[10:]))
++
++    def test_each_finals_line_names_its_arm_with_the_null_first(self):
++        finals = [line for line in self.lines if line.startswith("- final ")]
++        self.assertEqual(finals[0], f"- final distance_mm of lambda_then_w (the null): s1 {self.entries['lambda_then_w_s1']['final']['distance_mm']:.2f}")
++        self.assertEqual([line.split(" of ")[1].split(":")[0] for line in finals[1:]],
++                         ["adaptive", "cyclic", "overlapping", "restraint"])
++        self.assertIn("- final distance_mm of restraint: s1 none", finals)
++
++    def test_a_reading_with_no_value_is_none_and_a_failed_trial_has_no_readings(self):
++        self.assertTrue(any(line.startswith(f"- adaptive_s1: {self.epochs[0]}=none ") for line in self.lines))
++        self.assertIn("- restraint_s1: no readings, since it failed", self.lines)
++
++    def test_no_line_passes_the_gates_200_characters_or_holds_a_word_colon_value_the_gate_withholds(self):
++        for line in self.lines:
++            self.assertLessEqual(len(line), 200, line)
++            # grid/redact.sed withholds what follows a lower-case word and a colon with no space between
++            self.assertNotRegex(line, r"\b[a-z][a-z0-9_]*:[A-Za-z0-9]")
++
++
++if __name__ == "__main__":
++    unittest.main()
+diff --git a/tests/test_autoanatomist_trial.py b/tests/test_autoanatomist_trial.py
+index 772d1d4..6a0243d 100644
+--- a/tests/test_autoanatomist_trial.py
++++ b/tests/test_autoanatomist_trial.py
+@@ -142,6 +142,18 @@ class TrialTest(unittest.TestCase):
+         self.assertIn(decision["arms"]["joint"]["beats_null"], (True, False))
+         for name in ("curves.png", "finals.png", "SUMMARY.md"):
+             self.assertTrue((self.out / "join" / name).is_file(), name)
++        # the numbers the plots draw, in the summary the gate's report carries off the grid
++        summary = (self.out / "join" / "SUMMARY.md").read_text(encoding="utf-8")
++        null, joint = decision["null_finals"][0], decision["arms"]["joint"]["finals"][0]
++        self.assertIn(f"- final distance_mm of null (the null): s1 {null:.2f}\n", summary)
++        self.assertIn(f"- final distance_mm of joint: s1 {joint:.2f}\n", summary)
++        for trial in ("joint_s1", "null_s1"):
++            entry = json.loads((self.out / "trials" / trial / "entry.json").read_text(encoding="utf-8"))
++            said = " ".join(f"{p['epoch']}={p['distance_mm']:.2f}" for p in entry["epochs"])
++            self.assertIn(f"- {trial}: {said}\n", summary)
++        numbers = summary.index("## The numbers behind the plots")
++        self.assertLess(summary.index("- joint "), numbers)
++        self.assertTrue(all(len(line) <= 200 for line in summary[numbers:].splitlines()))
+ 
+     def test_a_missing_ct_is_refused_with_2_and_said_in_why(self):
+         record = json.loads(self.plan.read_text(encoding="utf-8"))
+diff --git a/tools/autoanatomist_join.py b/tools/autoanatomist_join.py
+index 3fa376c..cf97ae5 100644
+--- a/tools/autoanatomist_join.py
++++ b/tools/autoanatomist_join.py
+@@ -9,10 +9,11 @@ Reads STUDY_FOLDER/trials/<trial>/entry.json for every trial of the plan
+ (entry_problems) by counting its trial as failed, with the reason the trial left in why.txt where
+ it wrote no entry, decides each arm against the null (decide) and
+ writes STUDY_FOLDER/join/DECISION.json first, then curves.png, finals.png and SUMMARY.md, plots
+-first with a line on how to read each. A failed trial is shown failed, never dropped: its arm, and
+-every arm when the null is the one that failed, is undecided. Exit 0 when every trial wrote an entry
+-that holds, 3 when some did not (the decision and the plots are written all the same), 2 when the
+-plan itself does not hold.
++first with a line on how to read each, and below the verdicts the numbers the two plots draw, which
++the gate's report carries off the grid where the figures stay. A failed trial is shown failed,
++never dropped: its arm, and every arm when the null is the one that failed, is undecided. Exit 0
++when every trial wrote an entry that holds, 3 when some did not (the decision and the plots are
++written all the same), 2 when the plan itself does not hold.
+ """
+ 
+ import argparse
+@@ -44,6 +45,13 @@ FINALS_NOTE = (
+     "Each dot is one seed's distance after the last epoch. An arm beats the null when every one of its "
+     "dots sits left of every one of the null's."
+ )
++# The gate cuts every line of a report it prints at 200 characters (LINE_CHARS in grid/gate.sh),
++# so the note under the numbers stays short and a trial's readings go on lines of ten.
++NUMBERS_NOTE = (
++    "The numbers the plots draw: each seed's final value by arm, the null first, then each trial's "
++    "value at every reading as epoch=value, none where a reading holds none."
++)
++READINGS_A_LINE = 10
+ 
+ 
+ def why_none(folder):
+@@ -145,13 +153,40 @@ def verdict_word(value):
+     return {True: "beats the null", False: "does not beat the null", None: "undecided"}[value]
+ 
+ 
+-def summary_text(plan, decision, failed):
++def number(value):
++    """A value in two decimals, or none."""
++    return "none" if value is None else f"{value:.2f}"
++
++
++def numbers_text(plan, decision, entries):
++    """The numbers behind finals.png and curves.png: each seed's final value by arm, the null first,
++    then each trial's value at every reading, a trial with no entry said to have none."""
++    finals = {plan.null: decision["null_finals"], **{arm: d["finals"] for arm, d in decision["arms"].items()}}
++    seeds = sorted(plan.seeds)
++    lines = ["## The numbers behind the plots", "", NUMBERS_NOTE, ""]
++    for arm in [plan.null] + sorted(set(plan.arms) - {plan.null}):
++        said = ", ".join(f"s{seed} {number(value)}" for seed, value in zip(seeds, finals[arm], strict=True))
++        lines.append(f"- final {plan.measure} of {arm}{' (the null)' if arm == plan.null else ''}: {said}")
++    lines.append("")
++    for trial in trials(plan):
++        entry = entries.get(trial.id)
++        if entry is None:
++            lines.append(f"- {trial.id}: no readings, since it failed")
++            continue
++        pairs = [f"{e['epoch']}={number(e[plan.measure])}" for e in entry["epochs"]]
++        for at in range(0, len(pairs), READINGS_A_LINE):
++            lines.append(f"- {trial.id}{' (cont.)' if at else ''}: {' '.join(pairs[at:at + READINGS_A_LINE])}")
++    return lines
++
++
++def summary_text(plan, decision, failed, entries):
+     lines = [f"# {plan.screen}", "", plan.purpose, "", "![every trial's curve](curves.png)", "", CURVES_NOTE, "",
+              "![each seed's last epoch](finals.png)", "", FINALS_NOTE, "", decision["rule"] + ".", ""]
+     for arm, d in sorted(decision["arms"].items()):
+         lines.append(f"- {arm} {verdict_word(d['beats_null'])}: {d['why']}.")
+     for trial, why in sorted(failed.items()):
+         lines.append(f"- {trial} failed: {why}.")
++    lines += [""] + numbers_text(plan, decision, entries)
+     return "\n".join(lines) + "\n"
+ 
+ 
+@@ -174,7 +209,7 @@ def main(argv=None):
+     (join / "DECISION.json").write_text(json.dumps(decision, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+     plot_curves(plan, entries, failed, join / "curves.png")
+     plot_finals(plan, decision, join / "finals.png")
+-    (join / "SUMMARY.md").write_text(summary_text(plan, decision, failed), encoding="utf-8")
++    (join / "SUMMARY.md").write_text(summary_text(plan, decision, failed, entries), encoding="utf-8")
+     for arm, d in sorted(decision["arms"].items()):
+         print(f"autoanatomist_join: {arm} {verdict_word(d['beats_null'])}")
+     for trial, why in sorted(failed.items()):
+-- 
+2.43.0
+
+
+From 1ba6752d0a1b7abca2423d56ba77d957945ba7cf Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 30 Oct 2026 18:47:14 +0000
+Subject: [PATCH 3/3] Send the screen's GPU parts to galhp's L40S cards, after
+ the smoke failed on a V100
+
+The first smoke's first send (job 40884715) landed on a V100 of gvohp, and both trials stopped at
+their first compile: JAX 0.10.2's GPU compiler found no configuration for 46 of 218 instructions on
+that card. The gpu class's three partitions let any later send land there again, so every GPU part
+of every plan now names galhp, whose cards are L40S, as the latency sweep names gmsap; the join
+stays a batch job. The PREREG already computes every trial in full float32 on whichever card it
+gets, so no word, seed, row or rule changes; DEVIATIONS.md records the departure, and the smoke is
+sent again at this commit, as the gate allows for a failure on older code.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01CfV9zXZuntmLhnVi2um3df
+---
+ docs/memory/MEMORY.md                          |  2 +-
+ docs/memory/the-auto-anatomist-screen.md       |  1 +
+ .../autoanatomist-screen/DEVIATIONS.md         |  5 +++++
+ docs/research/autoanatomist-screen/README.md   |  2 +-
+ grid/gate.sh                                   | 18 ++++++++++++------
+ tests/test_gate.py                             | 13 ++++++++++---
+ 6 files changed, 30 insertions(+), 11 deletions(-)
+ create mode 100644 docs/research/autoanatomist-screen/DEVIATIONS.md
+
+diff --git a/docs/memory/MEMORY.md b/docs/memory/MEMORY.md
+index eb74e64..ee1fb7b 100644
+--- a/docs/memory/MEMORY.md
++++ b/docs/memory/MEMORY.md
+@@ -45,7 +45,7 @@ One line per fact under docs/memory/: a dash, the fact's title as a link to its
+ - [SWE-bench runs from GitHub and PyPI](swe-bench-runs-from-github-and-pypi.md): the task repository SWE-bench/swe-bench-tasks, compiled by `swebench dataset build`, scores an instance where huggingface.co is unreachable; never --task-repo, which rebuilds the image; the images pull through mirror.gcr.io; OpenSpineConsortium/flowbench builds on it.
+ - [Symphony versus competitors](symphony-versus-competitors.md): the comparison of 2026-10-16 is docs/research/symphony-versus-competitors.md (and a Claude Doc); its three claims are better by design and graded Inferred, no outcome is measured yet, and coordbench numbers stay out until the owner lifts the hold; the site's /symphony/compare.html sets the general powers beside familiar tools in seven kinds of work, and /symphony/use-cases.html gives the use cases (docs/research/symphony-compared-by-domain.md).
+ - [The anomaly pack](the-anomaly-pack.md): stage 3 of the SPINEPS to FleXray route packs the selection as two whole-volume FleXray packages under the landing flexray_pack (schwingnet_spine for masks complete from C2 to the sacrum, schwingnet_spine_partial for the rest), every mask rewritten to the 28 canonical ids by tools/nifti_label.py, the existing relabelled SPINEPS copies through spineps_ids.py check --strict and never a segmenter run, countable measured per CT, uncounted and g3_excluded rows packed and trained on by nothing, the validation draw under data/splits/anomaly-validation.json, the admission before any byte and no HOLD (docs/research/spineps-anomaly-route.md, section 5).
+-- [The auto-anatomist screen](the-auto-anatomist-screen.md): the grid word `autoanatomist <plan>` runs AutoanatomistFlow under the frozen docs/research/autoanatomist-screen/PREREG.md: gold3_latent_smoke (the owner's count of 2026-10-30 03:20 UTC), gold3_latent_screen's GPU array of eight trials and CPU join (his word of 08:56 UTC) once the smoke ends in exit 0, and the second screen's gold3_latent_smoke2 and twelve-trial gold3_latent_screen2 (section 8, his words of 16:52 and 18:05 UTC), each sent once in its gate order, by a session while he is away; normal spines alone; the grid's Python 3.11 pins jax 0.10.2, flax 0.12.8 and optax 0.2.8; every path the job passes is absolute; the plans keep the latent-prior evaluation's test reserve out and each repeat-scan unit in one part.
++- [The auto-anatomist screen](the-auto-anatomist-screen.md): the grid word `autoanatomist <plan>` runs AutoanatomistFlow under the frozen docs/research/autoanatomist-screen/PREREG.md: gold3_latent_smoke (the owner's count of 2026-10-30 03:20 UTC), gold3_latent_screen's GPU array of eight trials and CPU join (his word of 08:56 UTC) once the smoke ends in exit 0, and the second screen's gold3_latent_smoke2 and twelve-trial gold3_latent_screen2 (section 8, his words of 16:52 and 18:05 UTC), each sent once in its gate order, by a session while he is away; normal spines alone; the grid's Python 3.11 pins jax 0.10.2, flax 0.12.8 and optax 0.2.8, whose compile fails on a V100, so every GPU part goes to galhp's L40S cards; every path the job passes is absolute; the plans keep the latent-prior evaluation's test reserve out and each repeat-scan unit in one part.
+ - [The control panel](the-control-panel.md): the site's /symphony/control/ drives a Symphony repository through GitHub's API as the signed-in person (the board, tasks, @claude, workers, pull requests, workflow runs) and /symphony/cost.html prices the work against the alternatives, unsorry first; Sign in with GitHub first (the App's user token through a stateless Worker), a pasted fine-grained token the fallback; it took no Claude token until the owner dropped that rule on 2026-10-18 for the Tokens page's Add a slot box, which saves a pasted token as an organization secret through the App; its assistant is an issue labelled assistant that claude.yml answers read-only in ten turns with .github/symphony/assistant.md appended, and the Ask Claude bar at the console's foot asks it and offers the panel actions its answer names as buttons the person presses (site #28, 2026-10-18; docs/research/ask-claude-bar.md); the research note is docs/research/control-panel.md.
+ - [The drive organizer](drive-organizer.md): a whole drive read into a catalog on the branch drive-catalog, Claude proposing projects as epics whose tasks carry proposed and no todo until a person runs accept, which adds the folders to the sync, and the sync's run starts the tasks once the files are in; private repositories only, nothing scheduled; tools/file_digest.py reads any file as text; a session does it through the Microsoft 365 connector too (tools/drive_connector.py, the drive-organize skill), moving files only on the owner's go and undoably; Wayne State approved the Folders app for native Graph access on 2026-10-19, confirmed live 2026-10-20, so the drive is read only through Graph under the owner's sign-in and the connector walk is retired (docs/research/onedrive-direct-graph.md); docs/research/drive-organizer.md.
+ - [The data catalog](the-data-catalog.md): the frame catalog of task #10 is a read-only versioned SQLite store (catalog-NNNNNN-<hash>.sqlite under versions/, 0444, VERSIONS.jsonl and CURRENT; unchanged bytes make no version) built from content-hashed shard manifests and data/registry/, with the person-keyed split under data/splits/; the data root lists sources alphabetically, tools/ingest.py turns a bank into a shard, split-check holds every version to the REFORMS split rule; images stay on the grid, Metaflow steps read a version by path and pass its hash; tools/catalog.py, docs/research/data-catalog.md, docs/research/dataset-organisation-at-scale.md.
+diff --git a/docs/memory/the-auto-anatomist-screen.md b/docs/memory/the-auto-anatomist-screen.md
+index 3812ff6..7977984 100644
+--- a/docs/memory/the-auto-anatomist-screen.md
++++ b/docs/memory/the-auto-anatomist-screen.md
+@@ -3,6 +3,7 @@ The auto-anatomist screen runs on the grid as the word `autoanatomist <plan>`, t
+ - The flow is AutoanatomistFlow (flows/autoanatomist.py), a trial or the join of a plan under grid/screens/, held to docs/research/autoanatomist-screen/PREREG.md and to the plan's bytes; the job script is grid/autoanatomist.sbatch and the network bordercall's copy under grid/autoanatomist/ (tools/bordercall_vendor.py copy, never a hand edit).
+ - grid/gate.sh queues a plan only where AUTOANATOMIST_COUNTED names it, sends gold3_latent_screen only once the smoke's report ends in exit 0 (AUTOANATOMIST_AFTER), and sends a plan again only after a fix moved the checkout, after a send Slurm ended before any part started, or on the owner's word in AUTOANATOMIST_RERUNS; gold3_latent_smoke is one GPU job, gold3_latent_screen a GPU array of eight trials and a CPU join afterany it, the join waiting for the setup as the trials do.
+ - Constraint: the grid's train-gpu Python is 3.11, so the trials' venv pins jax[cuda12] 0.10.2, flax 0.12.8, optax 0.2.8 and orbax-checkpoint 0.12.8 (schwingnet.autoanatomist_screen.PINS, held by tests/test_gate.py).
++- Constraint: every GPU part of the screen goes to the partition galhp (L40S), AUTOANATOMIST_PARTITION in grid/gate.sh, since on a V100 (gvohp) JAX 0.10.2's GPU compiler found no configuration for part of the trials' program and both trials of the first smoke stopped (job 40884715; DEVIATIONS.md beside the PREREG, item 1).
+ - Constraint: flows/launch.py reads a relative path parameter from the folder it started in, so the job passes every path absolute, the plan as its own copy's.
+ - The first run takes normal spines alone, the store's class normal confirmed by the masks (the owner, 2026-10-30 09:43 UTC); the anomalous spines are split by family across test and training by the latent-prior evaluation, for later runs.
+ - The plans keep one person split with the latent-prior evaluation: every test list of schwingnet.autoanatomist_screen.TEST_LISTS (data/splits/test-persons.json and that evaluation's reserve, data/splits/latent-prior-test-reserve.json) stays out of them, and every study of a unit of probable repeat scans (UNIT_LISTS, data/splits/latent-prior-repeat-groups.json) keeps its unit's part; tools/autoanatomist_plan.py check, in scripts/check.sh under pixi and in the gate lane's tests/schwingnet/test_autoanatomist_screen.py, fails a plan that breaks either, and each run's RECORD.json carries the lists' sha256.
+diff --git a/docs/research/autoanatomist-screen/DEVIATIONS.md b/docs/research/autoanatomist-screen/DEVIATIONS.md
+new file mode 100644
+index 0000000..8679231
+--- /dev/null
++++ b/docs/research/autoanatomist-screen/DEVIATIONS.md
+@@ -0,0 +1,5 @@
++# The auto-anatomist screen: departures from its PREREG
++
++Source: the thread "Restart the auto-anatomist probe", 30 October 2026. PREREG.md beside this file is frozen; every departure after its freeze is written here, dated, with its reason, as its opening paragraph says.
++
++1. 2026-10-30, 18:50 UTC. The cards. The first smoke's first send, job 40884715 at commit 69371c2, landed on a V100 of the partition gvohp (voh5, Tesla V100-SXM2-16GB, driver 580.119.02), and both its trials stopped without writing an entry: JAX 0.10.2's GPU compiler found no configuration for 46 of the 218 instructions of a program the trial compiled (219 for the null), "JaxRuntimeError: INTERNAL: Failed to get configs for: 46 out of 218 instructions". No card had run the pinned code before; every test of it runs on the CPU. Every GPU part of every plan is now sent to the partition galhp alone, whose cards are L40S (AUTOANATOMIST_PARTITION in grid/gate.sh), in place of whichever card of the gpu class frees first. No word, seed, row, reading or rule changed: section 1 already computes every trial in full float32 on whichever card it gets, and the trials now land on one model of card, which narrows the spread section 6 names. The smoke is sent again at the commit that makes this change, as the gate sends again a plan whose report ended in failure on older code, so it runs the package at 8e966e4, as section 8 says a send after its commit does, and the screen after it runs the same. Not known: whether the V100 runs the code under other compiler settings, and whether the L40S runs it at all, which the smoke's second send is for.
+diff --git a/docs/research/autoanatomist-screen/README.md b/docs/research/autoanatomist-screen/README.md
+index 3b16042..90fde3c 100644
+--- a/docs/research/autoanatomist-screen/README.md
++++ b/docs/research/autoanatomist-screen/README.md
+@@ -11,4 +11,4 @@ The screen asks whether annealing the auto-anatomist's privileged input helps th
+ - The network: bordercall's auto-anatomist, its copy under grid/autoanatomist/ (tools/bordercall_vendor.py), a block the plans' words choose. The trials run on the grid's Python 3.11, in a venv over the train-gpu environment with the versions schwingnet.autoanatomist_screen.PINS names (jax 0.10.2, flax 0.12.8, optax 0.2.8, orbax-checkpoint 0.12.8).
+ - How to read a result: the join's finals.png and curves.png, each with a line under it on how to read it, and SUMMARY.md, which gives under the verdicts the numbers the two plots draw, each seed's final value and each trial's value at every reading, so the gate's report carries them off the grid where the figures stay; RECORD.json names every file the decision read by its sha256. An arm beats the null only where every one of its seeds ends below every one of the null's; the screen answers which placement of the ramps does best only by which arms pass, and ranks none.
+ 
+-Where it stands on 30 October 2026: SchwingNet PR 483 and bordercall PR 40 merged at 18:05 UTC, and the smoke was sent at 18:25 UTC; until then nothing had been sent. The plans and the PREREG were written again over the latent-prior evaluation's reserve and units and frozen, and frozen once more the same day after a second review of what the trials run: the null now trains without the feature term, which at w 0 pulled it towards a random network, and a trial that diverges fails rather than reading a finite worst distance; and frozen a third time after a third review: the annealed arms' feature term distils from a frozen teacher once w reaches 0, so w_first tests a handover on clean masks followed by that distillation rather than the ladder's order, a reading whose outputs are not finite stops the trial, and a plan's row must name one study as its item and its person (PREREG.md, section 7, says what changed). The screen goes once the smoke's report says exit 0. PREREG.md was frozen a fourth time the same day to add the second screen (section 8), sections 1 to 6 and the first two plans' bytes unchanged.
++Where it stands on 30 October 2026: SchwingNet PR 483 and bordercall PR 40 merged at 18:05 UTC, and the smoke was sent at 18:25 UTC; until then nothing had been sent. The plans and the PREREG were written again over the latent-prior evaluation's reserve and units and frozen, and frozen once more the same day after a second review of what the trials run: the null now trains without the feature term, which at w 0 pulled it towards a random network, and a trial that diverges fails rather than reading a finite worst distance; and frozen a third time after a third review: the annealed arms' feature term distils from a frozen teacher once w reaches 0, so w_first tests a handover on clean masks followed by that distillation rather than the ladder's order, a reading whose outputs are not finite stops the trial, and a plan's row must name one study as its item and its person (PREREG.md, section 7, says what changed). The screen goes once the smoke's report says exit 0. PREREG.md was frozen a fourth time the same day to add the second screen (section 8), sections 1 to 6 and the first two plans' bytes unchanged. The smoke's first send (job 40884715) landed on a V100 and both trials stopped at their first compile, JAX 0.10.2 finding no configuration for part of the program on that card, so every GPU part now goes to galhp's L40S cards and the smoke is sent again (DEVIATIONS.md, item 1).
+diff --git a/grid/gate.sh b/grid/gate.sh
+index 9d19408..0549ce7 100755
+--- a/grid/gate.sh
++++ b/grid/gate.sh
+@@ -324,6 +324,12 @@ AUTOANATOMIST_AFTER="gold3_latent_screen:gold3_latent_smoke gold3_latent_smoke2:
+ # The owner's word for one more send of a plan whose record stands, <plan>:<job that record's first line
+ # names>, or <plan>:lost for a submission whose answer was lost; one word, one more send.
+ AUTOANATOMIST_RERUNS=""
++# The partition every GPU part of the screen is sent to (word_autoanatomist): galhp, whose cards are
++# L40S, and not the gpu class's three. The first smoke's first send (job 40884715, 2026-10-30 18:26
++# UTC) landed on a V100 of gvohp, and both its trials stopped at their first compile, JAX 0.10.2's
++# GPU compiler finding no configuration for 46 of 218 instructions on that card; each trial still
++# names its card (the report's GPU line, environment.json). DEVIATIONS.md beside the PREREG, item 1.
++AUTOANATOMIST_PARTITION=galhp
+ # The owner's word for one more join of the morphometry rows with sex and age, covariates:<job of the
+ # report or the record it replaces>, or covariates:lost for a submission whose answer was lost, then
+ # covariates:lost2 for the next such and on, each spent once (logs/MORPHOMETRY-covariates.lost records
+@@ -2577,7 +2583,7 @@ word_autoanatomist() {  # one plan of the auto-anatomist screen, on the owner's
+     return 90
+   }
+   hpcw_check "autoanatomist_$id" gpu "${screen[@]}" PART="$([ "$layout" = series ] && echo series || echo trial)" \
+-    --cpus 8 --mem 64G --time 12:00:00 --no-requeue -- autoanatomist.sbatch || return 1
++    --partition "$AUTOANATOMIST_PARTITION" --cpus 8 --mem 64G --time 12:00:00 --no-requeue -- autoanatomist.sbatch || return 1
+   if [ "$layout" = array ]; then
+     hpcw_check "autoanatomist_${id}_join" batch "${screen[@]}" PART=join TRIALS_JOB=1 --cpus 4 --mem 16G --time 02:00:00 --no-requeue -- autoanatomist.sbatch || return 1
+   fi
+@@ -2589,20 +2595,20 @@ word_autoanatomist() {  # one plan of the auto-anatomist screen, on the owner's
+   echo "$(date -u '+%F %T') UTC at commit $commit" > "$sent"
+   if [ "$layout" = series ]; then
+     chain=$(HPCW_CHECKED=1 submit "autoanatomist_$id" gpu "${screen[@]}" PART=series ${opts[@]+"${opts[@]}"} \
+-      --cpus 8 --mem 64G --time 12:00:00 --no-requeue -- autoanatomist.sbatch) || return 1
++      --partition "$AUTOANATOMIST_PARTITION" --cpus 8 --mem 64G --time 12:00:00 --no-requeue -- autoanatomist.sbatch) || return 1
+     # The mark goes once the send's record stands, so a record that could not be written leaves the
+     # send read as one whose answer was lost, never as no send at all.
+-    autoanatomist_queued "$chain" "one GPU job, the plan's $trials trials one after another on one card, then the join on the same node"
++    autoanatomist_queued "$chain" "one GPU job on $AUTOANATOMIST_PARTITION, the plan's $trials trials one after another on one card, then the join on the same node"
+     [ ! -f "$report.part" ] || rm -f "$sent"
+     echo "submitted the plan $id: one GPU job ($chain) that trains its $trials trials one after another on one card and then joins them, in $AUTOANATOMIST_ROOT/$id/$chain. Send autoanatomist $id again once it ends to read its report, logs/AUTOANATOMIST-$id.md."
+     return 0
+   fi
+   chain=$(submit "autoanatomist_$id" gpu "${screen[@]}" PART=trial ${opts[@]+"${opts[@]}"} --array "0-$((trials - 1))" \
+-    --cpus 8 --mem 64G --time 12:00:00 --no-requeue -- autoanatomist.sbatch) || return 1
++    --partition "$AUTOANATOMIST_PARTITION" --cpus 8 --mem 64G --time 12:00:00 --no-requeue -- autoanatomist.sbatch) || return 1
+   # The record names the array as soon as it is queued, before its join is asked for, so trials whose
+   # join is refused and whose cancel then fails leave a record a later send reads, and are never
+   # queued again on the same count; a send Slurm ended before any trial started reads as unstarted.
+-  autoanatomist_queued "$chain" "the trials' array $chain, $trials tasks of a card each, and its join on a CPU node afterany it"
++  autoanatomist_queued "$chain" "the trials' array $chain, $trials tasks of a card of $AUTOANATOMIST_PARTITION each, and its join on a CPU node afterany it"
+   [ ! -f "$report.part" ] || rm -f "$sent"
+   # Both or neither, as the DRR domain-gap study queues its steps: trials whose join was refused would
+   # leave no decision and no report. The join waits for the setup as the trials do, so a setup that
+@@ -2619,7 +2625,7 @@ word_autoanatomist() {  # one plan of the auto-anatomist screen, on the owner's
+     return 1
+   fi
+   autoanatomist_note "join: job $join on a CPU node, afterany the trials' array"
+-  echo "submitted the plan $id: the trials' array $chain ($trials tasks, each on the first card of the gpu class that frees) and the join $join afterany it on a CPU node, in $AUTOANATOMIST_ROOT/$id/$chain. Send autoanatomist $id again once they end to read its report, logs/AUTOANATOMIST-$id.md."
++  echo "submitted the plan $id: the trials' array $chain ($trials tasks, each on the first card of $AUTOANATOMIST_PARTITION that frees) and the join $join afterany it on a CPU node, in $AUTOANATOMIST_ROOT/$id/$chain. Send autoanatomist $id again once they end to read its report, logs/AUTOANATOMIST-$id.md."
+ }
+ 
+ word_samples() {
+diff --git a/tests/test_gate.py b/tests/test_gate.py
+index 400cb86..22840ff 100644
+--- a/tests/test_gate.py
++++ b/tests/test_gate.py
+@@ -3579,6 +3579,8 @@ exit "${FAKE_RC:-0}"
+         self.assertIn('\nAUTOANATOMIST_COUNTED="gold3_latent_smoke gold3_latent_screen gold3_latent_smoke2 '
+                       'gold3_latent_screen2"\n', gate)
+         self.assertIn('\nAUTOANATOMIST_RERUNS=""\n', gate)
++        # every GPU part goes to galhp's L40S cards: the first smoke's first send stopped at its compile on a V100
++        self.assertIn('\nAUTOANATOMIST_PARTITION=galhp\n', gate)
+         # and each screen waits for its smoke, the second smoke for the first, as its PREREG says (sections 5, 8)
+         self.assertIn('\nAUTOANATOMIST_AFTER="gold3_latent_screen:gold3_latent_smoke gold3_latent_smoke2:gold3_latent_smoke '
+                       'gold3_latent_screen2:gold3_latent_smoke2"\n', gate)
+@@ -3625,7 +3627,8 @@ exit "${FAKE_RC:-0}"
+         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+         lines = self.submitted()
+         self.assertEqual(len(lines), 1, lines)
+-        for said in (f"--class gpu --name autoanatomist_{self.SCREEN} --cpus 8 --mem 64G --time 12:00:00 --no-requeue autoanatomist.sbatch |",
++        # on galhp's L40S cards alone, since JAX 0.10.2 found no configuration for the trials' compile on a V100
++        for said in (f"--class gpu --name autoanatomist_{self.SCREEN} --partition galhp --cpus 8 --mem 64G --time 12:00:00 --no-requeue autoanatomist.sbatch |",
+                      " PART=series ", f" PLAN={self.SCREEN} ", " TRIAL_TASKS=2 ", f" AUTOANATOMIST_ROOT={self.screen_root()}"):
+             self.assertIn(said, lines[0])
+         full = re.search(r" AUTOANATOMIST_COMMIT=([0-9a-f]{40}) ", lines[0])
+@@ -3693,7 +3696,8 @@ exit "${FAKE_RC:-0}"
+         lines = self.submitted()
+         self.assertEqual(len(lines), 3, lines)
+         array, join = lines[1:]
+-        self.assertIn(f"--class gpu --name autoanatomist_gold3_latent_screen --array 0-{trials - 1} --cpus 8 --mem 64G --time 12:00:00 --no-requeue autoanatomist.sbatch |", array)
++        self.assertIn(f"--class gpu --name autoanatomist_gold3_latent_screen --array 0-{trials - 1} --partition galhp --cpus 8 --mem 64G "
++                      "--time 12:00:00 --no-requeue autoanatomist.sbatch |", array)
+         self.assertIn(" PART=trial ", array)
+         self.assertIn(f" TRIAL_TASKS={trials} ", array)
+         self.assertIn("--class batch --name autoanatomist_gold3_latent_screen_join --dependency=afterany:102 --kill-on-invalid-dep=yes "
+@@ -3823,6 +3827,7 @@ exit "${FAKE_RC:-0}"
+         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+         self.assertIn("trains its 5 trials one after another on one card", done.stdout)
+         self.assertEqual(len(self.submitted()), 1)
++        self.assertIn("--class gpu --name autoanatomist_gold3_latent_smoke2 --partition galhp ", self.submitted()[0])
+         (logs / "AUTOANATOMIST-gold3_latent_smoke2.md.part").unlink()
+         (logs / "AUTOANATOMIST-gold3_latent_smoke2.md").write_text(
+             f"# autoanatomist gold3_latent_smoke2: job 4041 on node, commit {commit}, 2026-10-30 12:00:00 UTC\n"
+@@ -3832,7 +3837,9 @@ exit "${FAKE_RC:-0}"
+         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+         self.assertEqual(len(self.submitted()), 3)
+         self.assertIn("the trials' array", done.stdout)
+-        self.assertIn("(12 tasks,", done.stdout)
++        self.assertIn("(12 tasks, each on the first card of galhp that frees)", done.stdout)
++        self.assertIn("--class gpu --name autoanatomist_gold3_latent_screen2 --array 0-11 --partition galhp ", self.submitted()[1])
++        self.assertNotIn("--partition", self.submitted()[2])
+ 
+     def test_autoanatomist_join_waits_for_the_setup_as_the_trials_do(self):
+         # environments not made from this lock: the setup job rebuilds them, and both parts of the screen wait for it,
+-- 
+2.43.0
+

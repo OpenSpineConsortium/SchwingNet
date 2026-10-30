@@ -1,0 +1,34 @@
+"use strict";
+// Would DATA's templates still propagate cleanly if split_person and split_anomaly_aware accepted
+// only unsplit data, and what would the prediction after catalog_v1 offer then?
+var SB = require("/home/user/SchwingNet/tools/sandbox/engine.js");
+var fs = require("fs"), path = require("path");
+var ROOT = "/home/user/SchwingNet/tools/sandbox";
+function rd(p) { return JSON.parse(fs.readFileSync(p, "utf8")); }
+function folder(n) { return fs.readdirSync(path.join(ROOT, n)).filter(function (f) { return /\.json$/.test(f); }).sort().map(function (f) { return rd(path.join(ROOT, n, f)); }); }
+var contract = rd(path.join(ROOT, "contract.json"));
+var blocks = folder("blocks"), templates = folder("templates");
+var experiment = rd(path.join(__dirname, "experiment.json"));
+var cat = blocks.filter(function (b) { return b.id === "catalog_v1"; })[0];
+console.log("catalog_v1 outputs ops: " + JSON.stringify(cat.outputs.map(function (o) { return [o.name, o.ops]; })));
+function run(label, bl) {
+  var D = {contract: contract, blocks: bl, templates: templates, experiment: experiment, repo: experiment.repo};
+  templates.forEach(function (tp) {
+    var users = tp.nodes.filter(function (n) { return /^split_/.test(n.block); }).map(function (n) { return n.id + ":" + n.block; });
+    var pr = SB.propagate(tp, D).problems.map(function (p) { return p.code + "|" + p.node + "|" + p.port + "|" + p.field; });
+    console.log(label + " " + tp.id + " split nodes " + JSON.stringify(users) + " problems " + JSON.stringify(pr));
+  });
+  var lone = {sandbox: 1, name: "grow", nodes: [{id: "n1", block: "catalog_v1", version: 1, params: {}}], edges: []};
+  console.log(label + " after catalog_v1: " + JSON.stringify(SB.predict(lone, "n1", D, SB.transitionStats(templates), {}).map(function (s) { return s.block + " " + s.score; })));
+  var g = {sandbox: 1, name: "grow", nodes: [{id: "n1", block: "gold3_ct", version: 1, params: {}}], edges: []};
+  console.log(label + " after gold3_ct: " + JSON.stringify(SB.predict(g, "n1", D, SB.transitionStats(templates), {}).map(function (s) { return s.block + " " + s.score; })));
+}
+run("as is", blocks);
+var patched = JSON.parse(JSON.stringify(blocks));
+patched.forEach(function (b) {
+  if (b.id === "split_person" || b.id === "split_anomaly_aware") b.inputs[0].accepts.parts = "unsplit";
+});
+patched.filter(function (b) { return /^split_/.test(b.id); }).forEach(function (b) {
+  console.log("patched " + b.id + " manifest problems: " + JSON.stringify(SB.checkManifest(b, contract)));
+});
+run("unsplit", patched);

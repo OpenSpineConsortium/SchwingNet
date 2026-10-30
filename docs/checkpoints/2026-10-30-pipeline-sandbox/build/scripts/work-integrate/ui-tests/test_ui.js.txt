@@ -1,0 +1,427 @@
+// The sandbox page under real pointer events (Playwright, Chromium). Each check prints PASS or
+// FAIL with what it saw; the run ends with the console errors and the timings.
+const {chromium} = require("playwright");
+const {serve} = require("./serve.js");
+const path = require("path");
+const fs = require("fs");
+
+const results = [];
+function check(name, ok, seen) {
+  results.push({name: name, ok: !!ok, seen: seen});
+  console.log((ok ? "PASS " : "FAIL ") + name + (seen !== undefined ? "  " + JSON.stringify(seen) : ""));
+}
+const PAGE = process.env.PAGE || "page.html";
+const sleep = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); };
+
+async function cardBox(page, id) {
+  return page.evaluate(function (id) {
+    const e = document.querySelector('.ncard[data-id="' + id + '"]');
+    if (!e) return null;
+    const r = e.getBoundingClientRect();
+    return {x: r.left, y: r.top, w: r.width, h: r.height, right: r.right, bottom: r.bottom};
+  }, id);
+}
+async function graph(page) { return page.evaluate(function () { return window.sandbox.graph(); }); }
+async function ghostState(page) {
+  return page.evaluate(function () {
+    const g = document.getElementById("sb-ghost"), s = document.getElementById("sb-strip");
+    const cur = Array.from(s.querySelectorAll(".sug")).findIndex(function (b) { return b.getAttribute("aria-current") === "true"; });
+    return {
+      ghost: !g.hidden, none: g.classList.contains("none"), strip: !s.hidden, title: document.getElementById("sb-ghost-title").textContent,
+      current: cur, entries: Array.from(s.querySelectorAll(".sug")).filter(function (b) { return !b.hidden; }).map(function (b) { return b.querySelector(".stitle").textContent; })
+    };
+  });
+}
+async function clickChip(page, title) {
+  await page.evaluate(function () { document.getElementById("sb-search").value = ""; });
+  await page.fill("#sb-search", title);
+  await page.click('.bchip:has-text("' + title + '")');
+  await page.fill("#sb-search", "");
+  // A person's click on a chip leaves the focus on the chip; clearing the filter here must not leave it in the box.
+  await page.evaluate(function () { if (document.activeElement) document.activeElement.blur(); });
+}
+
+(async function () {
+  const {server, url} = await serve(__dirname);
+  const browser = await chromium.launch();
+  const context = await browser.newContext({viewport: {width: 1400, height: 900}});
+  const page = await context.newPage();
+  const errors = [];
+  page.on("console", function (m) { if (m.type() === "error" || m.type() === "warning") errors.push(m.type() + ": " + m.text()); });
+  page.on("pageerror", function (e) { errors.push("pageerror: " + e.message); });
+  await page.goto(url + PAGE);
+  await sleep(300);
+
+  // 1. Hold to the right of a card: a node is added and piped from it.
+  await page.click("#sb-new");
+  await clickChip(page, "The frame catalog (version 1)");
+  let g = await graph(page);
+  check("New, then a chip adds the catalog", g.nodes.length === 1 && g.nodes[0].block === "catalog_v1", g.nodes.map(function (n) { return n.block; }));
+  const top = await page.evaluate(function () { return window.sandbox.suggestions("n1").map(function (p) { return p.block; }); });
+  let b1 = await cardBox(page, "n1");
+  await page.mouse.move(b1.right + 120, b1.y + b1.h / 2, {steps: 4});
+  await sleep(300);
+  const midHold = await ghostState(page);
+  check("the ghost and its strip are up 300 ms into the hold", midHold.ghost && midHold.strip && !midHold.none && midHold.entries.length >= 1, midHold);
+  await sleep(400);
+  g = await graph(page);
+  const e12 = g.edges.find(function (e) { return e.from === "n1" && e.to === "n2"; });
+  check("700 ms right of the card's middle adds a node", g.nodes.length === 2, g.nodes.map(function (n) { return n.id + ":" + n.block; }));
+  check("the new node is the top suggestion", g.nodes[1] && g.nodes[1].block === top[0], {top: top[0], got: g.nodes[1] && g.nodes[1].block});
+  check("and piped from the card's first output", !!e12, g.edges);
+  const sel = await page.evaluate(function () { return document.querySelector(".ncard[aria-current=true]").getAttribute("data-id"); });
+  check("the new node is selected", sel === "n2", sel);
+  await sleep(600);
+  g = await graph(page);
+  check("one card per hold: resting on does not add another", g.nodes.length === 2, g.nodes.length);
+
+  // The literal reading: 120 px right of the card's centre is 4 px past its right edge, on its output handle.
+  const centre = await page.evaluate(function () { return window.sandbox.graph().nodes.length; });
+  b1 = await cardBox(page, "n2");
+  await page.mouse.move(b1.x + b1.w / 2 + 120, b1.y + b1.h / 2, {steps: 3});
+  await sleep(700);
+  g = await graph(page);
+  check("(note) 120 px right of the centre is on the output handle, where no ghost grows", g.nodes.length === centre, g.nodes.length);
+
+  // 2. The wheel cycles the suggestions; Escape cancels.
+  let b2 = await cardBox(page, "n2");
+  await page.mouse.move(b2.right + 120, b2.y + b2.h / 2, {steps: 4});
+  await sleep(230);
+  const before = await ghostState(page);
+  await page.mouse.wheel(0, 100);
+  await sleep(40);
+  const after = await ghostState(page);
+  check("the wheel moves to the next suggestion", before.current === 0 && after.current === 1 && after.title === after.entries[1], {before: before, after: after});
+  const scrollTop = await page.evaluate(function () { return document.getElementById("sb-board").scrollTop; });
+  check("the wheel does not scroll the board while a ghost is up", scrollTop === 0, scrollTop);
+  await page.evaluate(function () { document.getElementById("sb-search").focus(); });
+  await page.keyboard.press("Escape");
+  await sleep(50);
+  const esc = await ghostState(page);
+  await sleep(700);
+  g = await graph(page);
+  check("Escape hides the ghost and adds nothing, even with the search box focused", !esc.ghost && g.nodes.length === 2, {ghost: esc.ghost, nodes: g.nodes.length});
+  await page.mouse.move(b2.right + 140, b2.y + b2.h / 2 + 10, {steps: 2});
+  await sleep(700);
+  g = await graph(page);
+  check("after Escape the ghost stays down until the pointer leaves the zone", g.nodes.length === 2, g.nodes.length);
+
+  // A click in the zone adds at once; the keys 1-5 add that suggestion.
+  await page.evaluate(function () { document.activeElement.blur(); });
+  await page.mouse.move(b2.right + 400, b2.y - 120, {steps: 3});
+  await sleep(100);
+  await page.mouse.move(b2.right + 120, b2.y + b2.h / 2, {steps: 2});
+  const sugs = await page.evaluate(function () { return window.sandbox.suggestions("n2").map(function (p) { return p.block; }); });
+  await sleep(200);
+  await page.keyboard.press("2");
+  await sleep(50);
+  g = await graph(page);
+  check("the key 2 adds the second suggestion", g.nodes.length === 3 && g.nodes[2].block === sugs[1], {want: sugs[1], got: g.nodes.map(function (n) { return n.block; })});
+  await page.mouse.move(10, 10);
+  await sleep(50);
+  await page.evaluate(function () { document.querySelector('.ncard[data-id="n3"]').scrollIntoView({block: "nearest", inline: "center"}); });
+  await sleep(50);
+  let b3 = await cardBox(page, "n3");
+  await page.mouse.move(b3.right + 100, b3.y + b3.h / 2, {steps: 2});
+  await page.mouse.down();
+  await page.mouse.up();
+  await sleep(60);
+  g = await graph(page);
+  check("a click in the grow zone adds the top suggestion at once", g.nodes.length === 4 && g.edges.some(function (e) { return e.from === "n3" && e.to === "n4"; }), g.nodes.length);
+
+  // 3. Drag a card: it follows the pointer on the 20 px grid, its edges with it.
+  await page.mouse.move(10, 10);
+  await page.evaluate(function () { const b = document.getElementById("sb-board"); b.scrollLeft = 0; b.scrollTop = 0; });
+  await sleep(30);
+  b2 = await cardBox(page, "n2");
+  const lay0 = (await graph(page)).layout.n2;
+  await page.mouse.move(b2.x + 120, b2.y + 60);
+  await page.mouse.down();
+  await page.mouse.move(b2.x + 160, b2.y + 120, {steps: 3});
+  await page.mouse.move(b2.x + 223, b2.y + 231, {steps: 3});
+  const pathMid = await page.evaluate(function () { return document.querySelector("#sb-edge-layer path.ep").getAttribute("d"); });
+  await page.mouse.up();
+  const lay1 = (await graph(page)).layout.n2;
+  check("dragging a card moves it by the pointer, snapped to 20 px", lay1[0] === lay0[0] + 100 && lay1[1] === lay0[1] + 180, {from: lay0, to: lay1});
+  const pathEnd = await page.evaluate(function () { return document.querySelector("#sb-edge-layer path.ep").getAttribute("d"); });
+  check("its edge follows", pathMid !== null && pathEnd !== null, pathEnd);
+
+  // 4. Undo and redo (the keys and the buttons).
+  await page.mouse.click(5, 5);
+  await page.keyboard.press("Control+z");
+  await sleep(30);
+  let lay2 = (await graph(page)).layout.n2;
+  check("Ctrl+Z undoes the move", lay2[0] === lay0[0] && lay2[1] === lay0[1], lay2);
+  await page.keyboard.press("Control+Shift+z");
+  await sleep(30);
+  lay2 = (await graph(page)).layout.n2;
+  check("Ctrl+Shift+Z redoes it", lay2[0] === lay1[0] && lay2[1] === lay1[1], lay2);
+  await page.click("#sb-undo");
+  await page.click("#sb-undo");
+  await sleep(30);
+  g = await graph(page);
+  check("the Undo button steps back through the adds", g.nodes.length === 3, g.nodes.length);
+  await page.click("#sb-redo");
+  g = await graph(page);
+  check("the Redo button steps forward", g.nodes.length === 4, g.nodes.length);
+
+  // 5. Connect two handles: from an output to an input of another card.
+  await page.evaluate(function () { window.sandbox.select(null); });
+  await clickChip(page, "Normalise the input");
+  g = await graph(page);
+  const fresh = g.nodes[g.nodes.length - 1].id;
+  const freshEdges = g.edges.filter(function (e) { return e.to === fresh; }).length;
+  const outH = await page.evaluate(function () {
+    const h = document.querySelector('.ncard[data-id="n2"] .hout').getBoundingClientRect();
+    return {x: h.left + h.width / 2, y: h.top + h.height / 2};
+  });
+  const inH = await page.evaluate(function (id) {
+    const h = document.querySelector('.ncard[data-id="' + id + '"] .hin').getBoundingClientRect();
+    return {x: h.left + h.width / 2, y: h.top + h.height / 2};
+  }, fresh);
+  await page.mouse.move(outH.x, outH.y);
+  await page.mouse.down();
+  await page.mouse.move((outH.x + inH.x) / 2, (outH.y + inH.y) / 2, {steps: 4});
+  const glow = await page.evaluate(function (id) {
+    return {connecting: document.getElementById("sb-board").classList.contains("connecting"),
+      ok: document.querySelector('.ncard[data-id="' + id + '"] .hin').classList.contains("ok")};
+  }, fresh);
+  await page.mouse.move(inH.x, inH.y, {steps: 4});
+  await page.mouse.up();
+  g = await graph(page);
+  check("while connecting, an accepting input glows", glow.connecting && glow.ok, glow);
+  check("dropping on the input connects the two handles", freshEdges === 0 && g.edges.some(function (e) { return e.from === "n2" && e.to === fresh; }), g.edges);
+  await page.keyboard.press("Control+z");
+  g = await graph(page);
+  check("undo removes the connection", !g.edges.some(function (e) { return e.from === "n2" && e.to === fresh; }), g.edges.length);
+  await page.keyboard.press("Control+Shift+z");
+
+  // 6. The request link: experiment_v1 gives one request, screen_arms four, drr_gap the pipeline route.
+  await page.selectOption("#sb-templates", "experiment_v1");
+  await sleep(50);
+  const req1 = await page.evaluate(function () {
+    const a = document.getElementById("sb-request");
+    return {href: a.getAttribute("href"), text: a.textContent, hidden: a.hidden, url: window.sandbox.compile().requests[0].url, target: a.target, rel: a.rel};
+  });
+  check("experiment_v1: Request this run opens the prefilled experiment issue",
+    req1.href === req1.url && /^https:\/\/github\.com\/OpenSpineConsortium\/SchwingNet\/issues\/new\?title=Experiment/.test(req1.href) &&
+    req1.text === "Request this run" && req1.target === "_blank" && req1.rel === "noopener", req1);
+  await page.selectOption("#sb-templates", "screen_arms");
+  await sleep(50);
+  const req4 = await page.evaluate(function () {
+    const b = document.getElementById("sb-requests");
+    return {text: b.textContent, hidden: b.hidden, linkHidden: document.getElementById("sb-request").hidden};
+  });
+  await page.click("#sb-requests");
+  const links4 = await page.evaluate(function () { return Array.from(document.querySelectorAll("#sb-requests-sec a")).map(function (a) { return a.getAttribute("href").slice(0, 70); }); });
+  check("screen_arms: Request these 4 runs shows four request links", req4.text === "Request these 4 runs" && !req4.hidden && links4.length === 4, {req4: req4, links: links4.length});
+  await page.selectOption("#sb-templates", "drr_gap");
+  await sleep(50);
+  const reqP = await page.evaluate(function () {
+    const a = document.getElementById("sb-request");
+    return {href: a.getAttribute("href"), text: a.textContent, title: window.sandbox.compile().pipeline_issue.title};
+  });
+  check("drr_gap: Request this pipeline opens a prefilled pipeline issue",
+    reqP.text === "Request this pipeline" && reqP.href && reqP.href.indexOf("issues/new?title=Pipeline") > 0 && reqP.href.indexOf("labels=") < 0, reqP);
+
+  // 7. Keyboard: Shift+ArrowRight on a focused card opens the ghost; Enter adds.
+  await page.click("#sb-new");
+  await clickChip(page, "Gold tier 3 CTs");
+  await page.mouse.move(5, 5);
+  await page.focus('.ncard[data-id="n1"]');
+  await page.keyboard.press("Shift+ArrowRight");
+  await sleep(30);
+  const kg = await ghostState(page);
+  await page.keyboard.press("Enter");
+  await sleep(30);
+  g = await graph(page);
+  const focused = await page.evaluate(function () { return document.activeElement && document.activeElement.getAttribute("data-id"); });
+  check("Shift+ArrowRight opens the ghost for the focused card and Enter adds it", kg.ghost && g.nodes.length === 2 && focused === "n2", {ghost: kg, nodes: g.nodes.length, focused: focused});
+  await page.keyboard.press("Delete");
+  g = await graph(page);
+  check("Delete removes the selected node", g.nodes.length === 1, g.nodes.length);
+
+  // 8. Import a block: a copy of a repository block under a new id.
+  const base = JSON.parse(fs.readFileSync("/home/user/SchwingNet/tools/sandbox/blocks/denoise.json", "utf8"));
+  const mine = Object.assign({}, base, {id: "my_denoise", title: "My own denoiser", code: "own", implemented_by: ["tools/sandbox/blocks/my_denoise.py"],
+    today: {status: "planned", route: "", word: "", flow: "", note: "waits for its pull request"}, experiment: {}});
+  await page.click("#sb-import");
+  await page.fill("#sb-import-text", JSON.stringify(base));
+  await page.click("#sb-import-check");
+  const refused = await page.evaluate(function () { return {add: document.getElementById("sb-import-add").disabled, text: document.getElementById("sb-import-result").textContent}; });
+  check("a manifest with a repository block's id is refused", refused.add && /already has a block denoise/.test(refused.text), refused);
+  await page.fill("#sb-import-text", JSON.stringify(mine));
+  await page.click("#sb-import-check");
+  const okCheck = await page.evaluate(function () { return {add: document.getElementById("sb-import-add").disabled, text: document.getElementById("sb-import-result").textContent}; });
+  await page.click("#sb-import-add");
+  await page.click("#sb-import-close");
+  const chipTag = await page.evaluate(function () { const c = document.querySelector('.bchip[data-block="my_denoise"] .ctag'); return c ? c.textContent : null; });
+  check("a valid manifest is added to the palette, marked imported", !okCheck.add && chipTag === "imported", {check: okCheck, tag: chipTag});
+  await page.selectOption("#sb-templates", "experiment_v1");
+  await page.evaluate(function () { window.sandbox.select("n2"); });
+  await page.evaluate(function () { const c = document.querySelector('.bchip[data-block="my_denoise"]'); c.click(); });
+  const held = await page.evaluate(function () {
+    const a = document.getElementById("sb-request");
+    return {disabled: a.getAttribute("aria-disabled"), href: a.getAttribute("href"), route: window.sandbox.compile().route};
+  });
+  check("an imported block on the board holds the experiment request back", held.disabled === "true" && held.href === null, held);
+  await page.evaluate(function () { window.sandbox.reset(); });
+
+  // 9. Phone width: no sideways scroll; dark mode keeps text readable.
+  await page.setViewportSize({width: 400, height: 820});
+  await sleep(100);
+  const wide = await page.evaluate(function () { return {doc: document.documentElement.scrollWidth, body: document.body.scrollWidth, inner: window.innerWidth}; });
+  check("at 400 px the page does not scroll sideways", wide.doc <= 400 && wide.body <= 400, wide);
+  await page.screenshot({path: path.join(__dirname, "shot-400.png")});
+  await page.evaluate(function () { window.sandbox.select("n6"); });
+  await sleep(250);
+  await page.screenshot({path: path.join(__dirname, "shot-400-sheet.png")});
+  const wide2 = await page.evaluate(function () { return document.documentElement.scrollWidth; });
+  check("with the bottom sheet open it still does not", wide2 <= 400, wide2);
+  await page.keyboard.press("Escape");
+  await page.setViewportSize({width: 1400, height: 900});
+  await page.emulateMedia({colorScheme: "dark"});
+  await sleep(100);
+  const contrast = await page.evaluate(function () {
+    function rgb(s) { const m = s.match(/[\d.]+/g); return m ? m.slice(0, 3).map(Number) : [0, 0, 0]; }
+    function lum(c) { return c.map(function (v) { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }).reduce(function (a, v, i) { return a + v * [0.2126, 0.7152, 0.0722][i]; }, 0); }
+    function ratio(a, b) { const x = lum(rgb(a)), y = lum(rgb(b)); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); }
+    function bgOf(e) { while (e) { const b = getComputedStyle(e).backgroundColor; if (b && b !== "rgba(0, 0, 0, 0)" && b !== "transparent") return b; e = e.parentElement; } return getComputedStyle(document.body).backgroundColor; }
+    const out = {};
+    [["body", "h1"], ["lede", ".lede"], ["card title", ".ncard .ntitle"], ["card summary", ".ncard .nshort"], ["card stage", ".ncard .step"],
+      ["chip", ".bchip .ctitle"], ["panel", "#sb-detail .dtitle"], ["panel small", "#sb-detail .small"], ["status", "#sb-status span"],
+      ["toolbar", "#sb-new"], ["primary", "#sb-request"], ["hint", "#sb-hint"], ["gpu tag", ".legend .job.gpu"]].forEach(function (pair) {
+      const e = document.querySelector(pair[1]);
+      if (!e) { out[pair[0]] = null; return; }
+      out[pair[0]] = Math.round(ratio(getComputedStyle(e).color, bgOf(e)) * 100) / 100;
+    });
+    const label = document.querySelector("#sb-edge-layer text");
+    if (label) out["edge label"] = Math.round(ratio(getComputedStyle(label).fill, getComputedStyle(document.body).backgroundColor) * 100) / 100;
+    out.scheme = getComputedStyle(document.documentElement).colorScheme;
+    return out;
+  });
+  const worst = Object.keys(contrast).filter(function (k) { return typeof contrast[k] === "number"; }).reduce(function (m, k) { return Math.min(m, contrast[k]); }, 99);
+  check("dark mode: every sampled text has a contrast of 4.5 or more", worst >= 4.5, contrast);
+  await page.screenshot({path: path.join(__dirname, "shot-dark.png")});
+  await page.emulateMedia({colorScheme: "light"});
+
+  // 10. Timings with 30 nodes on the board.
+  await page.click("#sb-new");
+  await clickChip(page, "The frame catalog (version 1)");
+  const built = await page.evaluate(function () {
+    // Two children from each node in turn, so the board is a tree whose leaves keep free grow zones.
+    const ids = ["n1"];
+    for (let i = 0; i < ids.length && window.sandbox.graph().nodes.length < 30; i++) {
+      for (let j = 0; j < 2 && window.sandbox.graph().nodes.length < 30; j++) {
+        const grown = window.sandbox.grow(ids[i]);
+        if (grown) ids.push(grown);
+      }
+    }
+    return {nodes: window.sandbox.graph().nodes.length, edges: window.sandbox.graph().edges.length};
+  });
+  check("the board holds 30 nodes grown by the hooks", built.nodes === 30, built);
+  // Find a card whose grow zone is free at right edge + 120 and that has a suggestion.
+  const spot = await page.evaluate(function () {
+    const board = document.getElementById("sb-board");
+    const cards = Array.from(document.querySelectorAll(".ncard")).reverse();
+    for (const c of cards) {
+      const id = c.getAttribute("data-id");
+      if (!window.sandbox.suggestions(id).length) continue;
+      c.scrollIntoView({block: "center", inline: "center"});
+      const r = c.getBoundingClientRect(), x = r.right + 120, y = r.top + r.height / 2;
+      const b = board.getBoundingClientRect();
+      if (x > b.right - 10 || y > b.bottom - 10 || y < b.top + 10) continue;
+      const under = document.elementFromPoint(x, y);
+      const free = under && (under.id === "sb-stage" || under.id === "sb-board" || under.closest(".edges"));
+      let clear = true;
+      for (const o of cards) { const q = o.getBoundingClientRect(); if (x + 140 > q.left && x - 70 < q.right && y + 70 > q.top && y - 70 < q.bottom && o !== c) clear = false; }
+      if (free && clear) return {id: id, x: x, y: y};
+    }
+    return null;
+  });
+  check("a card with a free grow zone exists on the 30-node board", !!spot, spot);
+  await page.evaluate(function () { window.sandbox.timings(true); });
+  for (let k = 0; k < 120; k++) {
+    await page.mouse.move(200 + (k * 37) % 700, 450 + (k * 53) % 250);
+  }
+  if (spot) {
+    const own = await cardBox(page, spot.id);
+    await page.mouse.move(own.x + 40, own.y + 40, {steps: 2});
+    await sleep(60);
+    await page.mouse.move(spot.x - 30, spot.y + 40, {steps: 3});
+    await sleep(60);
+    await page.mouse.move(spot.x, spot.y, {steps: 3});
+    await sleep(750);
+  }
+  const t30 = await page.evaluate(function () { return {n: window.sandbox.graph().nodes.length, t: window.sandbox.timings()}; });
+  check("a hold commits on the 30-node board", t30.n === 31, t30.n);
+  const synthetic = await page.evaluate(function () {
+    const stage = document.getElementById("sb-stage"), r = stage.getBoundingClientRect();
+    const N = 5000, t0 = performance.now();
+    for (let i = 0; i < N; i++) {
+      stage.dispatchEvent(new PointerEvent("pointermove", {bubbles: true, clientX: r.left + 30 + (i % 300), clientY: r.top + 30 + (i % 200), pointerType: "mouse", pointerId: 1}));
+    }
+    const per = (performance.now() - t0) / N;
+    return per;
+  });
+  const commitFrame = await page.evaluate(async function () {
+    const ids = window.sandbox.graph().nodes.map(function (n) { return n.id; });
+    let anchor = null;
+    for (let i = ids.length - 1; i >= 0; i--) if (window.sandbox.suggestions(ids[i]).length) { anchor = ids[i]; break; }
+    const t0 = performance.now();
+    const id = window.sandbox.grow(anchor);
+    const t1 = performance.now();
+    void document.getElementById("sb-stage").offsetWidth;
+    void document.getElementById("sb-detail").offsetHeight;
+    const t1b = performance.now();
+    await new Promise(function (res) { requestAnimationFrame(function () { setTimeout(res, 0); }); });
+    const t2 = performance.now();
+    window.sandbox.select(id);
+    return {anchor: anchor, id: id, js: t1 - t0, withStyleAndLayout: t1b - t0, toFrame: t2 - t0, nodes: window.sandbox.graph().nodes.length - 1};
+  });
+  console.log("TIMINGS " + JSON.stringify({pointermoveHandlerDispatchMs: synthetic, real: t30.t, commitByHook: commitFrame}, null, 1));
+  check("a pointermove handler costs well under 1 ms", synthetic < 0.1 && t30.t.frame.max < 1, {dispatch: synthetic, frame: t30.t.frame});
+  check("a commit with 30 nodes redraws in under 16 ms", t30.t.commit.max < 16 && commitFrame.js < 16, {hover: t30.t.commit, hook: commitFrame});
+  await page.screenshot({path: path.join(__dirname, "shot-30.png")});
+
+  // 11. Framed: a click on the request posts schwingnet.open, a change posts schwingnet.experiment.
+  const host = await context.newPage();
+  host.on("pageerror", function (e) { errors.push("host pageerror: " + e.message); });
+  await host.goto(url + PAGE);
+  await host.evaluate(function (src) {
+    document.open();
+    document.write("<!doctype html><html><body><iframe id='f' src='" + src + "' style='width:1300px;height:800px'></iframe></body></html>");
+    document.close();
+    window.__msgs = [];
+    window.addEventListener("message", function (e) { window.__msgs.push(e.data); });
+  }, url + PAGE + "#experiment_v1");
+  await sleep(800);
+  const frame = host.frames().find(function (f) { return f.url().indexOf(PAGE) >= 0 && f !== host.mainFrame(); });
+  await frame.evaluate(function () { window.sandbox.select("n6"); });
+  await frame.click('.prm:has(.prm-name:text-is("epochs")) input');
+  await frame.fill('.prm:has(.prm-name:text-is("epochs")) input', "30");
+  await sleep(100);
+  await frame.evaluate(function () { document.getElementById("sb-request").addEventListener("click", function (e) { e.preventDefault(); }, {once: true}); });
+  await frame.click("#sb-request");
+  await sleep(100);
+  const msgs = await host.evaluate(function () { return window.__msgs.map(function (m) { return {type: m.type, title: m.title, label: m.label, ok: m.ok, href: m.href ? m.href.slice(0, 60) : undefined, inputs: m.inputs}; }); });
+  check("framed: a param change posts schwingnet.experiment and a click posts schwingnet.open",
+    msgs.some(function (m) { return m.type === "schwingnet.experiment" && /30 epochs/.test(m.title) && m.ok; }) &&
+    msgs.some(function (m) { return m.type === "schwingnet.open" && /^Request this run: /.test(m.label); }), msgs);
+  await frame.evaluate(function () { window.postMessage({type: "schwingnet.dispatch.result", ok: false, error: "from myself"}, "*"); });
+  await sleep(60);
+  const ignored = await frame.evaluate(function () { return document.getElementById("sb-status").textContent; });
+  check("a message whose source is not the parent is ignored", ignored.indexOf("Not dispatched") < 0, ignored.slice(-80));
+  await host.evaluate(function () { document.getElementById("f").contentWindow.postMessage({type: "schwingnet.dispatch.result", ok: false, error: "test"}, "*"); });
+  await sleep(60);
+  const taken = await frame.evaluate(function () { return document.getElementById("sb-status").textContent; });
+  check("the parent's dispatch result is shown in a note", taken.indexOf("Not dispatched (test)") >= 0, taken.slice(-80));
+
+  console.log("console errors:", errors);
+  check("no console error", errors.length === 0, errors);
+  const failed = results.filter(function (r) { return !r.ok; });
+  console.log(results.length - failed.length + " of " + results.length + " checks pass");
+  await browser.close();
+  server.close();
+  process.exit(failed.length ? 1 : 0);
+}());

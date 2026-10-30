@@ -1,0 +1,502 @@
+{
+ "schwingnet_commit": "3abc2fa",
+ "inputs_sha256": {
+  "export": "ac95c7c19f8283b9872d477bc1ec9eae6eec3c5f58211f387d86088430a6e031",
+  "calls": "f0da0399dc956432fe20e91c2dc213759dc4a9c63c507c60c50626413d8ea2ba",
+  "admission": "e9bc2a1c1e5241b6c86348a5fe595a71be4bcd6189e46e00269e063d625dba9d",
+  "anomaly_holdout": "f3bb4804a78867683684236030c84944129ed8f3bf87d4372c798651b51a07d6",
+  "aliases": "1f49ae9362b33ed7291c31842bd75348031a00fca62305eace9191882b5f5ee0",
+  "rule": "4f26dbc75ea43b3cb8605204b343e6144f9e99b027654e6f126158e4ba3634c3",
+  "enhance_pet_facts": "95cc36bf5e4c710bb0000e8a1eb9290dae7ca730c88a347ca9792110f96cd847"
+ },
+ "reserve_sha256": "cd9ddfedebc41789be32e2405c8088615eaf5a94d0a1559f7d04fee473c7cca6",
+ "groups_sha256": "a45797c39fe8cacbb9dd1d5db11dd3aee01824b6a9d34be5dc905b983faf91cb",
+ "rule": {
+  "salt": "schwingnet-2026-10-21",
+  "rank": "sha256('schwingnet-latent-prior-test|2026-10-30|' + stratum + '|' + unit key), ascending",
+  "validation_share": 0.1,
+  "shares": [
+   0.2,
+   0.3
+  ],
+  "reserve_band": [
+   0.1,
+   0.4
+  ],
+  "stratum_floor": 10,
+  "repeat_id_gap": 3,
+  "repeat_volume": 0.03,
+  "repeat_loose_volume": 0.05,
+  "repeat_spacing": 0.015,
+  "repeat_min_levels": 15,
+  "repeat_min_spacings": 12,
+  "repeat_ribs": 0.04,
+  "repeat_min_ribs": 16,
+  "repeat_min_rib_voxels": 500,
+  "families": {
+   "normal": "normal",
+   "unread": "unread",
+   "l6_twelve_ribs": "six_lumbar",
+   "l6": "six_lumbar",
+   "four_lumbar_twelve_ribs": "four_lumbar",
+   "four_lumbar": "four_lumbar",
+   "l6_thirteen_ribs": "t13",
+   "thirteen_ribs": "t13",
+   "t13": "t13",
+   "eleven_ribs": "rib_anomaly",
+   "asymmetric_ribs": "rib_anomaly"
+  },
+  "family_by_member": {
+   "totalsegmentator:l6": "six_lumbar_by_names"
+  },
+  "anomalies": "drawn test or train by stratum, never validation; anomaly-holdout.json's holdout persons test in no stratum; training_allowed 0 persons held",
+  "first_run": "class normal with status confirmed_by_masks, or VerSe's readers' normal whose masks draw its L5 (no admission.json flag no_l5), in ['test', 'train', 'validation']"
+ },
+ "rows": 1738,
+ "units": 1620,
+ "kinds": {
+  "doubt": 35,
+  "held": 3,
+  "holdout": 5,
+  "plain": 1559,
+  "stratum": 136
+ },
+ "doubt": {
+  "enhance_pet:0005": {
+   "reason": "the store's class open",
+   "kind": "doubt"
+  },
+  "enhance_pet:0040": {
+   "reason": "the store's class look",
+   "kind": "doubt"
+  },
+  "enhance_pet:0179": {
+   "reason": "the store's class look",
+   "kind": "doubt"
+  },
+  "enhance_pet:0213": {
+   "reason": "the store's class look",
+   "kind": "doubt"
+  },
+  "enhance_pet:0245": {
+   "reason": "the store's class labelling_error",
+   "kind": "doubt"
+  },
+  "enhance_pet:0270": {
+   "reason": "the store's class look",
+   "kind": "doubt"
+  },
+  "enhance_pet:0529": {
+   "reason": "the store's class labelling_error",
+   "kind": "doubt"
+  },
+  "enhance_pet:0603": {
+   "reason": "the store's class labelling_error",
+   "kind": "doubt"
+  },
+  "enhance_pet:0762": {
+   "reason": "the store's class look",
+   "kind": "doubt"
+  },
+  "enhance_pet:0816": {
+   "reason": "the store's class look",
+   "kind": "doubt"
+  },
+  "enhance_pet:0980": {
+   "reason": "the store's class look",
+   "kind": "doubt"
+  },
+  "enhance_pet:1075": {
+   "reason": "the store's class look",
+   "kind": "doubt"
+  },
+  "enhance_pet:1104": {
+   "reason": "the store's class look",
+   "kind": "doubt"
+  },
+  "enhance_pet:1240": {
+   "reason": "the store's class look",
+   "kind": "doubt"
+  },
+  "enhance_pet:1271": {
+   "reason": "the store's class look",
+   "kind": "doubt"
+  },
+  "enhance_pet:1272": {
+   "reason": "the store's class look",
+   "kind": "doubt"
+  },
+  "enhance_pet:1273": {
+   "reason": "the store's class look",
+   "kind": "doubt"
+  },
+  "enhance_pet:1292": {
+   "reason": "the store's class look",
+   "kind": "doubt"
+  },
+  "enhance_pet:1336": {
+   "reason": "the store's class open",
+   "kind": "doubt"
+  },
+  "enhance_pet:1379": {
+   "reason": "the store's class not_whole",
+   "kind": "doubt"
+  },
+  "enhance_pet:1463": {
+   "reason": "the store's class look",
+   "kind": "doubt"
+  },
+  "totalsegmentator:s0102": {
+   "reason": "its release masks lack C2, C3, C4, C5, L3, L4, L5, which a segmenter adds",
+   "kind": "doubt"
+  },
+  "totalsegmentator:s0931": {
+   "reason": "its release masks lack C2, which a segmenter adds",
+   "kind": "doubt"
+  },
+  "totalsegmentator:s1411": {
+   "reason": "its release masks lack T12, which a segmenter adds",
+   "kind": "doubt"
+  },
+  "totalsegmentator:s1532": {
+   "reason": "its release masks lack T6, T7, T8, T9, which a segmenter adds",
+   "kind": "doubt"
+  },
+  "totalsegmentator:s1593": {
+   "reason": "its release masks lack T8, T10, T11, T12, L1, L4, L5, which a segmenter adds",
+   "kind": "doubt"
+  },
+  "totalsegmentator:s1597": {
+   "reason": "its release masks lack C4, C5, which a segmenter adds",
+   "kind": "doubt"
+  },
+  "totalsegmentator:s1606": {
+   "reason": "its release masks lack T4, T5, T6, L4, L5, which a segmenter adds",
+   "kind": "doubt"
+  },
+  "totalsegmentator:s1762": {
+   "reason": "its release masks lack C2, which a segmenter adds",
+   "kind": "doubt"
+  },
+  "totalsegmentator:s1778": {
+   "reason": "its release masks lack C2, which a segmenter adds",
+   "kind": "doubt"
+  },
+  "totalsegmentator:s1890": {
+   "reason": "its release masks lack T7, T8, T9, which a segmenter adds",
+   "kind": "doubt"
+  },
+  "totalsegmentator:s2065": {
+   "reason": "its release masks lack T11, L4, L5, which a segmenter adds",
+   "kind": "doubt"
+  },
+  "verse:verse559": {
+   "reason": "a disputed person of anomaly-holdout.json",
+   "kind": "doubt"
+  },
+  "verse:verse561": {
+   "reason": "its release masks lack C2, which a segmenter adds",
+   "kind": "doubt"
+  },
+  "verse:verse588": {
+   "reason": "its release masks lack C2, which a segmenter adds",
+   "kind": "doubt"
+  },
+  "verse:verse607": {
+   "reason": "its release masks lack C2, which a segmenter adds",
+   "kind": "held"
+  }
+ },
+ "repeat_groups_in_facts": 88,
+ "units_of_more_than_one_study": 85,
+ "units_read_two_ways": [],
+ "reserved": 584,
+ "reserved_by_class": {
+  "asymmetric_ribs": 2,
+  "eleven_ribs": 24,
+  "four_lumbar": 1,
+  "four_lumbar_twelve_ribs": 16,
+  "l6": 3,
+  "l6_thirteen_ribs": 8,
+  "l6_twelve_ribs": 32,
+  "look": 9,
+  "normal": 427,
+  "open": 1,
+  "outside_export": 2,
+  "t13": 2,
+  "thirteen_ribs": 1,
+  "unread": 56
+ },
+ "checks": {
+  "reserve_not_empty": true,
+  "persons_unique": true,
+  "every_study_in_one_unit": true,
+  "repeat_groups_are_units": true,
+  "smaller_test_inside_larger": true,
+  "larger_test_inside_reserve": true,
+  "fallback_tests_inside_reserve": true,
+  "no_unit_split_by_reserve": true,
+  "no_held_study_reserved": true,
+  "no_doubt_study_tested": true,
+  "no_anomaly_validated": true,
+  "anomalies_in_strata": true,
+  "every_family_drawn_into_test_and_train": true,
+  "first_run_normal_only": true
+ },
+ "counts": {
+  "0.2": {
+   "units_by_part": {
+    "doubt": 32,
+    "held": 3,
+    "test": 327,
+    "train": 1091,
+    "validation": 167
+   },
+   "studies_by_part": {
+    "doubt": 35,
+    "held": 3,
+    "test": 353,
+    "train": 1164,
+    "validation": 183
+   },
+   "families_units_by_part": {
+    "doubt|doubt": 32,
+    "four_lumbar|holdout": 1,
+    "four_lumbar|test": 10,
+    "four_lumbar|train": 16,
+    "normal|holdout": 3,
+    "normal|test": 245,
+    "normal|train": 908,
+    "normal|validation": 147,
+    "rib_anomaly|test": 16,
+    "rib_anomaly|train": 19,
+    "six_lumbar|held": 3,
+    "six_lumbar|test": 10,
+    "six_lumbar|train": 36,
+    "six_lumbar_by_names|test": 1,
+    "six_lumbar_by_names|train": 2,
+    "t13|holdout": 1,
+    "t13|test": 8,
+    "t13|train": 9,
+    "unread|test": 32,
+    "unread|train": 101,
+    "unread|validation": 20
+   },
+   "first_run_units_by_part": {
+    "test": 204,
+    "train": 732,
+    "validation": 124
+   },
+   "first_run_studies_by_part": {
+    "test": 223,
+    "train": 795,
+    "validation": 139
+   },
+   "strata_units_N_h_n_h": {
+    "enhance_pet:asymmetric_ribs:T12L4": [
+     1,
+     1
+    ],
+    "enhance_pet:asymmetric_ribs:T12L5": [
+     3,
+     1
+    ],
+    "enhance_pet:eleven_ribs:T12L4": [
+     8,
+     4
+    ],
+    "enhance_pet:eleven_ribs:T12L5": [
+     23,
+     10
+    ],
+    "enhance_pet:four_lumbar_twelve_ribs:T12L4": [
+     26,
+     10
+    ],
+    "enhance_pet:l6_thirteen_ribs:T12L6": [
+     13,
+     6
+    ],
+    "enhance_pet:l6_twelve_ribs:T12L6": [
+     46,
+     10
+    ],
+    "enhance_pet:thirteen_ribs:T12L5": [
+     2,
+     1
+    ],
+    "totalsegmentator:l6:none": [
+     3,
+     1
+    ],
+    "verse:t13:none": [
+     2,
+     1
+    ]
+   },
+   "member_class_part": {
+    "enhance_pet|asymmetric_ribs|test": 2,
+    "enhance_pet|asymmetric_ribs|train": 2,
+    "enhance_pet|eleven_ribs|test": 14,
+    "enhance_pet|eleven_ribs|train": 19,
+    "enhance_pet|four_lumbar_twelve_ribs|test": 12,
+    "enhance_pet|four_lumbar_twelve_ribs|train": 16,
+    "enhance_pet|l6_thirteen_ribs|test": 6,
+    "enhance_pet|l6_thirteen_ribs|train": 8,
+    "enhance_pet|l6_twelve_ribs|test": 12,
+    "enhance_pet|l6_twelve_ribs|train": 38,
+    "enhance_pet|labelling_error|doubt": 3,
+    "enhance_pet|look|doubt": 15,
+    "enhance_pet|normal|test": 267,
+    "enhance_pet|normal|train": 976,
+    "enhance_pet|normal|validation": 163,
+    "enhance_pet|not_whole|doubt": 1,
+    "enhance_pet|open|doubt": 2,
+    "enhance_pet|thirteen_ribs|test": 1,
+    "enhance_pet|thirteen_ribs|train": 1,
+    "totalsegmentator|l6|test": 1,
+    "totalsegmentator|l6|train": 2,
+    "totalsegmentator|unread|doubt": 11,
+    "totalsegmentator|unread|test": 29,
+    "totalsegmentator|unread|train": 96,
+    "totalsegmentator|unread|validation": 20,
+    "verse|four_lumbar|test": 1,
+    "verse|l6|held": 3,
+    "verse|normal|test": 3,
+    "verse|t13|doubt": 1,
+    "verse|t13|test": 2,
+    "verse|t13|train": 1,
+    "verse|unread|doubt": 2,
+    "verse|unread|test": 3,
+    "verse|unread|train": 5
+   }
+  },
+  "0.3": {
+   "units_by_part": {
+    "doubt": 32,
+    "held": 3,
+    "test": 495,
+    "train": 923,
+    "validation": 167
+   },
+   "studies_by_part": {
+    "doubt": 35,
+    "held": 3,
+    "test": 533,
+    "train": 984,
+    "validation": 183
+   },
+   "families_units_by_part": {
+    "doubt|doubt": 32,
+    "four_lumbar|holdout": 1,
+    "four_lumbar|test": 10,
+    "four_lumbar|train": 16,
+    "normal|holdout": 3,
+    "normal|test": 390,
+    "normal|train": 763,
+    "normal|validation": 147,
+    "rib_anomaly|test": 16,
+    "rib_anomaly|train": 19,
+    "six_lumbar|held": 3,
+    "six_lumbar|test": 14,
+    "six_lumbar|train": 32,
+    "six_lumbar_by_names|test": 1,
+    "six_lumbar_by_names|train": 2,
+    "t13|holdout": 1,
+    "t13|test": 8,
+    "t13|train": 9,
+    "unread|test": 51,
+    "unread|train": 82,
+    "unread|validation": 20
+   },
+   "first_run_units_by_part": {
+    "test": 325,
+    "train": 611,
+    "validation": 124
+   },
+   "first_run_studies_by_part": {
+    "test": 356,
+    "train": 662,
+    "validation": 139
+   },
+   "strata_units_N_h_n_h": {
+    "enhance_pet:asymmetric_ribs:T12L4": [
+     1,
+     1
+    ],
+    "enhance_pet:asymmetric_ribs:T12L5": [
+     3,
+     1
+    ],
+    "enhance_pet:eleven_ribs:T12L4": [
+     8,
+     4
+    ],
+    "enhance_pet:eleven_ribs:T12L5": [
+     23,
+     10
+    ],
+    "enhance_pet:four_lumbar_twelve_ribs:T12L4": [
+     26,
+     10
+    ],
+    "enhance_pet:l6_thirteen_ribs:T12L6": [
+     13,
+     6
+    ],
+    "enhance_pet:l6_twelve_ribs:T12L6": [
+     46,
+     14
+    ],
+    "enhance_pet:thirteen_ribs:T12L5": [
+     2,
+     1
+    ],
+    "totalsegmentator:l6:none": [
+     3,
+     1
+    ],
+    "verse:t13:none": [
+     2,
+     1
+    ]
+   },
+   "member_class_part": {
+    "enhance_pet|asymmetric_ribs|test": 2,
+    "enhance_pet|asymmetric_ribs|train": 2,
+    "enhance_pet|eleven_ribs|test": 14,
+    "enhance_pet|eleven_ribs|train": 19,
+    "enhance_pet|four_lumbar_twelve_ribs|test": 12,
+    "enhance_pet|four_lumbar_twelve_ribs|train": 16,
+    "enhance_pet|l6_thirteen_ribs|test": 6,
+    "enhance_pet|l6_thirteen_ribs|train": 8,
+    "enhance_pet|l6_twelve_ribs|test": 16,
+    "enhance_pet|l6_twelve_ribs|train": 34,
+    "enhance_pet|labelling_error|doubt": 3,
+    "enhance_pet|look|doubt": 15,
+    "enhance_pet|normal|test": 424,
+    "enhance_pet|normal|train": 819,
+    "enhance_pet|normal|validation": 163,
+    "enhance_pet|not_whole|doubt": 1,
+    "enhance_pet|open|doubt": 2,
+    "enhance_pet|thirteen_ribs|test": 1,
+    "enhance_pet|thirteen_ribs|train": 1,
+    "totalsegmentator|l6|test": 1,
+    "totalsegmentator|l6|train": 2,
+    "totalsegmentator|unread|doubt": 11,
+    "totalsegmentator|unread|test": 47,
+    "totalsegmentator|unread|train": 78,
+    "totalsegmentator|unread|validation": 20,
+    "verse|four_lumbar|test": 1,
+    "verse|l6|held": 3,
+    "verse|normal|test": 3,
+    "verse|t13|doubt": 1,
+    "verse|t13|test": 2,
+    "verse|t13|train": 1,
+    "verse|unread|doubt": 2,
+    "verse|unread|test": 4,
+    "verse|unread|train": 4
+   }
+  }
+ }
+}

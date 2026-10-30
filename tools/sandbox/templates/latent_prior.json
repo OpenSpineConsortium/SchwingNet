@@ -1,0 +1,179 @@
+{
+ "sandbox": 1,
+ "id": "latent_prior",
+ "name": "Latent shape prior evaluation",
+ "about": "The latent shape prior evaluation of bordercall's pipeline.html, drawn with the blocks that exist. Row one is the truth and the features: morphometry measures every gold tier 3 mask (the export, a CPU job) and bordercall names the levels from those rows with no network (the features step, a CPU job). Row two is the screen: the anomaly-aware person split, the auto-anatomist network, and four anneal schedules by two seeds as one GPU array of 8 tasks with objective=mask (arm F), joined on validation (a CPU job); evaluate_heldout then reads the test persons once. The screen's arms A to E, the two smokes, the full run's three seeds of each kept arm and the 2-D landmarks have no block yet and are left out, so these counts are the sandbox's, not the page's.",
+ "nodes": [
+  {
+   "id": "n1",
+   "block": "gold3_ct",
+   "version": 1,
+   "params": {}
+  },
+  {
+   "id": "n2",
+   "block": "morphometry",
+   "version": 1,
+   "params": {}
+  },
+  {
+   "id": "n3",
+   "block": "bordercall_naming",
+   "version": 1,
+   "params": {}
+  },
+  {
+   "id": "n4",
+   "block": "split_anomaly_aware",
+   "version": 1,
+   "params": {}
+  },
+  {
+   "id": "n5",
+   "block": "annealer_unet",
+   "version": 1,
+   "params": {}
+  },
+  {
+   "id": "n6",
+   "block": "train_annealer",
+   "version": 1,
+   "params": {
+    "objective": "mask",
+    "naming": "off"
+   },
+   "vary": {
+    "schedule": [
+     "lambda-then-w",
+     "joint",
+     "w-first",
+     "fixed"
+    ],
+    "seed": [
+     1,
+     2
+    ]
+   }
+  },
+  {
+   "id": "n7",
+   "block": "select_on_validation",
+   "version": 1,
+   "params": {}
+  },
+  {
+   "id": "n8",
+   "block": "evaluate_heldout",
+   "version": 1,
+   "params": {}
+  },
+  {
+   "id": "n9",
+   "block": "report_claim",
+   "version": 1,
+   "params": {}
+  }
+ ],
+ "edges": [
+  {
+   "from": "n1",
+   "out": "data",
+   "to": "n2",
+   "in": "masks"
+  },
+  {
+   "from": "n2",
+   "out": "table",
+   "to": "n3",
+   "in": "data"
+  },
+  {
+   "from": "n1",
+   "out": "data",
+   "to": "n4",
+   "in": "data"
+  },
+  {
+   "from": "n4",
+   "out": "data",
+   "to": "n5",
+   "in": "data"
+  },
+  {
+   "from": "n5",
+   "out": "model",
+   "to": "n6",
+   "in": "model"
+  },
+  {
+   "from": "n6",
+   "out": "checkpoint",
+   "to": "n7",
+   "in": "trials"
+  },
+  {
+   "from": "n7",
+   "out": "checkpoint",
+   "to": "n8",
+   "in": "checkpoint"
+  },
+  {
+   "from": "n8",
+   "out": "metrics",
+   "to": "n9",
+   "in": "results"
+  },
+  {
+   "from": "n3",
+   "out": "names",
+   "to": "n9",
+   "in": "more"
+  }
+ ],
+ "layout": {
+  "n1": [
+   40,
+   40
+  ],
+  "n2": [
+   340,
+   40
+  ],
+  "n3": [
+   640,
+   40
+  ],
+  "n4": [
+   340,
+   190
+  ],
+  "n5": [
+   640,
+   190
+  ],
+  "n6": [
+   940,
+   190
+  ],
+  "n7": [
+   1240,
+   190
+  ],
+  "n8": [
+   1540,
+   190
+  ],
+  "n9": [
+   1840,
+   190
+  ]
+ },
+ "expect": {
+  "route": "pipeline",
+  "ready": false,
+  "requests": 0,
+  "gpu_submissions": 2,
+  "cpu_submissions": 3,
+  "gpu_tasks": 9
+ }
+}

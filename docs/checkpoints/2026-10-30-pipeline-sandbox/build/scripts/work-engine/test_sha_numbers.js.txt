@@ -1,0 +1,158 @@
+// SHA-256 against node's crypto, and the number rules against Python 3.12 itself.
+"use strict";
+
+var T = require("./t.js");
+var SB = T.SB;
+var crypto = require("crypto");
+var cp = require("child_process");
+var fs = require("fs");
+var path = require("path");
+
+var HERE = __dirname;
+
+function nodeSha(text) {
+  return crypto.createHash("sha256").update(text, "utf8").digest("hex");
+}
+
+// A seeded generator, so the test draws the same values every run.
+var state = 20261030;
+function rand() {
+  state = (state * 1103515245 + 12345) % 2147483648;
+  return state / 2147483648;
+}
+
+T.begin("sha256 fixed");
+T.eq(SB.sha256(""), "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "empty string");
+T.eq(SB.sha256("abc"), "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad", "abc");
+var million = new Array(1000001).join("a");
+T.eq(million.length, 1000000, "the million string");
+T.eq(SB.sha256(million), "cdc76e5c9914fb9281a1c7e284d73e67f1809a48a497200e046d39ccc7112cd0", "a million a");
+T.eq(SB.sha256(million), nodeSha(million), "a million a against crypto");
+T.eq(SB.sha256("abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq"),
+  "248d6a61d20638b8e5c026930c3e6039a33ce45964ff2167f6ecedd419db06c1", "the two-block vector");
+
+T.begin("sha256 lengths");
+for (var n = 0; n < 300; n++) {
+  var s = "";
+  for (var i = 0; i < n; i++) s += String.fromCharCode(32 + Math.floor(rand() * 95));
+  T.ok(SB.sha256(s) === nodeSha(s), "length " + n);
+}
+
+T.begin("sha256 utf8");
+["\u00e9", "\u20ac", "caf\u00e9 \u20ac", "\u{1f600}", "x\ud800y", "\udc00", "\ud800", "a\u0000b", "\u007f\u0080\u07ff\u0800\uffff"].forEach(function (s) {
+  T.ok(SB.sha256(s) === nodeSha(s), "utf8 " + JSON.stringify(s));
+});
+
+T.begin("sha256 canonical samples");
+var samples = [
+  {sandbox: 1, name: "x", nodes: [], edges: []},
+  {b: [1, 2.5, -0.000001, 1e15, 123456789012.25], a: {z: null, y: true, x: false, "Q\"\\": "a/b"}},
+  {k: "The quick brown fox jumps over the lazy dog", n: [0.1, 0.2, 0.30000000000000004, 1e-7, 4]}
+];
+samples.forEach(function (v, i) {
+  var text = SB.canonical(v);
+  T.ok(SB.sha256(text) === nodeSha(text), "sample " + i, text);
+});
+
+// Numbers: values drawn widely, the special ones written as Python reads them.
+T.begin("numbers against Python");
+var values = [0, -0, 1, -1, 0.5, 0.1, 0.2, 0.3, 0.30000000000000004, 1e-7, 5e-7, 4.9999995e-7, 0.0000005, 0.0000015,
+  0.0000025, 1.0000005, 2.0000005, 0.0078125, 0.0234375, 1.0078125, 3.9921875, 10.03125, 10.03135, 0.00390625,
+  0.00005, 0.0001, 0.00009999999, 9.99999e-5, 0.000099999949, 0.0000999995, 999999.5, 1e6, 999999.4, 123456.5,
+  1234567.5, 99999.95, 100000, 4, 48, 47.999999, 0.1 + 0.2, 1e15, 1e15 - 1, 1e15 + 1, 999999999999999.9, 1e16,
+  9007199254740992, 9007199254740993, 1e21, 1e22, 1.5e300, 1.7976931348623157e308, 5e-324, 2.2250738585072014e-308,
+  -0.0078125, -2.5, -0.5, -1.5, 2.5, 0.125, 0.375, 1 / 3, 2 / 3, 1e-4, 1e-5, 123.456, 0.1234565, 0.1234575,
+  2.675, 1.005, 0.015, 0.025, 0.035, 0.045, 1.115, 8.345, 99.995, 0.994999, 0.995, 1e9, 1e9 - 1e-6, 999999999.999999];
+for (var k = -12; k <= 22; k++) {
+  for (var j = 0; j < 12; j++) {
+    var v = (rand() * 9 + 1) * Math.pow(10, k);
+    values.push(rand() < 0.3 ? -v : v);
+  }
+}
+for (var q = 0; q < 300; q++) values.push(Math.floor(rand() * 1e6) / 128);
+for (var r = 0; r < 300; r++) values.push(Math.floor(rand() * 1e8) / 1e6);
+for (var z = 0; z < 200; z++) values.push(Math.floor(rand() * 48e6) / 1e6 + 0.0000005);
+var written = values.map(function (x) { return Object.is(x, -0) ? "-0.0" : String(x); });
+fs.writeFileSync(path.join(HERE, "numbers_in.json"), JSON.stringify(written));
+var py = [
+  "import json, sys",
+  "vals = json.load(open(sys.argv[1]))",
+  "out = []",
+  "for s in vals:",
+  "    v = float(s)",
+  "    whole = v == int(v) and abs(v) < 1e15",
+  "    canon = str(int(v)) if whole else format(v, '.6f').rstrip('0').rstrip('.')",
+  "    out.append({'canon': canon, 'f6': format(v, '.6f'), 'g': f'{v:g}', 'r2': repr(round(v, 2)), 'r3': repr(round(v, 3))})",
+  "print(json.dumps(out))"
+].join("\n");
+fs.writeFileSync(path.join(HERE, "numbers.py"), py + "\n");
+var expected = JSON.parse(cp.execFileSync("python3.12", [path.join(HERE, "numbers.py"), path.join(HERE, "numbers_in.json")],
+  {encoding: "utf8"}));
+values.forEach(function (x, i) {
+  var e = expected[i];
+  T.ok(SB.formatNumber(x) === e.canon, "canonical " + written[i], [SB.formatNumber(x), e.canon]);
+  T.ok(SB.pyFixed(x, 6) === e.f6, "format .6f " + written[i], [SB.pyFixed(x, 6), e.f6]);
+  T.ok(SB.hoursWord(x) === e.g, ":g " + written[i], [SB.hoursWord(x), e.g]);
+  T.ok(SB.pyRound(x, 2) === Number(e.r2), "round 2 " + written[i], [SB.pyRound(x, 2), e.r2]);
+  T.ok(SB.pyRound(x, 3) === Number(e.r3), "round 3 " + written[i], [SB.pyRound(x, 3), e.r3]);
+  T.ok(SB.canonical(x) === e.canon, "canonical() " + written[i]);
+});
+// Where toFixed and toPrecision would have differed from Python (why the engine does not use them).
+T.eq(SB.formatNumber(0.0078125), "0.007812", "a tie at 6 decimals goes to even");
+T.eq((0.0078125).toFixed(6), "0.007813", "toFixed would have rounded the tie up");
+T.eq(SB.hoursWord(10.03125), "10.0312", ":g ties to even");
+T.eq(SB.formatNumber(1e21), "1000000000000000000000", "no exponent at 1e21");
+
+T.begin("canonical JSON against Python json");
+var objs = [
+  {b: 1, a: [true, false, null, "x"], c: {"B": "\"q\"", "a": "back\\slash/slash"}},
+  {"": 0, " ": 1, "~": 2, "A": 3, "a": 4, "_": 5, "0": 6},
+  [[], {}, [[]], {"x": {}}],
+  {name: "The pipeline's name: x < y > z & 'q'", n: [-5, 0, 7, 123456789012345]}
+];
+fs.writeFileSync(path.join(HERE, "json_in.json"), JSON.stringify(objs));
+var pyJson = cp.execFileSync("python3.12", ["-c",
+  "import json,sys; v=json.load(open(sys.argv[1])); print(json.dumps([json.dumps(x, sort_keys=True, separators=(',', ':'), ensure_ascii=True) for x in v]))",
+  path.join(HERE, "json_in.json")], {encoding: "utf8"});
+JSON.parse(pyJson).forEach(function (text, i) {
+  T.eq(SB.canonical(objs[i]), text, "object " + i);
+});
+var refused = ["caf\u00e9", "tab\there", "nl\n", "\u007f", "\u0000"];
+refused.forEach(function (s) {
+  var threw = false;
+  try {
+    SB.canonical({s: s});
+  } catch (e) {
+    threw = true;
+  }
+  T.ok(threw, "refuses " + JSON.stringify(s));
+});
+[NaN, Infinity, -Infinity].forEach(function (x) {
+  var threw = false;
+  try {
+    SB.canonical([x]);
+  } catch (e) {
+    threw = true;
+  }
+  T.ok(threw, "refuses " + x);
+});
+var threwKey = false;
+try {
+  SB.canonical({"caf\u00e9": 1});
+} catch (e) {
+  threwKey = true;
+}
+T.ok(threwKey, "refuses a non-ASCII key");
+
+T.begin("floatPlain");
+T.ok(!SB.floatPlain(0.00005), "0.00005 refused");
+T.ok(SB.floatPlain(0.0001), "0.0001 taken");
+T.ok(SB.floatPlain(0), "0 taken");
+T.ok(!SB.floatPlain(-0.5), "a negative refused");
+T.ok(!SB.floatPlain(0.1234567), "seven decimals refused");
+T.ok(SB.floatPlain(0.123456), "six decimals taken");
+T.ok(SB.floatPlain(0.1 + 0.2) === false, "0.30000000000000004 refused");
+T.ok(!SB.floatPlain(1e9), "1e9 refused");
+T.ok(SB.floatPlain(999999999.5), "below 1e9 taken");
+
+T.done();

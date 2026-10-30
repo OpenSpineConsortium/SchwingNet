@@ -1,0 +1,173 @@
+"""The six templates: experiment_v1, screen_arms, latent_prior, ct_to_xray, drr_gap, morphometry_gold3.
+Layout x in steps of 300 and y in steps of 150 from 40, 40."""
+
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from gen_common import SANDBOX, write_json  # noqa: E402
+
+
+def at(column, row):
+    return [40 + 300 * column, 40 + 150 * row]
+
+
+def node(ident, block, params=None, vary=None):
+    entry = {"id": ident, "block": block, "version": 1, "params": params or {}}
+    if vary:
+        entry["vary"] = vary
+    return entry
+
+
+def edge(source, out, target, port):
+    return {"from": source, "out": out, "to": target, "in": port}
+
+
+def expect(route, ready, requests, gpu_submissions, cpu_submissions, gpu_tasks):
+    return {"route": route, "ready": ready, "requests": requests, "gpu_submissions": gpu_submissions,
+            "cpu_submissions": cpu_submissions, "gpu_tasks": gpu_tasks}
+
+
+def template(ident, name, about, nodes, edges, layout, expected):
+    return {"sandbox": 1, "id": ident, "name": name, "about": about, "nodes": nodes, "edges": edges,
+            "layout": layout, "expect": expected}
+
+
+def v1_chain(augment_vary=None, optimiser_vary=None):
+    nodes = [node("n1", "catalog_v1"), node("n2", "crop_boxes"), node("n3", "normalise"),
+             node("n4", "augment", vary=augment_vary), node("n5", "classifier"),
+             node("n6", "train_classifier", vary=optimiser_vary), node("n7", "evaluate_heldout"),
+             node("n8", "report_claim")]
+    edges = [edge("n1", "data", "n2", "frames"), edge("n2", "crops", "n3", "data"), edge("n3", "data", "n4", "data"),
+             edge("n4", "data", "n5", "data"), edge("n5", "model", "n6", "model"),
+             edge("n6", "checkpoint", "n7", "checkpoint"), edge("n7", "metrics", "n8", "results")]
+    layout = {f"n{k + 1}": at(k, 0) for k in range(8)}
+    return nodes, edges, layout
+
+
+def experiment_v1():
+    nodes, edges, layout = v1_chain()
+    return template(
+        "experiment_v1", "Version 1 on the experiment route",
+        "Version 1 of SchwingNet as the experiment route runs it today: the catalog's frames cropped to "
+        "64-pixel grey boxes, no normalising and no augmentation, resnet18 with ImageNet weights and a "
+        "27-way head, trained 20 epochs with seed 1 in a 4-hour GPU job, evaluated once on the held-out "
+        "test persons in the same job, and reported. Every block is at its default, so the request names "
+        "no block; the owner's word and count decide whether it runs.",
+        nodes, edges, layout, expect("experiment", True, 1, 1, 0, 1))
+
+
+def screen_arms():
+    nodes, edges, layout = v1_chain({"augment": [[], ["strong"]]}, {"optimiser": ["adam", "adamw"]})
+    return template(
+        "screen_arms", "Screen four arms side by side",
+        "The owner's rule that every arm is a block, screened side by side on short runs: augmentation "
+        "off or SyntheX's strong set, crossed with adam or adamw, gives four requests of 20 epochs, one "
+        "GPU job each. The arm to carry on is chosen on the validation part alone (tools/block_sweep.py "
+        "ledger), never on test.",
+        nodes, edges, layout, expect("experiment", True, 4, 4, 0, 4))
+
+
+def latent_prior():
+    nodes = [
+        node("n1", "gold3_ct"),
+        node("n2", "morphometry"),
+        node("n3", "bordercall_naming"),
+        node("n4", "split_anomaly_aware"),
+        node("n5", "annealer_unet"),
+        node("n6", "train_annealer", {"objective": "mask", "naming": "off"},
+             {"schedule": ["lambda-then-w", "joint", "w-first", "fixed"], "seed": [1, 2]}),
+        node("n7", "select_on_validation"),
+        node("n8", "evaluate_heldout"),
+        node("n9", "report_claim"),
+    ]
+    edges = [
+        edge("n1", "data", "n2", "masks"), edge("n2", "table", "n3", "data"),
+        edge("n1", "data", "n4", "data"), edge("n4", "data", "n5", "data"), edge("n5", "model", "n6", "model"),
+        edge("n6", "checkpoint", "n7", "trials"), edge("n7", "checkpoint", "n8", "checkpoint"),
+        edge("n8", "metrics", "n9", "results"), edge("n3", "names", "n9", "more"),
+    ]
+    layout = {"n1": at(0, 0), "n2": at(1, 0), "n3": at(2, 0), "n4": at(1, 1), "n5": at(2, 1), "n6": at(3, 1),
+              "n7": at(4, 1), "n8": at(5, 1), "n9": at(6, 1)}
+    return template(
+        "latent_prior", "Latent shape prior evaluation",
+        "The latent shape prior evaluation of bordercall's pipeline.html, drawn with the blocks that exist. "
+        "Row one is the truth and the features: morphometry measures every gold tier 3 mask (the export, "
+        "a CPU job) and bordercall names the levels from those rows with no network (the features step, a "
+        "CPU job). Row two is the screen: the anomaly-aware person split, the auto-anatomist network, and "
+        "four anneal schedules by two seeds as one GPU array of 8 tasks with objective=mask (arm F), "
+        "joined on validation (a CPU job); evaluate_heldout then reads the test persons once. The screen's "
+        "arms A to E, the two smokes, the full run's three seeds of each kept arm and the 2-D landmarks "
+        "have no block yet and are left out, so these counts are the sandbox's, not the page's.",
+        nodes, edges, layout, expect("pipeline", False, 0, 2, 3, 9))
+
+
+def ct_to_xray():
+    nodes = [
+        node("n1", "gold3_ct"), node("n2", "segment_ct"), node("n3", "render_drr"), node("n4", "realism_edit"),
+        node("n5", "split_person"), node("n6", "crop_boxes"), node("n7", "augment"), node("n8", "classifier"),
+        node("n9", "train_classifier"), node("n10", "evaluate_heldout"), node("n11", "catalog_v1"),
+        node("n12", "latency_onnx"), node("n13", "report_claim"),
+    ]
+    edges = [
+        edge("n1", "data", "n2", "volumes"), edge("n2", "data", "n3", "volumes"), edge("n3", "data", "n4", "data"),
+        edge("n4", "data", "n5", "data"), edge("n5", "data", "n6", "frames"), edge("n6", "crops", "n7", "data"),
+        edge("n7", "data", "n8", "data"), edge("n8", "model", "n9", "model"),
+        edge("n9", "checkpoint", "n10", "checkpoint"), edge("n11", "data", "n10", "data"),
+        edge("n9", "checkpoint", "n12", "checkpoint"), edge("n10", "metrics", "n13", "results"),
+        edge("n12", "metrics", "n13", "more"),
+    ]
+    layout = {f"n{k + 1}": at(k, 0) for k in range(10)}
+    layout.update({"n11": at(8, 1), "n12": at(9, 1), "n13": at(10, 0)})
+    return template(
+        "ct_to_xray", "From CT to X-ray",
+        "A plan to train the level classifier on synthetic X-rays from CT: the gold tier 3 CTs labelled "
+        "by SPINEPS's existing masks, rendered into DRRs, edited toward a real X-ray's look, split by "
+        "person, cropped, augmented and trained; evaluate_heldout reads the DRRs' test persons and the "
+        "catalog's real test frames, and the latency step times the checkpoint. Each step runs today "
+        "only inside a fixed plan (the DRR study renders TotalSegmentator v2.0.1 CTs, not gold tier 3), "
+        "and boxes from projected masks are planned, so this route waits on the owner's word.",
+        nodes, edges, layout, expect("pipeline", False, 0, 5, 0, 5))
+
+
+def drr_gap():
+    nodes = [node("n1", "gold3_ct"), node("n2", "segment_ct", {"segmenter": "moose"}), node("n3", "render_drr"),
+             node("n4", "catalog_v1"), node("n5", "domain_gap"), node("n6", "report_claim")]
+    edges = [edge("n1", "data", "n2", "volumes"), edge("n2", "data", "n3", "volumes"),
+             edge("n3", "data", "n5", "synthetic"), edge("n4", "data", "n5", "real"),
+             edge("n5", "metrics", "n6", "results")]
+    layout = {"n1": at(0, 0), "n2": at(1, 0), "n3": at(2, 0), "n4": at(2, 1), "n5": at(3, 0), "n6": at(4, 0)}
+    return template(
+        "drr_gap", "DRR domain gap",
+        "The DRR domain-gap study's shape: CTs labelled by MOOSE, rendered into DRRs and set beside the "
+        "catalog's real frames by calibrated separation tests, then reported. Today the study runs as the "
+        "drr_gap flow on TotalSegmentator v2.0.1 CTs (data/domain_gap/groups.json) in three GPU jobs, "
+        "after the drr_seg flow's MOOSE masks; here it starts from the gold tier 3 store, a plan that "
+        "waits on the owner's word.",
+        nodes, edges, layout, expect("pipeline", False, 0, 2, 0, 2))
+
+
+def morphometry_gold3():
+    nodes = [node("n1", "gold3_ct"), node("n2", "morphometry"), node("n3", "report_claim")]
+    edges = [edge("n1", "data", "n2", "masks"), edge("n2", "table", "n3", "results")]
+    layout = {"n1": at(0, 0), "n2": at(1, 0), "n3": at(2, 0)}
+    return template(
+        "morphometry_gold3", "Morphometry of gold tier 3",
+        "Morphometry of the gold tier 3 masks as the word morphometry runs it: one CPU job for a set "
+        "(enhance here, verse the other), the rows kept on the grid and only aggregates reported.",
+        nodes, edges, layout, expect("pipeline", False, 0, 0, 1, 0))
+
+
+TEMPLATES = [experiment_v1, screen_arms, latent_prior, ct_to_xray, drr_gap, morphometry_gold3]
+
+
+def write_all():
+    folder = os.path.join(SANDBOX, "templates")
+    for make in TEMPLATES:
+        value = make()
+        write_json(os.path.join(folder, value["id"] + ".json"), value)
+    return [make.__name__ for make in TEMPLATES]
+
+
+if __name__ == "__main__":
+    print(write_all())

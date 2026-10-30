@@ -1,0 +1,95 @@
+{
+ "block": 1,
+ "id": "denoise",
+ "version": 1,
+ "title": "Denoise the input",
+ "stage": "prepare",
+ "summary": "Smooths the network's input before the stem: none, a Gaussian blur or a median filter.",
+ "does": "A forward pre-hook before the stem (tools/train_blocks.py DENOISERS): none, gaussian or median, on every crop the network reads, in training and in evaluation alike. It changes no type.",
+ "glyph": "denoise",
+ "inputs": [
+  {
+   "name": "data",
+   "accepts": {
+    "kind": [
+     "data"
+    ],
+    "rank": [
+     2
+    ],
+    "time": "no"
+   },
+   "optional": false,
+   "what": "2-D frames or crops the network reads."
+  }
+ ],
+ "outputs": [
+  {
+   "name": "data",
+   "from": "data",
+   "ops": [],
+   "what": "The same data: the hook lives inside the model."
+  }
+ ],
+ "params": [
+  {
+   "name": "denoise",
+   "kind": "choice",
+   "choices": [
+    "none",
+    "gaussian",
+    "median"
+   ],
+   "default": "none",
+   "vary": true,
+   "what": "the denoise block of src/schwingnet/blocks.py"
+  }
+ ],
+ "rules": [],
+ "reads": {
+  "parts": []
+ },
+ "job": {
+  "class": "none",
+  "hours": 0,
+  "with_upstream": false,
+  "array": false,
+  "cpus": 0,
+  "memory_gb": 0
+ },
+ "deterministic": "exact",
+ "seed_param": "",
+ "nondeterminism": "",
+ "generic": {
+  "rank": [
+   2
+  ],
+  "time": "no",
+  "channels": "any",
+  "sizes": "any",
+  "why": "The denoisers are hooks on the 2-D network's input (tools/train_blocks.py); a volume or a clip would need hooks of its own."
+ },
+ "resolve": null,
+ "needs": [
+  "python",
+  "torch"
+ ],
+ "code": "existing",
+ "implemented_by": [
+  "tools/train_blocks.py",
+  "src/schwingnet/blocks.py"
+ ],
+ "today": {
+  "status": "live",
+  "route": "experiment",
+  "word": "",
+  "flow": "",
+  "note": "the request's block line denoise"
+ },
+ "experiment": {
+  "blocks": {
+   "denoise": "@param.denoise"
+  }
+ },
+ "card": null
+}

@@ -1,0 +1,208 @@
+"""The five source blocks: catalog_v1, gold3_ct, carmlspine_sweeps, folder_import, synthetic_catalog."""
+
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from gen_common import (PARTS, boolean, card, choice, integer, manifest, options, port_out,  # noqa: E402
+                        today)
+
+SPLIT_WORDS = ("test: the frozen persons of data/splits/test-persons.json; validation: a person whose "
+               "salted hash falls in the share 0.1 of data/splits/rule.json; training: the rest")
+
+
+def catalog_v1():
+    return manifest(
+        "catalog_v1", "The frame catalog (version 1)", "source",
+        "The versioned frame catalog the experiment route trains on: 2-D grey frames, 27 levels, split by person.",
+        "A read-only, versioned SQLite store of every banked frame with its level boxes, built from "
+        "content-hashed shards and data/registry/ by the catalog step (CatalogFlow); unchanged bytes make "
+        "no new version. Every frame keeps its person key, and the split puts each person on one side "
+        "only: the frozen test persons, a salted hash share of 0.1 for validation, the rest training. "
+        "The images stay on the grid; the experiment route trains on the version grid/v1-version.sh "
+        "chooses. The levels are C1 to C7, T1 to T13, L1 to L6 and the sacrum, 27 in all "
+        "(src/schwingnet/catalog.py LEVELS).",
+        "catalog",
+        inputs=[],
+        outputs=[port_out("data", None, [
+            ["axes", ["N", "C", "H", "W"]], ["size", "C", 1], ["set", "dtype", "uint8"],
+            ["set", "targets", "level"], ["set", "classes", 27], ["parts", list(PARTS)],
+            ["set", "persons", True], ["set", "modality", "mixed"]],
+            "Grey frames with level boxes, N x 1 x H x W, split into train, validation and test by person.")],
+        needs=["python", "metaflow"],
+        implemented_by=["tools/catalog.py", "tools/ingest.py", "flows/catalog.py", "src/schwingnet/catalog.py",
+                        "grid/v1-version.sh"],
+        today_=today("live", route="experiment",
+                     note="the experiment route reads the catalog version grid/v1-version.sh chooses"),
+        experiment={},
+        card=card(
+            "The bank and catalog steps: tools/ingest.py turns each bank into a content-hashed shard and "
+            "CatalogFlow builds the versioned store from the shards and data/registry/.",
+            "On the grid only, as versions/catalog-NNNNNN-<hash>.sqlite under the data root; images never "
+            "enter the repository.",
+            "Not recorded in the repository: the grid's current version holds it. The dry run of "
+            "docs/research/v1-demo/README.md had 1,633 synthetic frames.",
+            "Every frame carries its person key, and every count and split is by person "
+            "(src/schwingnet/catalog.py).",
+            SPLIT_WORDS + "; the split check holds every version to this rule.",
+            "C-ArmLSpine case42, case121 and case136 (the L6 stratum) and case134 and case39 (the demo "
+            "sweeps, never trained on) are test persons.",
+            "Uncut: the catalog holds sources of every licence class of data/licences.json; a recipe of "
+            "data/recipes/ cuts it before training.",
+            ["docs/memory/the-data-catalog.md", "docs/research/data-catalog.md", "src/schwingnet/catalog.py",
+             "data/splits/rule.json", "data/splits/test-persons.json", "data/licences.json",
+             "grid/v1-version.sh", "docs/research/v1-demo/README.md"]))
+
+
+def gold3_ct():
+    return manifest(
+        "gold3_ct", "Gold tier 3 CTs", "source",
+        "ENHANCE.PET, VerSe and TotalSegmentator CTs whose field shows C2 to the sacrum, with each release's masks.",
+        "1,738 CTs admitted by rule 3 of tools/gold3_field.py, a field that holds the foot of C2 and the "
+        "top of the sacrum: ENHANCE.PET 1,558, VerSe 21 and TotalSegmentator 159, with 10 border cases "
+        "waiting for a person's look. Each CT keeps its release's own masks, whose label ids differ by "
+        "member, so the number of classes is left unknown, and its dtype is not recorded. Nothing is "
+        "split: a split block assigns the persons. The census word reads the store on the grid and "
+        "segments nothing; the levels a mask lacks wait for the completion arms (bordercall complete, "
+        "totalseg complete).",
+        "ct",
+        inputs=[],
+        outputs=[port_out("data", None, [
+            ["axes", ["N", "C", "D", "H", "W"]], ["size", "C", 1], ["set", "targets", "mask"],
+            ["set", "persons", True], ["set", "modality", "ct"], ["cut", "non-commercial"]],
+            "CT volumes N x 1 x D x H x W, each with its release's masks; not split.")],
+        needs=["python", "numpy", "nibabel"],
+        implemented_by=["tools/gold3_ct.py", "tools/gold3_field.py", "tools/gold3_census.py",
+                        "grid/gold3-census.sbatch"],
+        today_=today("word", word="census gold3",
+                     note="one CPU job that reads the store on the grid and segments nothing"),
+        experiment=None,
+        card=card(
+            "The gold tier 3 CT dataset: ENHANCE.PET, VerSe and TotalSegmentator v3 CTs admitted by rule 3 "
+            "(tools/gold3_field.py), each with its release's own masks (tools/gold3_ct.py).",
+            "On the grid under the data root; the rows and the admission are data/gold3-ct/ and "
+            "docs/research/gold3-ct/ADMISSION.md.",
+            "1,738 CTs: ENHANCE.PET 1,558, VerSe 21, TotalSegmentator 159; 10 border cases wait for a "
+            "person's look.",
+            "At most 1,659 persons and at least 1,045, before any check across members.",
+            "Not split: no part is assigned until a split block assigns one.",
+            "None of its persons is on data/splits/test-persons.json; nothing is held out until a split "
+            "block holds it out.",
+            "ENHANCE.PET non-commercial (its strictest site binds the set), VerSe share-alike (CC BY-SA "
+            "4.0), TotalSegmentator open (CC BY 4.0): the set fits the non-commercial recipe.",
+            ["docs/research/gold3-ct/README.md", "docs/research/gold3-ct/ADMISSION.md", "docs/memory/gold3-ct.md",
+             "tools/gold3_ct.py", "tools/gold3_field.py", "data/licences.json", "data/splits/test-persons.json"]))
+
+
+def carmlspine_sweeps():
+    return manifest(
+        "carmlspine_sweeps", "C-ArmLSpine demo sweeps", "source",
+        "Two recorded C-arm sweeps of C-ArmLSpine, case134 and case39: test persons no run trains on.",
+        "The raw CBCT projections of two C-ArmLSpine cases, played as fluoroscopy sweeps: clips of grey "
+        "frames with truth boxes. Both persons are frozen test persons (data/splits/test-persons.json), "
+        "so a sweep is only read at the end, never trained on. The latency word's sweep part runs one "
+        "through the frame path with its overlay (tools/sweep.py); today it passes case134. Frames per "
+        "sweep are not recorded in the repository.",
+        "video",
+        inputs=[],
+        outputs=[port_out("data", None, [
+            ["axes", ["N", "T", "C", "H", "W"]], ["size", "C", 1], ["set", "dtype", "uint8"],
+            ["set", "targets", "level"], ["set", "classes", 27], ["parts", ["test"]],
+            ["set", "persons", True], ["set", "modality", "fluoro"], ["cut", "commercial"]],
+            "Sweeps N x T x 1 x H x W of grey frames with truth boxes; test part only.")],
+        needs=["python", "numpy"],
+        implemented_by=["tools/sweep.py", "grid/run-latency-sweep.sh", "flows/latency.py"],
+        today_=today("flow", flow="LatencyFlow", note="the sweep part of the word latency, over case134"),
+        experiment=None,
+        card=card(
+            "C-ArmLSpine (Zenodo 22768651): the raw CBCT projections of two cases, played as sweeps.",
+            "On the grid as a bank of frames the latency word's sweep part reads (grid/run-latency-sweep.sh).",
+            "2 sweeps, case134 and case39; frames per sweep not recorded in the repository.",
+            "2 persons, case134 and case39.",
+            "Test only: both are frozen test persons of data/splits/test-persons.json.",
+            "Never trained on: case134 is the demo sweep of the CNS talk and case39 the second demo sweep.",
+            "CC BY 4.0, class open in data/licences.json: it fits the commercial recipe.",
+            ["data/licences.json", "data/splits/test-persons.json", "docs/memory/latency-and-the-recorded-sweep.md",
+             "grid/run-latency-sweep.sh", "tools/sweep.py", "docs/project.md"]))
+
+
+def folder_import():
+    return manifest(
+        "folder_import", "Your own folder", "source",
+        "A folder of your own on the grid, described by a data card; it waits for the bank and catalog steps.",
+        "Describes a folder you hold on the grid so that a pipeline can be planned on it: its axes, "
+        "dtype, targets, modality, person key and licence class are yours to state in the params and the "
+        "card. Nothing reads it yet: a folder enters the store only through the bank step (tools/ingest.py "
+        "hashes it into a shard) and the catalog step (CatalogFlow), and a dataset is added by one pull "
+        "request and one incremental run.",
+        "folder",
+        inputs=[],
+        outputs=[port_out("data", None, [
+            ["axes", "@param.axes"], ["set", "dtype", "@param.dtype"], ["set", "targets", "@param.targets"],
+            ["set", "modality", "@param.modality"], ["set", "persons", "@param.persons"],
+            ["cut", "@param.licence"]],
+            "Your samples with the axes, dtype, targets and licence you stated; not split.")],
+        params=[
+            options("axes", ["N", "T", "C", "D", "H", "W", "F"], ["N", "C", "H", "W"], False,
+                    "the axes of your samples, in this order; D, H and W give the rank"),
+            choice("dtype", ["uint8", "int16", "int32", "float16", "float32", "bool"], "uint8", False,
+                   "how each value is stored"),
+            choice("targets", ["none", "level", "mask", "points", "value"], "none", False,
+                   "what each sample is labelled with"),
+            choice("modality", ["any", "fluoro", "radiograph", "mixed", "ct", "drr", "table"], "any", False,
+                   "what kind of image or table it is"),
+            boolean("persons", True, False, "whether each sample names its person, which a split needs"),
+            choice("licence", ["commercial", "commercial-share-alike", "non-commercial", "research-internal",
+                               "uncut"], "uncut", False,
+                   "the most open recipe of data/recipes/ that admits the whole folder; uncut when not known"),
+        ],
+        needs=["python"],
+        code="planned", implemented_by=[],
+        today_=today("planned", note="the bank and catalog steps (tools/ingest.py, BankFlow, CatalogFlow) "
+                                     "bring a folder in"),
+        experiment=None,
+        card=card(
+            "A folder of your own on the grid; you state where it came from in this card.",
+            "The grid's data root, once the bank step has hashed it into a shard (tools/ingest.py).",
+            "You state it; nothing counts it until the bank step does.",
+            "You state the person key; without one no split can keep a person on one side.",
+            "Not split until a split block assigns the persons.",
+            "Nothing is held out until a split block holds it out.",
+            "You state its class from data/licences.json; it stays uncut until a recipe cuts it.",
+            ["tools/ingest.py", "docs/memory/the-data-catalog.md", "data/licences.json"]))
+
+
+def synthetic_catalog():
+    return manifest(
+        "synthetic_catalog", "Synthetic smoke catalog", "source",
+        "block_sweep's synthetic catalog for smoke tests: 600 frames over 40 cases, drawn by code, no patient.",
+        "A small catalog drawn by tools/block_sweep.py with no real image in it, for checking that every "
+        "block combination runs before any grid time is spent: 600 frames over 40 cases, 100 test frames "
+        "and 200 unlabelled, seed 1. The sweep flow's synthetic plan (grid/sweeps/synthetic.json) trains "
+        "on it. Nothing measured on it is a result.",
+        "synthetic",
+        inputs=[],
+        outputs=[port_out("data", None, [
+            ["axes", ["N", "C", "H", "W"]], ["size", "C", 1], ["set", "dtype", "uint8"],
+            ["set", "targets", "level"], ["set", "classes", 27], ["parts", list(PARTS)],
+            ["set", "persons", True]],
+            "Synthetic grey frames with level boxes, split by person as real ones are.")],
+        deterministic="seeded", seed_param="seed",
+        params=[integer("seed", 0, 999999999, 1, False,
+                        "the draw's seed (tools/block_sweep.py synthetic --seed, default 1)")],
+        needs=["python", "numpy", "metaflow"],
+        implemented_by=["tools/block_sweep.py", "grid/sweeps/synthetic.json", "flows/sweep.py"],
+        today_=today("flow", flow="SweepFlow", note="the plan grid/sweeps/synthetic.json of the word sweep"),
+        experiment=None,
+        card=card(
+            "Drawn by tools/block_sweep.py synthetic from no dataset and no patient.",
+            "Built where the sweep flow runs it, on the grid; nothing of it is committed.",
+            "600 frames over 40 cases, 100 of them test frames and 200 unlabelled (tools/block_sweep.py).",
+            "40 synthetic cases, each its own person key.",
+            "The catalog's person split, as for real data.",
+            "Its synthetic test frames; no number on it is reported as a result.",
+            "None recorded: the frames are drawn by code, so it is left uncut.",
+            ["tools/block_sweep.py", "grid/sweeps/synthetic.json", "flows/sweep.py"]))
+
+
+SOURCES = [catalog_v1, gold3_ct, carmlspine_sweeps, folder_import, synthetic_catalog]
