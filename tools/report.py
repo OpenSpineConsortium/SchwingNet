@@ -6,6 +6,7 @@ Usage:
     python3 tools/report.py write --study drr-domain-gap --run <study run folder>
     python3 tools/report.py check --study drr-domain-gap --run <study run folder> [--complete]
     python3 tools/report.py write --study flux-realism --run <realism run folder>
+    python3 tools/report.py write --study autoanatomist-screen --run <screen chain folder>
     python3 tools/report.py write-recorded                   # every run under docs/research/v1-demo/runs/,
                                                              # every study run under docs/research/drr-domain-gap/runs/
     python3 tools/report.py check-recorded
@@ -570,6 +571,9 @@ def tool_module(name):
 # run folder is read and its page in a module of its own, since its folder is flows/realism.py's
 # RECORD.json and the files it names, not a bench report and a summary.
 REALISM = tool_module("realism_report")
+# The auto-anatomist screen (docs/research/autoanatomist-screen/PREREG.md) the same way: its folder is a
+# chain of flows/autoanatomist.py, RECORD.json and the trials' and the join's files it names.
+AUTOANATOMIST = tool_module("autoanatomist_report")
 
 STUDIES = {
     "drr-domain-gap": {
@@ -603,6 +607,16 @@ STUDIES = {
         "facts": REALISM.FACTS,
         "markdown": REALISM.markdown,
         "error": REALISM.RealismReportError,
+    },
+    "autoanatomist-screen": {
+        "answers": ROOT / "data" / "reporting" / "studies" / "autoanatomist-screen.json",
+        "runs": ROOT / "docs" / "research" / "autoanatomist-screen" / "runs",
+        "prereg": AUTOANATOMIST.PREREG,
+        "items": AUTOANATOMIST.ITEMS,
+        "load": AUTOANATOMIST.load,
+        "facts": AUTOANATOMIST.FACTS,
+        "markdown": AUTOANATOMIST.markdown,
+        "error": AUTOANATOMIST.AutoanatomistReportError,
     },
 }
 
@@ -2152,7 +2166,7 @@ def main(argv=None):
     for name in ("write", "check"):
         command = sub.add_parser(name)
         command.add_argument("--run", required=True)
-        command.add_argument("--study", choices=sorted(STUDIES), help="read the folder as a recorded run of this study (drr-domain-gap: BENCH.md and summary.txt; flux-realism: flows/realism.py's RECORD.json), not a training run")
+        command.add_argument("--study", choices=sorted(STUDIES), help="read the folder as a recorded run of this study (drr-domain-gap: BENCH.md and summary.txt; flux-realism: flows/realism.py's RECORD.json; autoanatomist-screen: flows/autoanatomist.py's RECORD.json), not a training run")
         if name == "check":
             command.add_argument("--complete", action="store_true", help="fail while any item is missing")
     sub.add_parser("write-recorded")

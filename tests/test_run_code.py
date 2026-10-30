@@ -33,7 +33,8 @@ ENTRIES = {"row": ("tools/flow.py",), "state": ("tools/block_sweep.py",), "sweep
            "latency": ("flows/latency.py",),
            "bank": ("flows/bank.py", *PYDRV), "catalog": ("flows/catalog.py", *PYDRV),
            "drr_gap": ("flows/drr_gap.py",), "drr_seg": ("flows/drr_seg.py",), "realism": ("flows/realism.py",),
-           "totalseg": ("flows/totalseg.py",)}
+           "totalseg": ("flows/totalseg.py",),
+           "autoanatomist": ("flows/autoanatomist.py",)}
 # The calls that load a neighbour of tools/ by its name: tools/domain_gap.py names its own helper tool,
 # which loads tools/<name>.py by path, as the others name load_tool and run_tool.
 LOADERS = ("load_tool", "run_tool", "tool")
@@ -52,10 +53,11 @@ QUIET_GIT = {"GIT_CONFIG_COUNT": "4", "GIT_CONFIG_KEY_0": "gc.auto", "GIT_CONFIG
              "GIT_CONFIG_KEY_3": "maintenance.autoDetach", "GIT_CONFIG_VALUE_3": "false"}
 
 
-def drr_code_paths():
-    """What the DRR domain-gap study's prepare copies at its commit for every later step to run,
-    as grid/drr-gap.sbatch lists it in CODE_PATHS."""
-    text = (ROOT / "grid" / "drr-gap.sbatch").read_text(encoding="utf-8")
+def code_paths(script="drr-gap.sbatch"):
+    """What a job script that runs from a copy of the code copies at its commit, as it lists it in
+    CODE_PATHS: the DRR domain-gap study's prepare, for every later step, and each part of the
+    auto-anatomist screen."""
+    text = (ROOT / "grid" / script).read_text(encoding="utf-8")
     listed = re.search(r"^CODE_PATHS=\((.*?)\)$", text, re.M | re.S)
     return listed.group(1).split() if listed else []
 
@@ -286,11 +288,20 @@ class ListsTest(unittest.TestCase):
     def test_the_drr_studys_copy_holds_every_file_its_two_kinds_name(self):
         # prepare copies CODE_PATHS at its commit and every later step's launcher names the run's code
         # from that copy, so a file a kind names outside them would refuse every shard and the merge
-        paths = drr_code_paths()
+        paths = code_paths()
         self.assertIn("grid/drr-gap.sbatch", paths)
         for name in self.code.KINDS["drr_gap"]:
             with self.subTest(name=name):
                 self.assertTrue(any(name == path or name.startswith(path.rstrip("/") + "/") for path in paths), name)
+
+    def test_the_screens_copy_holds_every_file_its_kind_names(self):
+        # Each part copies CODE_PATHS at the gate's commit and its launcher names the run's code from
+        # that copy, so a file the kind names outside them would refuse every trial and the join
+        paths = code_paths("autoanatomist.sbatch")
+        self.assertIn("grid/autoanatomist.sbatch", paths)
+        for name in self.code.KINDS["autoanatomist"]:
+            with self.subTest(name=name):
+                self.assertTrue(any(name.rstrip("/") == path or name.startswith(path.rstrip("/") + "/") for path in paths), name)
 
     def test_the_command_line_prints_the_digest_and_the_files(self):
         said = subprocess.run([sys.executable, str(ROOT / "tools" / "run_code.py"), "digest", "row"], capture_output=True, text=True, check=False)
@@ -359,7 +370,7 @@ class DigestTest(unittest.TestCase):
         # grid/drr-gap.sbatch's prepare copies the code at its commit with git archive, which keeps no
         # .git, and writes COPY.txt, the commit and the files as git ls-tree lists them; the copy's
         # digest is read from that record and is the commit's, so a shard names the code prepare ran
-        paths = drr_code_paths()
+        paths = code_paths()
         for path in paths:
             if not (self.repo / path).exists():
                 self.write(f"{path}/one.json" if (ROOT / path).is_dir() else path, f"{path}\n")
