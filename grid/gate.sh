@@ -1842,7 +1842,9 @@ census_detail() {  # census_detail JOB: the two readings the report counts and t
   # each TotalSegmentator CT the extent part found padded (constant slices at an end), which the CT's
   # own extent rule reads in place of the cord's guess (tools/gold3_field.py, data/gold3-ct/totalsegmentator/planes.json),
   # and VerSe's recorded mask names the held part found missing under the data root's VerSeFusion copy,
-  # which the repair fetches. Both are public ids and heights in millimetres, no path; the detail file
+  # which the repair fetches. The copy holds many of its masks as symbolic links to files, which the
+  # census's os.walk lists as files, so a link counts as found here too (the read of 2026-10-30 00:08
+  # UTC named 89 with -type f alone, against the report's 17). Both are public ids and heights in millimetres, no path; the detail file
   # stays where the job left it, and the names are read here on the login node, as status reads a quota.
   local detail="${CENSUS_ROOT:-$VOLUME/go2432/gold3_census}/$1/extent.json" verse=$DATA_ROOT/versefusion/raw/VerSeFusion_data/raw
   echo "## census gold3 detail: the padded TotalSegmentator CTs' own planes (id, top mm, foot mm; none where the CT ends at its grid), job $1"
@@ -1867,7 +1869,7 @@ census_detail() {  # census_detail JOB: the two readings the report counts and t
   echo "## census gold3 detail: VerSe's recorded mask names not found under the data root's VerSeFusion copy"
   if [ -d "$verse" ] && [ -f "$REPO/data/gold3-ct/verse/facts.jsonl" ]; then
     LC_ALL=C comm -23 <(grep -o '"[A-Za-z0-9_-]*_seg\.nii\.gz"' "$REPO/data/gold3-ct/verse/facts.jsonl" | tr -d '"' | sort -u) \
-                      <(find "$verse" -type f -name '*_seg.nii.gz' -printf '%f\n' 2>/dev/null | sort -u) \
+                      <(find "$verse" \( -type f -o -type l \) -name '*_seg.nii.gz' -printf '%f\n' 2>/dev/null | sort -u) \
       | sed 's/^/  not found /' | masked
     echo "  (the names are the facts' $(grep -o '"[A-Za-z0-9_-]*_seg\.nii\.gz"' "$REPO/data/gold3-ct/verse/facts.jsonl" | sort -u | wc -l) recorded, matched by name alone; the report's count matched the bytes too)"
   else
