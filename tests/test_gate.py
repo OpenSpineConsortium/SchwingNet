@@ -2151,6 +2151,111 @@ esac
             self.assertIn("FAILED at match", shown.stdout)
         self.assertEqual(len(self.submitted()), 1)
 
+    TOTALSEG_RELEASE = "https://github.com/wasserth/TotalSegmentator/releases/download/v2.0.0-weights/"
+
+    def totalseg_weights_landed(self, cut=0):
+        """The two weight zips as the url route lands them under totalseg_weights/raw, each a whole
+        zip of one member; with cut, each less its last cut bytes, a part still landing."""
+        raw = self.data / "totalseg_weights" / "raw"
+        raw.mkdir(parents=True, exist_ok=True)
+        args = subprocess.run(["bash", str(self.repo / "grid" / "run-platform-fetch.sh"), "--args", "totalseg_weights"],
+                              capture_output=True, text=True).stdout.split()
+        names = [url.rsplit("/", 1)[1] for url in args]
+        for name in names:
+            buffer = io.BytesIO()
+            with zipfile.ZipFile(buffer, "w") as archive:
+                archive.writestr(f"{name[:-4]}/dataset.json", "{}\n")
+            data = buffer.getvalue()
+            (raw / name).write_bytes(data[:len(data) - cut] if cut else data)
+        return names
+
+    def test_totalseg_weights_is_a_fetch_word_for_the_two_weight_zips_outside_the_chain(self):
+        # TotalSegmentator's weights for the gold tier 3 completion's arm (the owner's word of
+        # 2026-10-30 08:54 UTC): the vertebrae part and the 6 mm model its total task crops with, by
+        # their release URLs, one url row, never in the chain, no size stated, Apache-2.0
+        script = self.repo / "grid" / "run-platform-fetch.sh"
+        row = [line for line in script.read_text(encoding="utf-8").splitlines() if line.startswith("totalseg_weights|")]
+        self.assertEqual(len(row), 1, row)
+        fields = row[0].split("|")
+        self.assertEqual(fields[1:3], ["url", "0"])
+        self.assertIn("Apache-2.0", fields[3])
+        self.assertEqual(fields[4], "open")
+        urls = fields[5].split()
+        self.assertEqual([url[len(self.TOTALSEG_RELEASE):] for url in urls],
+                         ["Dataset292_TotalSegmentator_part2_vertebrae_1532subj.zip", "Dataset298_TotalSegmentator_total_6mm_1559subj.zip"])
+        done = self.gate_at_home("fetch", "totalseg_weights")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        jobs = self.line_of("platform-fetch.sbatch")
+        self.assertEqual(len(jobs), 1, jobs)
+        self.assertIn("ID=totalseg_weights", jobs[0])
+        self.assertIn("dp_totalseg_weights", self.recorded())
+        env = dict(self.gate_env(), HOME=str(self.tmp / "home"), HPCW_DRY="1")
+        chain = subprocess.run(["bash", str(script)], env=env, capture_output=True, text=True, timeout=120)
+        self.assertNotIn("totalseg_weights", chain.stdout.split("Not submitted")[0])
+
+    def test_totalseg_complete_queues_one_gpu_job_on_the_launched_flow_once_the_weights_are_whole(self):
+        # the owner's word of 2026-10-30 08:54 UTC and his count of one GPU job: a stage it does not know is refused
+        refused = self.gate("totalseg", "tune")
+        self.assertEqual(refused.returncode, 64, refused.stdout)
+        self.assertIn("totalseg takes complete", refused.stdout)
+        # with no tool or flow in the checkout nothing is queued
+        missing = self.gate("totalseg", "complete")
+        self.assertEqual(missing.returncode, 2, missing.stdout)
+        self.assertIn("no totalseg job script, tool or flow", missing.stdout)
+        (self.repo / "tools" / "gold3_totalseg_grid.py").write_text("", encoding="utf-8")
+        (self.repo / "flows" / "totalseg.py").write_text("", encoding="utf-8")
+        # the job never downloads, so it waits for the weights: refused while they are not there, while the
+        # fetch is live, and while a zip is a part
+        refused = self.gate("totalseg", "complete")
+        self.assertEqual(refused.returncode, 2, refused.stdout)
+        self.assertIn("fetch totalseg_weights first", refused.stdout)
+        self.environments_ready()
+        fetch = self.gate_at_home("fetch", "totalseg_weights")
+        self.assertEqual(fetch.returncode, 0, fetch.stdout + fetch.stderr)
+        self.live(self.recorded()["dp_totalseg_weights"])
+        busy = self.gate("totalseg", "complete")
+        self.assertEqual(busy.returncode, 75, busy.stdout)
+        self.assertIn("fetch of totalseg_weights is still queued or running", busy.stdout)
+        (self.fake / "queue").write_text("", encoding="utf-8")
+        self.totalseg_weights_landed(cut=3)
+        part = self.gate("totalseg", "complete")
+        self.assertEqual(part.returncode, 2, part.stdout)
+        self.assertIn("is a part", part.stdout)
+        self.totalseg_weights_landed()
+        # whole: one GPU job on the launched flow's script, not requeued
+        done = self.gate("totalseg", "complete")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        lines = [line for line in self.submitted() if "totalseg-complete.sbatch" in line]
+        self.assertEqual(len(lines), 1, self.submitted())
+        self.assertIn("--class gpu --name totalseg_complete", lines[0])
+        self.assertIn("--no-requeue", lines[0])
+        self.assertIn("--time 06:00:00", lines[0])
+        job = self.recorded()["totalseg_complete"]
+        self.live(job)
+        busy = self.gate("totalseg", "complete")
+        self.assertEqual(busy.returncode, 75, busy.stdout)
+        # while it runs it holds the checkout, so a bordercall stage waits for it
+        (self.repo / "grid" / "bordercall" / "holdings").mkdir(parents=True, exist_ok=True)
+        (self.repo / "grid" / "bordercall" / "holdings" / "fullspine_complete.py").write_text("", encoding="utf-8")
+        (self.repo / "tools" / "gold3_complete_grid.py").write_text("", encoding="utf-8")
+        waits = self.gate("bordercall", "complete")
+        self.assertEqual(waits.returncode, 0, waits.stdout + waits.stderr)
+        self.assertIn(f"afterany:{job}", waits.stdout)
+        (self.fake / "queue").write_text("", encoding="utf-8")
+        # a job that ended with no report is not queued again: a second one waits for the owner's word
+        again = self.gate("totalseg", "complete")
+        self.assertEqual(again.returncode, 64, again.stdout)
+        self.assertIn("left no report", again.stdout)
+        report = self.repo / "grid" / "logs" / "TOTALSEG-complete.md"
+        report.write_text("# totalseg complete: job 1 on node, commit abc1234\n- run: 38 studies, 1 failed this run\n- exit 1 at now\n",
+                          encoding="utf-8")
+        # a standing report is printed and queues nothing, even one that failed: a rerun is a new count
+        for _ in range(2):
+            shown = self.gate("totalseg", "complete")
+            self.assertEqual(shown.returncode, 0, shown.stdout)
+            self.assertIn("1 failed this run", shown.stdout)
+        self.assertEqual(len([line for line in self.submitted() if "totalseg-complete.sbatch" in line]), 1)
+
     def test_census_gold3_queues_one_cpu_job_once_and_never_again_without_the_owners_word(self):
         # the owner's count of 2026-10-29 12:26 UTC is one CPU job: no id, another id and no tool are refused
         self.assertEqual(self.gate("census").returncode, 64)
