@@ -1,0 +1,241 @@
+{
+ "block": 1,
+ "id": "train_classifier",
+ "version": 1,
+ "title": "Train the classifier",
+ "stage": "train",
+ "summary": "Trains the classifier on the train part, keeps every epoch, and picks the best epoch on validation.",
+ "does": "tools/train.py through the flow: the optimiser (adam or adamw, weight decay only with adamw), the schedule (constant or cosine, after warm-up epochs), a learning-rate scale for the backbone, the sampler, the loss weights and the measure that picks the kept epoch on validation. Every epoch's weights are kept, epoch 0 included, so the witness frames are drawn at every checkpoint. On the experiment route training and evaluation run in one GPU job (grid/experiment-driver.sbatch: 8 CPUs, 64 GB) whose wall time is hours.",
+ "glyph": "train",
+ "inputs": [
+  {
+   "name": "model",
+   "accepts": {
+    "kind": [
+     "model"
+    ],
+    "rank": [
+     2
+    ],
+    "needs_parts": [
+     "train",
+     "validation"
+    ]
+   },
+   "optional": false,
+   "what": "A 2-D classifier built for split data."
+  }
+ ],
+ "outputs": [
+  {
+   "name": "checkpoint",
+   "from": "model",
+   "ops": [
+    [
+     "kind",
+     "checkpoint"
+    ],
+    [
+     "set",
+     "trained",
+     true
+    ]
+   ],
+   "what": "The trained weights of every epoch and the kept one."
+  }
+ ],
+ "params": [
+  {
+   "name": "optimiser",
+   "kind": "choice",
+   "choices": [
+    "adam",
+    "adamw"
+   ],
+   "default": "adam",
+   "vary": true,
+   "what": "the optimiser"
+  },
+  {
+   "name": "weight_decay",
+   "kind": "float",
+   "low": 0,
+   "high": 1,
+   "default": 0.0,
+   "vary": true,
+   "what": "the weight decay, above 0 only with adamw; src/schwingnet/blocks.py sets no upper bound, 1 is the sandbox's cap"
+  },
+  {
+   "name": "schedule",
+   "kind": "choice",
+   "choices": [
+    "constant",
+    "cosine"
+   ],
+   "default": "constant",
+   "vary": true,
+   "what": "the learning rate's schedule"
+  },
+  {
+   "name": "warmup_epochs",
+   "kind": "int",
+   "low": 0,
+   "high": 100000,
+   "default": 0,
+   "vary": true,
+   "what": "whole epochs of linear warm-up"
+  },
+  {
+   "name": "backbone_lr_scale",
+   "kind": "float",
+   "low": 0,
+   "high": 1,
+   "above": true,
+   "default": 1.0,
+   "vary": true,
+   "what": "the backbone's learning rate over the head's, above 0 and at most 1"
+  },
+  {
+   "name": "sampler",
+   "kind": "choice",
+   "choices": [
+    "uniform",
+    "balanced"
+   ],
+   "default": "uniform",
+   "vary": true,
+   "what": "how training batches are drawn"
+  },
+  {
+   "name": "loss_weights",
+   "kind": "choice",
+   "choices": [
+    "none",
+    "inverse-frequency"
+   ],
+   "default": "none",
+   "vary": true,
+   "what": "the level loss's class weights"
+  },
+  {
+   "name": "select",
+   "kind": "choice",
+   "choices": [
+    "accuracy",
+    "balanced-accuracy"
+   ],
+   "default": "accuracy",
+   "vary": true,
+   "what": "the validation measure that picks the kept epoch"
+  },
+  {
+   "name": "epochs",
+   "kind": "int",
+   "low": 1,
+   "high": 200,
+   "default": 20,
+   "vary": true,
+   "what": "epochs to train (the experiment route takes 1 to 200)"
+  },
+  {
+   "name": "seed",
+   "kind": "int",
+   "low": 0,
+   "high": 999999999,
+   "default": 1,
+   "vary": true,
+   "what": "the run's seed"
+  },
+  {
+   "name": "hours",
+   "kind": "float",
+   "low": 0.1,
+   "high": 48,
+   "default": 4.0,
+   "vary": false,
+   "what": "the GPU job's wall time, at most 48 hours"
+  }
+ ],
+ "rules": [
+  {
+   "when": {
+    "weight_decay": {
+     "above": 0
+    }
+   },
+   "need": {
+    "optimiser": {
+     "in": [
+      "adamw"
+     ]
+    }
+   },
+   "say": "weight_decay above 0 needs optimiser=adamw"
+  }
+ ],
+ "reads": {
+  "parts": [
+   "train",
+   "validation"
+  ]
+ },
+ "job": {
+  "class": "gpu",
+  "hours": "@param.hours",
+  "with_upstream": false,
+  "array": false,
+  "cpus": 8,
+  "memory_gb": 64
+ },
+ "deterministic": "seeded",
+ "seed_param": "seed",
+ "nondeterminism": "torch's deterministic kernels are asked for with warn_only, so a GPU run may differ in its last bits (tools/train.py).",
+ "generic": {
+  "rank": [
+   2
+  ],
+  "time": "no",
+  "channels": "any",
+  "sizes": "any",
+  "why": "The trainer reads 2-D crops of the catalog (tools/train.py); volumes and clips would need a reader and a network of their own."
+ },
+ "resolve": "a trained {family} whose {rank}-D stem takes {sizes.C} channel(s) of {sizes.H} x {sizes.W}; head of {classes}",
+ "needs": [
+  "python",
+  "numpy",
+  "torch",
+  "torchvision",
+  "metaflow"
+ ],
+ "code": "existing",
+ "implemented_by": [
+  "tools/train.py",
+  "tools/train_blocks.py",
+  "tools/flow.py",
+  "flows/experiment.py",
+  "grid/experiment-driver.sbatch"
+ ],
+ "today": {
+  "status": "live",
+  "route": "experiment",
+  "word": "experiment <issue>",
+  "flow": "ExperimentFlow",
+  "note": "one GPU job a request, on the owner's word"
+ },
+ "experiment": {
+  "epochs": "@param.epochs",
+  "seed": "@param.seed",
+  "hours": "@param.hours",
+  "blocks": {
+   "optimiser": "@param.optimiser",
+   "weight_decay": "@param.weight_decay",
+   "schedule": "@param.schedule",
+   "warmup_epochs": "@param.warmup_epochs",
+   "backbone_lr_scale": "@param.backbone_lr_scale",
+   "sampler": "@param.sampler",
+   "loss_weights": "@param.loss_weights",
+   "select": "@param.select"
+  }
+ },
+ "card": null
+}

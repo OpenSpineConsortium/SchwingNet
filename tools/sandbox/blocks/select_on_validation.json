@@ -1,0 +1,65 @@
+{
+ "block": 1,
+ "id": "select_on_validation",
+ "version": 1,
+ "title": "Keep one arm by validation",
+ "stage": "select",
+ "summary": "Joins the arms of a screen and keeps the best by its validation score; the test part stays shut.",
+ "does": "Planned as a block: every arm's checkpoint is ranked by its validation score and one is kept, so the test part is read once, after the choice. The experiments' pre-registration chooses the next combination from the validation part alone; today tools/block_sweep.py ledger reads the recorded runs that way, by hand. Its job (1 CPU, 8 GB, 1 hour) is the sandbox's allowance; nothing has measured it.",
+ "glyph": "select",
+ "inputs": [
+  {
+   "name": "trials",
+   "accepts": {
+    "kind": [
+     "checkpoint"
+    ],
+    "trained": true
+   },
+   "optional": false,
+   "what": "The arms' checkpoints."
+  }
+ ],
+ "outputs": [
+  {
+   "name": "checkpoint",
+   "from": "trials",
+   "ops": [],
+   "what": "The kept arm's checkpoint."
+  }
+ ],
+ "params": [],
+ "rules": [],
+ "reads": {
+  "parts": [
+   "validation"
+  ]
+ },
+ "job": {
+  "class": "cpu",
+  "hours": 1,
+  "with_upstream": false,
+  "array": false,
+  "cpus": 1,
+  "memory_gb": 8
+ },
+ "deterministic": "exact",
+ "seed_param": "",
+ "nondeterminism": "",
+ "generic": null,
+ "resolve": null,
+ "needs": [
+  "python"
+ ],
+ "code": "planned",
+ "implemented_by": [],
+ "today": {
+  "status": "planned",
+  "route": "",
+  "word": "",
+  "flow": "",
+  "note": "tools/block_sweep.py ledger ranks recorded runs on validation by hand"
+ },
+ "experiment": null,
+ "card": null
+}

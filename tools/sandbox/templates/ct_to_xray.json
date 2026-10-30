@@ -1,0 +1,228 @@
+{
+ "sandbox": 1,
+ "id": "ct_to_xray",
+ "name": "From CT to X-ray",
+ "about": "A plan to train the level classifier on synthetic X-rays from CT: the gold tier 3 CTs labelled by SPINEPS's existing masks, rendered into DRRs, edited toward a real X-ray's look, split by person, cropped, augmented and trained; evaluate_heldout reads the DRRs' test persons and the catalog's real test frames, and the latency step times the checkpoint. Each step runs today only inside a fixed plan (the DRR study renders TotalSegmentator v2.0.1 CTs, not gold tier 3), and boxes from projected masks are planned, so this route waits on the owner's word.",
+ "nodes": [
+  {
+   "id": "n1",
+   "block": "gold3_ct",
+   "version": 1,
+   "params": {}
+  },
+  {
+   "id": "n2",
+   "block": "segment_ct",
+   "version": 1,
+   "params": {}
+  },
+  {
+   "id": "n3",
+   "block": "render_drr",
+   "version": 1,
+   "params": {}
+  },
+  {
+   "id": "n4",
+   "block": "realism_edit",
+   "version": 1,
+   "params": {}
+  },
+  {
+   "id": "n5",
+   "block": "split_person",
+   "version": 1,
+   "params": {}
+  },
+  {
+   "id": "n6",
+   "block": "crop_boxes",
+   "version": 1,
+   "params": {}
+  },
+  {
+   "id": "n7",
+   "block": "augment",
+   "version": 1,
+   "params": {}
+  },
+  {
+   "id": "n8",
+   "block": "classifier",
+   "version": 1,
+   "params": {}
+  },
+  {
+   "id": "n9",
+   "block": "train_classifier",
+   "version": 1,
+   "params": {}
+  },
+  {
+   "id": "n10",
+   "block": "evaluate_heldout",
+   "version": 1,
+   "params": {}
+  },
+  {
+   "id": "n11",
+   "block": "catalog_v1",
+   "version": 1,
+   "params": {}
+  },
+  {
+   "id": "n12",
+   "block": "latency_onnx",
+   "version": 1,
+   "params": {}
+  },
+  {
+   "id": "n13",
+   "block": "report_claim",
+   "version": 1,
+   "params": {}
+  }
+ ],
+ "edges": [
+  {
+   "from": "n1",
+   "out": "data",
+   "to": "n2",
+   "in": "volumes"
+  },
+  {
+   "from": "n2",
+   "out": "data",
+   "to": "n3",
+   "in": "volumes"
+  },
+  {
+   "from": "n3",
+   "out": "data",
+   "to": "n4",
+   "in": "data"
+  },
+  {
+   "from": "n4",
+   "out": "data",
+   "to": "n5",
+   "in": "data"
+  },
+  {
+   "from": "n5",
+   "out": "data",
+   "to": "n6",
+   "in": "frames"
+  },
+  {
+   "from": "n6",
+   "out": "crops",
+   "to": "n7",
+   "in": "data"
+  },
+  {
+   "from": "n7",
+   "out": "data",
+   "to": "n8",
+   "in": "data"
+  },
+  {
+   "from": "n8",
+   "out": "model",
+   "to": "n9",
+   "in": "model"
+  },
+  {
+   "from": "n9",
+   "out": "checkpoint",
+   "to": "n10",
+   "in": "checkpoint"
+  },
+  {
+   "from": "n11",
+   "out": "data",
+   "to": "n10",
+   "in": "data"
+  },
+  {
+   "from": "n9",
+   "out": "checkpoint",
+   "to": "n12",
+   "in": "checkpoint"
+  },
+  {
+   "from": "n10",
+   "out": "metrics",
+   "to": "n13",
+   "in": "results"
+  },
+  {
+   "from": "n12",
+   "out": "metrics",
+   "to": "n13",
+   "in": "more"
+  }
+ ],
+ "layout": {
+  "n1": [
+   40,
+   40
+  ],
+  "n2": [
+   340,
+   40
+  ],
+  "n3": [
+   640,
+   40
+  ],
+  "n4": [
+   940,
+   40
+  ],
+  "n5": [
+   1240,
+   40
+  ],
+  "n6": [
+   1540,
+   40
+  ],
+  "n7": [
+   1840,
+   40
+  ],
+  "n8": [
+   2140,
+   40
+  ],
+  "n9": [
+   2440,
+   40
+  ],
+  "n10": [
+   2740,
+   40
+  ],
+  "n11": [
+   2440,
+   190
+  ],
+  "n12": [
+   2740,
+   190
+  ],
+  "n13": [
+   3040,
+   40
+  ]
+ },
+ "expect": {
+  "route": "pipeline",
+  "ready": false,
+  "requests": 0,
+  "gpu_submissions": 5,
+  "cpu_submissions": 0,
+  "gpu_tasks": 5
+ }
+}

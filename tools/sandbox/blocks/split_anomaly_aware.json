@@ -1,0 +1,83 @@
+{
+ "block": 1,
+ "id": "split_anomaly_aware",
+ "version": 1,
+ "title": "Split with the anomaly holdout",
+ "stage": "split",
+ "summary": "A person split that holds anomaly persons out by frozen lists and draws validation per variant.",
+ "does": "The anomaly route's lists, applied as a split (planned). The holdout (data/splits/anomaly-holdout.json, frozen 2026-10-25) names 43 persons, T13, L6, four-lumbar and normal counts, that no checkpoint of the route's lineage may see, and deals the clean read VerSe L6 persons into 4 folds, each tested once. The validation draw (data/splits/anomaly-validation.json, frozen 2026-10-26: T13 1, L6 6, four-lumbar 1, both L6 and T13 1, normal 12) picks the fine-tune's checkpoint and is not drawn yet. No block applies these lists to a pipeline's data today.",
+ "glyph": "splitFamilies",
+ "inputs": [
+  {
+   "name": "data",
+   "accepts": {
+    "kind": [
+     "data"
+    ],
+    "parts": "unsplit"
+   },
+   "optional": false,
+   "what": "Data with a person key and each person's variant, not split yet."
+  }
+ ],
+ "outputs": [
+  {
+   "name": "data",
+   "from": "data",
+   "ops": [
+    [
+     "parts",
+     [
+      "train",
+      "validation",
+      "test"
+     ]
+    ]
+   ],
+   "what": "The same data with the holdout as test and a validation drawn per variant."
+  }
+ ],
+ "params": [],
+ "rules": [],
+ "reads": {
+  "parts": []
+ },
+ "job": {
+  "class": "none",
+  "hours": 0,
+  "with_upstream": false,
+  "array": false,
+  "cpus": 0,
+  "memory_gb": 0
+ },
+ "deterministic": "exact",
+ "seed_param": "",
+ "nondeterminism": "",
+ "generic": {
+  "rank": [
+   0,
+   1,
+   2,
+   3
+  ],
+  "time": "any",
+  "channels": "any",
+  "sizes": "any",
+  "why": ""
+ },
+ "resolve": null,
+ "needs": [
+  "python"
+ ],
+ "code": "planned",
+ "implemented_by": [],
+ "today": {
+  "status": "planned",
+  "route": "",
+  "word": "",
+  "flow": "",
+  "note": "the lists serve the SPINEPS to FleXray anomaly route (docs/research/spineps-anomaly-route.md)"
+ },
+ "experiment": null,
+ "card": null
+}

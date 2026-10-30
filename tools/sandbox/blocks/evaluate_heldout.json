@@ -1,0 +1,106 @@
+{
+ "block": 1,
+ "id": "evaluate_heldout",
+ "version": 1,
+ "title": "Evaluate on held-out test",
+ "stage": "evaluate",
+ "summary": "Reads the test part once: accuracy with Wilson intervals, and the witness frames at every epoch.",
+ "does": "tools/evaluate.py over the run: the test part read once, each number a result row with its Wilson interval and stamp, and the witness frames drawn over every kept epoch. A second data input adds another held-out set, such as the catalog's real test frames beside a synthetic run. On the experiment route it runs in the training job; in the v1 flow its own job gets a quarter of the training hours, at least 0.25 (tools/flow.py), so 1 hour at the default 4.",
+ "glyph": "evaluate",
+ "inputs": [
+  {
+   "name": "checkpoint",
+   "accepts": {
+    "kind": [
+     "checkpoint"
+    ],
+    "trained": true
+   },
+   "optional": false,
+   "what": "The trained checkpoint."
+  },
+  {
+   "name": "data",
+   "accepts": {
+    "kind": [
+     "data"
+    ],
+    "rank": [
+     2
+    ],
+    "time": "no",
+    "needs_parts": [
+     "test"
+    ]
+   },
+   "optional": true,
+   "what": "Another held-out set with a test part."
+  }
+ ],
+ "outputs": [
+  {
+   "name": "metrics",
+   "from": "checkpoint",
+   "ops": [
+    [
+     "kind",
+     "metrics"
+    ],
+    [
+     "axes",
+     []
+    ]
+   ],
+   "what": "Test scores with intervals, and the witness frames."
+  }
+ ],
+ "params": [],
+ "rules": [],
+ "reads": {
+  "parts": [
+   "test"
+  ]
+ },
+ "job": {
+  "class": "gpu",
+  "hours": 1,
+  "with_upstream": true,
+  "array": false,
+  "cpus": 8,
+  "memory_gb": 64
+ },
+ "deterministic": "declared",
+ "seed_param": "",
+ "nondeterminism": "A GPU forward pass may differ in its last bits between cards, so a borderline crop's guess can move; the scores are counted again, never assumed.",
+ "generic": {
+  "rank": [
+   2
+  ],
+  "time": "no",
+  "channels": "any",
+  "sizes": "any",
+  "why": "It reads 2-D crops of a catalog's test part (tools/evaluate.py); a volume or a clip would need a reader of its own."
+ },
+ "resolve": null,
+ "needs": [
+  "python",
+  "numpy",
+  "torch",
+  "torchvision"
+ ],
+ "code": "existing",
+ "implemented_by": [
+  "tools/evaluate.py",
+  "tools/witness.py",
+  "tools/flow.py"
+ ],
+ "today": {
+  "status": "live",
+  "route": "experiment",
+  "word": "",
+  "flow": "",
+  "note": "in the request's GPU job"
+ },
+ "experiment": {},
+ "card": null
+}

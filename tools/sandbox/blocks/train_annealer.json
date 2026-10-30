@@ -1,0 +1,208 @@
+{
+ "block": 1,
+ "id": "train_annealer",
+ "version": 1,
+ "title": "Train the annealer",
+ "stage": "train",
+ "summary": "One auto-anatomist trial: trains while the mask input is annealed away, one array task a trial.",
+ "does": "One trial of the auto-anatomist screen (#483): the anneal schedule (lambda-then-w, joint, w-first, or fixed, the null), the objective (the oracle's landmarks, or the mask channels themselves), the naming term, the calibration of the spreads, the epochs, whole phantoms a batch and the seed. Each trial is one task of a GPU array (grid/autoanatomist.sbatch: 8 CPUs, 64 GB, 12 h, on galhp's L40S cards). A plan's epochs are at most 1000 and its batch at most 64; objective=mask needs naming off and calibrate none.",
+ "glyph": "train",
+ "inputs": [
+  {
+   "name": "model",
+   "accepts": {
+    "kind": [
+     "model"
+    ],
+    "rank": [
+     3
+    ],
+    "needs_parts": [
+     "train",
+     "validation"
+    ]
+   },
+   "optional": false,
+   "what": "The auto-anatomist network, built for split CT crops."
+  }
+ ],
+ "outputs": [
+  {
+   "name": "checkpoint",
+   "from": "model",
+   "ops": [
+    [
+     "kind",
+     "checkpoint"
+    ],
+    [
+     "set",
+     "trained",
+     true
+    ]
+   ],
+   "what": "The trial's weights and its curve."
+  }
+ ],
+ "params": [
+  {
+   "name": "schedule",
+   "kind": "choice",
+   "choices": [
+    "lambda-then-w",
+    "joint",
+    "w-first",
+    "fixed"
+   ],
+   "default": "lambda-then-w",
+   "vary": true,
+   "what": "how lambda's and w's ramps are placed; fixed is the null"
+  },
+  {
+   "name": "objective",
+   "kind": "choice",
+   "choices": [
+    "landmarks",
+    "mask"
+   ],
+   "default": "landmarks",
+   "vary": true,
+   "what": "what the decoder is trained to give"
+  },
+  {
+   "name": "naming",
+   "kind": "choice",
+   "choices": [
+    "on",
+    "off"
+   ],
+   "default": "on",
+   "vary": true,
+   "what": "whether the naming term is in the loss"
+  },
+  {
+   "name": "calibrate",
+   "kind": "choice",
+   "choices": [
+    "none",
+    "scale",
+    "quantile"
+   ],
+   "default": "none",
+   "vary": true,
+   "what": "the calibration of the spreads"
+  },
+  {
+   "name": "epochs",
+   "kind": "int",
+   "low": 1,
+   "high": 1000,
+   "default": 50,
+   "vary": true,
+   "what": "epochs a trial; a plan takes at most 1000"
+  },
+  {
+   "name": "batch",
+   "kind": "int",
+   "low": 1,
+   "high": 64,
+   "default": 2,
+   "vary": false,
+   "what": "whole phantoms a batch; a plan takes at most 64"
+  },
+  {
+   "name": "seed",
+   "kind": "int",
+   "low": 0,
+   "high": 999999999,
+   "default": 1,
+   "vary": true,
+   "what": "the network's initialisation and the session's draws"
+  }
+ ],
+ "rules": [
+  {
+   "when": {
+    "objective": {
+     "in": [
+      "mask"
+     ]
+    }
+   },
+   "need": {
+    "naming": {
+     "in": [
+      "off"
+     ]
+    }
+   },
+   "say": "objective=mask needs naming=off"
+  },
+  {
+   "when": {
+    "objective": {
+     "in": [
+      "mask"
+     ]
+    }
+   },
+   "need": {
+    "calibrate": {
+     "in": [
+      "none"
+     ]
+    }
+   },
+   "say": "objective=mask needs calibrate=none"
+  }
+ ],
+ "reads": {
+  "parts": [
+   "train",
+   "validation"
+  ]
+ },
+ "job": {
+  "class": "gpu",
+  "hours": 12,
+  "with_upstream": false,
+  "array": true,
+  "cpus": 8,
+  "memory_gb": 64
+ },
+ "deterministic": "seeded",
+ "seed_param": "seed",
+ "nondeterminism": "JAX on a GPU may differ in its last bits between runs; each trial records its words and their digest.",
+ "generic": {
+  "rank": [
+   3
+  ],
+  "time": "no",
+  "channels": "any",
+  "sizes": "any",
+  "why": "It trains on 3-D CT crops (#483); 2-D frames would need a 2-D network and crops of their own."
+ },
+ "resolve": null,
+ "needs": [
+  "python",
+  "numpy",
+  "jax",
+  "metaflow"
+ ],
+ "code": "existing",
+ "implemented_by": [
+  "flows/autoanatomist.py",
+  "grid/autoanatomist.sbatch",
+  "grid/autoanatomist/autoanatomist/session.py",
+  "grid/autoanatomist/autoanatomist/train.py"
+ ],
+ "today": {
+  "status": "flow",
+  "route": "",
+  "word": "",
+  "flow": "AutoanatomistFlow",
+  "note": "Merged with #483: the gate word `autoanatomist <plan>` sends one plan under grid/screens/ as a GPU array of trials and a CPU join, each part AutoanatomistFlow through flows/launch.py, under docs/research/autoanatomist-screen/PREREG.md."
+ },
+ "experiment": null,
+ "card": null
+}

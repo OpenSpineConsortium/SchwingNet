@@ -1,0 +1,119 @@
+<main class="sb">
+  <header class="sb-head">
+    <div class="eyebrow">SchwingNet / pipeline sandbox / a plan: nothing runs from this page</div>
+    <h1>Pipeline sandbox</h1>
+    <p class="lede">Build a deep learning pipeline from blocks: rest the pointer to the right of a block and the sandbox grows the block that likely comes next, pipes the output into it, and works out the types, the grid jobs and the request as you go. A run goes only through a request the owner approves with a job count; this page sends nothing to the grid.</p>
+    <div class="legend" aria-label="Job tags">
+      <span><span class="job cpu">CPU job</span></span>
+      <span><span class="job gpu">GPU job</span></span>
+      <span><span class="job none">no job of its own</span></span>
+      <span><span class="job phase">runs inside another node's job</span></span>
+      <span><span class="job file">data, not a step</span></span>
+    </div>
+  </header>
+
+  <div class="toolbar" role="toolbar" aria-label="Pipeline">
+    <button type="button" class="tb" id="sb-new">New</button>
+    <label class="tbsel"><span class="sr">Load a template</span><select id="sb-templates"><option value="">Templates</option></select></label>
+    <button type="button" class="tb" id="sb-layout">Auto-layout</button>
+    <button type="button" class="tb" id="sb-undo" aria-keyshortcuts="Control+Z Meta+Z">Undo</button>
+    <button type="button" class="tb" id="sb-redo" aria-keyshortcuts="Control+Shift+Z Meta+Shift+Z">Redo</button>
+    <button type="button" class="tb" id="sb-import">Import a block</button>
+    <button type="button" class="tb" id="sb-copy">Copy spec</button>
+    <a class="tb primary" id="sb-request" target="_blank" rel="noopener">Request this run</a>
+    <button type="button" class="tb primary" id="sb-requests" hidden>Request these runs</button>
+  </div>
+
+  <div class="layout">
+    <div class="boardcol">
+      <section class="palette" aria-label="Blocks to add">
+        <div class="pal-head">
+          <div class="tabs" id="sb-tabs" role="tablist" aria-label="Stages"></div>
+          <input type="search" class="search" id="sb-search" placeholder="Search blocks" aria-label="Search the blocks by title, id or summary" autocomplete="off" spellcheck="false">
+        </div>
+        <div class="bchips" id="sb-chips" role="tabpanel" aria-label="Blocks: click to add, or drag onto the board"></div>
+      </section>
+
+      <div class="board" id="sb-board" role="region" aria-label="The pipeline board" aria-describedby="sb-hint">
+        <div class="stage" id="sb-stage">
+          <svg class="edges" id="sb-edges" width="1200" height="600" aria-hidden="true">
+            <defs>
+              <marker id="sb-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="head" d="M0 0 L10 5 L0 10 z"/></marker>
+              <marker id="sb-arrow-bad" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="head bad" d="M0 0 L10 5 L0 10 z"/></marker>
+              <marker id="sb-arrow-live" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="head live" d="M0 0 L10 5 L0 10 z"/></marker>
+            </defs>
+            <g id="sb-edge-layer"></g>
+            <path id="sb-preview" class="preview" d="M0 0" marker-end="url(#sb-arrow-live)" visibility="hidden"/>
+            <path id="sb-wire" class="wire" d="M0 0" marker-end="url(#sb-arrow-live)" visibility="hidden"/>
+          </svg>
+          <div class="empty" id="sb-empty" hidden>Pick a source from the palette, then hold the pointer to the right of it.</div>
+          <div class="ghost" id="sb-ghost" hidden>
+            <div class="gbody">
+              <span class="glyph" id="sb-ghost-glyph"></span>
+              <span class="ntext">
+                <span class="step" id="sb-ghost-stage"></span>
+                <span class="ntitle" id="sb-ghost-title"></span>
+                <span class="nshort" id="sb-ghost-why"></span>
+              </span>
+            </div>
+            <svg class="ring" viewBox="0 0 36 36" aria-hidden="true"><circle class="ring-back" cx="18" cy="18" r="14"/><circle class="ring-fill" id="sb-ring" cx="18" cy="18" r="14"/></svg>
+          </div>
+          <div class="strip" id="sb-strip" hidden aria-label="Suggestions for the next block"></div>
+        </div>
+      </div>
+
+      <div class="status" id="sb-status" aria-live="polite"></div>
+      <p class="hint" id="sb-hint">Hold the pointer to the right of a block: a ghost of the likeliest next block appears and is added, piped from the block, when its ring fills. The wheel or the arrow keys pick another suggestion, 1 to 5 add one at once, Escape cancels; a click or a tap there adds the first at once. With a card focused, Shift and the right arrow do the same. Drag a card to move it, drag from a right-hand dot to a left-hand dot to connect two blocks.</p>
+      <details class="gloss">
+        <summary>How to read this</summary>
+        <dl>
+          <dt>block</dt><dd>one step of a pipeline, described by a manifest under tools/sandbox/blocks/: what it takes, what it gives, its params, its job and what runs it today.</dd>
+          <dt>port</dt><dd>where a type enters a block (the dots on its left) or leaves it (the dots on its right); an edge pipes one output into one input.</dd>
+          <dt>type</dt><dd>what passes along an edge: data, a model, a checkpoint, metrics or a report, with its axes and sizes, its dtype, its targets, its parts, whether the person key rides along, its licence and the sources it came from. A model keeps the type of the data it was built for, which is how it adapts to that data.</dd>
+          <dt>fan</dt><dd>how many runs a block makes: the product of the values its own params and the params upstream vary over; a select block joins the arms back into one.</dd>
+          <dt>route</dt><dd>the experiment route, live today: one prefilled issue per run, which the experiment workflow answers with the gate word; or the pipeline route, a plan recorded as an issue until the owner's word builds the route that runs it.</dd>
+          <dt>job</dt><dd>what the grid would run for a block: CPU or GPU, how many submissions and tasks, and the hours each task asks for. No job is sent from this page.</dd>
+          <dt>digest</dt><dd>the SHA-256 of the pipeline's canonical JSON; the same pipeline gives the same digest here and in tools/pipeline_sandbox.py, so a request names exactly what was built.</dd>
+        </dl>
+      </details>
+
+      <section class="import" id="sb-import-dlg" hidden aria-labelledby="sb-import-title">
+        <div class="dhead">
+          <div>
+            <div class="eyebrow">your own block, checked in this page</div>
+            <h2 id="sb-import-title">Import a block</h2>
+          </div>
+          <button type="button" class="tb" id="sb-import-close">Close</button>
+        </div>
+        <div class="imp-grid">
+          <div class="dsec">
+            <label class="small" for="sb-import-text">The block's manifest (block.json): paste it, or choose the file.</label>
+            <textarea class="imp-text" id="sb-import-text" spellcheck="false" autocomplete="off"></textarea>
+            <div class="row">
+              <input type="file" id="sb-import-file" accept=".json,application/json">
+            </div>
+            <div class="row">
+              <button type="button" class="tb" id="sb-import-check">Check</button>
+              <button type="button" class="tb primary" id="sb-import-add" disabled>Add to the palette</button>
+            </div>
+            <div id="sb-import-result" aria-live="polite"></div>
+            <div class="dsec">
+              <div class="eyebrow">How to make it runnable</div>
+              <p class="small" id="sb-import-how"></p>
+              <div class="row"><button type="button" class="tb" id="sb-import-copyhow">Copy</button><span class="small" id="sb-import-copied"></span></div>
+            </div>
+            <div class="dsec" id="sb-import-mine"></div>
+          </div>
+          <div class="dsec">
+            <div class="eyebrow">What a block must meet</div>
+            <ul class="reqlist" id="sb-import-reqs"></ul>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <aside class="detail" id="sb-detail" aria-live="polite" aria-label="The selected block, or the whole pipeline"></aside>
+  </div>
+
+  <footer>Confidential with the repository. Nothing here is a result, and no job is sent from this page.</footer>
+</main>

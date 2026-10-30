@@ -1,0 +1,124 @@
+{
+ "block": 1,
+ "id": "catalog_v1",
+ "version": 1,
+ "title": "The frame catalog (version 1)",
+ "stage": "source",
+ "summary": "The versioned frame catalog the experiment route trains on: 2-D grey frames, 27 levels, split by person.",
+ "does": "A read-only, versioned SQLite store of every banked frame with its level boxes, built from content-hashed shards and data/registry/ by the catalog step (CatalogFlow); unchanged bytes make no new version. Every frame keeps its person key, and the split puts each person on one side only: the frozen test persons, a salted hash share of 0.1 for validation, the rest training. The images stay on the grid; the experiment route trains on the version grid/v1-version.sh chooses. The levels are C1 to C7, T1 to T13, L1 to L6 and the sacrum, 27 in all (src/schwingnet/catalog.py LEVELS).",
+ "glyph": "catalog",
+ "inputs": [],
+ "outputs": [
+  {
+   "name": "data",
+   "from": null,
+   "ops": [
+    [
+     "axes",
+     [
+      "N",
+      "C",
+      "H",
+      "W"
+     ]
+    ],
+    [
+     "size",
+     "C",
+     1
+    ],
+    [
+     "set",
+     "dtype",
+     "uint8"
+    ],
+    [
+     "set",
+     "targets",
+     "level"
+    ],
+    [
+     "set",
+     "classes",
+     27
+    ],
+    [
+     "parts",
+     [
+      "train",
+      "validation",
+      "test"
+     ]
+    ],
+    [
+     "set",
+     "persons",
+     true
+    ],
+    [
+     "set",
+     "modality",
+     "mixed"
+    ]
+   ],
+   "what": "Grey frames with level boxes, N x 1 x H x W, split into train, validation and test by person."
+  }
+ ],
+ "params": [],
+ "rules": [],
+ "reads": {
+  "parts": []
+ },
+ "job": {
+  "class": "none",
+  "hours": 0,
+  "with_upstream": false,
+  "array": false,
+  "cpus": 0,
+  "memory_gb": 0
+ },
+ "deterministic": "exact",
+ "seed_param": "",
+ "nondeterminism": "",
+ "generic": null,
+ "resolve": null,
+ "needs": [
+  "python",
+  "metaflow"
+ ],
+ "code": "existing",
+ "implemented_by": [
+  "tools/catalog.py",
+  "tools/ingest.py",
+  "flows/catalog.py",
+  "src/schwingnet/catalog.py",
+  "grid/v1-version.sh"
+ ],
+ "today": {
+  "status": "live",
+  "route": "experiment",
+  "word": "",
+  "flow": "",
+  "note": "the experiment route reads the catalog version grid/v1-version.sh chooses"
+ },
+ "experiment": {},
+ "card": {
+  "origin": "The bank and catalog steps: tools/ingest.py turns each bank into a content-hashed shard and CatalogFlow builds the versioned store from the shards and data/registry/.",
+  "where": "On the grid only, as versions/catalog-NNNNNN-<hash>.sqlite under the data root; images never enter the repository.",
+  "count": "Not recorded in the repository: the grid's current version holds it. The dry run of docs/research/v1-demo/README.md had 1,633 synthetic frames.",
+  "persons": "Every frame carries its person key, and every count and split is by person (src/schwingnet/catalog.py).",
+  "split": "test: the frozen persons of data/splits/test-persons.json; validation: a person whose salted hash falls in the share 0.1 of data/splits/rule.json; training: the rest; the split check holds every version to this rule.",
+  "held_out": "C-ArmLSpine case42, case121 and case136 (the L6 stratum) and case134 and case39 (the demo sweeps, never trained on) are test persons.",
+  "licence": "Uncut: the catalog holds sources of every licence class of data/licences.json; a recipe of data/recipes/ cuts it before training.",
+  "from": [
+   "docs/memory/the-data-catalog.md",
+   "docs/research/data-catalog.md",
+   "src/schwingnet/catalog.py",
+   "data/splits/rule.json",
+   "data/splits/test-persons.json",
+   "data/licences.json",
+   "grid/v1-version.sh",
+   "docs/research/v1-demo/README.md"
+  ]
+ }
+}

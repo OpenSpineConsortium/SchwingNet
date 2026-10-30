@@ -1,0 +1,102 @@
+{
+ "block": 1,
+ "id": "recipe_cut",
+ "version": 1,
+ "title": "Cut by a licence recipe",
+ "stage": "prepare",
+ "summary": "Keeps only the sources a licence recipe of data/recipes/ admits, so the data fits the network's use.",
+ "does": "Applies one recipe of data/recipes/: commercial admits open sources; commercial-share-alike adds share-alike ones; non-commercial adds non-commercial ones; research-internal adds agreement and no-derivatives ones. A source whose class (data/licences.json) the recipe does not admit is dropped, and the type's licence becomes the recipe's. The flow refuses a run that trains on a source its recipe does not take (tools/flow.py --recipe), and every flow run writes the PROVENANCE.json of its data.",
+ "glyph": "recipe",
+ "inputs": [
+  {
+   "name": "data",
+   "accepts": {
+    "kind": [
+     "data"
+    ]
+   },
+   "optional": false,
+   "what": "Any data whose sources carry licence classes."
+  }
+ ],
+ "outputs": [
+  {
+   "name": "data",
+   "from": "data",
+   "ops": [
+    [
+     "cut",
+     "@param.recipe"
+    ]
+   ],
+   "what": "The same data with only the admitted sources."
+  }
+ ],
+ "params": [
+  {
+   "name": "recipe",
+   "kind": "choice",
+   "choices": [
+    "commercial",
+    "commercial-share-alike",
+    "non-commercial",
+    "research-internal"
+   ],
+   "default": "research-internal",
+   "vary": true,
+   "what": "the recipe of data/recipes/, from the most to the least restricted use it serves"
+  }
+ ],
+ "rules": [],
+ "reads": {
+  "parts": []
+ },
+ "job": {
+  "class": "none",
+  "hours": 0,
+  "with_upstream": false,
+  "array": false,
+  "cpus": 0,
+  "memory_gb": 0
+ },
+ "deterministic": "exact",
+ "seed_param": "",
+ "nondeterminism": "",
+ "generic": {
+  "rank": [
+   0,
+   1,
+   2,
+   3
+  ],
+  "time": "any",
+  "channels": "any",
+  "sizes": "any",
+  "why": ""
+ },
+ "resolve": null,
+ "needs": [
+  "python"
+ ],
+ "code": "existing",
+ "implemented_by": [
+  "tools/licences.py",
+  "tools/flow.py",
+  "data/licences.json",
+  "data/recipes/commercial.json",
+  "data/recipes/commercial-share-alike.json",
+  "data/recipes/non-commercial.json",
+  "data/recipes/research-internal.json"
+ ],
+ "today": {
+  "status": "live",
+  "route": "experiment",
+  "word": "",
+  "flow": "",
+  "note": "the request's recipe line"
+ },
+ "experiment": {
+  "recipe": "@param.recipe"
+ },
+ "card": null
+}

@@ -1,0 +1,103 @@
+{
+ "block": 1,
+ "id": "segment_ct",
+ "version": 1,
+ "title": "Segment the CTs",
+ "stage": "prepare",
+ "summary": "Labels each CT's vertebrae with a segmenter's masks: SPINEPS's existing masks or MOOSE's.",
+ "does": "The segmenter block (src/schwingnet/segmenters.py): spineps reads the census's existing SPINEPS masks, relabelled from the VerSe alphabet; moose runs moosez's vertebrae model, as the drr_seg flow does for the DRR study's CTs (grid/drr-seg.sbatch: 4 CPUs, 50 GB, 12 h). TotalSegmentator is no choice here: the owner's rule keeps it off the renders' labels, and it runs only in the totalseg flow, which draws C2 and the sacrum to complete the gold tier 3 masks. The sandbox counts one GPU job either way.",
+ "glyph": "segment",
+ "inputs": [
+  {
+   "name": "volumes",
+   "accepts": {
+    "kind": [
+     "data"
+    ],
+    "rank": [
+     3
+    ],
+    "time": "no",
+    "modality": [
+     "ct"
+    ]
+   },
+   "optional": false,
+   "what": "CT volumes."
+  }
+ ],
+ "outputs": [
+  {
+   "name": "data",
+   "from": "volumes",
+   "ops": [
+    [
+     "set",
+     "targets",
+     "mask"
+    ]
+   ],
+   "what": "The same volumes with the segmenter's vertebra masks."
+  }
+ ],
+ "params": [
+  {
+   "name": "segmenter",
+   "kind": "choice",
+   "choices": [
+    "spineps",
+    "moose"
+   ],
+   "default": "spineps",
+   "vary": true,
+   "what": "spineps: the existing masks, no run; moose: moosez's vertebrae model on a GPU"
+  }
+ ],
+ "rules": [],
+ "reads": {
+  "parts": []
+ },
+ "job": {
+  "class": "gpu",
+  "hours": 12,
+  "with_upstream": false,
+  "array": false,
+  "cpus": 4,
+  "memory_gb": 50
+ },
+ "deterministic": "declared",
+ "seed_param": "",
+ "nondeterminism": "A segmenter on a GPU may differ in its last bits between cards and library versions; later steps read the masks a run wrote, not a fresh run.",
+ "generic": {
+  "rank": [
+   3
+  ],
+  "time": "no",
+  "channels": "any",
+  "sizes": "any",
+  "why": "Segmenters read CT volumes (src/schwingnet/segmenters.py, tools/flexray_render.py segment); a 2-D frame has no volume to segment."
+ },
+ "resolve": null,
+ "needs": [
+  "python",
+  "numpy",
+  "nibabel",
+  "torch"
+ ],
+ "code": "existing",
+ "implemented_by": [
+  "src/schwingnet/segmenters.py",
+  "tools/flexray_render.py",
+  "flows/drr_seg.py",
+  "grid/drr-seg.sbatch"
+ ],
+ "today": {
+  "status": "flow",
+  "route": "",
+  "word": "",
+  "flow": "DrrSegFlow",
+  "note": "the word bench flexray_drr_seg runs it for the DRR study's CTs"
+ },
+ "experiment": null,
+ "card": null
+}

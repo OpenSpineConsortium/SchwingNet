@@ -1,0 +1,25 @@
+const {chromium} = require("playwright");
+(async function () {
+  const browser = await chromium.launch();
+  const page = await (await browser.newContext({viewport: {width: 1300, height: 900}})).newPage();
+  const errors = [];
+  page.on("pageerror", function (e) { errors.push(e.message); });
+  page.on("console", function (m) { if (m.type() === "error") errors.push(m.text()); });
+  await page.goto("file:///home/user/SchwingNet/docs/sandbox/pipeline-sandbox.html#latent_prior");
+  await page.waitForTimeout(400);
+  const g = await page.evaluate(function () { return {n: window.sandbox.graph().nodes.length, d: window.sandbox.digest(), store: (function () { try { localStorage.setItem("x", "1"); return localStorage.getItem("x"); } catch (e) { return "throws: " + e.message; } })()}; });
+  console.log(JSON.stringify(g));
+  await page.click("#sb-new");
+  await page.fill("#sb-search", "Gold tier 3 CTs");
+  await page.click('.bchip:has-text("Gold tier 3 CTs")');
+  await page.fill("#sb-search", "");
+  await page.evaluate(function () { if (document.activeElement) document.activeElement.blur(); });
+  const r = await page.evaluate(function () { const c = document.querySelector('.ncard[data-id="n1"]'); const b = c.getBoundingClientRect(); return {right: b.right, y: b.top + b.height / 2}; });
+  await page.mouse.move(r.right + 80, r.y + 40, {steps: 3});
+  await page.mouse.move(r.right + 120, r.y, {steps: 3});
+  await page.waitForTimeout(700);
+  const after = await page.evaluate(function () { const s = window.sandbox.graph(); return s.nodes.map(function (n) { return n.block; }).join(" > ") + " | edges " + JSON.stringify(s.edges); });
+  console.log(after);
+  console.log((errors.length ? "FAIL" : "PASS") + " file:// no errors " + JSON.stringify(errors));
+  await browser.close();
+})();
