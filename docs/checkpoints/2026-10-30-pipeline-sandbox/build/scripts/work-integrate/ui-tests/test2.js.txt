@@ -1,0 +1,214 @@
+// More of UI.md under real pointer events: connecting to a refusing input, replacing an input, a drop
+// on the empty board, chips dragged onto the board, vary and the fan, Copy spec, Auto-layout, New's
+// hint, a block.json from a file, and the pipeline link cut at 7500 characters.
+const {chromium} = require("playwright");
+const {serve} = require("./serve.js");
+const fs = require("fs");
+const path = require("path");
+const PAGE = process.env.PAGE || "page.html";
+const sleep = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); };
+const results = [];
+function check(name, ok, seen) {
+  results.push(!!ok);
+  console.log((ok ? "PASS " : "FAIL ") + name + (seen !== undefined ? "  " + JSON.stringify(seen) : ""));
+}
+async function handle(page, id, cls, index) {
+  return page.evaluate(function (a) {
+    const h = document.querySelectorAll('.ncard[data-id="' + a.id + '"] .' + a.cls)[a.index || 0].getBoundingClientRect();
+    return {x: h.left + h.width / 2, y: h.top + h.height / 2};
+  }, {id: id, cls: cls, index: index});
+}
+async function addChip(page, title) {
+  await page.evaluate(function () { window.sandbox.select(null); });
+  await page.fill("#sb-search", title);
+  await page.click('.bchip:has-text("' + title + '")');
+  await page.fill("#sb-search", "");
+  await page.evaluate(function () { document.activeElement.blur(); });
+}
+async function drag(page, a, b) {
+  await page.mouse.move(a.x, a.y);
+  await page.mouse.down();
+  await page.mouse.move((a.x + b.x) / 2, (a.y + b.y) / 2, {steps: 5});
+  await page.mouse.move(b.x, b.y, {steps: 5});
+  await page.mouse.up();
+  await sleep(30);
+}
+(async function () {
+  const {server, url} = await serve(__dirname);
+  const browser = await chromium.launch();
+  const context = await browser.newContext({viewport: {width: 1400, height: 900}});
+  const page = await context.newPage();
+  const errors = [];
+  page.on("console", function (m) { if (m.type() === "error" || m.type() === "warning") errors.push(m.text()); });
+  page.on("pageerror", function (e) { errors.push(e.message); });
+  await page.goto(url + PAGE);
+  await sleep(250);
+
+  // New: the empty board's hint.
+  await page.click("#sb-new");
+  const hint = await page.evaluate(function () { const e = document.getElementById("sb-empty"); return {shown: !e.hidden && e.offsetParent !== null, text: e.textContent}; });
+  check("New shows the empty board's hint", hint.shown && /pick a source from the palette/i.test(hint.text), hint);
+
+  // Three cards down the first column.
+  await addChip(page, "The frame catalog (version 1)");
+  await addChip(page, "Train the classifier");
+  await addChip(page, "Normalise the input");
+  let g = await page.evaluate(function () { return window.sandbox.graph(); });
+  check("chips with nothing selected go to the first free spots", g.nodes.length === 3 && g.edges.length === 0, g.layout);
+
+  // A refusing input: the catalog's frames into the trainer's first input.
+  const out1 = await handle(page, "n1", "hout");
+  const in2 = await handle(page, "n2", "hin", 0);
+  await page.mouse.move(out1.x, out1.y);
+  await page.mouse.down();
+  await page.mouse.move(in2.x + 30, in2.y - 30, {steps: 5});
+  const dim = await page.evaluate(function () { const h = document.querySelector('.ncard[data-id="n2"] .hin'); return {no: h.classList.contains("no"), ok: h.classList.contains("ok")}; });
+  await page.mouse.move(in2.x, in2.y, {steps: 3});
+  await page.mouse.up();
+  await sleep(30);
+  g = await page.evaluate(function () { return window.sandbox.graph(); });
+  const bad = await page.evaluate(function () {
+    const probs = window.sandbox.problems().filter(function (p) { return p.node === "n2"; }).map(function (p) { return p.code; });
+    return {probs: probs, badEdge: document.querySelectorAll("#sb-edge-layer path.ep.bad").length};
+  });
+  check("a refusing input dims while connecting, and a drop on it still connects with its problem shown",
+    dim.no && !dim.ok && g.edges.length === 1 && g.edges[0].from === "n1" && g.edges[0].to === "n2" && bad.badEdge === 1 && bad.probs.length > 0, {dim: dim, edges: g.edges, bad: bad});
+
+  // Normalise the catalog, then the normalised frames replace the edge into the same input.
+  await drag(page, await handle(page, "n1", "hout"), await handle(page, "n3", "hin", 0));
+  await drag(page, await handle(page, "n3", "hout"), await handle(page, "n2", "hin", 0));
+  g = await page.evaluate(function () { return window.sandbox.graph(); });
+  const into2 = g.edges.filter(function (e) { return e.to === "n2"; });
+  check("an input already connected is replaced", into2.length === 1 && into2[0].from === "n3" && g.edges.length === 2, g.edges);
+
+  // A drop on the empty board cancels.
+  const o3 = await handle(page, "n3", "hout");
+  await drag(page, o3, {x: o3.x + 260, y: o3.y + 40});
+  g = await page.evaluate(function () { return window.sandbox.graph(); });
+  check("a connection dropped on the empty board is cancelled", g.edges.length === 2, g.edges.length);
+
+  // Picking an edge up from its input and dropping it on the board removes it.
+  await drag(page, await handle(page, "n2", "hin", 0), {x: o3.x + 300, y: o3.y + 120});
+  g = await page.evaluate(function () { return window.sandbox.graph(); });
+  check("an edge picked up from its input and dropped on the board is removed", g.edges.length === 1, g.edges);
+  await page.keyboard.press("Control+z");
+  await sleep(20);
+
+  // A chip dragged onto the empty board lands there; one dragged into a grow zone is piped from it.
+  const board = await page.evaluate(function () { const r = document.getElementById("sb-board").getBoundingClientRect(); return {x: r.left, y: r.top}; });
+  const chip = await page.evaluate(function () { const c = document.querySelector('.bchip[data-block="gold3_ct"]'); if (!c) return null; const r = c.getBoundingClientRect(); return {x: r.left + r.width / 2, y: r.top + r.height / 2}; });
+  if (chip) {
+    await page.mouse.move(chip.x, chip.y);
+    await page.mouse.down();
+    await page.mouse.move(board.x + 600, board.y + 300, {steps: 8});
+    await sleep(700);
+    const midGhost = await page.evaluate(function () { return !document.getElementById("sb-ghost").hidden; });
+    await page.mouse.move(board.x + 700, board.y + 100, {steps: 4});
+    await page.mouse.up();
+    await sleep(30);
+  }
+  g = await page.evaluate(function () { return window.sandbox.graph(); });
+  const placed = g.nodes.find(function (n) { return n.block === "gold3_ct"; });
+  check("a chip dragged onto the empty board lands where it is dropped", !!placed && g.layout[placed.id][0] >= 520 && g.layout[placed.id][0] <= 640, placed ? g.layout[placed.id] : null);
+  const r1 = await page.evaluate(function () { const e = document.querySelector('.ncard[data-id="n1"]').getBoundingClientRect(); return {x: e.right + 110, y: e.top + e.height / 2}; });
+  const chip2 = await page.evaluate(function () { document.querySelector('#sb-tabs .seg:nth-child(2)').click(); const c = document.querySelector('.bchip[data-block="crop_boxes"]'); const r = c.getBoundingClientRect(); return {x: r.left + r.width / 2, y: r.top + r.height / 2}; });
+  await page.mouse.move(chip2.x, chip2.y);
+  await page.mouse.down();
+  await page.mouse.move(r1.x, r1.y, {steps: 10});
+  await sleep(900);
+  await page.mouse.up();
+  await sleep(30);
+  g = await page.evaluate(function () { return window.sandbox.graph(); });
+  const crop = g.nodes.find(function (n) { return n.block === "crop_boxes"; });
+  const cropIn = crop ? g.edges.filter(function (e) { return e.to === crop.id; }) : [];
+  check("a chip dragged into a grow zone is piped from that card, and no ghost grows under the carried chip",
+    !!crop && cropIn.length === 1 && cropIn[0].from === "n1" && g.nodes.length === 5, {nodes: g.nodes.map(function (n) { return n.block; }), into: cropIn});
+
+  // Vary: the trainer's seed over two values gives a fan of two and two requests; the classifier's
+  // architecture over resnet18 and resnet34 leaves the experiment route, whose grid holds resnet18 alone.
+  await page.selectOption("#sb-templates", "experiment_v1");
+  await sleep(50);
+  await page.evaluate(function () { window.sandbox.select("n5"); });
+  await sleep(50);
+  await page.locator('.prm:has(.prm-name:text-is("architecture")) .vary').click();
+  await page.locator('.prm:has(.prm-name:text-is("architecture")) input[type=text]').fill("resnet18/resnet34");
+  await sleep(50);
+  const arch = await page.evaluate(function () {
+    const c = window.sandbox.compile();
+    return {route: c.route, why: document.querySelector("#sb-request").textContent, fan: document.querySelector('.ncard[data-id="n5"] .badge.fan').textContent};
+  });
+  check("vary over two architectures leaves the experiment route (only resnet18 is held for it)", arch.route === "pipeline" && arch.fan === "x2", arch);
+  await page.keyboard.press("Control+z");
+  await page.keyboard.press("Control+z");
+  await sleep(30);
+  await page.evaluate(function () { window.sandbox.select("n6"); });
+  await sleep(50);
+  await page.locator('.prm:has(.prm-name:text-is("seed")) .vary').click();
+  await page.locator('.prm:has(.prm-name:text-is("seed")) input[type=text]').fill("1/2");
+  await sleep(50);
+  const fan = await page.evaluate(function () {
+    const c = document.querySelector('.ncard[data-id="n6"]');
+    const b = c.querySelector(".badge.fan");
+    return {badge: b && !b.hidden ? b.textContent : null, deck: c.classList.contains("deck"), requests: window.sandbox.compile().requests.length,
+      button: document.getElementById("sb-requests").hidden ? document.getElementById("sb-request").textContent : document.getElementById("sb-requests").textContent};
+  });
+  check("vary over two values: the card shows x2 and the deck, the route asks two runs", fan.badge === "x2" && fan.deck && fan.requests === 2 && fan.button === "Request these 2 runs", fan);
+
+  // Copy spec: the clipboard, or the read-only text box when the clipboard is refused.
+  await page.click("#sb-copy");
+  await sleep(100);
+  const copied = await page.evaluate(function () {
+    const ta = document.querySelector("#sb-detail textarea.copybox");
+    return {box: !!ta, readOnly: ta ? ta.readOnly : null, starts: ta ? ta.value.slice(0, 10) : null, status: document.getElementById("sb-status").textContent.slice(-60)};
+  });
+  check("Copy spec copies, or shows the spec selected in a read-only box", (copied.box && copied.readOnly && copied.starts === '{"edges":[') || /Copied the canonical spec/.test(copied.status), copied);
+
+  // Auto-layout: columns by the longest path, rows in node order, on the 300 x 150 grid.
+  await page.evaluate(function () { window.sandbox.select(null); });
+  const n2box = await page.evaluate(function () { const e = document.querySelector('.ncard[data-id="n2"]').getBoundingClientRect(); return {x: e.left + 100, y: e.top + 50}; });
+  await drag(page, n2box, {x: n2box.x + 40, y: n2box.y + 300});
+  await page.click("#sb-layout");
+  g = await page.evaluate(function () { return window.sandbox.graph(); });
+  const cols = g.nodes.map(function (n) { return g.layout[n.id][0] + "," + g.layout[n.id][1]; });
+  check("Auto-layout puts the chain on one row, 300 px apart", cols.join(" ") === "40,40 340,40 640,40 940,40 1240,40 1540,40 1840,40 2140,40", cols);
+
+  // A block.json read from a file.
+  const base = JSON.parse(fs.readFileSync("/home/user/SchwingNet/tools/sandbox/blocks/augment.json", "utf8"));
+  const mine = Object.assign({}, base, {id: "my_augment", title: "My augmentation", implemented_by: ["tools/sandbox/blocks/my_augment.py"],
+    today: {status: "planned", route: "", word: "", flow: "", note: "waits for its pull request"}, experiment: {}});
+  const file = path.join(__dirname, "my_augment.json");
+  fs.writeFileSync(file, JSON.stringify(mine));
+  await page.click("#sb-import");
+  await page.setInputFiles("#sb-import-file", file);
+  await sleep(150);
+  const fromFile = await page.evaluate(function () { return {text: document.getElementById("sb-import-text").value.slice(0, 20), result: document.getElementById("sb-import-result").textContent}; });
+  check("Import reads a block.json from a file and checks it", /my_augment/.test(fromFile.result) || /"id"/.test(fromFile.text), fromFile);
+  await page.click("#sb-import-close");
+
+  // The pipeline link: cut at 7500 characters with a Copy spec beside it.
+  await page.selectOption("#sb-templates", "drr_gap");
+  await sleep(50);
+  await page.evaluate(function () {
+    for (let i = 0; i < 30; i++) window.sandbox.grow("n5", "report_claim");
+    window.sandbox.select(null);
+  });
+  await sleep(50);
+  const cut = await page.evaluate(function () {
+    const c = window.sandbox.compile();
+    const a = document.querySelector('#sb-requests-sec a[data-req="pipeline"]') || document.getElementById("sb-request");
+    const href = a.getAttribute("href") || "";
+    return {route: c.route, errors: c.problems.filter(function (p) { return p.level === "error"; }).length, len: href.length,
+      cutWords: decodeURIComponent(href.replace(/\+/g, " ")).indexOf("The spec is too long for a link") >= 0,
+      copyBeside: Array.from(document.querySelectorAll("#sb-requests-sec button")).some(function (b) { return b.textContent === "Copy spec"; }),
+      nodes: window.sandbox.graph().nodes.length};
+  });
+  check("a long pipeline's link stays under 7500 characters, says so, and a Copy spec sits beside it",
+    cut.route === "pipeline" && cut.errors === 0 && cut.len <= 7500 && cut.cutWords && cut.copyBeside, cut);
+
+  check("no console error", errors.length === 0, errors);
+  await browser.close();
+  server.close();
+  const failed = results.filter(function (r) { return !r; }).length;
+  console.log((results.length - failed) + " of " + results.length + " checks pass");
+  process.exit(failed ? 1 : 0);
+}());

@@ -1,0 +1,35 @@
+const {chromium} = require("playwright");
+const {serve} = require("./serve.js");
+const PAGE = process.env.PAGE || "final.html";
+(async function () {
+  const {server, url} = await serve(__dirname);
+  const browser = await chromium.launch();
+  const page = await (await browser.newContext({viewport: {width: 1400, height: 900}})).newPage();
+  await page.goto(url + PAGE);
+  await page.waitForTimeout(300);
+  await page.click("#sb-new");
+  const out = await page.evaluate(function () {
+    window.sandbox.reset && 0;
+    // Add the catalog as the chip would.
+    return null;
+  });
+  await page.fill("#sb-search", "The frame catalog (version 1)");
+  await page.click('.bchip:has-text("The frame catalog (version 1)")');
+  await page.fill("#sb-search", "");
+  const built = await page.evaluate(function () {
+    const ids = ["n1"];
+    for (let i = 0; i < ids.length && window.sandbox.graph().nodes.length < 30; i++) {
+      for (let j = 0; j < 2 && window.sandbox.graph().nodes.length < 30; j++) {
+        const grown = window.sandbox.grow(ids[i]);
+        if (grown) ids.push(grown);
+      }
+    }
+    const g = window.sandbox.graph();
+    return g.nodes.map(function (n) {
+      return n.id + ":" + n.block + " @" + JSON.stringify(g.layout[n.id]) + " sug=" + window.sandbox.suggestions(n.id).map(function (s) { return s.block; }).join(",");
+    });
+  });
+  console.log(built.join("\n"));
+  await browser.close();
+  server.close();
+})();

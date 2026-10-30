@@ -1,0 +1,50 @@
+"""Loads tools/experiments_panel.py by path (tools/ never joins sys.path) and answers the engine tests:
+`experiment` prints DATA.experiment as PY would build it; `requests FILE` reads a JSON list of
+[named, epochs, seed, hours_word, recipe] and prints, for each, the title, body and url Python makes."""
+
+import importlib.util
+import json
+import sys
+
+REPO = "/home/user/SchwingNet"
+
+
+def load_panel():
+    spec = importlib.util.spec_from_file_location("experiments_panel", f"{REPO}/tools/experiments_panel.py")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules["experiments_panel"] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def experiment(ep):
+    catalog = ep.block_catalog()
+    return {"repo": ep.REPO, "new": f"https://github.com/{ep.REPO}/issues/new", "label": ep.ISSUE_LABEL,
+            "marker": ep.ISSUE_MARKER, "flow": ep.FLOW_HEAD, "fields": catalog["fields"],
+            "defaults": catalog["defaults"], "epochs_most": ep.EPOCHS_MOST, "hours_most": ep.HOURS_MOST,
+            "recipes": [r["name"] for r in ep.recipes()]}
+
+
+def requests(ep, path):
+    with open(path, encoding="ascii") as handle:
+        items = json.load(handle)
+    out = []
+    for named, epochs, seed, hours, recipe in items:
+        body = ep.issue_body(named, epochs, seed, hours, recipe)
+        record, problems = ep.check_request(body)
+        out.append({"title": ep.request_title(named, epochs), "body": body,
+                    "url": ep.issue_url(named, epochs, seed, hours, recipe),
+                    "problems": problems, "record": record})
+    return out
+
+
+def main():
+    ep = load_panel()
+    if sys.argv[1] == "experiment":
+        print(json.dumps(experiment(ep), sort_keys=True))
+    elif sys.argv[1] == "requests":
+        print(json.dumps(requests(ep, sys.argv[2]), sort_keys=True))
+
+
+if __name__ == "__main__":
+    main()

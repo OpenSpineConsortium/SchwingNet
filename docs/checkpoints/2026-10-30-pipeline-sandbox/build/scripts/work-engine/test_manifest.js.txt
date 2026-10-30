@@ -1,0 +1,255 @@
+// checkManifest (SPEC 13): every code, each from one change to a manifest that passes.
+"use strict";
+
+var T = require("./t.js");
+var F = require("./fixtures.js");
+var SB = T.SB;
+
+function clone(v) {
+  return JSON.parse(JSON.stringify(v));
+}
+
+function pairs(problems) {
+  return Array.from(new Set(problems.map(function (p) { return p.code + "|" + (p.field === null ? "-" : p.field); }))).sort();
+}
+
+function check(m, contract) {
+  return SB.checkManifest(m, contract || F.contract);
+}
+
+function byId(id) {
+  return clone(F.blocks.filter(function (m) { return m.id === id; })[0]);
+}
+
+var good = byId("train_classifier");
+var source = byId("catalog_v1");
+var crop = byId("crop_boxes");
+
+T.begin("clean manifests");
+["catalog_v1", "vol_source", "clip_source", "recipe_cut", "crop_boxes", "normalise", "augment", "classifier", "prior_head",
+  "train_classifier", "calibrate_temperature", "select_on_validation", "evaluate_heldout", "report_claim", "wandb_log",
+  "trial_array", "gpu_render", "gpu_follow", "picky"].forEach(function (id) {
+  T.eq(check(byId(id)), [], id + " passes");
+});
+T.ok(check(good).every(function (p) { return Object.keys(p).join() === "code,field,text"; }), "problems are {code, field, text}");
+
+function expect(change, wanted, what, base) {
+  var m = clone(base || good);
+  change(m);
+  var got = pairs(check(m));
+  T.eq(got, wanted.slice().sort(), what);
+  return got;
+}
+
+T.begin("R1 identity");
+expect(function (m) { m.id = "Train"; }, ["id|id"], "id shape");
+expect(function (m) { m.id = "t"; }, ["id|id"], "id too short");
+expect(function (m) { m.block = 2; }, ["field|block"], "block 1");
+expect(function (m) { m.version = 0; }, ["field|version"], "version 0");
+expect(function (m) { m.version = 1.5; }, ["field|version"], "no fractional version");
+expect(function (m) { m.title = ""; }, ["field|title"], "empty title");
+expect(function (m) { m.title = new Array(62).join("x"); }, ["field|title"], "a title of 61");
+expect(function (m) { m.stage = "deploy"; }, ["field|stage"], "stage");
+expect(function (m) { m.summary = new Array(122).join("x"); }, ["field|summary"], "summary of 121");
+expect(function (m) { m.does = ""; }, ["field|does"], "does empty");
+expect(function (m) { m.glyph = "rocket"; }, ["field|glyph"], "glyph");
+expect(function (m) { m.resolve = 7; }, ["field|resolve"], "resolve a text or null");
+expect(function (m) { m.resolve = null; }, [], "resolve null");
+T.eq(pairs(SB.checkManifest(null, F.contract)), ["field|-"], "a manifest that is not an object");
+
+T.begin("R2 ports");
+expect(function (m) { m.inputs.push(clone(m.inputs[0])); }, ["port|inputs"], "two inputs of one name");
+expect(function (m) { m.inputs[0].name = "Model"; }, ["port|inputs", "port|outputs"], "a bad input name (and the output from it)");
+expect(function (m) { m.inputs = []; }, ["port|inputs", "port|outputs", "generic|generic"],
+  "a non-source with no input (its output from nothing, and generic is then not wanted)");
+expect(function (m) { m.inputs[0].optional = "no"; }, ["port|inputs"], "optional true or false");
+expect(function (m) { m.outputs = []; }, ["port|outputs"], "no output");
+expect(function (m) { m.outputs.push(clone(m.outputs[0])); }, ["port|outputs"], "two outputs of one name");
+expect(function (m) { m.outputs[0].from = "data"; }, ["port|outputs"], "an output from no input");
+expect(function (m) { m.inputs = [{name: "data", accepts: {kind: ["data"]}, optional: false, what: "x"}]; },
+  ["port|inputs", "generic|generic"], "a source with an input (which then wants generic)", source);
+expect(function (m) { m.inputs[0].accepts = {kind: ["data"], shape: [1]}; }, ["accepts|inputs"], "an unknown pattern key");
+expect(function (m) { m.inputs[0].accepts = {kind: []}; }, ["accepts|inputs", "generic|generic"],
+  "an empty kind (and generic is then not wanted)");
+expect(function (m) { m.inputs[0].accepts = {kind: ["model"], rank: [4], time: "maybe", has_axes: ["Q"], dtype: ["int8"],
+  targets: ["boxes"], parts: "half", needs_parts: ["holdout"], modality: ["mri"], trained: "no"}; }, ["accepts|inputs"],
+  "every pattern key with a bad value");
+expect(function (m) { m.inputs[0].accepts = {kind: ["model"], parts: "any", trained: false}; }, [], "parts any is a valid pattern");
+expect(function (m) { m.outputs[0].ops.push(["paint", "red"]); }, ["op|outputs"], "an unknown op");
+expect(function (m) { m.outputs[0].ops.push(["kind"]); }, ["op|outputs"], "an op of the wrong length");
+expect(function (m) { m.outputs[0].ops.push(["set", "shape", 1]); }, ["op|outputs"], "set of a field it cannot set");
+expect(function (m) { m.outputs[0].ops.push(["set", "dtype", "int8"]); }, ["op|outputs"], "set to a value it cannot be");
+expect(function (m) { m.outputs[0].ops.push(["size", "Q", 4]); }, ["op|outputs"], "size of no axis");
+expect(function (m) { m.outputs[0].ops.push(["size", "H", 0]); }, ["op|outputs"], "a size of 0");
+expect(function (m) { m.outputs[0].ops.push(["axes", ["N", "N"]]); }, ["op|outputs"], "axes repeated");
+expect(function (m) { m.outputs[0].ops.push(["add_axis", "T", "Q", 2]); }, ["op|outputs"], "add_axis before no axis");
+expect(function (m) { m.outputs[0].ops.push(["parts", ["holdout"]]); }, ["op|outputs"], "parts outside the contract");
+expect(function (m) { m.outputs[0].ops.push(["licence", "gpl"]); }, ["op|outputs"], "a licence that is no class");
+expect(function (m) { m.outputs[0].ops.push(["cut", "@param.nothing"]); }, ["ref|outputs"], "a ref to no param");
+expect(function (m) { m.outputs[0].ops.push(["set", "classes", "@in.data.classes"]); }, ["ref|outputs"], "a ref to no input");
+expect(function (m) { m.outputs[0].ops.push(["set", "classes", "@in.model.colour"]); }, ["ref|outputs"], "a ref to no field");
+expect(function (m) { m.outputs[0].ops.push(["size", "H", "@self.sizes.Q"]); }, ["ref|outputs"], "a ref to no axis");
+expect(function (m) { m.outputs[0].ops.push(["size", "H", "@param"]); }, ["ref|outputs"], "a ref of no shape");
+expect(function (m) { m.outputs[0].ops.push(["size", "H", "@in.model.sizes.W"], ["set", "classes", "@self.classes"],
+  ["add_axis", "T", null, "@param.epochs"], ["kind", "@param.optimiser"]); }, [], "refs of every scope that resolve");
+expect(function (m) { m.outputs[0].ops = "none"; }, ["op|outputs"], "ops not a list");
+
+T.begin("R3 params");
+expect(function (m) { m.params.push({name: "mode", kind: "dial", default: 1}); }, ["param|params"], "an unknown kind");
+expect(function (m) { m.params.push({name: "epochs", kind: "int", low: 1, high: 2, default: 1}); }, ["param|params"], "two of one name");
+expect(function (m) { m.params.push({name: "Bad", kind: "bool", default: true}); }, ["param|params"], "a bad name");
+expect(function (m) { m.params.push({name: "x", kind: "int", low: 5, high: 1, default: 3}); }, ["param|params"], "low above high");
+expect(function (m) { m.params.push({name: "x", kind: "int", low: 1, high: 5, default: 9}); }, ["param|params"], "default outside");
+expect(function (m) { m.params.push({name: "x", kind: "int", low: 1, high: 5, default: 2.5}); }, ["param|params"], "a fractional int");
+expect(function (m) { m.params.push({name: "x", kind: "float", low: 0, high: 1, default: 0.00005}); }, ["param|params"],
+  "a float default of 0.00005 is refused");
+expect(function (m) { m.params.push({name: "x", kind: "float", low: 0, high: 1, default: 0.0001}); }, [],
+  "a float default of 0.0001 is taken");
+expect(function (m) { m.params.push({name: "x", kind: "float", low: 0, high: 1, above: true, default: 0}); }, ["param|params"],
+  "above: strictly above low");
+expect(function (m) { m.params.push({name: "x", kind: "float", low: 0, high: 1, above: "yes", default: 0.5}); }, ["param|params"],
+  "above true or false");
+expect(function (m) { m.params.push({name: "x", kind: "choice", choices: ["a b"], default: "a b"}); }, ["param|params"],
+  "a choice value with a space");
+expect(function (m) { m.params.push({name: "x", kind: "choice", choices: ["a", "a"], default: "a"}); }, ["param|params"],
+  "choices repeated");
+expect(function (m) { m.params.push({name: "x", kind: "choice", choices: ["a", "b"], default: "c"}); }, ["param|params"],
+  "a default outside the choices");
+expect(function (m) { m.params.push({name: "x", kind: "bool", default: "true"}); }, ["param|params"], "a bool default as text");
+expect(function (m) { m.params.push({name: "x", kind: "set", options: ["a", "b"], default: ["b", "a"]}); }, ["param|params"],
+  "a set default out of order");
+expect(function (m) { m.params.push({name: "x", kind: "set", options: ["a", "b"], default: ["a", "a"]}); }, ["param|params"],
+  "a set default repeated");
+expect(function (m) { m.params.push({name: "x", kind: "set", options: ["a", "b"], default: ["a", "b"]}); }, [], "a set default");
+expect(function (m) { m.params.push({name: "x", kind: "names", default: ["ok_name", "Bad"]}); }, ["param|params"],
+  "names against the default pattern");
+expect(function (m) { m.params.push({name: "x", kind: "names", pattern: "^[A-Z]+$", default: ["AB"]}); }, [], "names of its own pattern");
+expect(function (m) { m.params.push({name: "x", kind: "names", pattern: "([", default: []}); }, ["param|params"], "a bad pattern");
+expect(function (m) { m.params.push({name: "x", kind: "names", pattern: "[a-z]+", default: ["abc1"]}); }, ["param|params"],
+  "a pattern matches the whole name");
+expect(function (m) { m.params.push({name: "x", kind: "names", default: ["a", "a"]}); }, ["param|params"], "names repeated");
+expect(function (m) { m.params.push({name: "x", kind: "int", low: 1, high: 5}); }, ["param|params"], "no default");
+expect(function (m) { m.params.push({name: "x", kind: "int", low: 1, high: 5, default: 1, vary: "yes"}); }, ["param|params"],
+  "vary true or false");
+expect(function (m) { m.params = {}; }, ["param|params", "determinism|seed_param", "job|job", "ref|experiment", "ref|outputs",
+  "rule|rules"].filter(function (x) { return x !== "ref|outputs"; }), "params not a list: everything that names one fails");
+
+T.begin("R4 rules");
+expect(function (m) { m.rules.push({when: {colour: {"in": ["red"]}}, need: {}, say: "x"}); }, ["rule|rules"], "a rule names no param");
+expect(function (m) { m.rules.push({when: {epochs: {around: 3}}, need: {}, say: "x"}); }, ["rule|rules"], "an unknown condition");
+expect(function (m) { m.rules.push({when: {epochs: {min: "3"}}, need: {}, say: "x"}); }, ["rule|rules"], "min not a number");
+expect(function (m) { m.rules.push({when: {epochs: {empty: false}}, need: {}, say: "x"}); }, ["rule|rules"], "empty not true");
+expect(function (m) { m.rules.push({when: {epochs: {"in": 3}}, need: {}, say: "x"}); }, ["rule|rules"], "in not a list");
+expect(function (m) { m.rules.push({when: {epochs: {above: 1}}, need: {seed: {nonempty: true}}, say: ""}); }, ["rule|rules"], "no say");
+expect(function (m) { m.rules.push({need: {seed: {max: 3}}, say: "x"}); }, ["rule|rules"], "no when");
+expect(function (m) { m.rules = "none"; }, ["rule|rules"], "rules not a list");
+expect(function (m) { m.rules.push({when: {epochs: {above: 1, below: 9, min: 2, max: 8, not_in: [5]}}, need: {seed: {nonempty: true}},
+  say: "x"}); }, [], "a rule with every numeric condition");
+
+T.begin("R5 reads");
+expect(function (m) { m.reads = {parts: ["train", "holdout"]}; }, ["reads|reads"], "a part outside the contract");
+expect(function (m) { m.reads = {parts: ["train", "test"]}; }, ["reads|reads"], "test outside evaluate and report");
+expect(function (m) { m.reads = {parts: ["train", "train"]}; }, ["reads|reads"], "a part twice");
+expect(function (m) { m.reads = {}; }, ["reads|reads"], "no parts list");
+expect(function (m) { m.reads = {parts: ["test"]}; }, [], "an evaluate block reads test", byId("evaluate_heldout"));
+
+T.begin("R6 job");
+expect(function (m) { m.job["class"] = "tpu"; }, ["job|job"], "a class outside the contract");
+expect(function (m) { m.job.hours = 0; }, ["job|job"], "hours 0 for a GPU job");
+expect(function (m) { m.job.hours = "@param.optimiser"; }, ["job|job"], "hours from a choice param");
+expect(function (m) { m.job.hours = "@param.epochs"; }, [], "hours from an int param");
+expect(function (m) { m.job.hours = 2.5; }, [], "hours as a number");
+expect(function (m) { m.job.cpus = 0; }, ["job|job"], "cpus 0 for a GPU job");
+expect(function (m) { m.job.cpus = 65; }, ["job|job"], "cpus 65");
+expect(function (m) { m.job.memory_gb = 513; }, ["job|job"], "memory 513");
+expect(function (m) { m.job.with_upstream = "no"; }, ["job|job"], "with_upstream true or false");
+expect(function (m) { delete m.job.array; }, ["job|job"], "array missing");
+expect(function (m) { m.job = null; }, ["job|job"], "no job");
+expect(function (m) { m.job = {"class": "none", hours: 0, cpus: 0, memory_gb: 0, with_upstream: false, array: false}; }, [],
+  "class none may have 0 hours, cpus and memory");
+
+T.begin("R7 determinism");
+expect(function (m) { m.deterministic = "random"; }, ["determinism|deterministic"], "not one of the three");
+expect(function (m) { m.seed_param = "optimiser"; }, ["determinism|seed_param"], "a seed that is no int");
+expect(function (m) { m.seed_param = ""; }, ["determinism|seed_param"], "seeded with no seed param");
+expect(function (m) { m.deterministic = "declared"; m.nondeterminism = "cuDNN"; }, ["determinism|nondeterminism"],
+  "a declaration under 20 characters");
+expect(function (m) { m.deterministic = "declared"; m.nondeterminism = "cuDNN kernels vary in the last bit; tolerated."; }, [],
+  "a declaration");
+
+T.begin("R8 generic");
+expect(function (m) { m.generic = null; }, ["generic|generic"], "required for a block that takes a model");
+expect(function (m) { m.generic = {rank: [2], time: "no", channels: "any", sizes: "any", why: "short"}; }, ["generic|generic"],
+  "narrower than everything needs a why of 20 characters");
+expect(function (m) { m.generic = {rank: [5], time: "never", channels: [0], sizes: "some", why: 3}; }, ["generic|generic"],
+  "every value invalid");
+expect(function (m) { m.generic = {rank: [1, 2, 3], time: "any", channels: "any", sizes: "any"}; }, [],
+  "every rank 1 to 3, every channel and size needs no why");
+expect(function (m) { m.generic.rank = [2, 3]; m.generic.why = "the trainer crops 2-D boxes only today, 3-D next"; }, ["generic|generic"],
+  "a data input's rank must equal generic.rank", crop);
+expect(function (m) { m.inputs[0].accepts.dtype = ["float32"]; }, ["generic|generic"], "the probe test: a uint8 probe refused", crop);
+expect(function (m) { m.outputs[0].ops.push(["size", "D", 8]); }, ["generic|generic"], "the probe test: an op that fails on a probe",
+  crop);
+expect(function (m) { m.generic = clone(F.EVERYTHING); }, ["generic|generic"], "generic must be null for a block of no data or model",
+  byId("wandb_log"));
+expect(function (m) { m.generic = clone(F.EVERYTHING); }, ["generic|generic"], "a checkpoint-only block has generic null",
+  byId("calibrate_temperature"));
+var cpu = byId("cpu_measure");
+T.eq(pairs(check(cpu)), ["generic|generic"], "the mask-and-unsplit block fails the probe test (every probe is level and split)");
+
+T.begin("R9 needs");
+expect(function (m) { m.needs = ["python", "tensorflow"]; }, ["needs|needs"], "outside the contract");
+expect(function (m) { m.needs = ["python", "python"]; }, ["needs|needs"], "twice");
+expect(function (m) { m.needs = "torch"; }, ["needs|needs"], "not a list");
+
+T.begin("R10 code");
+expect(function (m) { m.code = "maybe"; }, ["code|code"], "code outside the contract");
+expect(function (m) { m.implemented_by = []; }, ["code|implemented_by"], "existing code names its files");
+expect(function (m) { m.code = "own"; m.implemented_by = ["tools/x.py"]; }, ["code|implemented_by"], "own code's one path");
+expect(function (m) { m.code = "own"; m.implemented_by = ["tools/sandbox/blocks/train_classifier.py"]; }, [], "own code");
+expect(function (m) { m.code = "planned"; m.implemented_by = []; }, ["code|code"], "planned code with today live");
+expect(function (m) { m.implemented_by = [""]; }, ["code|implemented_by"], "an empty path");
+
+T.begin("R11 today");
+expect(function (m) { m.today.status = "soon"; }, ["today|today"], "a status outside the contract");
+expect(function (m) { m.today.route = ""; }, ["today|today"], "live needs route experiment");
+expect(function (m) { m.experiment = null; }, ["today|today"], "live needs an experiment mapping");
+expect(function (m) { m.today = {status: "word", route: "", word: "", flow: "", note: ""}; }, ["today|today"], "word needs a word");
+expect(function (m) { m.today = {status: "flow", route: "", word: "", flow: "", note: ""}; }, ["today|today"], "flow needs a flow");
+expect(function (m) { m.today = {status: "pending", route: "", word: "", flow: "", note: "on a branch"}; }, ["today|today"],
+  "pending names its pull request");
+expect(function (m) { m.today = {status: "pending", route: "", word: "", flow: "", note: "pull request #483"}; }, [], "pending #483");
+expect(function (m) { m.today = {status: "planned", route: "", word: "", flow: "", note: ""}; }, ["today|today"],
+  "planned needs code planned or own");
+expect(function (m) { delete m.today.note; }, ["today|today"], "every today string present");
+expect(function (m) { m.today = null; }, ["today|today"], "no today");
+
+T.begin("R12 text and size");
+expect(function (m) { m.title = "Train caf\u00e9"; }, ["text|title"], "non-ASCII in a key's value");
+expect(function (m) { m.does = "line one\nline two"; }, ["text|does"], "a control character");
+expect(function (m) { m.params[0].what = "tab\there"; }, ["text|params"], "deep in a list");
+expect(function (m) { m["caf\u00e9"] = 1; }, ["text|-"], "a key outside ASCII");
+expect(function (m) { m.params.forEach(function (p) { p.what = new Array(3000).join("w"); }); }, ["size|-"], "over 16384 bytes");
+
+T.begin("R13 card");
+expect(function (m) { m.card.origin = ""; }, ["card|card"], "an empty card field", source);
+expect(function (m) { m.card.from = []; }, ["card|card"], "card.from empty", source);
+expect(function (m) { m.card = null; }, ["card|card"], "a source without a card", source);
+expect(function (m) { m.card = clone(F.CARD); }, ["card|card"], "a card on a block that is no source");
+
+T.begin("experiment field");
+expect(function (m) { m.experiment.colour = "red"; }, ["field|experiment"], "an unknown experiment key");
+expect(function (m) { m.experiment.epochs = "@param.nothing"; }, ["ref|experiment"], "a ref to no param");
+expect(function (m) { m.experiment.blocks = []; }, ["field|experiment"], "blocks an object");
+expect(function (m) { m.experiment.only = {colour: ["red"]}; }, ["ref|experiment"], "only names no param");
+expect(function (m) { m.experiment.only = {optimiser: []}; }, ["field|experiment"], "only lists at least one value");
+expect(function (m) { m.experiment = "yes"; }, ["field|experiment", "today|today"], "experiment null or an object");
+
+T.begin("pairs are unique");
+var many = clone(good);
+many.params.push({name: "x", kind: "int", low: 5, high: 1, default: 3}, {name: "y", kind: "dial", default: 1});
+var got = check(many);
+T.eq(got.length, 1, "one problem per (code, field)");
+T.ok(/x needs whole numbers/.test(got[0].text) && /y has kind/.test(got[0].text), "the text names both", got[0].text);
+
+T.done();

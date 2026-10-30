@@ -1,0 +1,28 @@
+"""Pass every request body the engine wrote through tools/experiments_panel.py check_request, and compare
+each with the body issue_body gives for the same words, byte for byte."""
+
+import json
+import os
+import sys
+
+REPO = "/home/user/SchwingNet"
+sys.path.insert(0, os.path.join(REPO, "tools"))
+import experiments_panel as panel  # noqa: E402
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+
+
+def main():
+    with open(os.path.join(HERE, "bodies.json"), encoding="ascii") as handle:
+        bodies = json.load(handle)
+    bad = 0
+    for entry in bodies:
+        record, problems = panel.check_request(entry["body"], REPO)
+        print(entry["template"], "|", entry["title"], "| problems", problems)
+        bad += len(problems)
+    print(len(bodies), "bodies;", bad, "problem(s)")
+    return 1 if bad else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

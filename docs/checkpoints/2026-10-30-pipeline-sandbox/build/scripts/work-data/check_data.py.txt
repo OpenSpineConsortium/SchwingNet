@@ -1,0 +1,926 @@
+"""DATA's own check of tools/sandbox/contract.json, blocks/*.json and templates/*.json against
+SPEC.md sections 3 to 8, 10 to 13, with a small Python mirror of sections 6, 7, 10, 11 and the
+route test of 12, so each template's counts are computed and set beside its expect. Run with
+python3.12; it prints every problem and exits 1 when there is one."""
+
+import copy
+import hashlib
+import heapq
+import itertools
+import json
+import os
+import re
+import sys
+
+REPO = "/home/user/SchwingNet"
+SANDBOX = os.path.join(REPO, "tools", "sandbox")
+ID = re.compile(r"^[a-z][a-z0-9_]{1,39}$")
+NODE = re.compile(r"^n[1-9][0-9]{0,3}$")
+PORT = re.compile(r"^[a-z][a-z0-9_]{0,23}$")
+PARAM = re.compile(r"^[a-z][a-z0-9_]{0,31}$")
+VALUE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._,-]{0,79}$")
+TYPE_FIELDS = ["kind", "axes", "sizes", "dtype", "targets", "classes", "parts", "persons", "modality", "licence",
+               "sources", "family", "rank", "trained"]
+SET_FIELDS = {"dtype", "targets", "classes", "modality", "family", "trained", "persons"}
+OPS = {"kind", "set", "size", "axes", "drop_axis", "add_axis", "parts", "licence", "cut"}
+CONDITIONS = {"in", "not_in", "min", "max", "above", "below", "empty", "nonempty"}
+PATTERN_KEYS = {"kind", "rank", "time", "has_axes", "dtype", "targets", "parts", "needs_parts", "modality", "trained"}
+EXPERIMENT_KEYS = {"recipe", "epochs", "seed", "hours", "blocks", "only"}
+CARD_KEYS = ["origin", "where", "count", "persons", "split", "held_out", "licence", "from"]
+MANIFEST_KEYS = ["block", "id", "version", "title", "stage", "summary", "does", "glyph", "inputs", "outputs", "params",
+                 "rules", "reads", "job", "deterministic", "seed_param", "nondeterminism", "generic", "resolve",
+                 "needs", "code", "implemented_by", "today", "experiment", "card"]
+PROBLEMS = []
+
+
+def problem(where, text):
+    PROBLEMS.append(f"{where}: {text}")
+
+
+def load(path):
+    raw = open(path, "rb").read()
+    if not raw.endswith(b"\n") or b"\r" in raw:
+        problem(path, "not LF with a final newline")
+    try:
+        raw.decode("ascii")
+    except UnicodeDecodeError:
+        problem(path, "not ASCII")
+    return json.loads(raw)
+
+
+# --- canonical JSON (section 8) -------------------------------------------------------------------
+
+def canonical(value):
+    if value is None:
+        return "null"
+    if value is True:
+        return "true"
+    if value is False:
+        return "false"
+    if isinstance(value, (int, float)):
+        if float(value).is_integer() and abs(value) < 1e15:
+            return str(int(value))
+        return format(value, ".6f").rstrip("0").rstrip(".")
+    if isinstance(value, str):
+        for ch in value:
+            if ord(ch) > 126 or ord(ch) < 32:
+                raise ValueError(f"character {ord(ch)} in {value[:40]!r}")
+        return json.dumps(value, ensure_ascii=True)
+    if isinstance(value, list):
+        return "[" + ",".join(canonical(item) for item in value) + "]"
+    if isinstance(value, dict):
+        return "{" + ",".join(json.dumps(k) + ":" + canonical(value[k]) for k in sorted(value)) + "}"
+    raise TypeError(type(value))
+
+
+def strings_of(value):
+    if isinstance(value, str):
+        yield value
+    elif isinstance(value, list):
+        for item in value:
+            yield from strings_of(item)
+    elif isinstance(value, dict):
+        for key, item in value.items():
+            yield key
+            yield from strings_of(item)
+
+
+# --- the contract (section 3) ---------------------------------------------------------------------
+
+def check_contract(c):
+    where = "contract.json"
+    expect_keys = ["contract", "stages", "kinds", "axes", "spatial", "dtypes", "targets", "parts", "modalities",
+                   "licences", "job_classes", "today", "code", "deterministic", "needs", "glyphs", "limits",
+                   "probes", "requirements"]
+    if list(c) != expect_keys:
+        problem(where, f"keys {list(c)}")
+    if [s["id"] for s in c["stages"]] != ["source", "prepare", "split", "augment", "model", "train", "calibrate",
+                                          "select", "evaluate", "analyse", "report"]:
+        problem(where, "stage order")
+    for stage in c["stages"]:
+        if set(stage) != {"id", "title", "what"} or not stage["title"] or not stage["what"]:
+            problem(where, f"stage {stage.get('id')}")
+    if set(c["kinds"]) != {"data", "model", "checkpoint", "metrics", "report"}:
+        problem(where, "kinds")
+    if len(c["glyphs"]) != 32 or len(set(c["glyphs"])) != 32:
+        problem(where, "glyphs are not 32 unique names")
+    licences = check_licences_against_recipes()
+    if c["licences"] != licences:
+        problem(where, f"licences {c['licences']} != {licences}")
+    if [r["id"] for r in c["requirements"]] != [f"R{k}" for k in range(1, 14)]:
+        problem(where, "requirements are not R1..R13")
+    names = [p["name"] for p in c["probes"]]
+    for wanted in ["frames, 2-D grey 64", "frames, 2-D colour 224", "volumes, 3-D grey 96", "clips, 2-D grey",
+                   "a table"]:
+        if wanted not in names:
+            problem(where, f"probe {wanted} missing")
+    for probe in c["probes"]:
+        check_type(probe["type"], c, f"{where} probe {probe['name']}")
+        t = probe["type"]
+        if (t["targets"], t["classes"], t["parts"], t["persons"], t["modality"], t["licence"], t["sources"]) != (
+                "level", 27, ["train", "validation", "test"], True, "any", "uncut", []):
+            problem(where, f"probe {probe['name']} lineage fields")
+    for text in strings_of(c):
+        if any(ord(ch) > 126 or ord(ch) < 32 for ch in text):
+            problem(where, f"non-ASCII or control in {text[:40]!r}")
+
+
+def check_licences_against_recipes():
+    folder = os.path.join(REPO, "data", "recipes")
+    counted = []
+    for name in sorted(os.listdir(folder)):
+        recipe = json.load(open(os.path.join(folder, name)))
+        counted.append((len(recipe["allow"]), recipe.get("name") or name[:-5]))
+    return [name for _, name in sorted(counted)] + ["uncut"]
+
+
+def check_type(t, c, where):
+    if list(t) != TYPE_FIELDS:
+        problem(where, f"type fields {list(t)}")
+        return
+    if t["kind"] not in c["kinds"]:
+        problem(where, "kind")
+    if any(a not in c["axes"] for a in t["axes"]) or len(set(t["axes"])) != len(t["axes"]):
+        problem(where, "axes")
+    if any(a not in t["axes"] or not isinstance(v, int) or v < 1 for a, v in t["sizes"].items()):
+        problem(where, "sizes")
+    if t["dtype"] != "any" and t["dtype"] not in c["dtypes"]:
+        problem(where, "dtype")
+    if t["targets"] not in c["targets"] or t["modality"] not in c["modalities"] or t["licence"] not in c["licences"]:
+        problem(where, "targets, modality or licence")
+    if t["parts"] != [p for p in c["parts"] if p in t["parts"]]:
+        problem(where, "parts order")
+    if t["rank"] != sum(1 for a in c["spatial"] if a in t["axes"]):
+        problem(where, "rank")
+
+
+# --- types and ops (sections 4, 6, 7) -------------------------------------------------------------
+
+def empty_type():
+    return {"kind": "data", "axes": [], "sizes": {}, "dtype": "any", "targets": "none", "classes": None,
+            "parts": [], "persons": False, "modality": "any", "licence": "uncut", "sources": [], "family": None,
+            "rank": 0, "trained": False}
+
+
+def matches(pattern, t):
+    failed = []
+    checks = {
+        "kind": lambda v: t["kind"] in v,
+        "rank": lambda v: t["rank"] in v,
+        "time": lambda v: v == "any" or (v == "yes") == ("T" in t["axes"]),
+        "has_axes": lambda v: all(a in t["axes"] for a in v),
+        "dtype": lambda v: t["dtype"] == "any" or t["dtype"] in v,
+        "targets": lambda v: t["targets"] in v,
+        "parts": lambda v: bool(t["parts"]) if v == "split" else not t["parts"],
+        "needs_parts": lambda v: all(p in t["parts"] for p in v),
+        "modality": lambda v: t["modality"] == "any" or t["modality"] in v,
+        "trained": lambda v: t["trained"] == v,
+    }
+    for key, value in pattern.items():
+        if key in checks and not checks[key](value):
+            failed.append(key)
+    return failed
+
+
+def resolve(value, params, inputs, current):
+    if not (isinstance(value, str) and value.startswith("@")):
+        return value, None
+    parts = value.split(".")
+    if parts[0] == "@param" and len(parts) == 2:
+        if parts[1] not in params:
+            return None, f"unknown param {value}"
+        return params[parts[1]], None
+    if parts[0] == "@in" and len(parts) in (3, 4):
+        port = parts[1]
+        if port not in inputs:
+            return None, f"unknown port {value}"
+        t = inputs[port]
+        if t is None:
+            return None, None
+        return field_of(t, parts[2:], value)
+    if parts[0] == "@self" and len(parts) in (2, 3):
+        return field_of(current, parts[1:], value)
+    return None, f"bad ref {value}"
+
+
+def field_of(t, path, value):
+    if path[0] == "sizes" and len(path) == 2:
+        return t["sizes"].get(path[1]), None
+    if len(path) == 1 and path[0] in TYPE_FIELDS:
+        return t[path[0]], None
+    return None, f"bad field in {value}"
+
+
+def apply_ops(t, ops, params, inputs, contract):
+    errors = []
+    licences = contract["licences"]
+    for op in ops:
+        name = op[0] if op else None
+        if name not in OPS:
+            errors.append(f"unknown op {op}")
+            continue
+        args = []
+        for raw in op[1:]:
+            value, error = resolve(raw, params, inputs, t)
+            if error:
+                errors.append(error)
+            args.append(value)
+        if name == "kind":
+            if args[0] not in contract["kinds"]:
+                errors.append(f"kind {args[0]}")
+            else:
+                t["kind"] = args[0]
+        elif name == "set":
+            field, value = op[1], args[1]
+            if field not in SET_FIELDS:
+                errors.append(f"set field {field}")
+            elif field == "dtype" and value not in contract["dtypes"]:
+                errors.append(f"dtype {value}")
+            elif field == "targets" and value not in contract["targets"]:
+                errors.append(f"targets {value}")
+            elif field == "modality" and value not in contract["modalities"]:
+                errors.append(f"modality {value}")
+            elif field == "classes" and not (value is None or (isinstance(value, int) and value >= 1)):
+                errors.append(f"classes {value}")
+            elif field in ("trained", "persons") and not isinstance(value, bool):
+                errors.append(f"{field} {value}")
+            else:
+                t[field] = value
+        elif name == "size":
+            axis, value = op[1], args[1]
+            if axis not in t["axes"]:
+                errors.append(f"size of absent axis {axis}")
+            elif value is None:
+                t["sizes"].pop(axis, None)
+            elif not (isinstance(value, int) and not isinstance(value, bool) and value >= 1):
+                errors.append(f"size {value}")
+            else:
+                t["sizes"][axis] = value
+        elif name == "axes":
+            value = args[0]
+            if not isinstance(value, list) or any(a not in contract["axes"] for a in value) or len(set(value)) != len(value):
+                errors.append(f"axes {value}")
+            else:
+                t["axes"] = list(value)
+        elif name == "drop_axis":
+            if args[0] in t["axes"]:
+                t["axes"].remove(args[0])
+        elif name == "add_axis":
+            axis, before, size = (args + [None, None])[:3]
+            if axis not in t["axes"]:
+                where = t["axes"].index(before) if before in t["axes"] else len(t["axes"])
+                t["axes"].insert(where, axis)
+                if size is not None:
+                    t["sizes"][axis] = size
+        elif name == "parts":
+            if any(p not in contract["parts"] for p in args[0]):
+                errors.append(f"parts {args[0]}")
+            else:
+                t["parts"] = list(args[0])
+        elif name in ("licence", "cut"):
+            if args[0] not in licences:
+                errors.append(f"licence {args[0]}")
+            else:
+                pick = max if name == "licence" else min
+                t["licence"] = licences[pick(licences.index(t["licence"]), licences.index(args[0]))]
+    return errors
+
+
+def finish(t, contract, others, manifest):
+    t["rank"] = sum(1 for a in contract["spatial"] if a in t["axes"])
+    t["sizes"] = {a: v for a, v in t["sizes"].items() if a in t["axes"]}
+    t["parts"] = [p for p in contract["parts"] if p in t["parts"]]
+    licences = contract["licences"]
+    for other in others:
+        t["sources"] = sorted(set(t["sources"]) | set(other["sources"]))
+        t["licence"] = licences[max(licences.index(t["licence"]), licences.index(other["licence"]))]
+        t["persons"] = bool(t["persons"] and other["persons"])
+    if manifest["stage"] == "source":
+        t["sources"] = sorted(set(t["sources"]) | {manifest["id"]})
+    t["sources"] = sorted(set(t["sources"]))
+    return t
+
+
+def outputs_of(manifest, inputs, params, contract):
+    """inputs: {port: type or None}; returns ({port: type}, [errors])."""
+    result, errors = {}, []
+    connected = [p["name"] for p in manifest["inputs"] if inputs.get(p["name"]) is not None]
+    for out in manifest["outputs"]:
+        start = out["from"] if out["from"] in connected else (connected[0] if connected else None)
+        t = copy.deepcopy(inputs[start]) if start else empty_type()
+        errors += apply_ops(t, out["ops"], params, inputs, contract)
+        others = [inputs[p] for p in connected if p != start]
+        result[out["name"]] = finish(t, contract, others, manifest)
+    return result, errors
+
+
+# --- params and rules (section 5) -----------------------------------------------------------------
+
+def plain_float(value):
+    return isinstance(value, (int, float)) and not isinstance(value, bool) and round(value, 6) == value and (
+        value == 0 or 0.0001 <= abs(value) < 1e9)
+
+
+def value_ok(param, value):
+    kind = param["kind"]
+    if kind == "choice":
+        return value in param["choices"]
+    if kind == "int":
+        return isinstance(value, int) and not isinstance(value, bool) and param["low"] <= value <= param["high"]
+    if kind == "float":
+        if not plain_float(value) or not (param["low"] <= value <= param["high"]):
+            return False
+        return not param.get("above") or value > param["low"]
+    if kind == "bool":
+        return isinstance(value, bool)
+    if kind == "set":
+        return isinstance(value, list) and value == [o for o in param["options"] if o in value] and len(set(value)) == len(value)
+    if kind == "names":
+        return isinstance(value, list) and len(set(value)) == len(value) and all(
+            isinstance(v, str) and re.match(param["pattern"], v) for v in value)
+    return False
+
+
+def check_param(param, where):
+    if not PARAM.match(param.get("name", "")):
+        problem(where, f"param name {param.get('name')}")
+    kind = param.get("kind")
+    if kind == "choice":
+        ch = param.get("choices", [])
+        if not ch or len(set(ch)) != len(ch) or not all(isinstance(v, str) and VALUE.match(v) for v in ch):
+            problem(where, f"choices of {param['name']}")
+    elif kind == "int":
+        if not (isinstance(param["low"], int) and isinstance(param["high"], int) and param["low"] <= param["high"]):
+            problem(where, f"bounds of {param['name']}")
+    elif kind == "float":
+        if not (plain_float(param["low"]) and plain_float(param["high"]) and param["low"] <= param["high"]):
+            problem(where, f"bounds of {param['name']}")
+    elif kind == "set":
+        op = param.get("options", [])
+        if not op or len(set(op)) != len(op) or not all(VALUE.match(v) for v in op):
+            problem(where, f"options of {param['name']}")
+    elif kind == "names":
+        re.compile(param["pattern"])
+    elif kind != "bool":
+        problem(where, f"kind {kind}")
+        return
+    if not value_ok(param, param["default"]):
+        problem(where, f"default of {param['name']}")
+    if not isinstance(param.get("vary"), bool) or not param.get("what"):
+        problem(where, f"vary or what of {param['name']}")
+
+
+def condition_holds(cond, value):
+    for key, arg in cond.items():
+        if key == "in" and value not in arg:
+            return False
+        if key == "not_in" and value in arg:
+            return False
+        if key == "min" and not value >= arg:
+            return False
+        if key == "max" and not value <= arg:
+            return False
+        if key == "above" and not value > arg:
+            return False
+        if key == "below" and not value < arg:
+            return False
+        empty = value in ([], 0, "", "none") and not isinstance(value, bool)
+        if key == "empty" and arg and not empty:
+            return False
+        if key == "nonempty" and arg and empty:
+            return False
+    return True
+
+
+def rules_failing(manifest, params):
+    failing = []
+    for r in manifest["rules"]:
+        if all(condition_holds(c, params[p]) for p, c in r["when"].items()) and not all(
+                condition_holds(c, params[p]) for p, c in r["need"].items()):
+            failing.append(r["say"])
+    return failing
+
+
+# --- manifests (sections 5, 13) -------------------------------------------------------------------
+
+def check_manifest(m, c, path):
+    where = os.path.relpath(path, REPO)
+    if list(m) != MANIFEST_KEYS:
+        problem(where, f"keys {list(m)}")
+    if m["block"] != 1 or not ID.match(m["id"]) or m["id"] + ".json" != os.path.basename(path):
+        problem(where, "R1 block, id or file name")
+    if not (isinstance(m["version"], int) and m["version"] >= 1):
+        problem(where, "R1 version")
+    if not (1 <= len(m["title"]) <= 60) or not (1 <= len(m["summary"]) <= 120) or "\n" in m["summary"]:
+        problem(where, f"R1 title {len(m['title'])} or summary {len(m['summary'])}")
+    if not (1 <= len(m["does"]) <= 800):
+        problem(where, f"R1 does is {len(m['does'])} chars")
+    stages = [s["id"] for s in c["stages"]]
+    if m["stage"] not in stages or m["glyph"] not in c["glyphs"]:
+        problem(where, "R1 stage or glyph")
+    params = {p["name"]: p for p in m["params"]}
+    if len(params) != len(m["params"]):
+        problem(where, "R3 param names repeat")
+    for p in m["params"]:
+        check_param(p, where)
+    inputs = [p["name"] for p in m["inputs"]]
+    outputs = [p["name"] for p in m["outputs"]]
+    if len(set(inputs)) != len(inputs) or len(set(outputs)) != len(outputs):
+        problem(where, "R2 port names repeat")
+    if any(not PORT.match(n) for n in inputs + outputs):
+        problem(where, "R2 port name shape")
+    if (m["stage"] == "source") != (not m["inputs"]) or not m["outputs"]:
+        problem(where, "R2 inputs or outputs count")
+    for port in m["inputs"]:
+        pattern = port["accepts"]
+        if not pattern.get("kind") or set(pattern) - PATTERN_KEYS or not isinstance(port["optional"], bool) or not port["what"]:
+            problem(where, f"R2 input {port['name']}")
+    defaults = {p["name"]: p["default"] for p in m["params"]}
+    for out in m["outputs"]:
+        if out["from"] is not None and out["from"] not in inputs:
+            problem(where, f"R2 output {out['name']} from {out['from']}")
+        _, errors = outputs_of(m, {}, defaults, c) if not m["inputs"] else (None, [])
+        for op in out["ops"]:
+            if op[0] not in OPS:
+                problem(where, f"R2 op {op}")
+            for raw in op[1:]:
+                if isinstance(raw, str) and raw.startswith("@"):
+                    head = raw.split(".")
+                    if head[0] == "@param" and head[1] not in params:
+                        problem(where, f"R2 ref {raw}")
+                    if head[0] == "@in" and head[1] not in inputs:
+                        problem(where, f"R2 ref {raw}")
+        for error in errors:
+            problem(where, f"R2 source output: {error}")
+    for r in m["rules"]:
+        names = list(r["when"]) + list(r["need"])
+        conds = list(r["when"].values()) + list(r["need"].values())
+        if any(n not in params for n in names) or any(set(cd) - CONDITIONS or not cd for cd in conds) or not r["say"]:
+            problem(where, f"R4 rule {r.get('say')}")
+    if rules_failing(m, defaults):
+        problem(where, f"R4 the defaults fail {rules_failing(m, defaults)}")
+    reads = m["reads"]["parts"]
+    if any(p not in c["parts"] for p in reads) or ("test" in reads and m["stage"] not in ("evaluate", "report")):
+        problem(where, "R5 reads")
+    job = m["job"]
+    if job["class"] not in c["job_classes"] or not isinstance(job["with_upstream"], bool) or not isinstance(job["array"], bool):
+        problem(where, "R6 job")
+    if job["class"] != "none":
+        hours = job["hours"]
+        if isinstance(hours, str):
+            name = hours[len("@param."):] if hours.startswith("@param.") else None
+            if name not in params or params[name]["kind"] not in ("int", "float"):
+                problem(where, "R6 hours ref")
+        elif not (isinstance(hours, (int, float)) and hours > 0):
+            problem(where, "R6 hours")
+        if not (1 <= job["cpus"] <= 64 and 1 <= job["memory_gb"] <= 512):
+            problem(where, "R6 cpus or memory")
+    det = m["deterministic"]
+    if det not in c["deterministic"]:
+        problem(where, "R7 deterministic")
+    if det == "seeded" and (m["seed_param"] not in params or params[m["seed_param"]]["kind"] != "int"):
+        problem(where, "R7 seed_param")
+    if det == "declared" and len(m["nondeterminism"]) < 20:
+        problem(where, "R7 nondeterminism")
+    check_generic(m, c, where)
+    if any(n not in c["needs"] for n in m["needs"]):
+        problem(where, "R9 needs")
+    check_code_and_today(m, c, where)
+    check_experiment(m, params, where)
+    check_card(m, where)
+    if m["resolve"] is not None:
+        for field in re.findall(r"\{([^}]*)\}", m["resolve"]):
+            if not (field in TYPE_FIELDS or re.match(r"^sizes\.[A-Z]$", field)):
+                problem(where, f"resolve field {field}")
+    try:
+        size = len(canonical(m).encode())
+        if size > c["limits"]["manifest_bytes"]:
+            problem(where, f"R12 size {size}")
+    except ValueError as error:
+        problem(where, f"R12 {error}")
+
+
+def admits(pattern, kind):
+    return kind in pattern["kind"]
+
+
+def check_generic(m, c, where):
+    takes = any(admits(p["accepts"], "data") or admits(p["accepts"], "model") for p in m["inputs"])
+    g = m["generic"]
+    if not takes:
+        if g is not None:
+            problem(where, "R8 generic should be null")
+        return
+    if g is None:
+        problem(where, "R8 generic missing")
+        return
+    if not set(g["rank"]) <= {0, 1, 2, 3} or g["time"] not in ("any", "yes", "no") or g["sizes"] not in ("any", "fixed"):
+        problem(where, "R8 generic values")
+    if g["channels"] != "any" and not (isinstance(g["channels"], list) and all(isinstance(v, int) for v in g["channels"])):
+        problem(where, "R8 channels")
+    narrower = not {1, 2, 3} <= set(g["rank"]) or g["channels"] != "any" or g["sizes"] != "any"
+    if narrower and len(g["why"]) < 20:
+        problem(where, "R8 why")
+    for port in m["inputs"]:
+        pattern = port["accepts"]
+        if admits(pattern, "data") and "rank" in pattern and sorted(pattern["rank"]) != sorted(g["rank"]):
+            problem(where, f"R8 rank of {port['name']}")
+    first = m["inputs"][0]
+    if not admits(first["accepts"], "data"):
+        return
+    defaults = {p["name"]: p["default"] for p in m["params"]}
+    for probe in c["probes"]:
+        t = probe["type"]
+        has_time = "T" in t["axes"]
+        if t["rank"] not in g["rank"] or (g["time"] == "yes" and not has_time) or (g["time"] == "no" and has_time):
+            continue
+        failed = matches(first["accepts"], t)
+        if failed:
+            problem(where, f"R8 probe {probe['name']} refused on {failed}")
+            continue
+        inputs = {p["name"]: None for p in m["inputs"]}
+        inputs[first["name"]] = copy.deepcopy(t)
+        _, errors = outputs_of(m, inputs, defaults, c)
+        if errors:
+            problem(where, f"R8 probe {probe['name']} outputs: {errors}")
+
+
+def check_code_and_today(m, c, where):
+    code, paths, today = m["code"], m["implemented_by"], m["today"]
+    if code not in c["code"]:
+        problem(where, "R10 code")
+    if code == "existing":
+        if not paths:
+            problem(where, "R10 no paths")
+        for path in paths:
+            if not os.path.isfile(os.path.join(REPO, path)):
+                problem(where, f"R10 {path} is not a file")
+    if code == "own" and paths != [f"tools/sandbox/blocks/{m['id']}.py"]:
+        problem(where, "R10 own")
+    if set(today) != {"status", "route", "word", "flow", "note"} or today["status"] not in c["today"]:
+        problem(where, "R11 today shape")
+    status = today["status"]
+    if status == "live" and (today["route"] != "experiment" or m["experiment"] is None):
+        problem(where, "R11 live")
+    if status == "word" and not today["word"]:
+        problem(where, "R11 word")
+    if status == "flow" and not today["flow"]:
+        problem(where, "R11 flow")
+    if status == "pending" and not re.search(r"#[0-9]+", today["note"]):
+        problem(where, "R11 pending")
+    if status == "planned" and code not in ("planned", "own"):
+        problem(where, "R11 planned")
+    if code == "planned" and status != "planned":
+        problem(where, f"R10 code planned with today {status}: section 5 says planned code goes with today planned")
+
+
+def check_experiment(m, params, where):
+    e = m["experiment"]
+    if e is None:
+        return
+    if set(e) - EXPERIMENT_KEYS:
+        problem(where, f"experiment keys {set(e)}")
+    refs = [e.get(k) for k in ("recipe", "epochs", "seed", "hours") if k in e] + list(e.get("blocks", {}).values())
+    for ref in refs:
+        if isinstance(ref, str) and ref.startswith("@param.") and ref[7:] not in params:
+            problem(where, f"experiment ref {ref}")
+    fields = BLOCK_FIELDS
+    for name in e.get("blocks", {}):
+        if name not in fields:
+            problem(where, f"experiment block field {name}")
+    for name, allowed in e.get("only", {}).items():
+        if name not in params or not all(value_ok(params[name], v) for v in allowed):
+            problem(where, f"experiment only {name}")
+
+
+def check_card(m, where):
+    card = m["card"]
+    if m["stage"] != "source":
+        if card is not None:
+            problem(where, "R13 card should be null")
+        return
+    if card is None or list(card) != CARD_KEYS:
+        problem(where, "R13 card keys")
+        return
+    for key in CARD_KEYS[:-1]:
+        if not isinstance(card[key], str) or not card[key].strip():
+            problem(where, f"R13 card {key}")
+    if not card["from"]:
+        problem(where, "R13 card from")
+    for path in card["from"]:
+        if not os.path.exists(os.path.join(REPO, path)):
+            problem(where, f"R13 card from {path} does not exist")
+
+
+# --- graphs (sections 10, 11, 12) -----------------------------------------------------------------
+
+def number_of(node_id):
+    return int(node_id[1:])
+
+
+def propagate(spec, blocks, c):
+    found = []
+    nodes = {n["id"]: n for n in spec["nodes"]}
+    known = {i: n for i, n in nodes.items() if n["block"] in blocks}
+    for i, n in nodes.items():
+        if n["block"] not in blocks:
+            found.append(("block", i, None, None, "error"))
+        elif n["version"] != blocks[n["block"]]["version"]:
+            found.append(("version", i, None, None, "warn"))
+    downstream = {i: [] for i in known}
+    indegree = {i: 0 for i in known}
+    for e in spec["edges"]:
+        if e["from"] in known and e["to"] in known:
+            downstream[e["from"]].append(e["to"])
+            indegree[e["to"]] += 1
+    heap = [(number_of(i), i) for i, d in indegree.items() if d == 0]
+    heapq.heapify(heap)
+    order = []
+    while heap:
+        _, i = heapq.heappop(heap)
+        order.append(i)
+        for j in downstream[i]:
+            indegree[j] -= 1
+            if indegree[j] == 0:
+                heapq.heappush(heap, (number_of(j), j))
+    for i in known:
+        if i not in order:
+            found.append(("cycle", i, None, None, "error"))
+    result = {}
+    for i in order:
+        n, m = known[i], blocks[known[i]["block"]]
+        params = {p["name"]: p["default"] for p in m["params"]}
+        params.update(n.get("params", {}))
+        pdefs = {p["name"]: p for p in m["params"]}
+        for name, value in n.get("params", {}).items():
+            if name not in pdefs or not value_ok(pdefs[name], value):
+                found.append(("param", i, None, name, "error"))
+        combos = 1
+        vary = n.get("vary", {})
+        for name, values in vary.items():
+            if name not in pdefs:
+                found.append(("param", i, None, name, "error"))
+                continue
+            if not pdefs[name]["vary"]:
+                found.append(("vary", i, None, name, "error"))
+            for value in values:
+                if not value_ok(pdefs[name], value):
+                    found.append(("param", i, None, name, "error"))
+            combos *= max(1, len(values))
+        if combos > c["limits"]["combinations"]:
+            found.append(("vary", i, None, None, "error"))
+        failing = set(rules_failing(m, params))
+        names = [k for k in vary if vary[k]]
+        for values in itertools.product(*[vary[k] for k in names]):
+            trial = dict(params)
+            trial.update(dict(zip(names, values)))
+            failing |= set(rules_failing(m, trial))
+        for say in sorted(failing):
+            found.append(("rule", i, None, None, "error"))
+        inputs = {p["name"]: None for p in m["inputs"]}
+        upstream = []
+        for e in spec["edges"]:
+            if e["to"] != i:
+                continue
+            if e["from"] not in result:
+                continue
+            up = blocks[known[e["from"]]["block"]]
+            if e["out"] not in [o["name"] for o in up["outputs"]] or e["in"] not in inputs:
+                found.append(("port", i, e["in"], None, "error"))
+                continue
+            if inputs[e["in"]] is not None:
+                found.append(("port", i, e["in"], None, "error"))
+                continue
+            inputs[e["in"]] = copy.deepcopy(result[e["from"]]["outputs"][e["out"]])
+            upstream.append(e["from"])
+        for port in m["inputs"]:
+            t = inputs[port["name"]]
+            if t is None:
+                if not port["optional"]:
+                    found.append(("input", i, port["name"], None, "error"))
+                continue
+            for field in matches(port["accepts"], t):
+                found.append(("type", i, port["name"], field, "error"))
+        outputs, errors = outputs_of(m, inputs, params, c)
+        for error in errors:
+            found.append(("op", i, None, error, "error"))
+        reads = m["reads"]["parts"]
+        if "test" in reads and m["stage"] not in ("evaluate", "report"):
+            found.append(("test", i, None, None, "error"))
+        for port in m["inputs"]:
+            t = inputs[port["name"]]
+            if t is not None and any(p not in t["parts"] for p in reads):
+                found.append(("parts", i, port["name"], t["kind"], "error"))
+        fan_up = max([result[u]["fan"] for u in upstream] or [1])
+        fan = (1 if m["stage"] == "select" else fan_up) * combos
+        result[i] = {"inputs": inputs, "outputs": outputs, "fan": fan, "combinations": combos, "params": params,
+                     "upstream": [e["from"] for e in spec["edges"] if e["to"] == i]}
+    if len(spec["nodes"]) > c["limits"]["nodes"] or len(spec["edges"]) > c["limits"]["edges"]:
+        found.append(("limit", None, None, None, "error"))
+    total = 1
+    for i in order:
+        total *= result[i]["combinations"]
+    if total > c["limits"]["combinations"]:
+        found.append(("limit", None, None, None, "error"))
+    return order, result, found, total
+
+
+def jobs(spec, blocks, order, result):
+    nodes = {n["id"]: n for n in spec["nodes"]}
+    rows = {}
+    for i in order:
+        m = blocks[nodes[i]["block"]]
+        job = m["job"]
+        if job["class"] == "none":
+            continue
+        hours = job["hours"]
+        if isinstance(hours, str):
+            hours = result[i]["params"][hours[len("@param."):]]
+        tasks = result[i]["fan"]
+        row = {"node": i, "class": job["class"], "tasks": tasks, "hours": hours, "rides_with": None,
+               "submissions": 1 if job["array"] else tasks}
+        if job["with_upstream"]:
+            first = None
+            port_order = [p["name"] for p in m["inputs"]]
+            edges_in = sorted([e for e in spec["edges"] if e["to"] == i], key=lambda e: port_order.index(e["in"]))
+            for e in edges_in:
+                if e["from"] in rows:
+                    first = e["from"]
+                    break
+            if first and rows[first]["class"] == job["class"]:
+                rows[first]["hours"] += hours
+                row.update({"submissions": 0, "rides_with": first})
+        rows[i] = row
+    totals = {}
+    for row in rows.values():
+        total = totals.setdefault(row["class"], {"submissions": 0, "tasks": 0, "hours": 0.0})
+        if row["rides_with"]:
+            continue
+        total["submissions"] += row["submissions"]
+        total["tasks"] += row["tasks"]
+        total["hours"] = round(total["hours"] + row["tasks"] * row["hours"], 2)
+    return rows, totals
+
+
+def compile_counts(spec, blocks, c, order, result, found, total):
+    errors = [f for f in found if f[4] == "error"]
+    nodes = {n["id"]: n for n in spec["nodes"]}
+    used = [nodes[i]["block"] for i in nodes]
+    why = []
+    if errors:
+        why.append("errors")
+    if any(blocks[b]["experiment"] is None for b in used if b in blocks):
+        why.append("not_mapped")
+    for block, code in (("catalog_v1", "catalog"), ("classifier", "classifier"), ("train_classifier", "train")):
+        if used.count(block) != 1:
+            why.append(code)
+    if len(set(used)) != len(used):
+        why.append("duplicate")
+    if total > c["limits"]["combinations"]:
+        why.append("too_many")
+    if not why:
+        start = [i for i in nodes if nodes[i]["block"] == "catalog_v1"][0]
+        seen, stack = {start}, [start]
+        while stack:
+            i = stack.pop()
+            for e in spec["edges"]:
+                if e["from"] == i and e["to"] not in seen:
+                    seen.add(e["to"])
+                    stack.append(e["to"])
+        if seen != set(nodes):
+            why.append("unconnected")
+    if why:
+        rows, totals = jobs(spec, blocks, order, result)
+        return "pipeline", False, 0, totals, why, []
+    requests = experiment_requests(spec, blocks, order, result)
+    hours = round(sum(r["hours"] for r in requests), 2)
+    totals = {"gpu": {"submissions": len(requests), "tasks": len(requests), "hours": hours}}
+    return "experiment", True, len(requests), totals, why, requests
+
+
+def experiment_requests(spec, blocks, order, result):
+    nodes = sorted(spec["nodes"], key=lambda n: number_of(n["id"]))
+    axes = []
+    for n in nodes:
+        for name in sorted(n.get("vary", {})):
+            if n["vary"][name]:
+                axes.append((n["id"], name, n["vary"][name]))
+    requests = []
+    for values in itertools.product(*[a[2] for a in axes]):
+        chosen = {}
+        for (node_id, name, _), value in zip(axes, values):
+            chosen.setdefault(node_id, {})[name] = value
+        request = {"recipe": "none", "blocks": {}}
+        for n in nodes:
+            m = blocks[n["block"]]
+            params = dict(result[n["id"]]["params"])
+            params.update(chosen.get(n["id"], {}))
+            e = m["experiment"]
+            for key in ("recipe", "epochs", "seed", "hours"):
+                if key in e:
+                    request[key] = mapped(e[key], params)
+            for field, ref in e.get("blocks", {}).items():
+                request["blocks"][field] = mapped(ref, params)
+            for name, allowed in e.get("only", {}).items():
+                if params[name] not in allowed:
+                    request.setdefault("only_failed", []).append(name)
+        requests.append(request)
+    return requests
+
+
+def mapped(ref, params):
+    if isinstance(ref, str) and ref.startswith("@param."):
+        return params[ref[len("@param."):]]
+    return ref
+
+
+def check_requests(requests, template_id):
+    sys.path.insert(0, os.path.join(REPO, "tools"))
+    import experiments_panel as panel
+    catalog = panel.block_catalog(REPO)
+    for request in requests:
+        blocks = dict(catalog["defaults"])
+        blocks.update(request["blocks"])
+        named = panel.named_words(blocks, catalog)
+        hours = request["hours"]
+        body = panel.issue_body(named, request["epochs"], request["seed"], f"{hours:g}", request["recipe"])
+        record, problems = panel.check_request(body, REPO)
+        title = panel.request_title(named, request["epochs"])
+        print(f"  request {template_id}: {title} | problems {problems}")
+        if problems or request.get("only_failed"):
+            problem(f"templates/{template_id}.json", f"request refused: {problems} {request.get('only_failed')}")
+
+
+def check_template(t, blocks, c, path):
+    where = os.path.relpath(path, REPO)
+    if list(t) != ["sandbox", "id", "name", "about", "nodes", "edges", "layout", "expect"]:
+        problem(where, f"keys {list(t)}")
+    if t["sandbox"] != 1 or not ID.match(t["id"]) or t["id"] + ".json" != os.path.basename(path):
+        problem(where, "id or sandbox")
+    for n in t["nodes"]:
+        if not NODE.match(n["id"]) or n["block"] not in blocks:
+            problem(where, f"node {n}")
+        layout = t["layout"].get(n["id"])
+        if not layout or (layout[0] - 40) % 300 or (layout[1] - 40) % 150 or layout[0] < 40 or layout[1] < 40:
+            problem(where, f"layout of {n['id']}")
+    if set(t["layout"]) != {n["id"] for n in t["nodes"]}:
+        problem(where, "layout names other nodes")
+    order, result, found, total = propagate(t, blocks, c)
+    for f in found:
+        problem(where, f"propagate {f}")
+    route, ready, requests, totals, why, request_list = compile_counts(t, blocks, c, order, result, found, total)
+    gpu = totals.get("gpu", {"submissions": 0, "tasks": 0, "hours": 0})
+    cpu = totals.get("cpu", {"submissions": 0, "tasks": 0, "hours": 0})
+    got = {"route": route, "ready": ready, "requests": requests, "gpu_submissions": gpu["submissions"],
+           "cpu_submissions": cpu["submissions"], "gpu_tasks": gpu["tasks"]}
+    print(f"{t['id']}: order {order}")
+    for i in order:
+        print(f"  {i} {t['nodes'][[n['id'] for n in t['nodes']].index(i)]['block']}: fan {result[i]['fan']}, "
+              f"combinations {result[i]['combinations']}, out {summary(result[i]['outputs'])}")
+    print(f"  why {why}; totals {totals}; computed {got}")
+    if got != t["expect"]:
+        problem(where, f"expect {t['expect']} but computed {got}")
+    if request_list:
+        check_requests(request_list, t["id"])
+
+
+def summary(outputs):
+    parts = []
+    for name, t in outputs.items():
+        sizes = "x".join(str(t["sizes"].get(a, "?")) for a in t["axes"])
+        parts.append(f"{name}={t['kind']}[{','.join(t['axes'])}:{sizes}] {t['dtype']} {t['targets']} "
+                     f"c{t['classes']} {'/'.join(t['parts']) or '-'} {t['modality']} {t['licence']} "
+                     f"{','.join(t['sources'])} fam={t['family']} r{t['rank']} tr={t['trained']}")
+    return "; ".join(parts)
+
+
+def main():
+    global BLOCK_FIELDS
+    sys.path.insert(0, os.path.join(REPO, "tools"))
+    import experiments_panel as panel
+    BLOCK_FIELDS = panel.block_catalog(REPO)["fields"]
+    c = load(os.path.join(SANDBOX, "contract.json"))
+    check_contract(c)
+    blocks = {}
+    folder = os.path.join(SANDBOX, "blocks")
+    for name in sorted(os.listdir(folder)):
+        path = os.path.join(folder, name)
+        m = load(path)
+        check_manifest(m, c, path)
+        blocks[m["id"]] = m
+    glyphs_used = {m["glyph"] for m in blocks.values()}
+    print(f"{len(blocks)} blocks; glyphs used {len(glyphs_used)}; unused {sorted(set(c['glyphs']) - glyphs_used)}")
+    folder = os.path.join(SANDBOX, "templates")
+    for name in sorted(os.listdir(folder)):
+        path = os.path.join(folder, name)
+        check_template(load(path), blocks, c, path)
+    for line in PROBLEMS:
+        print("PROBLEM", line)
+    print(f"{len(PROBLEMS)} problem(s)")
+    return 1 if PROBLEMS else 0
+
+
+BLOCK_FIELDS = []
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -1,0 +1,246 @@
+"""The prepare blocks: recipe_cut, samples_select, crop_boxes, normalise, denoise, segment_ct,
+render_drr and realism_edit."""
+
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from gen_common import (ALL_RANKS, choice, generic, integer, job, manifest, names, port_in,  # noqa: E402
+                        port_out, rule, today)
+
+RECIPES = ["commercial", "commercial-share-alike", "non-commercial", "research-internal"]
+DATA_ANY = {"kind": ["data"]}
+FRAMES_2D = {"kind": ["data"], "rank": [2], "time": "no"}
+CT_VOLUMES = {"kind": ["data"], "rank": [3], "time": "no", "modality": ["ct"]}
+
+
+def recipe_cut():
+    return manifest(
+        "recipe_cut", "Cut by a licence recipe", "prepare",
+        "Keeps only the sources a licence recipe of data/recipes/ admits, so the data fits the network's use.",
+        "Applies one recipe of data/recipes/: commercial admits open sources; commercial-share-alike adds "
+        "share-alike ones; non-commercial adds non-commercial ones; research-internal adds agreement and "
+        "no-derivatives ones. A source whose class (data/licences.json) the recipe does not admit is "
+        "dropped, and the type's licence becomes the recipe's. The flow refuses a run that trains on a "
+        "source its recipe does not take (tools/flow.py --recipe), and every flow run writes the "
+        "PROVENANCE.json of its data.",
+        "recipe",
+        inputs=[port_in("data", DATA_ANY, "Any data whose sources carry licence classes.")],
+        outputs=[port_out("data", "data", [["cut", "@param.recipe"]],
+                          "The same data with only the admitted sources.")],
+        params=[choice("recipe", RECIPES, "research-internal", True,
+                       "the recipe of data/recipes/, from the most to the least restricted use it serves")],
+        generic_=generic(ALL_RANKS),
+        needs=["python"],
+        implemented_by=["tools/licences.py", "tools/flow.py", "data/licences.json", "data/recipes/commercial.json",
+                        "data/recipes/commercial-share-alike.json", "data/recipes/non-commercial.json",
+                        "data/recipes/research-internal.json"],
+        today_=today("live", route="experiment", note="the request's recipe line"),
+        experiment={"recipe": "@param.recipe"})
+
+
+def samples_select():
+    by_source = ["only-sources", "drop-sources"]
+    return manifest(
+        "samples_select", "Choose the training samples", "prepare",
+        "Keeps every training crop, only some sources, all but some sources, or a cap of crops per person.",
+        "The samples block of training (src/schwingnet/blocks.py kept): all keeps every training crop; "
+        "only-sources keeps the named sources; drop-sources drops them; cap-per-person keeps the first "
+        "per_person crops of each person in the catalog's fixed order, so no person outweighs the rest "
+        "and two runs differ in one thing at a time. Sources are the catalog's source ids. The validation "
+        "part never comes here.",
+        "samples",
+        inputs=[port_in("data", DATA_ANY, "Data with sources and a person key.")],
+        outputs=[port_out("data", "data", [], "The same data; training reads only the kept crops.")],
+        params=[
+            choice("samples", ["all", "only-sources", "drop-sources", "cap-per-person"], "all", True,
+                   "which training crops the run sees"),
+            names("sources", [], True, "the catalog's source ids, with samples=only-sources or drop-sources"),
+            integer("per_person", 0, 999999, 0, True,
+                    "crops kept per person, 1 or more, with samples=cap-per-person; 0 otherwise"),
+        ],
+        rules=[
+            rule({"samples": {"in": by_source}}, {"sources": {"nonempty": True}},
+                 "samples=only-sources or drop-sources needs the sources it names"),
+            rule({"samples": {"not_in": by_source}}, {"sources": {"empty": True}},
+                 "sources are named only with samples=only-sources or drop-sources"),
+            rule({"samples": {"in": ["cap-per-person"]}}, {"per_person": {"min": 1}},
+                 "samples=cap-per-person needs per_person 1 or more"),
+            rule({"samples": {"not_in": ["cap-per-person"]}}, {"per_person": {"empty": True}},
+                 "per_person is set only with samples=cap-per-person"),
+        ],
+        reads=["train"],
+        generic_=generic(ALL_RANKS),
+        needs=["python"],
+        implemented_by=["src/schwingnet/blocks.py", "tools/train.py"],
+        today_=today("live", route="experiment", note="the request's block lines samples, sources and per_person"),
+        experiment={"blocks": {"samples": "@param.samples", "sources": "@param.sources",
+                               "per_person": "@param.per_person"}})
+
+
+def crop_boxes():
+    return manifest(
+        "crop_boxes", "Crop the level boxes", "prepare",
+        "Cuts each labelled level box into a square grey crop of size x size pixels, the trainer's input.",
+        "The trainer's crop step (tools/train.py): each labelled box of a frame is cut with its pad, "
+        "turned grey (Pillow's convert L), resized to size x size and scaled to 0..1 as float32; the "
+        "network then repeats the grey channel three times. The experiment route passes no --size, so it "
+        "trains at the default 64. A projected level mask (render_drr) would give each level's box by its "
+        "extent; that reading is planned (docs/research/xr-from-3d/README.md), and the trainer reads only "
+        "the catalog's boxes today.",
+        "crop",
+        inputs=[port_in("frames", {"kind": ["data"], "rank": [2], "time": "no", "has_axes": ["C", "H", "W"],
+                                   "targets": ["level", "mask"]},
+                        "2-D frames with level boxes, or (planned) projected level masks.")],
+        outputs=[port_out("crops", "frames", [
+            ["size", "H", "@param.size"], ["size", "W", "@param.size"], ["size", "C", 1],
+            ["set", "dtype", "float32"], ["set", "targets", "level"]],
+            "One grey crop per labelled level, N x 1 x size x size, float32 in 0..1.")],
+        params=[integer("size", 32, 512, 64, True,
+                        "pixels a side; the trainer takes any (--size, default 64); the smoke check decides "
+                        "32, 64, 96 and 128 (tools/block_sweep.py); 512 is the sandbox's cap")],
+        generic_=generic([2], "no", why="The trainer cuts 2-D boxes from frames (tools/train.py); a volume or a "
+                                        "clip would need a 3-D box or one crop per time step, which no code cuts yet."),
+        needs=["python", "numpy"],
+        implemented_by=["tools/train.py"],
+        today_=today("live", route="experiment", note="at the trainer's default size 64"),
+        experiment={"only": {"size": [64]}})
+
+
+def hook_block(ident, title, summary, does, glyph, param, values, table):
+    return manifest(
+        ident, title, "prepare", summary, does, glyph,
+        inputs=[port_in("data", FRAMES_2D, "2-D frames or crops the network reads.")],
+        outputs=[port_out("data", "data", [], "The same data: the hook lives inside the model.")],
+        params=[choice(param, values, "none", True, f"the {param} block of src/schwingnet/blocks.py")],
+        generic_=generic([2], "no", why=f"The {table} are hooks on the 2-D network's input "
+                                        f"(tools/train_blocks.py); a volume or a clip would need hooks of its own."),
+        needs=["python", "torch"],
+        implemented_by=["tools/train_blocks.py", "src/schwingnet/blocks.py"],
+        today_=today("live", route="experiment", note=f"the request's block line {param}"),
+        experiment={"blocks": {param: f"@param.{param}"}})
+
+
+def normalise():
+    return hook_block(
+        "normalise", "Normalise the input",
+        "Scales the network's input: none, or ImageNet's channel means and spreads on the tiled grey.",
+        "A forward pre-hook on the network's input (tools/train_blocks.py NORMALISERS): none leaves the "
+        "crops in 0..1 as they are; imagenet subtracts ImageNet's channel means and divides by its "
+        "spreads, the statistics the pretrained weights saw. It changes no type.",
+        "normalise", "normalise", ["none", "imagenet"], "normalisers")
+
+
+def denoise():
+    return hook_block(
+        "denoise", "Denoise the input",
+        "Smooths the network's input before the stem: none, a Gaussian blur or a median filter.",
+        "A forward pre-hook before the stem (tools/train_blocks.py DENOISERS): none, gaussian or median, "
+        "on every crop the network reads, in training and in evaluation alike. It changes no type.",
+        "denoise", "denoise", ["none", "gaussian", "median"], "denoisers")
+
+
+def segment_ct():
+    return manifest(
+        "segment_ct", "Segment the CTs", "prepare",
+        "Labels each CT's vertebrae with a segmenter's masks: SPINEPS's existing masks or MOOSE's.",
+        "The segmenter block (src/schwingnet/segmenters.py): spineps reads the census's existing SPINEPS "
+        "masks, relabelled from the VerSe alphabet; moose runs moosez's vertebrae model, as the drr_seg "
+        "flow does for the DRR study's CTs (grid/drr-seg.sbatch: 4 CPUs, 50 GB, 12 h). TotalSegmentator "
+        "is no choice here: the owner's rule keeps it off the renders' labels, and it runs only in the "
+        "totalseg flow, which draws C2 and the sacrum to complete the gold tier 3 masks. The sandbox "
+        "counts one GPU job either way.",
+        "segment",
+        inputs=[port_in("volumes", CT_VOLUMES, "CT volumes.")],
+        outputs=[port_out("data", "volumes", [["set", "targets", "mask"]],
+                          "The same volumes with the segmenter's vertebra masks.")],
+        params=[choice("segmenter", ["spineps", "moose"], "spineps", True,
+                       "spineps: the existing masks, no run; moose: moosez's vertebrae model on a GPU")],
+        job_=job("gpu", 12, 4, 50),
+        deterministic="declared",
+        nondeterminism="A segmenter on a GPU may differ in its last bits between cards and library "
+                       "versions; later steps read the masks a run wrote, not a fresh run.",
+        generic_=generic([3], "no", why="Segmenters read CT volumes (src/schwingnet/segmenters.py, "
+                                        "tools/flexray_render.py segment); a 2-D frame has no volume to segment."),
+        needs=["python", "numpy", "nibabel", "torch"],
+        implemented_by=["src/schwingnet/segmenters.py", "tools/flexray_render.py", "flows/drr_seg.py",
+                        "grid/drr-seg.sbatch"],
+        today_=today("flow", flow="DrrSegFlow", note="the word bench flexray_drr_seg runs it for the DRR "
+                                                     "study's CTs"),
+        experiment=None)
+
+
+def render_drr():
+    presets = ["default", "flexray", "physical", "physical-ct", "fluxray-raw"]
+    return manifest(
+        "render_drr", "Render DRRs", "prepare",
+        "Projects each CT into 2-D synthetic X-rays (DRRs) by the render blocks: views, detector, rays, preset.",
+        "The render blocks (src/schwingnet/render_blocks.py) run by tools/flexray_render.py: each CT gives "
+        "views projections on a detector of detector x detector pixels with ray_samples samples a ray, by "
+        "FleXray's recipe or one of the presets. Images are 16-bit grey PNGs (65535 is 1), so the dtype "
+        "is left as it came. With a segmenter's masks each view keeps its levels' projected labels; "
+        "physical-ct reads no mask and renders pixels alone. Today it runs inside the DRR study's flow on "
+        "its render groups (data/domain_gap/groups.json), on TotalSegmentator v2.0.1 CTs.",
+        "render",
+        inputs=[port_in("volumes", CT_VOLUMES, "CT volumes, with masks unless labels is none.")],
+        outputs=[port_out("data", "volumes", [
+            ["drop_axis", "D"], ["size", "H", "@param.detector"], ["size", "W", "@param.detector"],
+            ["set", "modality", "drr"], ["set", "targets", "@param.labels"]],
+            "2-D DRRs N x C x detector x detector, with projected level masks unless labels is none.")],
+        params=[
+            integer("views", 1, 100, 4, True, "projections a CT"),
+            integer("detector", 32, 1024, 256, True, "pixels a side of the detector"),
+            integer("ray_samples", 16, 4000, 500, True, "samples along each ray"),
+            choice("preset", presets, "default", True, "the render recipe of src/schwingnet/render_blocks.py"),
+            choice("labels", ["mask", "none"], "mask", False,
+                   "mask: each view keeps the segmenter's levels projected; none: pixels alone"),
+        ],
+        rules=[
+            rule({"preset": {"in": ["physical-ct"]}}, {"labels": {"in": ["none"]}},
+                 "physical-ct reads no mask, so its views carry no labels: set labels to none"),
+            rule({"preset": {"in": ["fluxray-raw"]}}, {"detector": {"in": [1024]}},
+                 "fluxray-raw renders on a detector of 1024 pixels"),
+        ],
+        job_=job("gpu", 12, 16, 64),
+        deterministic="declared",
+        nondeterminism="A view's crop and pose come from the salt, the subject and the view alone, so a "
+                       "render repeats them; the GPU's arithmetic may differ in its last bits.",
+        generic_=generic([3], "no", why="It projects CT volumes (tools/flexray_render.py); a 2-D image has "
+                                        "nothing to project, and a volume of another modality would need its own "
+                                        "attenuation model."),
+        needs=["python", "numpy", "nibabel", "torch"],
+        implemented_by=["src/schwingnet/render_blocks.py", "tools/render_blocks.py", "tools/flexray_render.py",
+                        "flows/drr_gap.py", "data/domain_gap/groups.json"],
+        today_=today("flow", flow="DrrGapFlow", note="the word bench flexray_drr_gap renders the study's "
+                                                     "groups"),
+        experiment=None)
+
+
+def realism_edit():
+    return manifest(
+        "realism_edit", "Realism edit of DRRs", "prepare",
+        "FLUX.2 klein-9B edits each DRR zero-shot toward a real X-ray's look; the masks stay as rendered.",
+        "FluXray's zero-shot edit (src/schwingnet/realism.py): FLUX.2 klein-9B, 4 steps at guidance 1.0, "
+        "on renders of 1024 pixels, stored at 256. The renderer's exact 1024-pixel masks are kept beside "
+        "every image, so the labels are the CT's, not the edit's. It runs as the realism flow's fixed "
+        "plan, edit and then stats, under docs/research/flux-realism/PREREG.md; lora and eval are refused "
+        "until a count of their own.",
+        "realism",
+        inputs=[port_in("data", {"kind": ["data"], "rank": [2], "time": "no", "modality": ["drr"]},
+                        "2-D DRRs.")],
+        outputs=[port_out("data", "data", [["size", "H", 256], ["size", "W", 256]],
+                          "The edited DRRs, stored at 256 pixels a side, with the renderer's masks.")],
+        job_=job("gpu", 12, 4, 64),
+        deterministic="declared",
+        nondeterminism="A diffusion edit on a GPU is not bit-exact between cards; the flow records its "
+                       "settings, and the study's statistics are read over many images, not one.",
+        generic_=generic([2], "no", why="The edit takes 2-D DRR images (src/schwingnet/realism.py); a volume or "
+                                        "a clip would need a model of its own."),
+        needs=["python", "numpy", "torch"],
+        implemented_by=["src/schwingnet/realism.py", "tools/realism.py", "tools/realism_report.py",
+                        "flows/realism.py", "grid/realism.sbatch"],
+        today_=today("flow", flow="RealismFlow", note="the words realism edit and realism stats"),
+        experiment=None)
+
+
+PREPARE = [recipe_cut, samples_select, crop_boxes, normalise, denoise, segment_ct, render_drr, realism_edit]

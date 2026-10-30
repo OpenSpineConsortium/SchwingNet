@@ -1,0 +1,32 @@
+const {chromium} = require("playwright");
+const {serve} = require("./serve.js");
+(async function () {
+  const {server, url} = await serve(__dirname);
+  const browser = await chromium.launch();
+  const page = await (await browser.newContext({viewport: {width: 1400, height: 900}})).newPage();
+  await page.goto(url + "final.html");
+  await page.waitForTimeout(300);
+  await page.fill("#sb-search", "auto-anatomist");
+  const chips = await page.evaluate(function () {
+    return Array.from(document.querySelectorAll(".bchip")).filter(function (c) { return !c.hidden && c.offsetParent; }).map(function (c) { return c.textContent; });
+  });
+  console.log("chips:", JSON.stringify(chips));
+  await page.fill("#sb-search", "");
+  await page.evaluate(function () { window.sandbox.load("latent_prior"); window.sandbox.select("n5"); });
+  await page.waitForTimeout(150);
+  const panel = await page.evaluate(function () {
+    const card = document.querySelector('.ncard[data-id="n5"]');
+    return {dashed: card.classList.contains("planned"), text: document.getElementById("sb-detail").innerText.split("\n").filter(function (l) { return /today|note|built|takes|targets|code/i.test(l); }).slice(0, 12)};
+  });
+  console.log(JSON.stringify(panel, null, 1));
+  await page.evaluate(function () { window.sandbox.load("experiment_v1"); window.sandbox.select(null); });
+  await page.waitForTimeout(150);
+  const summary = await page.evaluate(function () { return document.getElementById("sb-detail").innerText.split("\n").filter(function (l) { return /rows count|Experiment route|request/i.test(l); }); });
+  console.log(JSON.stringify(summary, null, 1));
+  await page.evaluate(function () { window.sandbox.load("ct_to_xray"); window.sandbox.select("n5"); });
+  await page.waitForTimeout(150);
+  const split = await page.evaluate(function () { return document.getElementById("sb-detail").innerText.split("\n").filter(function (l) { return /unsplit|takes|split/i.test(l); }).slice(0, 8); });
+  console.log(JSON.stringify(split, null, 1));
+  await browser.close();
+  server.close();
+})();
