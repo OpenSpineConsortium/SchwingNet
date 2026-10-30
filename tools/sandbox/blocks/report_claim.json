@@ -1,0 +1,102 @@
+{
+ "block": 1,
+ "id": "report_claim",
+ "version": 1,
+ "title": "CLAIM and REFORMS report",
+ "stage": "report",
+ "summary": "The CLAIM 2024 and REFORMS report every launched flow writes and checks at its end.",
+ "does": "The end step of every launched flow (flows/stage.py) writes the run's CLAIM 2024 and REFORMS report from its records (tools/report.py) and checks that it is current; a run whose report is not current ends with a failed verdict. CLAIM is the checklist for reporting imaging AI, REFORMS the one for machine-learning science. It rides with every flow at no cost of its own.",
+ "glyph": "report",
+ "inputs": [
+  {
+   "name": "results",
+   "accepts": {
+    "kind": [
+     "data",
+     "metrics",
+     "checkpoint",
+     "report"
+    ]
+   },
+   "optional": false,
+   "what": "What the run made."
+  },
+  {
+   "name": "more",
+   "accepts": {
+    "kind": [
+     "data",
+     "metrics",
+     "checkpoint",
+     "report"
+    ]
+   },
+   "optional": true,
+   "what": "Another result of the same run."
+  }
+ ],
+ "outputs": [
+  {
+   "name": "report",
+   "from": "results",
+   "ops": [
+    [
+     "kind",
+     "report"
+    ],
+    [
+     "axes",
+     []
+    ]
+   ],
+   "what": "The report, beside the run's records."
+  }
+ ],
+ "params": [],
+ "rules": [],
+ "reads": {
+  "parts": []
+ },
+ "job": {
+  "class": "none",
+  "hours": 0,
+  "with_upstream": false,
+  "array": false,
+  "cpus": 0,
+  "memory_gb": 0
+ },
+ "deterministic": "exact",
+ "seed_param": "",
+ "nondeterminism": "",
+ "generic": {
+  "rank": [
+   0,
+   1,
+   2,
+   3
+  ],
+  "time": "any",
+  "channels": "any",
+  "sizes": "any",
+  "why": ""
+ },
+ "resolve": null,
+ "needs": [
+  "python",
+  "metaflow"
+ ],
+ "code": "existing",
+ "implemented_by": [
+  "tools/report.py",
+  "flows/stage.py"
+ ],
+ "today": {
+  "status": "live",
+  "route": "experiment",
+  "word": "",
+  "flow": "",
+  "note": "the experiment flow's end step writes it"
+ },
+ "experiment": {},
+ "card": null
+}

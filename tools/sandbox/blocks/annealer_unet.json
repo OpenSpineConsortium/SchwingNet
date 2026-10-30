@@ -1,0 +1,137 @@
+{
+ "block": 1,
+ "id": "annealer_unet",
+ "version": 1,
+ "title": "Auto-anatomist network",
+ "stage": "model",
+ "summary": "The auto-anatomist's 3-D network: a residual U-Net, a plain U-Net or a probe, with its widths and groups.",
+ "does": "The model spot of the auto-anatomist (vendored from bordercall on the unmerged pull request #483, grid/autoanatomist/autoanatomist/blocks.py there): residual-unet, plain-unet or probe, the encoders' channels at three scales (the key widths, default 16:32:64) and group norm's groups (default 8). It reads CT crops around each vertebra with the privileged mask channels its trainer anneals away. Nothing on main runs it.",
+ "glyph": "unet",
+ "inputs": [
+  {
+   "name": "data",
+   "accepts": {
+    "kind": [
+     "data"
+    ],
+    "rank": [
+     3
+    ],
+    "time": "no",
+    "targets": [
+     "mask"
+    ]
+   },
+   "optional": false,
+   "what": "3-D CT crops with their masks."
+  }
+ ],
+ "outputs": [
+  {
+   "name": "model",
+   "from": "data",
+   "ops": [
+    [
+     "kind",
+     "model"
+    ],
+    [
+     "set",
+     "family",
+     "@param.architecture"
+    ]
+   ],
+   "what": "The network, shaped by the crops it will read."
+  }
+ ],
+ "params": [
+  {
+   "name": "architecture",
+   "kind": "choice",
+   "choices": [
+    "residual-unet",
+    "plain-unet",
+    "probe"
+   ],
+   "default": "residual-unet",
+   "vary": true,
+   "what": "the network the model spot takes"
+  },
+  {
+   "name": "width_1",
+   "kind": "int",
+   "low": 1,
+   "high": 1024,
+   "default": 16,
+   "vary": true,
+   "what": "the encoders' channels at the first scale (widths=a:b:c); 1024 is the sandbox's cap"
+  },
+  {
+   "name": "width_2",
+   "kind": "int",
+   "low": 1,
+   "high": 1024,
+   "default": 32,
+   "vary": true,
+   "what": "the encoders' channels at the second scale; 1024 is the sandbox's cap"
+  },
+  {
+   "name": "width_3",
+   "kind": "int",
+   "low": 1,
+   "high": 1024,
+   "default": 64,
+   "vary": true,
+   "what": "the encoders' channels at the third scale; 1024 is the sandbox's cap"
+  },
+  {
+   "name": "groups",
+   "kind": "int",
+   "low": 1,
+   "high": 64,
+   "default": 8,
+   "vary": true,
+   "what": "group norm's groups; 64 is the sandbox's cap"
+  }
+ ],
+ "rules": [],
+ "reads": {
+  "parts": []
+ },
+ "job": {
+  "class": "none",
+  "hours": 0,
+  "with_upstream": false,
+  "array": false,
+  "cpus": 0,
+  "memory_gb": 0
+ },
+ "deterministic": "declared",
+ "seed_param": "",
+ "nondeterminism": "The new head starts from a random draw made under its trainer's seed, so the network repeats only with that seed.",
+ "generic": {
+  "rank": [
+   3
+  ],
+  "time": "no",
+  "channels": "any",
+  "sizes": "any",
+  "why": "It reads 3-D CT crops around each vertebra (#483); 2-D frames would need a 2-D U-Net and crops of their own."
+ },
+ "resolve": "a 3-D {family} over {sizes.C} channel(s)",
+ "needs": [
+  "python",
+  "jax"
+ ],
+ "code": "planned",
+ "implemented_by": [],
+ "today": {
+  "status": "pending",
+  "route": "",
+  "word": "",
+  "flow": "",
+  "note": "Built on the unmerged pull request #483 (grid/autoanatomist/ on its branch); nothing on main runs it until that pull request merges."
+ },
+ "experiment": null,
+ "card": null
+}

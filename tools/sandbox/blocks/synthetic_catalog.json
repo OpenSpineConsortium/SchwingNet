@@ -1,0 +1,123 @@
+{
+ "block": 1,
+ "id": "synthetic_catalog",
+ "version": 1,
+ "title": "Synthetic smoke catalog",
+ "stage": "source",
+ "summary": "block_sweep's synthetic catalog for smoke tests: 600 frames over 40 cases, drawn by code, no patient.",
+ "does": "A small catalog drawn by tools/block_sweep.py with no real image in it, for checking that every block combination runs before any grid time is spent: 600 frames over 40 cases, 100 test frames and 200 unlabelled, seed 1. The sweep flow's synthetic plan (grid/sweeps/synthetic.json) trains on it. Nothing measured on it is a result.",
+ "glyph": "synthetic",
+ "inputs": [],
+ "outputs": [
+  {
+   "name": "data",
+   "from": null,
+   "ops": [
+    [
+     "axes",
+     [
+      "N",
+      "C",
+      "H",
+      "W"
+     ]
+    ],
+    [
+     "size",
+     "C",
+     1
+    ],
+    [
+     "set",
+     "dtype",
+     "uint8"
+    ],
+    [
+     "set",
+     "targets",
+     "level"
+    ],
+    [
+     "set",
+     "classes",
+     27
+    ],
+    [
+     "parts",
+     [
+      "train",
+      "validation",
+      "test"
+     ]
+    ],
+    [
+     "set",
+     "persons",
+     true
+    ]
+   ],
+   "what": "Synthetic grey frames with level boxes, split by person as real ones are."
+  }
+ ],
+ "params": [
+  {
+   "name": "seed",
+   "kind": "int",
+   "low": 0,
+   "high": 999999999,
+   "default": 1,
+   "vary": false,
+   "what": "the draw's seed (tools/block_sweep.py synthetic --seed, default 1)"
+  }
+ ],
+ "rules": [],
+ "reads": {
+  "parts": []
+ },
+ "job": {
+  "class": "none",
+  "hours": 0,
+  "with_upstream": false,
+  "array": false,
+  "cpus": 0,
+  "memory_gb": 0
+ },
+ "deterministic": "seeded",
+ "seed_param": "seed",
+ "nondeterminism": "",
+ "generic": null,
+ "resolve": null,
+ "needs": [
+  "python",
+  "numpy",
+  "metaflow"
+ ],
+ "code": "existing",
+ "implemented_by": [
+  "tools/block_sweep.py",
+  "grid/sweeps/synthetic.json",
+  "flows/sweep.py"
+ ],
+ "today": {
+  "status": "flow",
+  "route": "",
+  "word": "",
+  "flow": "SweepFlow",
+  "note": "the plan grid/sweeps/synthetic.json of the word sweep"
+ },
+ "experiment": null,
+ "card": {
+  "origin": "Drawn by tools/block_sweep.py synthetic from no dataset and no patient.",
+  "where": "Built where the sweep flow runs it, on the grid; nothing of it is committed.",
+  "count": "600 frames over 40 cases, 100 of them test frames and 200 unlabelled (tools/block_sweep.py).",
+  "persons": "40 synthetic cases, each its own person key.",
+  "split": "The catalog's person split, as for real data.",
+  "held_out": "Its synthetic test frames; no number on it is reported as a result.",
+  "licence": "None recorded: the frames are drawn by code, so it is left uncut.",
+  "from": [
+   "tools/block_sweep.py",
+   "grid/sweeps/synthetic.json",
+   "flows/sweep.py"
+  ]
+ }
+}

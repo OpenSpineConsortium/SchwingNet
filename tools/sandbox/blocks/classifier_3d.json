@@ -1,0 +1,102 @@
+{
+ "block": 1,
+ "id": "classifier_3d",
+ "version": 1,
+ "title": "3-D level classifier",
+ "stage": "model",
+ "summary": "A 3-D classifier built from the volume's type: MONAI's networks with spatial_dims 3 (planned).",
+ "does": "Planned: a level head over a 3-D stem, built from the incoming type, spatial_dims 3, in_channels from sizes.C and out_channels from classes. MONAI's DenseNet121, SEResNet50 and SEResNext50, which tools/train_blocks.py builds with spatial_dims 2 today, take spatial_dims 3 as well. No trainer reads volumes yet.",
+ "glyph": "network",
+ "inputs": [
+  {
+   "name": "data",
+   "accepts": {
+    "kind": [
+     "data"
+    ],
+    "rank": [
+     3
+    ],
+    "time": "no",
+    "has_axes": [
+     "C"
+    ]
+   },
+   "optional": false,
+   "what": "3-D volumes."
+  }
+ ],
+ "outputs": [
+  {
+   "name": "model",
+   "from": "data",
+   "ops": [
+    [
+     "kind",
+     "model"
+    ],
+    [
+     "set",
+     "family",
+     "@param.architecture"
+    ]
+   ],
+   "what": "The 3-D network, shaped by the volumes it will read."
+  }
+ ],
+ "params": [
+  {
+   "name": "architecture",
+   "kind": "choice",
+   "choices": [
+    "densenet121",
+    "se-resnet50",
+    "se-resnext50"
+   ],
+   "default": "densenet121",
+   "vary": true,
+   "what": "the MONAI network, built with spatial_dims 3"
+  }
+ ],
+ "rules": [],
+ "reads": {
+  "parts": []
+ },
+ "job": {
+  "class": "none",
+  "hours": 0,
+  "with_upstream": false,
+  "array": false,
+  "cpus": 0,
+  "memory_gb": 0
+ },
+ "deterministic": "declared",
+ "seed_param": "",
+ "nondeterminism": "The new head starts from a random draw made under its trainer's seed, so the network repeats only with that seed.",
+ "generic": {
+  "rank": [
+   3
+  ],
+  "time": "no",
+  "channels": "any",
+  "sizes": "any",
+  "why": "Planned for volumes only: frames have the 2-D classifier, and a clip would need a time axis the stem does not take."
+ },
+ "resolve": "a 3-D {family} whose stem takes {sizes.C} channel(s) of {sizes.D} x {sizes.H} x {sizes.W}; head of {classes}",
+ "needs": [
+  "python",
+  "torch",
+  "monai"
+ ],
+ "code": "planned",
+ "implemented_by": [],
+ "today": {
+  "status": "planned",
+  "route": "",
+  "word": "",
+  "flow": "",
+  "note": "no trainer reads volumes yet"
+ },
+ "experiment": null,
+ "card": null
+}

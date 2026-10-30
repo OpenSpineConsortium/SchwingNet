@@ -1,0 +1,427 @@
+{
+ "contract": 1,
+ "stages": [
+  {
+   "id": "source",
+   "title": "Source",
+   "what": "Where the data comes from: a versioned store, recorded sweeps or a folder of your own. A source has no input and carries a data card."
+  },
+  {
+   "id": "prepare",
+   "title": "Prepare",
+   "what": "What is done to the samples before any network: a licence recipe, a choice of samples, crops, normalising, denoising, segmenting, rendering, a realism edit."
+  },
+  {
+   "id": "split",
+   "title": "Split",
+   "what": "Which person goes to train, validation or test. Persons are split, never scans, so no person is on two sides."
+  },
+  {
+   "id": "augment",
+   "title": "Augment",
+   "what": "Random changes to the training samples only, drawn afresh each epoch."
+  },
+  {
+   "id": "model",
+   "title": "Model",
+   "what": "The network, built from the type of the data it takes: its stem from the channels and rank, its head from the classes."
+  },
+  {
+   "id": "train",
+   "title": "Train",
+   "what": "Fits the model on the train part while watching the validation part, and gives a checkpoint."
+  },
+  {
+   "id": "calibrate",
+   "title": "Calibrate",
+   "what": "Fits how sure a trained model is on the validation part, never on test."
+  },
+  {
+   "id": "select",
+   "title": "Select",
+   "what": "Joins the arms of a screen and keeps one by its validation score alone."
+  },
+  {
+   "id": "evaluate",
+   "title": "Evaluate",
+   "what": "Reads the held-out test part once and gives numbers with intervals, or measures speed or distance between data sets."
+  },
+  {
+   "id": "analyse",
+   "title": "Analyse",
+   "what": "Measures or names what the data holds with no network trained: morphometry, naming by rule."
+  },
+  {
+   "id": "report",
+   "title": "Report",
+   "what": "Writes down what a run did and found: the CLAIM and REFORMS report, the model card, the W&B log."
+  }
+ ],
+ "kinds": {
+  "data": "samples with their axes, sizes, labels, split parts and person key",
+  "model": "a network not yet trained, shaped by the type of the data it was built for",
+  "checkpoint": "a trained network's weights, with the record of the data it was trained on",
+  "metrics": "numbers measured on data or on a checkpoint, each with its interval where it has one",
+  "report": "a written record of a run: a report, a model card or a log"
+ },
+ "axes": {
+  "N": "samples",
+  "T": "time",
+  "C": "channels",
+  "D": "depth",
+  "H": "height",
+  "W": "width",
+  "F": "features",
+  "K": "points",
+  "P": "coordinates of a point"
+ },
+ "spatial": [
+  "D",
+  "H",
+  "W"
+ ],
+ "dtypes": [
+  "uint8",
+  "int16",
+  "int32",
+  "float16",
+  "float32",
+  "bool"
+ ],
+ "targets": [
+  "none",
+  "level",
+  "mask",
+  "points",
+  "value"
+ ],
+ "parts": [
+  "train",
+  "validation",
+  "test"
+ ],
+ "modalities": [
+  "any",
+  "fluoro",
+  "radiograph",
+  "mixed",
+  "ct",
+  "drr",
+  "table"
+ ],
+ "licences": [
+  "commercial",
+  "commercial-share-alike",
+  "non-commercial",
+  "research-internal",
+  "uncut"
+ ],
+ "job_classes": [
+  "none",
+  "cpu",
+  "gpu"
+ ],
+ "today": [
+  "live",
+  "word",
+  "flow",
+  "pending",
+  "planned"
+ ],
+ "code": [
+  "existing",
+  "own",
+  "planned"
+ ],
+ "deterministic": [
+  "exact",
+  "seeded",
+  "declared"
+ ],
+ "needs": [
+  "python",
+  "numpy",
+  "scipy",
+  "nibabel",
+  "torch",
+  "torchvision",
+  "monai",
+  "onnxruntime",
+  "jax",
+  "pymc",
+  "metaflow",
+  "wandb"
+ ],
+ "glyphs": [
+  "catalog",
+  "ct",
+  "video",
+  "folder",
+  "synthetic",
+  "recipe",
+  "samples",
+  "normalise",
+  "denoise",
+  "crop",
+  "segment",
+  "render",
+  "realism",
+  "features",
+  "split",
+  "splitFamilies",
+  "augment",
+  "network",
+  "unet",
+  "prior",
+  "train",
+  "calibrate",
+  "select",
+  "evaluate",
+  "latency",
+  "gap",
+  "morphometry",
+  "naming",
+  "report",
+  "wandb",
+  "card",
+  "fallback"
+ ],
+ "limits": {
+  "combinations": 64,
+  "array_tasks": 1000,
+  "nodes": 60,
+  "edges": 120,
+  "epochs_most": 200,
+  "hours_most": 48,
+  "manifest_bytes": 16384
+ },
+ "probes": [
+  {
+   "name": "frames, 2-D grey 64",
+   "type": {
+    "kind": "data",
+    "axes": [
+     "N",
+     "C",
+     "H",
+     "W"
+    ],
+    "sizes": {
+     "C": 1,
+     "H": 64,
+     "W": 64
+    },
+    "dtype": "uint8",
+    "targets": "level",
+    "classes": 27,
+    "parts": [
+     "train",
+     "validation",
+     "test"
+    ],
+    "persons": true,
+    "modality": "any",
+    "licence": "uncut",
+    "sources": [],
+    "family": null,
+    "rank": 2,
+    "trained": false
+   }
+  },
+  {
+   "name": "frames, 2-D colour 224",
+   "type": {
+    "kind": "data",
+    "axes": [
+     "N",
+     "C",
+     "H",
+     "W"
+    ],
+    "sizes": {
+     "C": 3,
+     "H": 224,
+     "W": 224
+    },
+    "dtype": "float32",
+    "targets": "level",
+    "classes": 27,
+    "parts": [
+     "train",
+     "validation",
+     "test"
+    ],
+    "persons": true,
+    "modality": "any",
+    "licence": "uncut",
+    "sources": [],
+    "family": null,
+    "rank": 2,
+    "trained": false
+   }
+  },
+  {
+   "name": "volumes, 3-D grey 96",
+   "type": {
+    "kind": "data",
+    "axes": [
+     "N",
+     "C",
+     "D",
+     "H",
+     "W"
+    ],
+    "sizes": {
+     "C": 1,
+     "D": 96,
+     "H": 96,
+     "W": 96
+    },
+    "dtype": "int16",
+    "targets": "level",
+    "classes": 27,
+    "parts": [
+     "train",
+     "validation",
+     "test"
+    ],
+    "persons": true,
+    "modality": "any",
+    "licence": "uncut",
+    "sources": [],
+    "family": null,
+    "rank": 3,
+    "trained": false
+   }
+  },
+  {
+   "name": "clips, 2-D grey",
+   "type": {
+    "kind": "data",
+    "axes": [
+     "N",
+     "T",
+     "C",
+     "H",
+     "W"
+    ],
+    "sizes": {
+     "T": 16,
+     "C": 1,
+     "H": 64,
+     "W": 64
+    },
+    "dtype": "uint8",
+    "targets": "level",
+    "classes": 27,
+    "parts": [
+     "train",
+     "validation",
+     "test"
+    ],
+    "persons": true,
+    "modality": "any",
+    "licence": "uncut",
+    "sources": [],
+    "family": null,
+    "rank": 2,
+    "trained": false
+   }
+  },
+  {
+   "name": "a table",
+   "type": {
+    "kind": "data",
+    "axes": [
+     "N",
+     "F"
+    ],
+    "sizes": {
+     "F": 32
+    },
+    "dtype": "float32",
+    "targets": "level",
+    "classes": 27,
+    "parts": [
+     "train",
+     "validation",
+     "test"
+    ],
+    "persons": true,
+    "modality": "any",
+    "licence": "uncut",
+    "sources": [],
+    "family": null,
+    "rank": 0,
+    "trained": false
+   }
+  }
+ ],
+ "requirements": [
+  {
+   "id": "R1",
+   "title": "Identity",
+   "rule": "The manifest says block 1; its id is 2 to 40 lower-case letters, digits or underscores, starting with a letter, and is the file's name; its version is a whole number from 1; it has a title of 1 to 60 characters, a stage from the list, a one-line summary of at most 120 characters, what it does in at most 800, and a glyph from the list."
+  },
+  {
+   "id": "R2",
+   "title": "Ports",
+   "rule": "A source has no input and every other block at least one; every block has at least one output. Port names are unique. Each input says what it accepts as a pattern; each output says which input it starts from and the ops that change the type; every op is known and every reference names a param or port that exists."
+  },
+  {
+   "id": "R3",
+   "title": "Params",
+   "rule": "Each param is a choice, an int, a float, a bool, a set or a list of names, with valid bounds and a default inside them; names are unique; a float has at most 6 decimals."
+  },
+  {
+   "id": "R4",
+   "title": "Rules",
+   "rule": "Each rule names params that exist in its when and its need, uses only the conditions in, not_in, min, max, above, below, empty and nonempty, and says in words what is wrong when it fails."
+  },
+  {
+   "id": "R5",
+   "title": "Reads",
+   "rule": "The block lists the split parts it reads; only an evaluate or a report block may read the test part."
+  },
+  {
+   "id": "R6",
+   "title": "Job",
+   "rule": "The job's class is none, cpu or gpu; its hours are above 0 or a reference to a number param; it asks for 1 to 64 CPUs and 1 to 512 GB; it says whether it rides in its upstream's job and whether its arms go as one array."
+  },
+  {
+   "id": "R7",
+   "title": "Determinism",
+   "rule": "The block is exact (the same inputs give the same bytes), seeded by a named int param, or declared, saying what varies and why that is tolerated."
+  },
+  {
+   "id": "R8",
+   "title": "Genericity",
+   "rule": "A block that takes data or a model says which ranks, time axis, channels and sizes it takes, and why, with what would widen it, where it takes less than all; each data input's rank is that rank; and it accepts every probe of its ranks and time, given the targets and the split its first input asks for, and computes its outputs from it with no problem."
+  },
+  {
+   "id": "R9",
+   "title": "Needs",
+   "rule": "The libraries the block uses come only from the contract's list."
+  },
+  {
+   "id": "R10",
+   "title": "Code",
+   "rule": "existing: every path the block names exists in the repository; own: tools/sandbox/blocks/<id>.py with a module docstring and def run(inputs, params, context), and tests/test_sandbox_block_<id>.py; planned: no code on this branch yet, its today planned, or pending while an unmerged pull request builds it."
+  },
+  {
+   "id": "R11",
+   "title": "Today",
+   "rule": "The block says truly what runs it now: live (the experiment route), a gate word with a fixed id, a launched flow's fixed plan, an unmerged pull request named by #number, or planned (nothing yet)."
+  },
+  {
+   "id": "R12",
+   "title": "Text",
+   "rule": "Every string is ASCII with no control character, and the manifest's canonical JSON is at most 16384 bytes."
+  },
+  {
+   "id": "R13",
+   "title": "Data card",
+   "rule": "A source block fills every field of its data card (origin, where, count, persons, split, held out, licence) and lists the repository files its facts come from."
+  }
+ ]
+}

@@ -1,0 +1,110 @@
+{
+ "block": 1,
+ "id": "gold3_ct",
+ "version": 1,
+ "title": "Gold tier 3 CTs",
+ "stage": "source",
+ "summary": "ENHANCE.PET, VerSe and TotalSegmentator CTs whose field shows C2 to the sacrum, with each release's masks.",
+ "does": "1,738 CTs admitted by rule 3 of tools/gold3_field.py, a field that holds the foot of C2 and the top of the sacrum: ENHANCE.PET 1,558, VerSe 21 and TotalSegmentator 159, with 10 border cases waiting for a person's look. Each CT keeps its release's own masks, whose label ids differ by member, so the number of classes is left unknown, and its dtype is not recorded. Nothing is split: a split block assigns the persons. The census word reads the store on the grid and segments nothing; the levels a mask lacks wait for the completion arms (bordercall complete, totalseg complete).",
+ "glyph": "ct",
+ "inputs": [],
+ "outputs": [
+  {
+   "name": "data",
+   "from": null,
+   "ops": [
+    [
+     "axes",
+     [
+      "N",
+      "C",
+      "D",
+      "H",
+      "W"
+     ]
+    ],
+    [
+     "size",
+     "C",
+     1
+    ],
+    [
+     "set",
+     "targets",
+     "mask"
+    ],
+    [
+     "set",
+     "persons",
+     true
+    ],
+    [
+     "set",
+     "modality",
+     "ct"
+    ],
+    [
+     "cut",
+     "non-commercial"
+    ]
+   ],
+   "what": "CT volumes N x 1 x D x H x W, each with its release's masks; not split."
+  }
+ ],
+ "params": [],
+ "rules": [],
+ "reads": {
+  "parts": []
+ },
+ "job": {
+  "class": "none",
+  "hours": 0,
+  "with_upstream": false,
+  "array": false,
+  "cpus": 0,
+  "memory_gb": 0
+ },
+ "deterministic": "exact",
+ "seed_param": "",
+ "nondeterminism": "",
+ "generic": null,
+ "resolve": null,
+ "needs": [
+  "python",
+  "numpy",
+  "nibabel"
+ ],
+ "code": "existing",
+ "implemented_by": [
+  "tools/gold3_ct.py",
+  "tools/gold3_field.py",
+  "tools/gold3_census.py",
+  "grid/gold3-census.sbatch"
+ ],
+ "today": {
+  "status": "word",
+  "route": "",
+  "word": "census gold3",
+  "flow": "",
+  "note": "one CPU job that reads the store on the grid and segments nothing"
+ },
+ "experiment": null,
+ "card": {
+  "origin": "The gold tier 3 CT dataset: ENHANCE.PET, VerSe and TotalSegmentator v3 CTs admitted by rule 3 (tools/gold3_field.py), each with its release's own masks (tools/gold3_ct.py).",
+  "where": "On the grid under the data root; the rows and the admission are data/gold3-ct/ and docs/research/gold3-ct/ADMISSION.md.",
+  "count": "1,738 CTs: ENHANCE.PET 1,558, VerSe 21, TotalSegmentator 159; 10 border cases wait for a person's look.",
+  "persons": "At most 1,659 persons and at least 1,045, before any check across members.",
+  "split": "Not split: no part is assigned until a split block assigns one.",
+  "held_out": "None of its persons is on data/splits/test-persons.json; nothing is held out until a split block holds it out.",
+  "licence": "ENHANCE.PET non-commercial (its strictest site binds the set), VerSe share-alike (CC BY-SA 4.0), TotalSegmentator open (CC BY 4.0): the set fits the non-commercial recipe.",
+  "from": [
+   "docs/research/gold3-ct/README.md",
+   "docs/research/gold3-ct/ADMISSION.md",
+   "docs/memory/gold3-ct.md",
+   "tools/gold3_ct.py",
+   "tools/gold3_field.py",
+   "data/licences.json",
+   "data/splits/test-persons.json"
+  ]
+ }
+}
