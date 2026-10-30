@@ -2,7 +2,7 @@
 """Write and check the auto-anatomist screen's plans under grid/screens/ from the gold 3 store
 (docs/research/autoanatomist-screen/README.md).
 
-    python3 tools/autoanatomist_plan.py write [--export FILE] [--plan NAME ...]
+    python3 tools/autoanatomist_plan.py write [--export FILE]
     python3 tools/autoanatomist_plan.py check
 
 write takes the store's training rows (`tools/gold3_ct.py export --tier gold3 --training-only`, or
@@ -15,9 +15,7 @@ their own under SUBSET_SALT and keeps the first of each part, so the smoke's row
 first rows and a person's place never depends on the other rows. One label scheme for every row:
 ENHANCE.PET's C3 to L6 masks, labels 3 to 25, named as the vendored name head names them. The
 plans are frozen by docs/research/autoanatomist-screen/PREREG.md's Covers lines, so write is run
-before the freeze and never after: --plan writes only the plans it names, so a plan added later is
-written with the frozen ones left as they are, and a plan whose rows are another's (rows_of) takes
-them from that plan's committed file, so two screens read the same persons.
+before the freeze and never after.
 
 check reads the committed plans and fails where one does not hold (plan_problems), where a row
 has left the frozen split or stands on a test list (rows_problems), or where a row sits outside its
@@ -78,16 +76,6 @@ SCHEDULES = {
     # random start, so the feature term would pull the CT encoder towards a random network's
     # features, a weight only the null would carry; w_feature=0 takes it out.
     "null": ["schedule=fixed", "lam_fixed=1", "w_fixed=0", "w_feature=0"],
-    # The second screen's arms (bordercall's blocks at the vendored commit): lambda-then-w twice in
-    # half the steps each; w held where the network has not yet learnt the CT branch; the rungs
-    # half of lambda each, overlapping; and an adaptive biasing force mid-anneal. ct_only is the
-    # first screen's null under a name of its own, since the second screen reads every arm against
-    # lambda_then_w.
-    "cyclic": ["schedule=cyclic"],
-    "adaptive": ["schedule=adaptive"],
-    "overlapping": ["schedule=lambda-then-w", "ladder=overlapping"],
-    "restraint": ["schedule=lambda-then-w", "restraint=abf"],
-    "ct_only": ["schedule=fixed", "lam_fixed=1", "w_fixed=0", "w_feature=0"],
 }
 PLANS = {
     "gold3_latent_smoke": {
@@ -114,35 +102,6 @@ PLANS = {
         "train": 96,
         "validation": 24,
         "arms": ("lambda_then_w", "joint", "w_first", "null"),
-        "seeds": [1, 2],
-        "epochs": 50,
-        "evaluate_every": 5,
-    },
-    "gold3_latent_smoke2": {
-        "purpose": (
-            "The second screen's arms on the grid, end to end on the smoke's four CTs: lambda_then_w and the "
-            "four changes to it, five short trials in series on one card, then the join, so the new blocks' code "
-            "runs on a card before twelve trials take one each. Nothing it measures is read as a result."
-        ),
-        "layout": "series",
-        "rows_of": "gold3_latent_smoke",
-        "arms": ("lambda_then_w", "cyclic", "adaptive", "overlapping", "restraint"),
-        "null": "lambda_then_w",
-        "seeds": [1],
-        "epochs": 150,
-        "evaluate_every": 10,
-    },
-    "gold3_latent_screen2": {
-        "purpose": (
-            "Whether a change to the anneal helps beyond lambda_then_w: the anneal twice, w held by a check "
-            "of the CT branch, overlapping rungs and a restraint mid-anneal, each read against lambda_then_w, "
-            "with the CT branch alone beside them, two seeds each, 50 epochs on the first screen's 96 "
-            "training CTs, read on its 24 validation CTs by the mean surface distance."
-        ),
-        "layout": "array",
-        "rows_of": "gold3_latent_screen",
-        "arms": ("lambda_then_w", "cyclic", "adaptive", "overlapping", "restraint", "ct_only"),
-        "null": "lambda_then_w",
         "seeds": [1, 2],
         "epochs": 50,
         "evaluate_every": 5,
@@ -208,30 +167,20 @@ def chosen(rows, part, count):
     raise SystemExit(f"only {len(picked)} {part} persons are eligible, and the plan asks {count}")
 
 
-def rows_of(screen):
-    """The rows of a committed plan, as another plan takes them."""
-    return read_json(f"{SCREENS}/{screen}.json")["rows"]
-
-
 def plan_record(screen, spec, rows, rule):
-    if "rows_of" in spec:
-        taken = rows_of(spec["rows_of"])
-    else:
-        taken = chosen(rows, "train", spec["train"]) + chosen(rows, "validation", spec["validation"])
+    taken = chosen(rows, "train", spec["train"]) + chosen(rows, "validation", spec["validation"])
     return {
         "screen": screen,
         "purpose": spec["purpose"],
         "class": "gpu",
         "layout": spec["layout"],
         "data": {DATA_KEY: ENHANCE_DATA},
-        "rows": [{"item": r["item"], "person": r["person"], "part": r["part"], "source": r.get("source", DATA_KEY)}
-                 if "rows_of" in spec else
-                 {"item": r["item"], "person": r["person"], "part": r["part"], "source": DATA_KEY} for r in taken],
+        "rows": [{"item": r["item"], "person": r["person"], "part": r["part"], "source": DATA_KEY} for r in taken],
         "split": {"salt": rule.salt, "validation_share": rule.validation_share},
         "test": "off",
         "fixed": FIXED,
         "arms": {arm: SCHEDULES[arm] for arm in spec["arms"]},
-        "null": spec.get("null", "null"),
+        "null": "null",
         "seeds": spec["seeds"],
         "epochs": spec["epochs"],
         "evaluate_every": spec["evaluate_every"],
@@ -250,20 +199,14 @@ def problems_of(record, rule, units):
 
 def command_write(args):
     rule, units = split_inputs()
-    unknown = sorted(set(args.plan or ()) - set(PLANS))
-    if unknown:
-        raise SystemExit(f"autoanatomist_plan: no plan {', '.join(unknown)}; the plans are {', '.join(PLANS)}")
-    wanted = {screen: spec for screen, spec in PLANS.items() if not args.plan or screen in args.plan}
-    rows = []
-    if any("rows_of" not in spec for spec in wanted.values()):
-        unit_part = unit_parts(rule, units)
-        exported = export_rows(args.export)
-        rows = [r for r in exported if eligible(r, rule, unit_part)]
-        split_off = [r for r in exported if eligible(r, rule, {}) and r not in rows]
-        print(f"{len(rows)} eligible rows ({sum(r['part'] == 'train' for r in rows)} train); {len(split_off)} left out "
-              f"since their unit's part is not their own")
+    unit_part = unit_parts(rule, units)
+    exported = export_rows(args.export)
+    rows = [r for r in exported if eligible(r, rule, unit_part)]
+    split_off = [r for r in exported if eligible(r, rule, {}) and r not in rows]
+    print(f"{len(rows)} eligible rows ({sum(r['part'] == 'train' for r in rows)} train); {len(split_off)} left out "
+          f"since their unit's part is not their own")
     assert set(ENHANCE_DATA["names"].values()) <= set(NAMES)
-    for screen, spec in wanted.items():
+    for screen, spec in PLANS.items():
         record = plan_record(screen, spec, rows, rule)
         found = problems_of(record, rule, units)
         if found:
@@ -271,8 +214,7 @@ def command_write(args):
         path = ROOT / SCREENS / f"{screen}.json"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(plan_text(record), encoding="utf-8")
-        where = f"the rows of {spec['rows_of']}" if "rows_of" in spec else f"{len(rows)} eligible"
-        print(f"wrote {path.relative_to(ROOT)}: {len(record['rows'])} rows of {where}")
+        print(f"wrote {path.relative_to(ROOT)}: {len(record['rows'])} rows of {len(rows)} eligible")
     return 0
 
 
@@ -297,7 +239,6 @@ def main(argv=None):
     sub = top.add_subparsers(dest="command", required=True)
     write = sub.add_parser("write", help="write the plans from the gold 3 store's training rows")
     write.add_argument("--export", help="a file of the store's export, JSON lines, in place of running it")
-    write.add_argument("--plan", action="append", help="write only this plan (again for more); every plan when none is named")
     sub.add_parser("check", help="exit 1 where a committed plan does not hold or leaves the frozen split")
     args = top.parse_args(argv)
     return {"write": command_write, "check": command_check}[args.command](args)

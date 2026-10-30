@@ -3573,17 +3573,15 @@ exit "${FAKE_RC:-0}"
         return report
 
     def test_autoanatomist_refuses_a_plan_without_the_owners_count_a_frozen_cover_or_its_inputs(self):
-        # the committed count is the owner's: the smoke of 03:20 UTC, the screen's two jobs of 08:56 UTC and
-        # the second screen's smoke and screen of 16:52 and 18:05 UTC, and no plan is sent again on his word yet
+        # the committed count is the owner's: the smoke of 03:20 UTC and the screen's two jobs of 08:56 UTC,
+        # and no plan is sent again on his word yet
         gate = (ROOT / "grid" / "gate.sh").read_text(encoding="utf-8")
-        self.assertIn('\nAUTOANATOMIST_COUNTED="gold3_latent_smoke gold3_latent_screen gold3_latent_smoke2 '
-                      'gold3_latent_screen2"\n', gate)
+        self.assertIn('\nAUTOANATOMIST_COUNTED="gold3_latent_smoke gold3_latent_screen"\n', gate)
         self.assertIn('\nAUTOANATOMIST_RERUNS=""\n', gate)
-        # every GPU part goes to galhp's L40S cards: the first smoke's first send stopped at its compile on a V100
+        # every GPU part goes to galhp's L40S cards: the smoke's first send stopped at its compile on a V100
         self.assertIn('\nAUTOANATOMIST_PARTITION=galhp\n', gate)
-        # and each screen waits for its smoke, the second smoke for the first, as its PREREG says (sections 5, 8)
-        self.assertIn('\nAUTOANATOMIST_AFTER="gold3_latent_screen:gold3_latent_smoke gold3_latent_smoke2:gold3_latent_smoke '
-                      'gold3_latent_screen2:gold3_latent_smoke2"\n', gate)
+        # and the screen waits for the smoke, as its PREREG says (section 5)
+        self.assertIn('\nAUTOANATOMIST_AFTER="gold3_latent_screen:gold3_latent_smoke"\n', gate)
         self.assertEqual(self.gate("autoanatomist").returncode, 64)
         refused = self.gate("autoanatomist", "gold3_latent_nope")
         self.assertEqual(refused.returncode, 64, refused.stdout)
@@ -3808,38 +3806,6 @@ exit "${FAKE_RC:-0}"
         self.assertEqual(len(self.submitted()), 2)
         # the smoke itself waits for nothing
         self.assertEqual(self.gate("autoanatomist", self.SCREEN).returncode, 0)
-
-    def test_autoanatomist_sends_the_second_smoke_after_the_first_and_the_second_screen_after_it(self):
-        commit = self.screen_ready()
-        logs = self.repo / "grid" / "logs"
-        # the second smoke waits for the first smoke, and the second screen for the second smoke (PREREG.md, section 8)
-        refused = self.gate("autoanatomist", "gold3_latent_smoke2")
-        self.assertEqual(refused.returncode, 2, refused.stdout)
-        self.assertIn(f"once the report of {self.SCREEN} (logs/AUTOANATOMIST-{self.SCREEN}.md) ends in exit 0", refused.stdout)
-        self.smoke_report(commit, 0)
-        refused = self.gate("autoanatomist", "gold3_latent_screen2")
-        self.assertEqual(refused.returncode, 2, refused.stdout)
-        self.assertIn("once the report of gold3_latent_smoke2 (logs/AUTOANATOMIST-gold3_latent_smoke2.md) ends in exit 0",
-                      refused.stdout)
-        self.assertEqual(self.submitted(), [])
-        # the second smoke is one GPU job, its five trials in series on one card
-        done = self.gate("autoanatomist", "gold3_latent_smoke2")
-        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
-        self.assertIn("trains its 5 trials one after another on one card", done.stdout)
-        self.assertEqual(len(self.submitted()), 1)
-        self.assertIn("--class gpu --name autoanatomist_gold3_latent_smoke2 --partition galhp ", self.submitted()[0])
-        (logs / "AUTOANATOMIST-gold3_latent_smoke2.md.part").unlink()
-        (logs / "AUTOANATOMIST-gold3_latent_smoke2.md").write_text(
-            f"# autoanatomist gold3_latent_smoke2: job 4041 on node, commit {commit}, 2026-10-30 12:00:00 UTC\n"
-            "- exit 0 at 2026-10-30 13:00:00 UTC\n", encoding="utf-8")
-        # then the second screen is an array of twelve trials and its join
-        done = self.gate("autoanatomist", "gold3_latent_screen2")
-        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
-        self.assertEqual(len(self.submitted()), 3)
-        self.assertIn("the trials' array", done.stdout)
-        self.assertIn("(12 tasks, each on the first card of galhp that frees)", done.stdout)
-        self.assertIn("--class gpu --name autoanatomist_gold3_latent_screen2 --array 0-11 --partition galhp ", self.submitted()[1])
-        self.assertNotIn("--partition", self.submitted()[2])
 
     def test_autoanatomist_join_waits_for_the_setup_as_the_trials_do(self):
         # environments not made from this lock: the setup job rebuilds them, and both parts of the screen wait for it,
