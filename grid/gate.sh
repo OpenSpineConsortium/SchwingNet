@@ -156,25 +156,34 @@
 #                   totalseg_weights` has landed its two zips whole beside moose_weights' five, the next send printing logs/TOTALSEG-complete.md and every later one printing it again;
 #                   a job that left no report is not queued again without the owner's word
 #   morphometry <set>  bordercall's morphometry engine (the packages morphometry, scanimport and screening,
-#                   pinned under grid/bordercall/ beside the archived package) over one gold tier 3 set
-#                   (the thread "Extract morphometrics from gold tier 3 CT"; the owner's count of 2026-10-29
-#                   15:19 UTC: two CPU jobs; grid/morphometry.sbatch): enhance, every ENHANCE.PET vertebra
-#                   label map, or verse, VerSe's 374 int16 copies and then TotalSegmentator's 154 admitted
-#                   subjects stacked into int16 volumes in VerSe's ids, the facts and the whole-spine verdicts
-#                   beside the rows; each set queued once as one batch job once its inputs have landed, the
-#                   next send printing logs/MORPHOMETRY-<set>.md, aggregates alone, and every later one
-#                   printing it again and queueing nothing, a set that failed queued once more only once a
-#                   fix has moved the checkout; or covariates, the join of both sets' rows with each person's
-#                   sex and age (grid/morphometry-covariates.sbatch, tools/gold3_covariates.py), one CPU job on
-#                   the owner's count, refused while any morphometry job is live or either set's report is
-#                   missing or ended in failure, or while the gate cannot read its commit, queued once from
-#                   git's copy of its code at the gate's commit, so it holds no checkout (its interpreter the
+#                   pinned under grid/bordercall/ beside the archived package, bordercall ee495d5 since
+#                   2026-10-30) over one gold tier 3 set (the thread "Extract morphometrics from gold tier 3
+#                   CT"; the owner's count of 2026-10-29 15:19 UTC: two CPU jobs, and of 2026-10-30 14:33 UTC:
+#                   one more a set and the join once more; grid/morphometry.sbatch): enhance, every ENHANCE.PET
+#                   vertebra label map, or verse, VerSe's 374 int16 copies and then TotalSegmentator's 159
+#                   admitted subjects stacked into int16 volumes in VerSe's ids, the facts and the whole-spine
+#                   verdicts beside the rows; each set queued once as one batch job once its inputs have
+#                   landed, with no setup job, the next send printing logs/MORPHOMETRY-<set>.md, aggregates
+#                   alone, and every later one printing it again and queueing nothing, a set that failed
+#                   among them; a second job only where MORPHOMETRY_RERUNS, committed by pull request,
+#                   carries the owner's word for it, one word for each job, a lost answer's among them (its
+#                   job waited for while Slurm holds it by name or by the part it writes), the report it
+#                   replaces kept as logs/MORPHOMETRY-<set>-<job>.md, ending with where the files it names
+#                   are now, and a whole run's rows and step logs under the set's kept/<job>/; or
+#                   covariates, the join of both sets' rows with each person's sex and age
+#                   (grid/morphometry-covariates.sbatch, tools/gold3_covariates.py), one CPU job on the
+#                   owner's count, refused while any morphometry job is live, while either set's report is
+#                   missing, ended in failure, is one MORPHOMETRY_RERUNS names or names no code stamp, while
+#                   the two reports name different code stamps, while an earlier join whose report printed
+#                   cells has kept no joined table, or while the gate cannot read its commit, queued once
+#                   from git's copy of its code at the gate's commit, so it holds no checkout (its interpreter the
 #                   checkout's train-cpu only where no SPINEPS environment's or the system's imports numpy and
 #                   sqlite3), the per-person tables staying on the grid; the next send printing
 #                   logs/MORPHOMETRY-covariates.md, aggregates alone, a page a send (COVARIATES_PAGE_LINES),
 #                   and every later one the next page and queueing nothing; a second job only where
 #                   COVARIATES_RERUNS, committed by pull request, carries the owner's word for it, one word
-#                   for each job, a lost answer's among them
+#                   for each job, a lost answer's among them, and each such join checked against every
+#                   earlier one whose report printed cells (COVARIATES_PREVIOUS, the check across reports)
 #   realism <stage> one stage of the FluXray reproduction (docs/research/flux-realism/PREREG.md; the owner's
 #                   count of 2026-10-29 02:35 UTC, two GPU jobs): edit, then stats, each one GPU job that runs
 #                   the Metaflow flow flows/realism.py through flows/launch.py (grid/realism.sbatch) once its
@@ -286,9 +295,28 @@ CENSUS_RERUNS=""
 # report or the record it replaces>, or covariates:lost for a submission whose answer was lost, then
 # covariates:lost2 for the next such and on, each spent once (logs/MORPHOMETRY-covariates.lost records
 # them); one word, one more job (word_morphometry_covariates). A rerun over rows that changed by a few
-# persons would print means that difference against the first report's into fewer than five, which no
-# check across reports yet refuses, so a word here waits for that check unless the rows are the same.
-COVARIATES_RERUNS=""
+# persons would print means that difference against an earlier report's into fewer than five, so the
+# job is handed every earlier join whose report printed cells (covariates_previous) and withholds each
+# block that would (tools/gold3_covariates.py --previous), and the gate refuses while one of those
+# joins has no joined table left to check against. covariates:40878978 is the third job of the owner's
+# count of 2026-10-30 14:33 UTC (MORPHOMETRY_RERUNS, below): the join once more over both sets' rows
+# measured on the merged engine, refused while either set's report standing is still one
+# MORPHOMETRY_RERUNS names or the two name different code stamps (covariates_inputs_missing). Its
+# report supersedes job 40878978's pedicle, interpedicular, disc and foramen lines, which the merged
+# engine reads anew (docs/research/gold3-ct/README.md, section 7a).
+COVARIATES_RERUNS="covariates:40878978"
+# The owner's word for one more measuring of a morphometry set, <set>:<job of the report or the record
+# it replaces>, or <set>:lost for a submission whose answer was lost, then <set>:lost2 and on, each spent
+# once (logs/MORPHOMETRY-<set>.lost records them); one word, one more job (word_morphometry). The report
+# it replaces is kept as logs/MORPHOMETRY-<set>-<job>.md, its last line saying where the files it names
+# are now (morphometry_aside_note), and, where it ended 0, its rows and step logs under
+# <morphometry root>/<set>/kept/<job>/ (morphometry_keep). A report that failed needs a word as one that
+# ended 0 does, since any merge moves the checkout. enhance:40872077 and verse:40877151 are
+# the owner's choice of 2026-10-30 14:33 UTC on the decision card "How many grid jobs for the morphometry
+# rerun on the new engine?", "Three: enhance, verse, covariates": each set measured once more on the
+# merged engine, bordercall ee495d5 (code stamp a56adf14a9e98b15, where both reports name the
+# 81e732f142d3aa16 of bordercall 16f7b40), then the join once more (COVARIATES_RERUNS).
+MORPHOMETRY_RERUNS="enhance:40872077 verse:40877151"
 # A page of the join's report: the relay keeps the last 400 lines of a send's answer (grid_accounts.py's
 # log_in) and status holds itself to 400 lines and 64 KiB, so a page is 300 of the report's lines with its
 # first and last, each cut to LINE_CHARS by the masks, about 61,000 bytes at most, and the gate's own few
@@ -375,14 +403,19 @@ submit() {  # submit WHAT CLASS [K=V...] [job submit options...] -- SCRIPT: the 
 gate_ids() {  # every job id the gate's list names, oldest first
   [ -f "$STATE" ] && awk '{ print $1 }' "$STATE"
 }
-QUEUED="" SQUEUE_ANSWERED=""
+QUEUED="" SQUEUE_ANSWERED="" NAMED=""
 snapshot() {  # what Slurm holds for WHO, read once per word; a failed squeue refuses the word
   local out
-  if ! out=$("$SQUEUE" -h -u "$WHO" -o '%i' 2>/dev/null); then
+  # Each line is a job's id and its name: the name finds a job whose submission's answer was lost,
+  # which the gate's list never named (named_live).
+  if ! out=$("$SQUEUE" -h -u "$WHO" -o '%i %j' 2>/dev/null); then
     echo "refusing: squeue failed, so the gate cannot tell which of its jobs are queued or running; send the word again"
     return 75
   fi
-  QUEUED=" $(echo "$out" | sed 's/_.*//' | sort -u | tr '\n' ' ') " SQUEUE_ANSWERED=yes
+  QUEUED=" $(echo "$out" | awk '{ print $1 }' | sed 's/_.*//' | sort -u | tr '\n' ' ') " SQUEUE_ANSWERED=yes NAMED=$out
+}
+named_live() {  # named_live WHAT: the base ids of the live jobs Slurm holds under hpcworker's name for WHAT, schwingnet-WHAT, whatever the gate's list names
+  printf '%s\n' "$NAMED" | awk -v what="$1" '$2 == "schwingnet-" what || $2 == what { sub(/_.*/, "", $1); print $1 }' | sort -u
 }
 live_ids() {  # the gate's jobs Slurm still holds, queued or running (an array as its base id)
   gate_ids | sort -u | while read -r job; do
@@ -465,9 +498,11 @@ checkout_holders() {  # afterany:<job> for every live job of the gate's that hol
   # the study's one job before: bench flexray_drr_seg among them, which writes the masks it reads.
   # The morphometry join, morphometry_covariates, runs from git's copy of its code and holds none; its
   # interpreter is the checkout's train-cpu environment only where no other imports numpy and sqlite3.
+  # A morphometry set whose submission's answer was lost holds it all the same, though the gate's list
+  # never named its job, so that job is found as morphometry_lost_live finds it and waited for too.
   local job waits=""
-  [ -f "$STATE" ] || return 0
-  for job in $(awk '$3 == "v1_driver" || $3 == "sweep" || $3 ~ /^experiment_[0-9]+$/ || $3 ~ /^bench_[a-z_]+$/ || $3 ~ /^anomaly_[a-z_]+$/ || $3 ~ /^bordercall_[a-z]+$/ || $3 ~ /^totalseg_[a-z]+$/ || $3 ~ /^realism_[a-z]+$/ || ($3 ~ /^morphometry_[a-z]+$/ && $3 != "morphometry_covariates") { print $1 }' "$STATE" | sort -u); do
+  for job in $( { [ ! -f "$STATE" ] || awk '$3 == "v1_driver" || $3 == "sweep" || $3 ~ /^experiment_[0-9]+$/ || $3 ~ /^bench_[a-z_]+$/ || $3 ~ /^anomaly_[a-z_]+$/ || $3 ~ /^bordercall_[a-z]+$/ || $3 ~ /^totalseg_[a-z]+$/ || $3 ~ /^realism_[a-z]+$/ || ($3 ~ /^morphometry_[a-z]+$/ && $3 != "morphometry_covariates") { print $1 }' "$STATE"
+                  morphometry_lost_live enhance; morphometry_lost_live verse; } | sort -u); do
     case "$QUEUED" in *" $job "*) waits=$(joined "$waits" "afterany:$job") ;; esac
   done
   echo "$waits"
@@ -1992,43 +2027,184 @@ morphometry_inputs_missing() {  # what morphometry $id still lacks on the data r
         || echo "TotalSegmentator v3's release (fetch totalsegmentator_v300 first)" ;;
   esac
 }
-word_morphometry() {  # bordercall's morphometry engine over one gold tier 3 set (the owner's count of 2026-10-29 15:19 UTC: two CPU jobs, one a set): queued once, its report printed on every later send
-  local report=$LOGS/MORPHOMETRY-$id.md busy missing holds opts setup
+word_morphometry() {  # bordercall's morphometry engine over one gold tier 3 set (the owner's counts: 2026-10-29 15:19 UTC, one CPU job a set; 2026-10-30 14:33 UTC, one more a set, MORPHOMETRY_RERUNS): queued once a word, its report printed on every later send
+  local report=$LOGS/MORPHOMETRY-$id.md sent=$LOGS/MORPHOMETRY-$id.sent busy job="" missing holds opts=() again="" lost="" keep="" before="" part_job queued
   case "$id" in
     enhance|verse) ;;
     covariates) word_morphometry_covariates; return ;;
     *) echo "refusing: morphometry takes enhance or verse, or covariates once both have run"; return 64 ;;
   esac
   # One at a time: both sets hold the checkout and write under one root, and the count is one job a set;
-  # the join reads both sets' rows, so neither set is measured again while it runs.
-  busy=$( { live_of morphometry_enhance; live_of morphometry_verse; live_of morphometry_covariates; } | tr '\n' ' ')
+  # the join reads both sets' rows, so neither set is measured again while it runs. A job a lost answer
+  # may have queued counts as one of them (morphometry_busy).
+  busy=$(morphometry_busy)
   [ -z "${busy// /}" ] || { echo "refusing: a morphometry job is still queued or running (job $busy); send morphometry $id again once it ends"; return 75; }
   if [ -f "$report" ]; then
-    # Kept, so the owner's count of one job a set holds: a report that stands queues nothing.
+    # Kept, so the owner's count holds: a report that stands queues nothing, whether it ended 0 or in
+    # failure, unless the owner's word for one more job names its job in MORPHOMETRY_RERUNS. A failure
+    # waits for the word too, since any merge moves the checkout and nothing here tells a fix from
+    # another change, and each job is up to a day of 32 CPUs.
     echo "## $(basename "$report") ($(date -r "$report" '+%F %T'))"
     head -n 200 "$report" | LC_ALL=C tr -cd '\11\12\40-\176' | masked | head -c 30000
-    bench_failed_on_older_code "$report" || return 0
-    # A set that failed measured nothing it can be trusted on, so once a fix has moved the checkout it
-    # is queued once more, its report kept under its job's number, as a benchmark's is; the same
-    # commit queues nothing.
-    mv "$report" "$LOGS/MORPHOMETRY-$id-$(bench_job_of "$report").md" || return 1
-    echo "  the report above ended in failure on older code: queueing the set again at $commit"
+    job=$(bench_job_of "$report")
+    morphometry_rerun_allowed "$id" "$job" || return 0
+    again="the report above is job $job's, which MORPHOMETRY_RERUNS lets the owner's count measure once more"
+    # A whole run's rows may have been joined, so they are kept beside its report under its job, where
+    # no later job writes, and the next job measures every study again; a failed run's rows stay for the
+    # next job, which keeps each study's rows its own code stamp wrote without an error and measures the rest.
+    ! morphometry_ended_0 "$report" || keep=$job
+  elif [ -f "$report.part" ]; then
+    # A job that ended past its trap (cancelled, its time limit, a node lost) leaves what it wrote here.
+    echo "## $(basename "$report").part, unfinished ($(date -r "$report.part" '+%F %T')): what the job wrote before it ended"
+    head -n 200 "$report.part" | LC_ALL=C tr -cd '\11\12\40-\176' | masked | head -c 30000
+  fi
+  if [ -z "$again" ]; then
+    job=$(awk -v what="morphometry_$id" '$3 == what { job = $1 } END { print job }' "$STATE" 2>/dev/null)
+    if [ -f "$sent" ]; then
+      # A submission whose answer was lost leaves no record, and the job it may have queued is no longer
+      # held by Slurm (morphometry_busy waited for it above); the word that named it was spent on it, so
+      # another waits for the owner's word for the lost one (lost, then lost2, lost3 and on), as the join's does.
+      lost=$(morphometry_lost_word "$id")
+      morphometry_rerun_allowed "$id" "$lost" || {
+        echo "refusing: a morphometry $id job was submitted at $(cat "$sent") and no job id came back, so it may be queued or ended under Slurm's name schwingnet-morphometry_$id; another waits for the owner's word, committed as MORPHOMETRY_RERUNS=$id:$lost in grid/gate.sh"
+        return 64
+      }
+      again="the set follows a submission whose answer was lost, which MORPHOMETRY_RERUNS lets the owner's count run once more"
+    elif [ -n "$job" ]; then
+      # A job killed past its trap writes no report, only the part above, and was one of the count's jobs.
+      morphometry_rerun_allowed "$id" "$job" || {
+        echo "refusing: a morphometry $id job was queued before (job $job) and left no report; the owner's count was one job a set, so another waits for his word, committed as MORPHOMETRY_RERUNS=$id:$job in grid/gate.sh"
+        return 64
+      }
+      again="the set's job $job left no report, which MORPHOMETRY_RERUNS lets the owner's count measure once more"
+    fi
   fi
   [ -f "$REPO/grid/bordercall/morphometry/__main__.py" ] || { echo "refusing: no vendored morphometry under grid/bordercall/ at this commit"; return 2; }
   missing=$(morphometry_inputs_missing)
   [ -z "$missing" ] || { echo "refusing: morphometry $id needs $missing"; return 2; }
-  setup=$(setup_dependency) || return 1
-  [ -z "$setup" ] || echo "  the environments: after the setup job that rebuilds them (${setup#afterok:})"
+  [ -z "$keep" ] || morphometry_keep "$keep" check || return
+  # No setup job: the set runs on the SPINEPS environment's interpreter, and its screening venv is its own.
   holds=$(checkout_holders)
   [ -z "$holds" ] || echo "  the checkout: after the live runs that hold it ($holds)"
-  depend_on "$(joined "$setup" "$holds")" || return 1
-  submit "morphometry_$id" batch SET="$id" DATA_ROOT="$DATA_ROOT" ${opts[@]+"${opts[@]}"} --no-requeue --time 24:00:00 -- morphometry.sbatch > /dev/null || return 1
+  depend_on "$holds" || return 1
+  # The job's shape is asked before anything is spent, so a refused shape moves and marks nothing.
+  hpcw_check "morphometry_$id" batch SET="$id" DATA_ROOT="$DATA_ROOT" MORPHOMETRY_ROOT="$(morphometry_root)" ${opts[@]+"${opts[@]}"} --no-requeue --time 24:00:00 -- morphometry.sbatch || return 1
+  # The marker comes before anything moves, so a gate that cannot write it refuses with nothing moved,
+  # and it stands from here until the gate's list names the job it queued: an answer lost in between,
+  # or a list the gate could not write, leaves a marker and never a second job.
+  [ ! -f "$sent" ] || before=$(cat "$sent")
+  echo "$(date -u '+%F %T') UTC at commit $commit" > "$sent" 2>/dev/null || {
+    echo "refusing: the gate cannot write logs/$(basename "$sent"), the marker that keeps a lost answer from queueing a second job; nothing was moved or queued"
+    return 1
+  }
+  # Only now, with nothing left to refuse it, is the word spent: a whole run's rows set aside under its
+  # job, the report or the part it replaces under its job, each ending with where the files it names
+  # went, and a lost answer's word recorded last. A move that fails queued nothing, so the marker goes
+  # back as it stood before this send, and the next send moves what is left.
+  if [ -n "$keep" ]; then
+    morphometry_keep "$keep" || { marker_back "$sent" "$before"; return 1; }
+  fi
+  if [ -f "$report" ]; then
+    mv "$report" "$LOGS/MORPHOMETRY-$id-$job.md" || { marker_back "$sent" "$before"; return 1; }
+    morphometry_aside_note "$LOGS/MORPHOMETRY-$id-$job.md" "$keep"
+  fi
+  if [ -f "$report.part" ]; then
+    part_job=$(bench_job_of "$report.part")
+    mv "$report.part" "$LOGS/MORPHOMETRY-$id-${part_job:-${job:-unknown}}.part" || { marker_back "$sent" "$before"; return 1; }
+    morphometry_aside_note "$LOGS/MORPHOMETRY-$id-${part_job:-${job:-unknown}}.part" ""
+  fi
+  if [ -n "$lost" ]; then
+    echo "$id:$lost spent at $(date -u '+%F %T') UTC on the submission of $before" >> "$LOGS/MORPHOMETRY-$id.lost" \
+      || { marker_back "$sent" "$before"; return 1; }
+  fi
+  [ -z "$again" ] || echo "  $again: queueing the set again at $commit"
+  # The shape was asked above, before the mark, so job submit does not ask it again (HPCW_CHECKED): a
+  # refusal there would queue nothing and still read as a lost answer, spending the word on no job.
+  queued=$(HPCW_CHECKED=1 submit "morphometry_$id" batch SET="$id" DATA_ROOT="$DATA_ROOT" MORPHOMETRY_ROOT="$(morphometry_root)" ${opts[@]+"${opts[@]}"} --no-requeue --time 24:00:00 -- morphometry.sbatch) || return 1
+  awk -v job="$queued" -v what="morphometry_$id" '$1 == job && $3 == what { found = 1 } END { exit !found }' "$STATE" 2>/dev/null || {
+    echo "  the gate's list (logs/GATE_JOBS.txt) does not name the job it queued (${queued:-no id}), so the marker logs/$(basename "$sent") stays and no second job follows without the owner's word"
+    return 1
+  }
+  rm -f "$sent"
   echo "submitted the morphometry job for $id. Send morphometry $id again once it ends to read its report, logs/MORPHOMETRY-$id.md."
+}
+morphometry_rerun_allowed() {  # morphometry_rerun_allowed SET WORD: MORPHOMETRY_RERUNS names WORD (a job, or a lost word) beside SET
+  [ -n "$2" ] || return 1
+  case " $MORPHOMETRY_RERUNS " in *" $1:$2 "*) return 0 ;; esac
+  return 1
+}
+morphometry_lost_word() {  # morphometry_lost_word SET: the word that lets one more job follow the lost answer now standing: lost, then lost2, lost3 and on
+  local spent=0
+  [ ! -f "$LOGS/MORPHOMETRY-$1.lost" ] || spent=$(wc -l < "$LOGS/MORPHOMETRY-$1.lost")
+  if [ "$spent" -eq 0 ]; then echo lost; else echo "lost$(( spent + 1 ))"; fi
+}
+morphometry_ended_0() {  # morphometry_ended_0 REPORT: its last line is a zero exit, a run that measured what it chose
+  tail -n 1 "$1" 2>/dev/null | grep -q '^- exit 0 at '
+}
+morphometry_rerun_pending() {  # morphometry_rerun_pending SET: the set's standing report is one MORPHOMETRY_RERUNS names, so it is measured once more before any join
+  [ -f "$LOGS/MORPHOMETRY-$1.md" ] && morphometry_rerun_allowed "$1" "$(bench_job_of "$LOGS/MORPHOMETRY-$1.md")"
+}
+morphometry_stamp() {  # morphometry_stamp REPORT: the code stamp a set's report names for the engine that measured it, or status 1 where it names none of the plain form
+  local stamp
+  stamp=$(sed -n 's/^- code stamp: \([0-9a-f]\{16\}\)$/\1/p' "$1" 2>/dev/null | head -n 1)
+  [ -n "$stamp" ] || return 1
+  echo "$stamp"
+}
+morphometry_keep() {  # morphometry_keep JOB [check]: a whole run's rows and step logs moved under the set's kept/JOB; with check, only whether they can be
+  # Moved, never copied: kept/ is the set's own folder on one volume, so each move is a rename, and what
+  # the next job reuses (the masks' links, the venv, TotalSegmentator's stacks) stays where it reads it.
+  # A file already under kept/JOB is never written over: a person looks at both first.
+  local out from to name sub
+  out=$(morphometry_root)/$id
+  for sub in "" totalseg; do
+    [ -z "$sub" ] || [ "$id" = verse ] || continue
+    for name in rows rows.csv run.log steps.log facts.log whole.log facts.jsonl facts.jsonl.part verdicts.csv inputs.txt ids.txt; do
+      from=$out${sub:+/$sub}/$name to=$out/kept/$1${sub:+/$sub}/$name
+      [ -e "$from" ] || [ -L "$from" ] || continue
+      if [ -e "$to" ] || [ -L "$to" ]; then
+        echo "refusing: $to is there already, so job $1's $name would land on it; a person looks at both first; nothing was queued"
+        return 2
+      fi
+      [ "${2:-}" != check ] || continue
+      mkdir -p "${to%/*}" && mv -T -- "$from" "$to" || { echo "refusing: $from could not be moved under kept/$1; nothing was queued, and the next send moves what is left"; return 1; }
+    done
+  done
+}
+morphometry_aside_note() {  # morphometry_aside_note FILE KEEP: the line a report or part the gate set aside ends with, where the files it names are now, added to FILE and printed
+  # The set's folder is the next job's, so the paths and digests a kept report prints would name that
+  # job's files; the line goes last, since only bench_job_of reads a kept report, and it reads line 1.
+  local root note reused="the masks' links and the screening venv"
+  root=$(morphometry_root)/$id
+  [ "$id" != verse ] || reused="the masks' links, the screening venv and TotalSegmentator's stacks"
+  if [ -n "$2" ]; then
+    note="the rows, step logs, facts and verdicts it names under $root/ are under $root/kept/$2/ now, and $reused stay where they were, for the next job"
+  else
+    note="the files it names under $root/ stay there for the next job to resume from and write over, so the paths it names hold that job's files from now on"
+  fi
+  note="set aside by the gate at $(date -u '+%F %T') UTC for one more job: $note"
+  echo "- $note" >> "$1" || echo "  the gate could not add its last line to logs/$(basename "$1"), which follows"
+  echo "  logs/$(basename "$1") is $note"
+}
+morphometry_lost_live() {  # morphometry_lost_live SET: the live job a submission of SET whose answer was lost may have queued, while its marker stands, or nothing
+  # The gate's list never named that job, so live_of cannot find it: once it runs, the part it writes
+  # names it on its first line, and before that Slurm holds it under hpcworker's name for it (named_live).
+  local job=""
+  [ -f "$LOGS/MORPHOMETRY-$1.sent" ] || return 0
+  [ ! -f "$LOGS/MORPHOMETRY-$1.md.part" ] || job=$(bench_job_of "$LOGS/MORPHOMETRY-$1.md.part")
+  case "$QUEUED" in *" ${job:-none} "*) echo "$job"; return 0 ;; esac
+  named_live "morphometry_$1" | head -n 1
+}
+morphometry_busy() {  # the live jobs of both sets and the join, those the gate's list names and those a lost answer may have queued, space-separated
+  { live_of morphometry_enhance; live_of morphometry_verse; live_of morphometry_covariates
+    morphometry_lost_live enhance; morphometry_lost_live verse; morphometry_lost_live covariates; } | tr '\n' ' '
+}
+marker_back() {  # marker_back MARKER BEFORE: a send that queued nothing puts its marker back as it stood, BEFORE's text, or none where BEFORE is empty
+  if [ -n "$2" ]; then echo "$2" > "$1"; else rm -f "$1"; fi
 }
 
 word_morphometry_covariates() {  # the morphometry rows joined with each person's sex and age (one CPU job on the owner's count): queued once, its report printed a page a send
-  local report=$LOGS/MORPHOMETRY-covariates.md sent=$LOGS/MORPHOMETRY-covariates.sent busy job missing again="" lost="" head part_job path queued
-  busy=$( { live_of morphometry_enhance; live_of morphometry_verse; live_of morphometry_covariates; } | tr '\n' ' ')
+  local report=$LOGS/MORPHOMETRY-covariates.md sent=$LOGS/MORPHOMETRY-covariates.sent busy job missing again="" lost="" before="" head part_job path queued previous
+  busy=$(morphometry_busy)
   [ -z "${busy// /}" ] || { echo "refusing: a morphometry job is still queued or running (job $busy); send morphometry covariates again once it ends"; return 75; }
   if [ -f "$report" ]; then
     # Kept, so the owner's count of one job holds: a report that stands queues nothing, unless the
@@ -2046,10 +2222,11 @@ word_morphometry_covariates() {  # the morphometry rows joined with each person'
     job=$(awk '$3 == "morphometry_covariates" { job = $1 } END { print job }' "$STATE" 2>/dev/null)
     if [ -f "$sent" ]; then
       # A submission whose answer was lost (the controller timed out after it queued the job) leaves no
-      # record and no live job the gate knows, whether or not a job before it is recorded: the lost one
-      # came after that job, so the word that named it was spent on the lost one. The owner's word for
-      # the lost one queues another, each lost answer its own word (lost, then lost2, lost3 and on), so
-      # a word whose job is lost too queues nothing more.
+      # record, whether or not a job before it is recorded, and the job it may have queued is no longer
+      # held by Slurm (morphometry_busy waited for it above): the lost one came after that job, so the
+      # word that named it was spent on the lost one. The owner's word for the lost one queues another,
+      # each lost answer its own word (lost, then lost2, lost3 and on), so a word whose job is lost too
+      # queues nothing more.
       lost=$(covariates_lost_word)
       covariates_rerun_allowed "$lost" || {
         echo "refusing: a morphometry covariates job was submitted at $(cat "$sent") and no job id came back, so it may be queued or ended under Slurm's name schwingnet-morphometry_covariates; another waits for the owner's word, committed as COVARIATES_RERUNS=covariates:$lost in grid/gate.sh"
@@ -2067,6 +2244,9 @@ word_morphometry_covariates() {  # the morphometry rows joined with each person'
   [ -f "$REPO/tools/gold3_covariates.py" ] && [ -f "$REPO/grid/morphometry-covariates.sbatch" ] || { echo "refusing: no join tool or job script at this commit"; return 2; }
   missing=$(covariates_inputs_missing)
   [ -z "$missing" ] || { echo "refusing: morphometry covariates needs $missing"; return 2; }
+  # Read before the standing report is set aside, though covariates_previous finds it under its kept
+  # name too; covariates_inputs_missing has already refused where it names no job.
+  previous=$(covariates_previous) || { echo "refusing: an earlier join's report names no job, so the check across reports cannot find its joined table; nothing was queued"; return 2; }
   # The job copies its code from git at this commit, so a commit the gate cannot read, or one that does
   # not hold what the job copies, would spend the one job on a failure: refused here, spending nothing.
   head=$(covariates_commit) || { echo "refusing: the gate cannot read the checkout's commit, which the job copies its code from; nothing was queued"; return 2; }
@@ -2077,28 +2257,35 @@ word_morphometry_covariates() {  # the morphometry rows joined with each person'
   done
   # The job's shape is asked before the submission is marked, so a refused shape marks nothing.
   hpcw_check morphometry_covariates batch -- morphometry-covariates.sbatch || return 1
+  # The marker comes before anything moves, so a gate that cannot write it refuses with nothing moved,
+  # and it stands from here until the gate's list names the job it queued: an answer lost in between,
+  # or a list the gate could not write, leaves a marker and never a second job.
+  [ ! -f "$sent" ] || before=$(cat "$sent")
+  echo "$(date -u '+%F %T') UTC at commit $commit" > "$sent" 2>/dev/null || {
+    echo "refusing: the gate cannot write logs/$(basename "$sent"), the marker that keeps a lost answer from queueing a second job; nothing was moved or queued"
+    return 1
+  }
   # Only now, with nothing left to refuse it, is the word spent: the report or the part it replaces set
-  # aside under its job, and a lost answer's word recorded, so it lets no later job follow.
+  # aside under its job, and a lost answer's word recorded last, so it lets no later job follow. A move
+  # that fails queued nothing, so the marker goes back as it stood before this send.
   if [ -f "$report" ]; then
-    mv "$report" "$LOGS/MORPHOMETRY-covariates-$job.md" || return 1
+    mv "$report" "$LOGS/MORPHOMETRY-covariates-$job.md" || { marker_back "$sent" "$before"; return 1; }
     rm -f "$LOGS/MORPHOMETRY-covariates.page"
   fi
   if [ -f "$report.part" ]; then
     part_job=$(bench_job_of "$report.part")
-    mv "$report.part" "$LOGS/MORPHOMETRY-covariates-${part_job:-${job:-unknown}}.part" || return 1
+    mv "$report.part" "$LOGS/MORPHOMETRY-covariates-${part_job:-${job:-unknown}}.part" || { marker_back "$sent" "$before"; return 1; }
   fi
   if [ -n "$lost" ]; then
-    echo "covariates:$lost spent at $(date -u '+%F %T') UTC on the submission of $(cat "$sent")" >> "$LOGS/MORPHOMETRY-covariates.lost" || return 1
+    echo "covariates:$lost spent at $(date -u '+%F %T') UTC on the submission of $before" >> "$LOGS/MORPHOMETRY-covariates.lost" \
+      || { marker_back "$sent" "$before"; return 1; }
   fi
   [ -z "$again" ] || echo "  the join $again"
-  # The marker stands from before the submission until the gate's list names the job it queued, so an
-  # answer lost in between, or a list the gate could not write, leaves a marker and never a second job.
-  echo "$(date -u '+%F %T') UTC at commit $commit" > "$sent" 2>/dev/null || {
-    echo "refusing: the gate cannot write logs/$(basename "$sent"), the marker that keeps a lost answer from queueing a second job; nothing was queued"
-    return 1
-  }
-  queued=$(submit morphometry_covariates batch COVARIATES_COMMIT="$head" \
-    MORPHOMETRY_ROOT="$(covariates_morphometry_root)" AUTOPET="$(covariates_autopet)" INDEX="$(samples_index)" \
+  [ -z "$previous" ] || echo "  the check across reports: each block checked against the earlier joins of jobs $previous"
+  # The shape was asked above, before the mark, so job submit does not ask it again (HPCW_CHECKED): a
+  # refusal there would queue nothing and still read as a lost answer, spending the word on no job.
+  queued=$(HPCW_CHECKED=1 submit morphometry_covariates batch COVARIATES_COMMIT="$head" COVARIATES_PREVIOUS="$previous" \
+    MORPHOMETRY_ROOT="$(morphometry_root)" AUTOPET="$(covariates_autopet)" INDEX="$(samples_index)" \
     VERSE_DEMOGRAPHICS="$(covariates_verse_table)" DATA_ROOT="$DATA_ROOT" -- morphometry-covariates.sbatch) || return 1
   awk -v job="$queued" '$1 == job && $3 == "morphometry_covariates" { found = 1 } END { exit !found }' "$STATE" 2>/dev/null || {
     echo "  the gate's list (logs/GATE_JOBS.txt) does not name the job it queued (${queued:-no id}), so the marker logs/$(basename "$sent") stays and no second job follows without the owner's word"
@@ -2122,7 +2309,23 @@ covariates_rerun_allowed() {  # covariates_rerun_allowed JOB: COVARIATES_RERUNS 
   case " $COVARIATES_RERUNS " in *" covariates:$1 "*) return 0 ;; esac
   return 1
 }
-covariates_morphometry_root() {  # where grid/morphometry.sbatch writes both sets' rows
+covariates_previous() {  # the jobs of every earlier join whose report printed cells, the standing one and those kept, once each; status 1 where one names no job
+  # A report holding a member's line printed that member's cells, and they left the grid a page a
+  # send, so the next join is checked against each such report's joined table; an unfinished part
+  # counts too, since the gate prints a part, while a report that failed before the join printed
+  # no cell and is no earlier join. A job beyond twelve digits is no Slurm job and the job refuses it.
+  local file job jobs=""
+  for file in "$LOGS/MORPHOMETRY-covariates.md" "$LOGS/MORPHOMETRY-covariates.md.part" \
+      "$LOGS"/MORPHOMETRY-covariates-*.md "$LOGS"/MORPHOMETRY-covariates-*.part; do
+    [ -f "$file" ] || continue
+    grep -Eq '^- member [a-z]+: persons [0-9]+' "$file" || continue
+    job=$(bench_job_of "$file")
+    [[ $job =~ ^[0-9]{1,12}$ ]] || return 1
+    case " $jobs " in *" $job "*) ;; *) jobs="${jobs:+$jobs }$job" ;; esac
+  done
+  echo "$jobs"
+}
+morphometry_root() {  # where grid/morphometry.sbatch writes both sets' rows, handed to each set's job so its folder and kept/ are the gate's
   echo "${MORPHOMETRY_ROOT:-$VOLUME/go2432/morphometry}"
 }
 covariates_verse_table() {  # VerSeFusion's demographics table, whose sha256 data/gold3-ct/verse/series.json records
@@ -2136,18 +2339,36 @@ covariates_autopet() {  # the census job's map of autoPET's studies to PETCT key
 }
 covariates_inputs_missing() {  # what the join would find no file of, one line, or nothing
   # Each set's report must stand and have ended 0, since the rows of a set that failed or never ran are
-  # no rows to join; then each input the job reads, tested on the login node so the one job is never
-  # spent on a root that moved.
-  local what="" set root autopet
+  # no rows to join, and both must name one code stamp, since rows two engines measured would blend
+  # in every table; then each earlier join's table the check across reports reads, and each input the
+  # job reads, tested on the login node so the one job is never spent on a root that moved.
+  local what="" set root autopet stamp enhance_stamp="" verse_stamp="" previous job
   lacks() { what="${what:+$what; }$1"; }
   for set in enhance verse; do
     if [ ! -f "$LOGS/MORPHOMETRY-$set.md" ]; then
       lacks "the morphometry $set report (send morphometry $set first)"
-    elif ! tail -n 1 "$LOGS/MORPHOMETRY-$set.md" | grep -q '^- exit 0 at '; then
+    elif ! morphometry_ended_0 "$LOGS/MORPHOMETRY-$set.md"; then
       lacks "a morphometry $set report that ended 0 (the one standing ended in failure)"
+    elif morphometry_rerun_pending "$set"; then
+      lacks "the morphometry $set rerun the owner counted (the report standing is job $(bench_job_of "$LOGS/MORPHOMETRY-$set.md")'s, which MORPHOMETRY_RERUNS names; send morphometry $set first)"
+    elif stamp=$(morphometry_stamp "$LOGS/MORPHOMETRY-$set.md"); then
+      case "$set" in enhance) enhance_stamp=$stamp ;; *) verse_stamp=$stamp ;; esac
+    else
+      lacks "a code stamp line in the morphometry $set report, which ties its rows to the engine that measured them"
     fi
   done
-  root=$(covariates_morphometry_root)
+  if [ -n "$enhance_stamp" ] && [ -n "$verse_stamp" ] && [ "$enhance_stamp" != "$verse_stamp" ]; then
+    lacks "both sets measured by one engine (the enhance report names code stamp $enhance_stamp and the verse report $verse_stamp; the set on the older engine is measured once more on the owner's word, MORPHOMETRY_RERUNS)"
+  fi
+  root=$(morphometry_root)
+  if previous=$(covariates_previous); then
+    for job in $previous; do
+      [ -f "$root/covariates/$job/joined.csv" ] && [ -r "$root/covariates/$job/joined.csv" ] \
+        || lacks "the joined table of the earlier join job $job (covariates/$job/joined.csv under the morphometry root), which the check across reports reads, since its report printed cells"
+    done
+  else
+    lacks "a job named on the first line of every earlier join report that printed cells, whose joined table the check across reports reads"
+  fi
   for set in enhance/rows.csv verse/rows.csv verse/totalseg/rows.csv; do
     [ -f "$root/$set" ] || lacks "the morphometry rows $set under the morphometry root"
   done

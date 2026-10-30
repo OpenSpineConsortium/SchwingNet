@@ -7,7 +7,7 @@
 # analysis starts from (the thread "Extract morphometrics from gold tier 3 CT", 2026-10-30;
 # tools/gold3_covariates.py says where each person, sex and age comes from). grid/gate.sh's word
 # `morphometry covariates` queues it once as the batch class, on the owner's count, once both sets'
-# reports stand and ended 0; the next send prints its report a page at a time.
+# reports stand, ended 0 and name one code stamp; the next send prints its report a page at a time.
 #
 # It reads, and writes only under its own folder: the rows of both sets under $MORPHOMETRY_ROOT
 # (enhance/rows.csv, verse/rows.csv, verse/totalseg/rows.csv), the census's map of autoPET's studies to
@@ -18,6 +18,12 @@
 # stay in $MORPHOMETRY_ROOT/covariates/<job>, made 0700 with every file in it 0600 (umask 077), and
 # never leave the grid; the report, grid/logs/MORPHOMETRY-covariates.md, carries the aggregates of
 # report.lines alone, and no path: the interpreter by its name, the code by its commit.
+#
+# A join run once more is checked against every earlier one whose report printed cells: the gate names
+# their jobs in COVARIATES_PREVIOUS, each a folder beside this job's under covariates/, and the tool
+# reads the joined table each kept (--previous) and withholds any block that would difference against
+# that report's into fewer than five persons. A name that is no job number stops the job before the
+# join, since a check it cannot make would let two reports be differenced.
 #
 # The job runs from its own copy of the tool, the census's NIfTI reader beside it and data/gold3-ct/,
 # taken from git's objects at the commit the gate sent it from (COVARIATES_COMMIT), so it takes no hold
@@ -45,6 +51,7 @@ INDEX=${INDEX:-}
 VERSE_DEMOGRAPHICS=${VERSE_DEMOGRAPHICS:-$HOME/VerSeFusion/configs/verse_demographics.csv}
 CPUS=${SLURM_CPUS_PER_TASK:-4}
 COMMIT=${COVARIATES_COMMIT:-}
+PREVIOUS=${COVARIATES_PREVIOUS:-}
 RESTARTS=${SLURM_RESTART_COUNT:-0}
 REPORT=$REPO/grid/logs/MORPHOMETRY-covariates.md
 OUT=$MORPHOMETRY/covariates/${SLURM_JOB_ID:-$$}
@@ -110,10 +117,19 @@ take "the checkout train-cpu environment, read from the working tree" "$REPO/gri
 report "interpreter: $PY_NAME, Python $("$PY" -c 'import sys; print(sys.version.split()[0])'), numpy $("$PY" -c 'import numpy; print(numpy.__version__)')"
 report "code: the join tool, the census reader and the gold 3 records from commit ${COMMIT:0:7}; reads only, the per-person tables stay in the job folder"
 
+# The earlier joins the gate named, each a job number alone, read for the check across reports.
+previous=()
+for job in $PREVIOUS; do
+  [[ $job =~ ^[0-9]{1,12}$ ]] || { report "FAILED: the gate named an earlier join that is no job number, so the check across reports cannot be made; nothing was joined"; finish 2; }
+  previous+=(--previous "$MORPHOMETRY/covariates/$job")
+done
+[ -z "$PREVIOUS" ] || report "earlier joins read for the check across reports: jobs $PREVIOUS"
+
 began=$(date -u +%s)
 # Run in the background and waited for, so a TERM reaches the trap at once and not when the join ends.
 "$PY" "$OUT/code/tools/gold3_covariates.py" --morphometry "$MORPHOMETRY" --autopet "$AUTOPET" --index "$INDEX" \
-     --verse-demographics "$VERSE_DEMOGRAPHICS" --data "$DATA" --out "$OUT" --workers "$CPUS" > "$OUT/join.out" 2>&1 &
+     --verse-demographics "$VERSE_DEMOGRAPHICS" --data "$DATA" --out "$OUT" --workers "$CPUS" \
+     ${previous[@]+"${previous[@]}"} > "$OUT/join.out" 2>&1 &
 child=$!
 wait "$child"
 rc=$?
