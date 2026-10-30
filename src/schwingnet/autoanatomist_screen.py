@@ -658,6 +658,7 @@ def _verdict(
 @beartype
 @require(lambda plan: plan.batch >= 1 and plan.epochs >= 1, "a batch and epochs")
 @require(lambda plan: train_count(plan) >= 1, "a row to train on")
+@require(lambda plan: plan.null in plan.arms and len(plan.seeds) >= 1, "the null an arm; a seed")
 @ensure(
     lambda result, plan: set(result["arms"]) == set(plan.arms) - {plan.null},
     "every arm but the null",
