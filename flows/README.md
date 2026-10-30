@@ -105,6 +105,19 @@ Metaflow's own resume rather than by anything written around it.
   edit made fewer renders, edits or FluXray images than its own draw holds, so the stats, which
   refuse an edit whose verdict was not 0 or whose PREREG differs, never read a sample short of the
   PREREG's. lora and eval are refused until they have a count and a PREREG of their own.
+- `totalseg.py`, TotalsegFlow: the C2 and the sacrum TotalSegmentator draws for the gold tier 3
+  completion (docs/research/gold3-ct/completion/PREREG.md), one run on the owner's word of
+  2026-10-30 08:54 UTC ("Add sacrum and c2 w total seg") and his count (grid word `totalseg
+  complete`, grid/totalseg-complete.sbatch, 4 CPUs, 50G, 6 hours). Its driver holds the checkout,
+  checks the data root and the two weight zips `fetch totalseg_weights` landed, unpacks them once
+  into the weights folder on the lab volume, makes the environment (TotalSegmentator 2.18.0 over
+  train-gpu, grid/venv.sh) and starts the launcher; the flow's segment step runs the body, the
+  frozen PREREG checked against its hash, then tools/gold3_totalseg_grid.py prepare, run, check
+  and report, which appends its lines to the report the driver began and leaves its exit in
+  <out>/COMPLETE_RC, with which the driver ends the report, or with the launcher's code where the
+  body ended 0 and the flow did not. run skips a study whose masks are already there, so a job
+  cut short and sent again carries on. The launcher's last line is `TOTALSEG_RC=`. What it keeps is
+  a machine arm named by sha256, never pooled with the release's masks or the SPINEPS arm.
 
 Every flow's end step sets an int artifact `verdict`, 0 when all went well and 1 otherwise.
 
@@ -122,7 +135,8 @@ enforced and a page that shows its progress in the browser; a plain Slurm job is
 The sweep keeps it, and so do the FluXray reproduction's `realism edit` and `realism stats`
 (RealismFlow, above; lora and eval are refused until they have a count and a PREREG of their own),
 the DRR domain-gap study, `bench flexray_drr_gap`, and the step that makes its MOOSE masks, `bench
-flexray_drr_seg` (both below), version 1's run, `start` and `v1` (V1Flow, above), a requested
+flexray_drr_seg` (both below), the gold tier 3 completion's TotalSegmentator arm, `totalseg complete`
+(TotalsegFlow, above), version 1's run, `start` and `v1` (V1Flow, above), a requested
 experiment, `experiment <issue>` (ExperimentFlow, above), and the latency word's three network
 parts, `latency` (LatencyFlow, above). These words of grid/gate.sh still submit a
 plain job that trains or runs a network, each to be moved onto a flow listed in registry.txt, one
