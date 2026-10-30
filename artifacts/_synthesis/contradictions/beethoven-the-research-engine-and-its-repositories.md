@@ -1,6 +1,6 @@
 # Contradictions: Beethoven: the research engine and its repositories
 
-Part of [the contradictions of the artifacts](../contradictions.md), rendered on 2026-10-29. Rows count from 0, as the record and the skeptics' explanations do. A blank verdict means no skeptic read that candidate. The Review column says whether the verdict was read again and what it was before; the main page says how the review was run.
+Part of [the contradictions of the artifacts](../contradictions.md), rendered on 2026-10-30. Rows count from 0, as the record and the skeptics' explanations do. A blank verdict means no skeptic read that candidate. The Review column says whether the verdict was read again and what it was before; the main page says how the review was run.
 
 43 candidates.
 

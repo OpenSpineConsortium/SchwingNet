@@ -1430,7 +1430,8 @@
      "SchwingNet/level-context-ladder-xd7eltc",
      "SchwingNet/registration-free-level-id-feasibility-uramo1",
      "SchwingNet/schwingnet-figures-jshksq",
-     "SchwingNet/schwingnet-figures-xyz6kr"
+     "SchwingNet/schwingnet-figures-xyz6kr",
+     "SchwingNet/naming-rule-evaluation-with-all-42-papers-tables-rf7zs7"
     ],
     "canonical": [
      "SchwingNet/counting-from-the-sacrum",
@@ -1962,6 +1963,12 @@
     "cluster": "Transitional vertebrae and border variants",
     "date": "2026-10-29",
     "why": "The page counts L6, four-lumbar, 11- and 13-rib and asymmetric-rib spines with names and rib calls kept apart, which is the subject of this cluster."
+   },
+   {
+    "id": "SchwingNet/naming-rule-evaluation-with-all-42-papers-tables-rf7zs7",
+    "cluster": "Level naming and counting",
+    "date": "2026-10-30",
+    "why": "It concerns how a level or field is named by a rule, the chain of levels and six-lumbar/T13 columns, nearest the naming-versus-counting line of work, though it is an October simulation-based evaluation rather than film."
    }
   ]
  }

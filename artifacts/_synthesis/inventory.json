@@ -34764,6 +34764,286 @@
    "notes": "Docs-type artifact kept as Markdown (index.md). It concerns the owner's workstation (the P50) rather than SchwingNet's method; filed under schwingnet-other as operations around the spine work, held in the SchwingNet repository."
   },
   {
+   "repo": "SchwingNet",
+   "folder": "naming-rule-evaluation-with-all-42-papers-tables-rf7zs7",
+   "title": "Naming rule evaluation, with all 42 papers' tables",
+   "account": "first account",
+   "link": "https://claude.ai/artifact/RF7zs7UAEGwE4ZMaQWtn8F",
+   "link_id": "RF7zs7UAEGwE4ZMaQWtn8F",
+   "readme_summary": "The naming rule's engines on bordercall pull request 20's head (ede955b): what each computes and what holds it, the time to name a field, NUTS against the exact rule, naming as the measures are added and the chain of levels on six-lumbar and T13 spines, from Panjabi's tables (Docs type, kept as Markdown; its two figures dropped, chips kept as text)",
+   "kind": "docs",
+   "genre": "evaluation-report",
+   "date": "2026-10-28",
+   "date_evidence": "Header line \"Oct 28, 2026 \u00b7 @Someone\"; the text compares itself with \"the record of 28 October (commit a7dcf15, same code)\" and says a quiet-machine run \"follows\", so it is a re-timing made on or just after that date.",
+   "question": "How fast and how accurately do the naming rule's engines name a spine field on bordercall PR 20's head, how does NUTS compare with the exact rule, how does naming improve as measures are added, and does the chain of levels fix six-lumbar and T13 spines?",
+   "summary": "Six engines name a field (exact rule on trapezoid and Gauss-Hermite nodes, a compiled rule, a NUTS model, and the chain of levels in NumPy and PyMC), all on a draft pull request's head, built on Panjabi's four-paper table of 32 measures. Every exact engine names a field in 16 ms or less, while NUTS is 128 to 522 times slower and at 16 measures sampled together gave a wholly wrong posterior with R-hat 1.00. Accuracy rises from 73.1% with the seven measures in use to 98.3% with all 32 on three-body fields, but a table from 12 people breaks the 0.99 promise and so do spines with an L6 or T13. The chain of levels lifts those spines to 97.5% (six-lumbar) and 94.5% (T13) at all 32 measures with 99.37% and 100% precision at 0.99. Chain times, nine bodies and the data axis are still to come, and the page is one account's own simulated-world result, not a real-film test.",
+   "key_claims": [
+    {
+     "claim": "Every exact engine names a field in 16 ms or less, under a video frame's half period.",
+     "evidence_in_artifact": "every exact engine names a field in 16 ms or less from one call on one thread, at any of 1 to 32 measures and 1, 3 or 9 bodies, half a video frame at 30 frames a second",
+     "grade_hint": "measured"
+    },
+    {
+     "claim": "NUTS is far slower than the exact rule and can fail silently with R-hat reading fine.",
+     "evidence_in_artifact": "NUTS names the same three-body fields 128 to 522 times slower than the exact rule, and at 16 measures sampled together it gave one field a posterior wholly unlike the exact one while its R-hat read 1.00.",
+     "grade_hint": "measured"
+    },
+    {
+     "claim": "All 32 measures name 98.3% of three-body fields exactly; the seven in use name 73.1%.",
+     "evidence_in_artifact": "all 32 measures name 98.3% of three-body fields exactly and every nine-body field from 25 measures on; the seven in use today name 73.1%, and the first seven of the greedy order 89.2%.",
+     "grade_hint": "measured"
+    },
+    {
+     "claim": "A table from only 12 people breaks the 0.99 promise; from 50 people it holds with all 32.",
+     "evidence_in_artifact": "A table from 12 people, as many as Panjabi measured, breaks the 0.99 promise (95.75% with the seven); from 50 people on it holds with all 32.",
+     "grade_hint": "measured"
+    },
+    {
+     "claim": "The consecutive rule fails on six-lumbar and T13 spines.",
+     "evidence_in_artifact": "with all 32 at three bodies, 94.47% of answers at 0.99 are right on six-lumbar spines (153 wrong) and 94.93% on spines with a T13 (137 wrong)",
+     "grade_hint": "measured"
+    },
+    {
+     "claim": "The chain of levels names L6 and T13 spines better and keeps its 0.99 answers right.",
+     "evidence_in_artifact": "the chain names three-body fields better than the consecutive rule (97.5% against 86.0% on six-lumbar spines, 94.5% against 84.5% with a T13, all 32 measures)",
+     "grade_hint": "measured"
+    },
+    {
+     "claim": "The chain's L6/T13 scores are against a generator built by the same construction, and its priors are chosen, not estimated.",
+     "evidence_in_artifact": "The chain's L6 and T13 values are the generator's construction (a blend of the neighbours), so on those columns the chain is scored against the truth it was built from.",
+     "grade_hint": "inferred"
+    },
+    {
+     "claim": "Times may run slightly high because of machine load; why batch speed varies and why the 16-measure NUTS run fails are not measured.",
+     "evidence_in_artifact": "The machine's load average was 2.6 to 2.9 while the paper tables were being read beside it, against 1.0 on 28 October, so these times may run slightly high",
+     "grade_hint": "unverified"
+    }
+   ],
+   "numbers": [
+    {
+     "value": "16 ms or less",
+     "unit": "ms a field",
+     "n": "9,000 timed calls",
+     "interval": null,
+     "context": "Every exact engine, one call, one thread, 1 to 32 measures, 1/3/9 bodies",
+     "quote": "every exact engine names a field in 16 ms or less from one call on one thread"
+    },
+    {
+     "value": "36",
+     "unit": "ms",
+     "n": "9,000 timed calls",
+     "interval": null,
+     "context": "Largest single call of all timed",
+     "quote": "the largest single call of all 9,000 timed took 36 ms"
+    },
+    {
+     "value": "128 to 522",
+     "unit": "times rule.py",
+     "n": "20 fields together / 1 alone",
+     "interval": null,
+     "context": "NUTS loop seconds a field over rule.py (trapezoid, three bodies)",
+     "quote": "NUTS names the same three-body fields 128 to 522 times slower than the exact rule"
+    },
+    {
+     "value": "1.0",
+     "unit": "largest gap from exact posterior",
+     "n": "20 fields, 16 measures",
+     "interval": null,
+     "context": "NUTS together at 16 measures; largest R-hat 1.84, 156 divergences; the L2 field had R-hat 1.00",
+     "quote": "| 16 | 20 together | 14.3 | 1.26 | 350 | 1.0 | 1.84 | 156 |"
+    },
+    {
+     "value": "98.3",
+     "unit": "% named exactly",
+     "n": "2,000 columns",
+     "interval": null,
+     "context": "Three-body fields, typical columns, all 32 measures, as-assumed arm",
+     "quote": "all 32 measures name 98.3% of three-body fields exactly"
+    },
+    {
+     "value": "73.1",
+     "unit": "% named exactly",
+     "n": "2,000 columns",
+     "interval": null,
+     "context": "Three-body fields, the seven measures in use today",
+     "quote": "the seven in use today name 73.1%"
+    },
+    {
+     "value": "89.2",
+     "unit": "% named exactly",
+     "n": null,
+     "interval": null,
+     "context": "First seven of the greedy order",
+     "quote": "the first seven of the greedy order 89.2%"
+    },
+    {
+     "value": "95.75",
+     "unit": "% precision at 0.99",
+     "n": "200 columns",
+     "interval": null,
+     "context": "Table from 12 people, seven measures",
+     "quote": "| Table from 12 people | 61.1 | 95.75 | 92.7 | 98.05 |"
+    },
+    {
+     "value": "94.47",
+     "unit": "% of answers at 0.99 right",
+     "n": "153 wrong",
+     "interval": null,
+     "context": "Six-lumbar spines, all 32 measures, three bodies, consecutive rule",
+     "quote": "94.47% of answers at 0.99 are right on six-lumbar spines (153 wrong)"
+    },
+    {
+     "value": "94.93",
+     "unit": "% of answers at 0.99 right",
+     "n": "137 wrong",
+     "interval": null,
+     "context": "Spines with a T13, all 32, three bodies",
+     "quote": "94.93% on spines with a T13 (137 wrong)"
+    },
+    {
+     "value": "97.5 vs 86.0",
+     "unit": "% exact",
+     "n": "200 fields a cell",
+     "interval": "SE 1 to 3.5 points",
+     "context": "Six-lumbar, whole chain vs consecutive, all 32",
+     "quote": "| Six lumbar | Whole chain | 69.0 | 97.5 | 99.37 | 1 |"
+    },
+    {
+     "value": "94.5 vs 84.5",
+     "unit": "% exact",
+     "n": "200 fields a cell",
+     "interval": "SE 1 to 3.5 points",
+     "context": "T13, whole chain vs consecutive, all 32",
+     "quote": "| T13 | Whole chain | 66.5 | 94.5 | 100.0 | 0 |"
+    },
+    {
+     "value": "88.5",
+     "unit": "% exact",
+     "n": "200 fields",
+     "interval": null,
+     "context": "Typical columns, consecutive rule, chain's gap law (0.2 skip), all 32",
+     "quote": "| Typical | Consecutive (step d's rule) | 68.0 | 88.5 | 94.41 | 9 |"
+    },
+    {
+     "value": "32",
+     "unit": "measures",
+     "n": "12 cadaver spines",
+     "interval": null,
+     "context": "Panjabi's four papers: 18 lengths, 6 areas, 8 angles, C3 to L5",
+     "quote": "32 measures over C3 to L5, 18 lengths, 6 areas and 8 angles"
+    },
+    {
+     "value": "281 / 161",
+     "unit": "nodes",
+     "n": null,
+     "interval": null,
+     "context": "Trapezoid vs Gauss-Hermite nodes",
+     "quote": "the patient's size integrated on 281 trapezoid nodes of log size"
+    },
+    {
+     "value": "0.2",
+     "unit": "probability a body is missed per step",
+     "n": null,
+     "interval": null,
+     "context": "Chain generator's stated skip law",
+     "quote": "each step between two bodies read misses one body with probability 0.2"
+    },
+    {
+     "value": "0.9 / 0.05 / 0.05",
+     "unit": "prior weights",
+     "n": null,
+     "interval": null,
+     "context": "Typical / six-lumbar / T13, stated choices",
+     "quote": "The prior weights (0.9 typical, 0.05 six-lumbar, 0.05 T13)"
+    },
+    {
+     "value": "98.38 / 98.66",
+     "unit": "% at one body",
+     "n": null,
+     "interval": null,
+     "context": "Rib on L1 / no rib on T12, all 32, precision at 0.99",
+     "quote": "falls to 98.38% and 98.66% at one body"
+    }
+   ],
+   "datasets": [
+    "Panjabi's four papers' tables (cervical 1991, thoracic 1991, lumbar 1992, facets 1993)",
+    "bordercall records/curve-2026-10-28 (curve.nc, curve_accuracy.csv, buildup-2026-10-28.csv, speed-2026-10-28.csv)",
+    "the archive's record of 2026-10-26"
+   ],
+   "tools": [
+    "schwingcheck (rule.py, compiled.py, model.py, chain.py, chain_pymc.py)",
+    "PyMC",
+    "PyTensor",
+    "NUTS",
+    "pymc-extras forward algorithm",
+    "numpy",
+    "scipy",
+    "SPINEPS (the seven measures)"
+   ],
+   "models": [
+    "Exact naming rule (trapezoid and Gauss-Hermite)",
+    "Chain of levels"
+   ],
+   "decisions": [
+    {
+     "date": null,
+     "decision": "The exact rule is what names; the other engines are checked against it, and a sampled answer is checked against the exact rule field by field, never on R-hat.",
+     "owner": null,
+     "reason": "NUTS gave a wholly wrong posterior with R-hat 1.00."
+    },
+    {
+     "date": null,
+     "decision": "The build-up study is not re-run; its 28 October scoring stands.",
+     "owner": null,
+     "reason": "Its code has not moved."
+    },
+    {
+     "date": null,
+     "decision": "The chain's clinical priors by population go to the chain thread to replace the stated 0.9/0.05/0.05.",
+     "owner": "chain-of-levels thread",
+     "reason": "The prior weights and skip probability are stated choices."
+    }
+   ],
+   "open_questions": [
+    "Why a batch is slower per field than a lone call at one body from 7 measures on.",
+    "Why the 16-measure together NUTS run fails.",
+    "Chain of levels' own times at up to nine bodies on a quiet machine.",
+    "Nine bodies and the data axis for the chain.",
+    "Clinical reread's priors by population for the chain."
+   ],
+   "unsourced_assertions": [
+    "The chain's skip probability of 0.2 and prior weights are stated choices with no source."
+   ],
+   "stale_markers": [
+    "Pull request 20 is \"still a draft\"; head commit ede955b.",
+    "Times taken under load 2.6 to 2.9; \"a run on a quiet machine follows\".",
+    "Chain times \"are being taken ... and will be added here\".",
+    "Build-up scoring is from 28 October, not re-run."
+   ],
+   "external_sources": [
+    {
+     "title": "Panjabi cervical spine tables",
+     "url_or_citation": "Panjabi, 1991 (cervical); thoracic 1991; lumbar 1992; facets 1993 (as named by the page)"
+    }
+   ],
+   "cross_references": [
+    "bordercall pull request 20 (head ede955b)",
+    "bordercall main 08b1a23",
+    "record of 28 October (commit a7dcf15)",
+    "archive exact.py and its record of 2026-10-26",
+    "records/curve-2026-10-28"
+   ],
+   "confidentiality": "schwingnet-method",
+   "related_titles": [],
+   "people_by_role": [
+    "author (account owner; named only as a handle)",
+    "chain-of-levels thread"
+   ],
+   "coverage_notes": "Read index.md (10,683 bytes) whole, and the folder holds nothing else. The two embedded figures are dropped and appear only as bracketed captions; their CSVs are not in the folder. No address, path or link reproduced.",
+   "notes": "The title says \"all 42 papers' tables\" but the body uses four Panjabi papers; the 42 is not explained. The \"16 ms or less\" claim is slightly exceeded by the table's own 16.24 ms (rule.py trapezoid, one body, 32 measures, batch); the 36 ms maximum is outside it. Chain-table accuracy for typical columns (88.5% consecutive) differs from 98.3% because the chain section draws fields by a different law (0.2 miss) and uses 200 fields. In the T13 rows 'Told the true gaps' (92.0) is below 'Whole chain' (94.5), unexplained. Results are on a simulated world generated from the same table, so rates are not real-film performance.",
+   "read_on": "2026-10-30"
+  },
+  {
    "repo": "symphony-template",
    "folder": "grid-and-cloud-claude-workers-review",
    "title": "Grid and cloud Claude workers: review",
