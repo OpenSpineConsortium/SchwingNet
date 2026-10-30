@@ -109,15 +109,20 @@ Metaflow's own resume rather than by anything written around it.
   completion (docs/research/gold3-ct/completion/PREREG.md), one run on the owner's word of
   2026-10-30 08:54 UTC ("Add sacrum and c2 w total seg") and his count (grid word `totalseg
   complete`, grid/totalseg-complete.sbatch, 4 CPUs, 50G, 6 hours). Its driver holds the checkout,
-  checks the data root and the two weight zips `fetch totalseg_weights` landed, unpacks them once
-  into the weights folder on the lab volume, makes the environment (TotalSegmentator 2.18.0 over
-  train-gpu, grid/venv.sh) and starts the launcher; the flow's segment step runs the body, the
+  checks the data root and the weight zips `fetch totalseg_weights` and `fetch moose_weights`
+  landed, unpacks TotalSegmentator's once into the weights folder on the lab volume, makes the two
+  environments (TotalSegmentator 2.18.0 over train-gpu, and the DRR study's MOOSE one, grid/venv.sh)
+  and starts the launcher; the flow's segment step runs the body, the
   frozen PREREG checked against its hash, then tools/gold3_totalseg_grid.py prepare, run, check
   and report, which appends its lines to the report the driver began and leaves its exit in
   <out>/COMPLETE_RC, with which the driver ends the report, or with the launcher's code where the
-  body ended 0 and the flow did not. run skips a study whose masks are already there, so a job
-  cut short and sent again carries on. The launcher's last line is `TOTALSEG_RC=`. What it keeps is
-  a machine arm named by sha256, never pooled with the release's masks or the SPINEPS arm.
+  body ended 0 and the flow did not. run draws with each release's own segmenter (TotalSegmentator
+  for VerSe and the TotalSegmentator subjects, MOOSE's vertebrae model for ENHANCE.PET, through the
+  subcommand moose-one in MOOSE's environment; the owner's word of 2026-10-30 09:33 UTC,
+  docs/research/gold3-ct/completion/DEVIATIONS.md) and skips a study whose masks are already there,
+  so a job cut short and sent again carries on. The launcher's last line is `TOTALSEG_RC=`. What it
+  keeps is a machine arm in the release's own label id, named by segmenter and sha256, never pooled
+  with the release's masks or the SPINEPS arm.
 
 Every flow's end step sets an int artifact `verdict`, 0 when all went well and 1 otherwise.
 

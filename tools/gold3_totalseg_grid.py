@@ -12,10 +12,15 @@ census's SPINEPS masks read by bordercall's matcher (tools/gold3_complete_grid.p
 could add no sacrum to any VerSe series, since those masks draw none, and no C2 to most. The owner's
 word of 2026-10-30 08:54 UTC, "Add sacrum and c2 w total seg", is that TotalSegmentator draws them:
 its total task, the vertebrae part (vertebrae_C2 and sacrum among its classes), run on each study's
-own CT, so the masks come out on the CT's grid and nothing is resampled. What it draws is a third
-machine arm beside the release's masks and the SPINEPS arm, recorded by segmenter, version and
-sha256, never pooled with either and never raising a tier, as the completion rule says
-(data/gold3-ct/members.json, completion). The job is grid/totalseg-complete.sbatch, the gate word
+own CT, so the masks come out on the CT's grid and nothing is resampled. His word of 09:33 UTC keeps each
+release's segmentations consistent: ENHANCE.PET's masks were made by MOOSE, so MOOSE's vertebrae
+model (moosez clin_ct_vertebrae, the weights `fetch moose_weights` landed) draws its C2 and sacrum,
+and TotalSegmentator draws them for the VerSe series and the TotalSegmentator subjects; and every
+arm file carries the level in its release's own label id (VerSe 2 and 26, ENHANCE.PET's MOOSE ids
+2 and 28, TotalSegmentator one file per structure with value 1), so a reader of the release reads
+the arm the same way. What is drawn is a third machine arm beside the release's masks and the
+SPINEPS arm, recorded by segmenter, version and sha256, never pooled with either and never raising
+a tier, as the completion rule says (data/gold3-ct/members.json, completion). The job is grid/totalseg-complete.sbatch, the gate word
 `totalseg complete`, one GPU job on the owner's count, run as the launched flow totalseg
 (flows/totalseg.py) under docs/research/gold3-ct/completion/PREREG.md, in four steps:
 
@@ -25,22 +30,26 @@ sha256, never pooled with either and never raising a tier, as the completion rul
    release nests it, ENHANCE.PET's by its id under aws_enhance_pet_ct) and its release masks (VerSe's
    int16 copies, the subject's segmentations/ folder, the Vertebrae file under aws_enhance_pet_labels),
    into OUT/jobs.json; a study with no CT or no release on the grid is listed with its reason.
-2. run: TotalSegmentator's Python entry on each CT with roi_subset vertebrae_C2 and sacrum, which
-   crops with the 6 mm model and runs the vertebrae part alone, the weights read from the folder
-   TOTALSEG_WEIGHTS_PATH names, never downloaded; the masks under OUT/ts/<id>/, a run.json beside
-   them, and a study whose masks are already there is not run again, so a job cut short carries on.
+2. run: TotalSegmentator's Python entry on each VerSe or TotalSegmentator CT with roi_subset
+   vertebrae_C2 and sacrum, which crops with the 6 mm model and runs the vertebrae part alone, the
+   weights read from the folder TOTALSEG_WEIGHTS_PATH names, never downloaded; on each ENHANCE.PET
+   CT the subcommand moose-one in MOOSE's own environment (--moose-python), which unpacks the
+   vertebrae model's fetched zip where moosez looks, as tools/flexray_render.py segment does, runs
+   moosez's entry and leaves the multilabel file, from which run cuts vertebrae_C2 and sacrum by
+   MOOSE's ids; the masks under OUT/ts/<id>/, a run.json beside them, and a study whose masks are
+   already there is not run again, so a job cut short carries on.
 3. check: each target's mask against the release's own labels on the same grid: drawn at all
    (MIN_VOXELS), lying on the release's levels no more than OVERLAP_SHARE of its voxels, and on the
    right side of them along the world's vertical, C2 above the release's topmost level and the
    sacrum below its lowest; a target that passes is written as the arm file
-   OUT/arm/<id>_totalseg_<target>_<sha256 prefix>.nii.gz and recorded in OUT/records.jsonl with the
-   gap in mm to the release's nearest level, the levels still undrawn between them, and the
+   OUT/arm/<id>_<segmenter>_<target>_<sha256 prefix>.nii.gz, its voxels at the release's own id for
+   the level, and recorded in OUT/records.jsonl with that id, the gap in mm to the release's nearest level, the levels still undrawn between them, and the
    segmenter's name and version; one that fails is recorded with its reason and no file.
 4. report: the counts, a line per study and every refusal's reason into OUT/REPORT.md, which the
    gate prints; no path under the data root, only store names and file names.
 
-Standard library here; numpy and nibabel are imported where a mask is read, and totalsegmentator
-where it runs, so the parts that need none of them are tested without them
+Standard library here; numpy and nibabel are imported where a mask is read, totalsegmentator and
+moosez where they run, so the parts that need none of them are tested without them
 (tests/test_gold3_totalseg_grid.py).
 """
 from __future__ import annotations
@@ -51,12 +60,27 @@ import hashlib
 import json
 import os
 import re
+import subprocess
 import sys
 import time
 from pathlib import Path
 
+ROOT = Path(__file__).resolve().parent.parent
 TARGETS = ("C2", "sacrum")
 TS_NAMES = {"C2": "vertebrae_C2", "sacrum": "sacrum"}
+# Which segmenter draws for which member (the owner, 2026-10-30 09:33 UTC): the one its release was
+# made with, where it draws C2 and the sacrum at all.
+SEGMENTER_OF = {"verse": "TotalSegmentator", "totalsegmentator": "TotalSegmentator", "enhance_pet": "MOOSE"}
+MOOSE_MODEL = "clin_ct_vertebrae"
+MOOSE_NAMES = {"C2": "vertebra_C2", "sacrum": "sacrum"}
+# MOOSE's ids in its vertebrae model's multilabel file (grid/enhance-pet-labels.json, the bucket's
+# labels.json, and schwingnet.segmenters.MOOSEZ_MODELS), which are ENHANCE.PET's release ids too.
+MOOSE_IDS = {"C2": 2, "sacrum": 28}
+# The id each release writes the level under, which the arm file carries so that its reader reads
+# it as the release: VerSe's scheme (C2 at 2, the sacrum at 26), ENHANCE.PET's MOOSE ids, and
+# TotalSegmentator's one file per structure, whose voxels are 1.
+RELEASE_IDS = {"verse": {"C2": 2, "sacrum": 26}, "enhance_pet": dict(MOOSE_IDS), "totalsegmentator": {"C2": 1, "sacrum": 1}}
+RELEASE_SCHEME = {"verse": "VerSe label ids", "enhance_pet": "MOOSE clin_ct_vertebrae ids, ENHANCE.PET's", "totalsegmentator": "one file per structure, value 1"}
 MIN_VOXELS = 200                # drawn at all, as the field test and the matcher count a level
 OVERLAP_SHARE = 0.05            # at most this share of a target's voxels on the release's own levels
 ORDER = (*[f"C{i}" for i in range(1, 8)], *[f"T{i}" for i in range(1, 14)], *[f"L{i}" for i in range(1, 7)], "sacrum")
@@ -66,6 +90,7 @@ TS_SUBJECT = re.compile(r"^s\d{4}$")
 REASON_CHARS = 160
 SEGMENTER = "TotalSegmentator"
 TASK = {"task": "total", "roi_subset": ["vertebrae_C2", "sacrum"], "fast": False}
+MOOSE_TASK = {"model": MOOSE_MODEL, "targets": MOOSE_NAMES}
 
 
 # ---- which studies, with which targets ------------------------------------------------------
@@ -81,7 +106,7 @@ def studies_asked(admission_path):
         targets = [t for t in TARGETS if t in (row.get("complete") or [])]
         if targets:
             asked.append({"member": row["member"], "id": row["id"], "verdict": row["verdict"], "targets": targets,
-                          "complete": list(row.get("complete") or [])})
+                          "complete": list(row.get("complete") or []), "segmenter": SEGMENTER_OF.get(row["member"], SEGMENTER)})
     return asked
 
 
@@ -198,12 +223,16 @@ def prepare(args):
             left_out.append(dict(study, reason=why))
             continue
         jobs.append(dict(study, ct=ct, release=release, ct_store=short_store(ct, roots), release_store=short_store(release, roots)))
-    record = {"segmenter": SEGMENTER, "task": TASK, "asked": len(studies), "prepared": len(jobs), "not_prepared": len(left_out),
+    record = {"segmenter": SEGMENTER, "task": TASK, "moose_task": MOOSE_TASK, "segmenter_of": SEGMENTER_OF, "asked": len(studies), "prepared": len(jobs), "not_prepared": len(left_out),
               "studies": jobs, "left_out": left_out, "prepared_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
     with open(os.path.join(args.out, "jobs.json"), "w", encoding="utf-8") as fh:
         json.dump(record, fh, indent=1, sort_keys=True)
         fh.write("\n")
-    print(f"prepare: {len(studies)} studies asked; {len(jobs)} prepared for TotalSegmentator; {len(left_out)} not (jobs.json says why)")
+    by = {}
+    for study in jobs:
+        by[study["segmenter"]] = by.get(study["segmenter"], 0) + 1
+    print(f"prepare: {len(studies)} studies asked; {len(jobs)} prepared ({', '.join(f'{n} for {k}' for k, n in sorted(by.items())) or 'none'}); "
+          f"{len(left_out)} not (jobs.json says why)")
     return 0
 
 
@@ -214,17 +243,91 @@ def read_jobs(out):
         return json.load(fh)
 
 
-def segmenter_version():
+def segmenter_version(package="TotalSegmentator"):
     try:
         from importlib.metadata import version
-        return version("TotalSegmentator")
+        return version(package)
     except Exception:                                           # noqa: BLE001
         return "not read"
 
 
+def run_totalseg(study, folder, args):
+    from totalsegmentator.python_api import totalsegmentator
+    totalsegmentator(study["ct"], folder, task=TASK["task"], roi_subset=list(TASK["roi_subset"]), fast=TASK["fast"],
+                     device=args.device, quiet=True, nr_thr_resamp=args.threads, nr_thr_saving=args.threads)
+    return {}
+
+
+def cut_targets(multilabel, folder, ids=MOOSE_IDS):
+    """Each target's own file beside the multilabel MOOSE wrote, by MOOSE's ids, under the names
+    TotalSegmentator writes, so the check reads either segmenter's output alike."""
+    import nibabel as nib
+    import numpy as np
+    img = nib.load(multilabel)
+    data = np.asanyarray(img.dataobj)
+    for target, value in ids.items():
+        out = nib.Nifti1Image((data == value).astype(np.uint8), img.affine, img.header)
+        out.set_data_dtype(np.uint8)
+        nib.save(out, os.path.join(folder, TS_NAMES[target] + ".nii.gz"))
+
+
+def run_moose(study, folder, args):
+    """MOOSE in its own environment (the subcommand moose-one under --moose-python), then the two
+    targets cut out of its multilabel file by MOOSE's ids."""
+    if not args.moose_python:
+        raise RuntimeError("no --moose-python: MOOSE's environment was not given, so an ENHANCE.PET study cannot run")
+    words = [args.moose_python, os.path.abspath(__file__), "moose-one", "--ct", study["ct"], "--folder", folder,
+             "--weights", args.moose_weights, "--device", args.device]
+    said = subprocess.run(words, capture_output=True, text=True, timeout=4 * 3600)
+    lines = [line for line in said.stdout.splitlines() if line.startswith("{")]
+    if said.returncode != 0 or not lines:
+        tail = (said.stderr or said.stdout).strip().splitlines()[-3:]
+        raise RuntimeError(f"moose-one ended {said.returncode}: {' | '.join(tail)[:REASON_CHARS]}")
+    found = json.loads(lines[-1])
+    cut_targets(found["multilabel"], folder)
+    return {"version": found.get("version"), "multilabel": os.path.basename(found["multilabel"]), "models": found.get("models")}
+
+
+def moose_one(args):
+    """Inside MOOSE's environment: the vertebrae model's zip unpacked where moosez looks, as
+    tools/flexray_render.py segment unpacks it (its metadata and labels held equal to the tool's
+    tables first, so moosez downloads nothing), moosez's entry on the CT through a link in the
+    study's folder, and the multilabel file it wrote found by its region word; one JSON line last."""
+    sys.path.insert(0, str(ROOT / "tools"))
+    import flexray_render as fr
+    from moosez import moose
+    metadata = {MOOSE_MODEL: fr.moosez_metadata()[MOOSE_MODEL]}
+    folder, url = metadata[MOOSE_MODEL]
+    zip_path = Path(args.weights) / fr.zip_of(url)
+    if not zip_path.is_file():
+        raise SystemExit(f"no {zip_path.name} under {args.weights} (fetch moose_weights first)")
+    differs = fr.moosez_disagreements(metadata)
+    if differs:
+        raise SystemExit("moosez's own metadata differs from the tool's copy, so it would download: " + "; ".join(differs))
+    models_dir = fr.models_directory()
+    unpacked = fr.unpack_weights(args.weights, metadata, models_dir)
+    labels = fr.check_labels(models_dir, metadata)
+    theirs, _ = fr.dataset_labels(models_dir, folder)
+    for target, value in MOOSE_IDS.items():
+        if theirs.get(value, "").lower() != MOOSE_NAMES[target].lower():
+            raise SystemExit(f"MOOSE's dataset.json names value {value} {theirs.get(value)!r}, not {MOOSE_NAMES[target]}; the ids this tool cuts by would be wrong")
+    home = Path(args.folder)
+    home.mkdir(parents=True, exist_ok=True)
+    link = home / f"CT_{home.name}.nii.gz"
+    if not link.exists():
+        link.symlink_to(Path(args.ct).resolve())
+    before = {p for p in home.rglob("*.nii.gz")}
+    moose(str(link), [MOOSE_MODEL], str(home), args.device)
+    written = sorted(p for p in home.rglob("*.nii.gz") if p not in before and "vertebrae" in p.name.lower())
+    if not written:
+        raise SystemExit("moosez wrote no vertebrae file under the study's folder")
+    print(json.dumps({"multilabel": str(written[-1]), "version": segmenter_version("moosez"), "models": {"unpacked": unpacked, "labels": labels}}))
+    return 0
+
+
 def run(args):
-    """TotalSegmentator on every prepared CT whose masks are not there yet; its exit is 0 only where
-    every study has its masks, drawn now or before."""
+    """TotalSegmentator or MOOSE on every prepared CT whose masks are not there yet; its exit is 0
+    only where every study has its masks, drawn now or before."""
     if args.weights:
         os.environ["TOTALSEG_WEIGHTS_PATH"] = args.weights
     jobs = read_jobs(args.out)
@@ -236,12 +339,13 @@ def run(args):
             continue
         os.makedirs(folder, exist_ok=True)
         began = time.time()
-        record = {"id": study["id"], "member": study["member"], "segmenter": SEGMENTER, "version": segmenter_version(),
-                  "task": TASK, "began": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(began))}
+        segmenter = study.get("segmenter", SEGMENTER)
+        record = {"id": study["id"], "member": study["member"], "segmenter": segmenter,
+                  "version": segmenter_version() if segmenter == SEGMENTER else None,
+                  "task": TASK if segmenter == SEGMENTER else MOOSE_TASK, "began": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(began))}
         try:
-            from totalsegmentator.python_api import totalsegmentator
-            totalsegmentator(study["ct"], folder, task=TASK["task"], roi_subset=list(TASK["roi_subset"]), fast=TASK["fast"],
-                             device=args.device, quiet=True, nr_thr_resamp=args.threads, nr_thr_saving=args.threads)
+            found = (run_totalseg if segmenter == SEGMENTER else run_moose)(study, folder, args)
+            record.update({k: v for k, v in found.items() if v is not None})
             record["exit"] = 0
         except Exception as exc:                                # noqa: BLE001
             record["exit"] = 1
@@ -356,6 +460,18 @@ def check_target(target, mask_path, levels, release_affine, complete):
     return record
 
 
+def write_arm(mask_path, out_path, value):
+    """The arm file: the segmenter's voxels of the level at the release's own id, int16 as the
+    release files are, on the mask's grid."""
+    import nibabel as nib
+    import numpy as np
+    img = nib.load(mask_path)
+    data = (np.asanyarray(img.dataobj) > 0).astype(np.int16) * np.int16(value)
+    out = nib.Nifti1Image(data, img.affine, img.header)
+    out.set_data_dtype(np.int16)
+    nib.save(out, out_path)
+
+
 def check(args):
     jobs = read_jobs(args.out)
     arm = os.path.join(args.out, "arm")
@@ -364,8 +480,10 @@ def check(args):
     for study in jobs["studies"]:
         folder = os.path.join(args.out, "ts", study["id"])
         run_path = os.path.join(folder, "run.json")
+        segmenter = study.get("segmenter", SEGMENTER)
         record = {"id": study["id"], "member": study["member"], "verdict": study["verdict"], "targets": {},
-                  "segmenter": SEGMENTER, "task": TASK, "ct_store": study["ct_store"], "release_store": study["release_store"]}
+                  "segmenter": segmenter, "task": TASK if segmenter == SEGMENTER else MOOSE_TASK,
+                  "label_scheme": RELEASE_SCHEME.get(study["member"], "-"), "ct_store": study["ct_store"], "release_store": study["release_store"]}
         if not os.path.exists(run_path):
             record["error"] = "not run"
             records.append(record)
@@ -393,11 +511,13 @@ def check(args):
             except Exception as exc:                            # noqa: BLE001
                 found = {"kept": False, "reason": f"the check failed: {type(exc).__name__}: {str(exc)[:REASON_CHARS]}"}
             if found.get("kept"):
-                digest = sha256_of(mask_path)
-                name = f"{study['id']}_totalseg_{target}_{digest[:12]}.nii.gz"
-                with open(mask_path, "rb") as src, open(os.path.join(arm, name), "wb") as dst:
-                    dst.write(src.read())
-                found.update(file=name, sha256=digest)
+                value = RELEASE_IDS.get(study["member"], {}).get(target, 1)
+                staged = os.path.join(arm, f".{study['id']}_{target}.part.nii.gz")
+                write_arm(mask_path, staged, value)
+                digest = sha256_of(staged)
+                name = f"{study['id']}_{segmenter.lower()}_{target}_{digest[:12]}.nii.gz"
+                os.replace(staged, os.path.join(arm, name))
+                found.update(file=name, sha256=digest, label_value=value)
             record["targets"][target] = found
         records.append(record)
     with open(os.path.join(args.out, "records.jsonl"), "w", encoding="utf-8") as fh:
@@ -425,16 +545,27 @@ def report(args):
     by_member = {}
     for study in jobs["studies"] + jobs["left_out"]:
         by_member[study["member"]] = by_member.get(study["member"], 0) + 1
+    for r in records:
+        r.setdefault("targets", {})
     kept = [(r["id"], t) for r in records for t, found in r["targets"].items() if found.get("kept")]
     refused = [(r["id"], t, found["reason"]) for r in records for t, found in r["targets"].items() if not found.get("kept") and "reason" in found]
     errors = [(r["id"], r["error"]) for r in records if "error" in r]
-    versions = sorted({r.get("version") for r in records if r.get("version")}) or ["not read"]
+    versions = {}
+    for r in records:
+        versions.setdefault(r.get("segmenter", SEGMENTER), set()).add(r.get("version") or "not read")
+    ran = {s.get("segmenter", SEGMENTER) for s in jobs["studies"]}
+    said = []
+    if SEGMENTER in ran or SEGMENTER in versions:
+        said.append(f"{SEGMENTER} {', '.join(sorted(versions.get(SEGMENTER, {'not read'})))} (task {TASK['task']}, roi_subset {' '.join(TASK['roi_subset'])}) "
+                    f"for {', '.join(m for m, s in SEGMENTER_OF.items() if s == SEGMENTER)}")
+    if "MOOSE" in ran or "MOOSE" in versions:
+        said.append(f"MOOSE {', '.join(sorted(versions.get('MOOSE', {'not read'})))} ({MOOSE_MODEL}) for enhance_pet")
     lines = [f"- studies asked: {jobs['asked']} ({', '.join(f'{m} {n}' for m, n in sorted(by_member.items()))}); "
              f"prepared: {jobs['prepared']}; not prepared: {jobs['not_prepared']}",
-             f"- segmenter: {SEGMENTER} {', '.join(versions)}, task {TASK['task']}, roi_subset {' '.join(TASK['roi_subset'])}, run on each CT's own grid",
+             f"- segmenters: {'; '.join(said) or 'none ran'}; each on the CT's own grid, each arm file in its release's own label id",
              f"- targets kept: {len(kept)} ({sum(1 for _, t in kept if t == 'C2')} C2, {sum(1 for _, t in kept if t == 'sacrum')} sacrum) "
              f"in {len({i for i, _ in kept})} studies; targets refused: {len(refused)}; studies in error: {len(errors)}",
-             "", "| id | member | ct store | asked | C2 | sacrum | arm files |", "| --- | --- | --- | --- | --- | --- | --- |"]
+             "", "| id | member | segmenter | ct store | asked | C2 | sacrum | arm files |", "| --- | --- | --- | --- | --- | --- | --- | --- |"]
     for r in records:
         cells = []
         for t in TARGETS:
@@ -442,13 +573,13 @@ def report(args):
             cells.append("-" if found is None else ("kept" if found.get("kept") else "refused"))
         files = " ".join(found["file"] for found in r["targets"].values() if found.get("file")) or ("error" if "error" in r else "-")
         asked = " ".join(t for t in TARGETS if t in r["targets"]) or "-"
-        lines.append(f"| {r['id']} | {r['member']} | {r['ct_store']} | {asked} | {cells[0]} | {cells[1]} | {files} |")
+        lines.append(f"| {r['id']} | {r['member']} | {r.get('segmenter', SEGMENTER)} | {r['ct_store']} | {asked} | {cells[0]} | {cells[1]} | {files} |")
     recorded = {r["id"] for r in records}
     for study in jobs["studies"]:
         if study["id"] not in recorded:
-            lines.append(f"| {study['id']} | {study['member']} | {study['ct_store']} | {' '.join(study['targets'])} | - | - | not run |")
+            lines.append(f"| {study['id']} | {study['member']} | {study.get('segmenter', SEGMENTER)} | {study['ct_store']} | {' '.join(study['targets'])} | - | - | not run |")
     for study in jobs["left_out"]:
-        lines.append(f"| {study['id']} | {study['member']} | - | {' '.join(study['targets'])} | - | - | not prepared |")
+        lines.append(f"| {study['id']} | {study['member']} | {study.get('segmenter', SEGMENTER)} | - | {' '.join(study['targets'])} | - | - | not prepared |")
     if kept:
         lines += ["", "kept (each target's gap in mm to the release's nearest level, and the levels still undrawn between them):"]
         for r in records:
@@ -456,7 +587,7 @@ def report(args):
                 if found.get("kept"):
                     undrawn = " ".join(found.get("undrawn_between") or []) or "none"
                     lines.append(f"- {r['id']} {t}: {found['voxels']} voxels, gap {found.get('gap_mm')} mm to {found.get('nearest_release_level')}, "
-                                 f"undrawn between: {undrawn}")
+                                 f"undrawn between: {undrawn}; written at id {found.get('label_value')} ({r.get('label_scheme', '-')})")
     if refused:
         lines += ["", "refused (each target's reason, cut to 160 characters; the records hold them whole):"]
         lines += [f"- {i} {t}: {short(why)}" for i, t, why in refused]
@@ -486,9 +617,17 @@ def main(argv=None):
     s = sub.add_parser("run")
     s.add_argument("--out", required=True)
     s.add_argument("--weights", default="", help="the folder holding the unpacked Dataset folders (TOTALSEG_WEIGHTS_PATH)")
+    s.add_argument("--moose-python", default="", help="the python of MOOSE's environment, which runs the subcommand moose-one")
+    s.add_argument("--moose-weights", default="", help="the data root's moose_weights/raw, the fetched zips")
     s.add_argument("--device", default="gpu")
     s.add_argument("--threads", type=int, default=4)
     s.set_defaults(go=run)
+    s = sub.add_parser("moose-one", help="inside MOOSE's environment: the vertebrae model on one CT")
+    s.add_argument("--ct", required=True)
+    s.add_argument("--folder", required=True)
+    s.add_argument("--weights", required=True)
+    s.add_argument("--device", default="gpu")
+    s.set_defaults(go=moose_one)
     s = sub.add_parser("check")
     s.add_argument("--out", required=True)
     s.set_defaults(go=check)

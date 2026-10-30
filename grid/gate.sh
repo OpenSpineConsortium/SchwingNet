@@ -150,9 +150,10 @@
 #                   "Add sacrum and c2 w total seg", and his count; grid/totalseg-complete.sbatch, tools/gold3_totalseg_grid.py,
 #                   the launched flow totalseg under docs/research/gold3-ct/completion/PREREG.md): TotalSegmentator 2.18.0's
 #                   total task with roi_subset vertebrae_C2 sacrum on each admitted study's own CT whose release lacks C2
-#                   or the sacrum, each drawn level checked against the release's own levels and kept as a machine arm
-#                   file named by its sha256; one GPU job, queued once after `fetch totalseg_weights` has landed its two
-#                   zips whole, the next send printing logs/TOTALSEG-complete.md and every later one printing it again;
+#                   or the sacrum (MOOSE's vertebrae model for ENHANCE.PET's, whose masks MOOSE made, the owner's word of
+#                   09:33 UTC), each drawn level checked against the release's own levels and kept as a machine arm
+#                   file in the release's own label id, named by its sha256; one GPU job, queued once after `fetch
+#                   totalseg_weights` has landed its two zips whole beside moose_weights' five, the next send printing logs/TOTALSEG-complete.md and every later one printing it again;
 #                   a job that left no report is not queued again without the owner's word
 #   morphometry <set>  bordercall's morphometry engine (the packages morphometry, scanimport and screening,
 #                   pinned under grid/bordercall/ beside the archived package) over one gold tier 3 set
@@ -1795,7 +1796,7 @@ word_bordercall_complete() {  # the gold tier 3 completion (the owner's count of
 }
 
 word_totalseg() {  # the gold tier 3 completion's TotalSegmentator arm (the owner's word of 2026-10-30 08:54 UTC, "Add sacrum and c2 w total seg", and his count: one GPU job): queued once, its report printed on every later send
-  local report=$LOGS/TOTALSEG-complete.md busy job holds zip opts=()
+  local report=$LOGS/TOTALSEG-complete.md busy job holds zip row opts=()
   case "$id" in
     complete) ;;
     *) echo "refusing: totalseg takes complete"; return 64 ;;
@@ -1821,20 +1822,24 @@ word_totalseg() {  # the gold tier 3 completion's TotalSegmentator arm (the owne
   # it is not queued while the fetch is live or a zip is not whole.
   busy=$(live_of dp_totalseg_weights)
   [ -z "$busy" ] || { echo "refusing: the fetch of totalseg_weights is still queued or running (job $busy); send totalseg complete again once it ends"; return 75; }
-  zip=$(weights_zip_missing totalseg_weights)
-  case "$zip" in
-    "") ;;
-    row) echo "refusing: the row totalseg_weights of grid/run-platform-fetch.sh was not read, so no weight zip can be named"; return 2 ;;
-    *" part") echo "refusing: TotalSegmentator's weight zip ${zip% part} under $DATA_ROOT/totalseg_weights/raw is a part, still landing or cut short, which a resend of fetch totalseg_weights resumes"; return 2 ;;
-    *) echo "refusing: no ${zip% missing} under $DATA_ROOT/totalseg_weights/raw (fetch totalseg_weights first)"; return 2 ;;
-  esac
+  # MOOSE's vertebrae model draws ENHANCE.PET's (the owner's word of 2026-10-30 09:33 UTC), so its
+  # zips, fetch moose_weights, must be whole too.
+  for row in totalseg_weights moose_weights; do
+    zip=$(weights_zip_missing "$row")
+    case "$zip" in
+      "") ;;
+      row) echo "refusing: the row $row of grid/run-platform-fetch.sh was not read, so no weight zip can be named"; return 2 ;;
+      *" part") echo "refusing: the weight zip ${zip% part} under $DATA_ROOT/$row/raw is a part, still landing or cut short, which a resend of fetch $row resumes"; return 2 ;;
+      *) echo "refusing: no ${zip% missing} under $DATA_ROOT/$row/raw (fetch $row first)"; return 2 ;;
+    esac
+  done
   # The job makes its own environment over train-gpu (grid/venv.sh), so no setup job goes with it; it
   # holds the checkout as a benchmark does, so it waits for the live runs that hold it.
   holds=$(checkout_holders)
   [ -z "$holds" ] || echo "  the checkout: after the live runs that hold it ($holds)"
   depend_on "$holds" || return 1
   submit totalseg_complete gpu ${opts[@]+"${opts[@]}"} --no-requeue --time 06:00:00 -- totalseg-complete.sbatch > /dev/null || return 1
-  echo "submitted the totalseg complete job: one GPU job that runs TotalSegmentator on each admitted study's own CT for the C2 or sacrum its release lacks. Send totalseg complete again once it ends to read its report, logs/TOTALSEG-complete.md."
+  echo "submitted the totalseg complete job: one GPU job that runs TotalSegmentator (VerSe, TotalSegmentator) or MOOSE (ENHANCE.PET) on each admitted study's own CT for the C2 or sacrum its release lacks. Send totalseg complete again once it ends to read its report, logs/TOTALSEG-complete.md."
 }
 
 word_census() {  # the gold tier census (the owner's tap of 2026-10-29 12:26 UTC, one CPU job): queued once, its report printed on every later send
