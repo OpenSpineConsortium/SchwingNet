@@ -174,7 +174,7 @@ class Locate(unittest.TestCase):
         self.assertEqual(jobs["studies"][0]["targets"], ["C2", "sacrum"])
         self.assertEqual(jobs["left_out"][0]["id"], "s0437")
         self.assertEqual(jobs["segmenter"], "TotalSegmentator")
-        self.assertEqual(jobs["task"]["roi_subset"], ["vertebrae_C2", "sacrum"])
+        self.assertEqual(jobs["task"]["roi_subset"], ["vertebrae_C2", "sacrum", "vertebrae_S1"])
         self.assertEqual(jobs["studies"][0]["segmenter"], "TotalSegmentator")
         # the report, with nothing run yet, lists the prepared study as not run and names no path
         with contextlib.redirect_stdout(io.StringIO()):
@@ -236,7 +236,7 @@ class Run(unittest.TestCase):
         self.assertEqual(drawn, ["s0437", "s0621", "s0931"])
         for sid in drawn:
             ran = json.loads((self.tmp / "ts" / sid / "run.json").read_text(encoding="utf-8"))
-            self.assertEqual((ran["exit"], ran["files"]), (0, ["sacrum.nii.gz", "vertebrae_C2.nii.gz"]), ran)
+            self.assertEqual((ran["exit"], ran["files"]), (0, ["sacrum.nii.gz", "vertebrae_C2.nii.gz", "vertebrae_S1.nii.gz"]), ran)
             self.assertNotIn("error", ran)
         self.assertEqual(json.loads((self.tmp / "ts" / "s0102" / "run.json").read_text(encoding="utf-8")), {"id": "s0102", "exit": 0})
 
@@ -260,7 +260,7 @@ class Run(unittest.TestCase):
                               capture_output=True, text=True, env=env, cwd=str(ROOT), timeout=120)
         ran = json.loads((self.tmp / "ts" / "s0102" / "run.json").read_text(encoding="utf-8"))
         self.assertEqual(said.returncode, 0, said.stdout + said.stderr)
-        self.assertEqual((ran["exit"], ran["files"]), (0, ["sacrum.nii.gz", "vertebrae_C2.nii.gz"]), ran)
+        self.assertEqual((ran["exit"], ran["files"]), (0, ["sacrum.nii.gz", "vertebrae_C2.nii.gz", "vertebrae_S1.nii.gz"]), ran)
 
 
 class Weights(unittest.TestCase):
@@ -456,6 +456,28 @@ class Check(unittest.TestCase):
         self.assertIn("not the release masks' grid", shifted["reason"])
 
 
+    def test_a_verse_sacrum_is_totalsegmentators_sacrum_and_s1_together(self):
+        # VerSe's 26 is the whole sacrum; TotalSegmentator draws S1 apart (DEVIATIONS.md item 2)
+        flipped = np.diag([1.0, 1.0, -1.0, 1.0])
+        levels, _ = tool.release_levels("release")
+        sacrum, s1 = self.mask("sac", 48, 55, affine=flipped), self.mask("s1", 40, 47, affine=flipped)
+        alone = tool.check_target("sacrum", sacrum, levels, flipped, ["sacrum"])
+        self.assertFalse(alone["kept"])
+        self.assertIn("112 voxels", alone["reason"])
+        both = tool.check_target("sacrum", [sacrum, s1], levels, flipped, ["sacrum"])
+        self.assertTrue(both["kept"], both)
+        self.assertEqual(both["voxels"], 224)
+        self.mask("s1_off", 40, 47, affine=np.eye(4))
+        with self.assertRaisesRegex(ValueError, "not on"):
+            tool.read_union([sacrum, "s1_off"])
+
+    def test_only_a_verse_sacrum_drawn_by_totalsegmentator_takes_s1(self):
+        names = lambda *a: [os.path.basename(p) for p in tool.target_files("f", *a)]  # noqa: E731
+        self.assertEqual(names("sacrum", "verse", "TotalSegmentator"), ["sacrum.nii.gz", "vertebrae_S1.nii.gz"])
+        self.assertEqual(names("sacrum", "totalsegmentator", "TotalSegmentator"), ["sacrum.nii.gz"])
+        self.assertEqual(names("sacrum", "enhance_pet", "MOOSE"), ["sacrum.nii.gz"])
+        self.assertEqual(names("C2", "verse", "TotalSegmentator"), ["vertebrae_C2.nii.gz"])
+
     def test_a_refusal_names_the_segmenter_that_drew_the_target(self):
         levels, affine = tool.release_levels("release")
         few = tool.check_target("C2", self.mask("few", 0, 0), levels, affine, ["C2"], "MOOSE")
@@ -492,7 +514,7 @@ class Report(unittest.TestCase):
                 self.assertEqual(tool.report(types.SimpleNamespace(out=str(out))), 0)
             text = (out / "REPORT.md").read_text(encoding="utf-8")
         self.assertIn("studies asked: 3 (enhance_pet 2, totalsegmentator 1, verse 1); prepared: 2; not prepared: 1", text)
-        self.assertIn("segmenters: TotalSegmentator 2.18.0 (task total, roi_subset vertebrae_C2 sacrum) for verse, totalsegmentator; MOOSE 3.2.2 (clin_ct_vertebrae) for enhance_pet", text)
+        self.assertIn("segmenters: TotalSegmentator 2.18.0 (task total, roi_subset vertebrae_C2 sacrum vertebrae_S1) for verse, totalsegmentator; MOOSE 3.2.2 (clin_ct_vertebrae) for enhance_pet", text)
         self.assertIn("targets kept: 1 (0 C2, 1 sacrum) in 1 studies; targets refused: 2; studies in error: 1", text)
         self.assertIn("| verse607 | verse | TotalSegmentator | versefusion | sacrum | - | kept | verse607_totalsegmentator_sacrum_abc123def456.nii.gz |", text)
         self.assertIn("| s0102 | totalsegmentator | TotalSegmentator | totalsegmentator_v300 | C2 sacrum | refused | refused | - |", text)

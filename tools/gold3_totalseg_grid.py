@@ -31,7 +31,8 @@ a tier, as the completion rule says (data/gold3-ct/members.json, completion). Th
    int16 copies, the subject's segmentations/ folder, the Vertebrae file under aws_enhance_pet_labels),
    into OUT/jobs.json; a study with no CT or no release on the grid is listed with its reason.
 2. run: TotalSegmentator's Python entry on each VerSe or TotalSegmentator CT with roi_subset
-   vertebrae_C2 and sacrum, which crops with the 6 mm model and runs the vertebrae part alone, the
+   vertebrae_C2, sacrum and vertebrae_S1 (a VerSe sacrum is the union of the last two, since VerSe's
+   26 holds S1 and TotalSegmentator draws it apart; DEVIATIONS.md item 2), which crops with the 6 mm model and runs the vertebrae part alone, the
    weights read from the folder TOTALSEG_WEIGHTS_PATH names, never downloaded; on each ENHANCE.PET
    CT the subcommand moose-one in MOOSE's own environment (--moose-python), which unpacks the
    vertebrae model's fetched zip where moosez looks, as tools/flexray_render.py segment does, runs
@@ -94,7 +95,12 @@ VERSE_IN_PATH = re.compile(r"scan-([A-Za-z0-9]+)_ct\b")
 TS_SUBJECT = re.compile(r"^s\d{4}$")
 REASON_CHARS = 160
 SEGMENTER = "TotalSegmentator"
-TASK = {"task": "total", "roi_subset": ["vertebrae_C2", "sacrum"], "fast": False}
+TASK = {"task": "total", "roi_subset": ["vertebrae_C2", "sacrum", "vertebrae_S1"], "fast": False}
+# TotalSegmentator's sacrum leaves out S1, a class of its own, where VerSe's id 26 is the whole
+# sacrum; so a VerSe sacrum is the union of the two (the owner's choice of 2026-10-30 22:46 UTC,
+# DEVIATIONS.md item 2). A TotalSegmentator subject keeps its release's own classes, S1 apart, and
+# MOOSE's sacrum (28) holds S1 already.
+SACRUM_WITH_S1 = {"verse": ("sacrum", "vertebrae_S1")}
 # TotalSegmentator 2.18.0 asks for all five parts of the total task (Dataset291 to 295) before it
 # applies roi_subset, and downloads any it lacks; the job holds only 292 (the vertebrae, where both
 # targets lie) and 298 (the 6 mm crop). These four are never computed for this roi_subset
@@ -473,13 +479,36 @@ def between(target, drawn_names, complete):
     return [n for n in listed if n in ORDER and ORDER.index(n) >= 7]
 
 
-def check_target(target, mask_path, levels, release_affine, complete, segmenter=SEGMENTER):
-    """The record of one target: its voxels, overlap share, its place against the release's levels, and
-    the verdict kept or refused with the reason."""
+def read_union(mask_paths):
+    """The voxels drawn in any of the files, one target's parts, with the first file's image; the
+    parts must lie on one grid."""
     import nibabel as nib
     import numpy as np
-    img = nib.load(mask_path)
+    paths = [mask_paths] if isinstance(mask_paths, (str, os.PathLike)) else list(mask_paths)
+    img = nib.load(paths[0])
     data = np.asanyarray(img.dataobj) > 0
+    for path in paths[1:]:
+        part = nib.load(path)
+        drawn = np.asanyarray(part.dataobj) > 0
+        if drawn.shape != data.shape or not np.allclose(part.affine, img.affine, atol=0.01):
+            raise ValueError(f"{os.path.basename(str(path))} is not on {os.path.basename(str(paths[0]))}'s grid")
+        data = data | drawn
+    return data, img
+
+
+def target_files(folder, target, member, segmenter):
+    """The files whose union is the target: its own file, and S1 beside the sacrum where the release's
+    sacrum holds S1 and TotalSegmentator draws it apart."""
+    if target == "sacrum" and segmenter == SEGMENTER and member in SACRUM_WITH_S1:
+        return [os.path.join(folder, name + ".nii.gz") for name in SACRUM_WITH_S1[member]]
+    return [os.path.join(folder, TS_NAMES[target] + ".nii.gz")]
+
+
+def check_target(target, mask_path, levels, release_affine, complete, segmenter=SEGMENTER):
+    """The record of one target: its voxels, overlap share, its place against the release's levels, and
+    the verdict kept or refused with the reason. mask_path may be a list of parts, read as their union."""
+    import numpy as np
+    data, img = read_union(mask_path)
     record = {"voxels": int(data.sum()), "grid": "ct"}
     if record["voxels"] < MIN_VOXELS:
         record.update(kept=False, reason=f"{segmenter} drew {record['voxels']} voxels of it, under {MIN_VOXELS}")
@@ -521,8 +550,8 @@ def write_arm(mask_path, out_path, value):
     release files are, on the mask's grid."""
     import nibabel as nib
     import numpy as np
-    img = nib.load(mask_path)
-    data = (np.asanyarray(img.dataobj) > 0).astype(np.int16) * np.int16(value)
+    drawn, img = read_union(mask_path)
+    data = drawn.astype(np.int16) * np.int16(value)
     out = nib.Nifti1Image(data, img.affine, img.header)
     out.set_data_dtype(np.int16)
     nib.save(out, out_path)
@@ -558,9 +587,10 @@ def check(args):
             records.append(record)
             continue
         for target in study["targets"]:
-            mask_path = os.path.join(folder, TS_NAMES[target] + ".nii.gz")
-            if not os.path.exists(mask_path):
-                record["targets"][target] = {"kept": False, "reason": f"{segmenter} wrote no file for it"}
+            mask_path = target_files(folder, target, study["member"], segmenter)
+            missing = [os.path.basename(p) for p in mask_path if not os.path.exists(p)]
+            if missing:
+                record["targets"][target] = {"kept": False, "reason": f"{segmenter} wrote no file for it ({', '.join(missing)})"}
                 continue
             try:
                 found = check_target(target, mask_path, levels, release_affine, study["complete"], segmenter)
@@ -573,7 +603,7 @@ def check(args):
                 digest = sha256_of(staged)
                 name = f"{study['id']}_{segmenter.lower()}_{target}_{digest[:12]}.nii.gz"
                 os.replace(staged, os.path.join(arm, name))
-                found.update(file=name, sha256=digest, label_value=value)
+                found.update(file=name, sha256=digest, label_value=value, parts=[os.path.basename(p)[:-7] for p in mask_path])
             record["targets"][target] = found
         records.append(record)
     with open(os.path.join(args.out, "records.jsonl"), "w", encoding="utf-8") as fh:
