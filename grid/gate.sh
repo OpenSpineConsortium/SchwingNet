@@ -2162,6 +2162,8 @@ word_morphometry() {  # bordercall's morphometry engine over one gold tier 3 set
     fi
   fi
   [ -f "$REPO/grid/bordercall/morphometry/__main__.py" ] || { echo "refusing: no vendored morphometry under grid/bordercall/ at this commit"; return 2; }
+  # The job draws the lines beside the rows (morphometry run --lines), which import morphoview.lines.
+  [ -f "$REPO/grid/bordercall/morphoview/lines.py" ] || { echo "refusing: no vendored morphoview/lines.py under grid/bordercall/ at this commit, which the job's lines need"; return 2; }
   missing=$(morphometry_inputs_missing)
   [ -z "$missing" ] || { echo "refusing: morphometry $id needs $missing"; return 2; }
   [ -z "$keep" ] || morphometry_keep "$keep" check || return

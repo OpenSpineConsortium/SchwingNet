@@ -2730,12 +2730,16 @@ esac
 
     def morphometry_inputs(self, *which):
         """The data root as the fetches the morphometry sets read leave it, each named set landed by
-        one file, and engine, the pinned copy's morphometry package under the test's grid/."""
+        one file, and engine, the pinned copy's morphometry package and morphoview's lines under the
+        test's grid/."""
         markers = {"truth": ("aws_enhance_pet_labels", "raw", "Vertebrae", "0001.nii.gz"),
                    "verse": ("verse_masks_2026_10_29", "raw", "verse004.nii.gz"),
                    "totalseg": ("totalsegmentator_v300", "raw", "Totalsegmentator_dataset_v300.zip")}
         for name in which:
             if name == "engine":
+                lines = self.repo / "grid" / "bordercall" / "morphoview" / "lines.py"
+                lines.parent.mkdir(parents=True, exist_ok=True)
+                lines.write_text("", encoding="utf-8")
                 path = self.repo / "grid" / "bordercall" / "morphometry" / "__main__.py"
             else:
                 path = self.data.joinpath(*markers[name])
@@ -2758,6 +2762,13 @@ esac
             refused = self.gate("morphometry", which)
             self.assertEqual(refused.returncode, 2, refused.stdout)
             self.assertIn("no vendored morphometry under grid/bordercall/", refused.stdout)
+        # and morphoview's lines, which the job's run --lines imports
+        self.morphometry_inputs("engine")
+        (self.repo / "grid" / "bordercall" / "morphoview" / "lines.py").unlink()
+        for which in ("enhance", "verse"):
+            refused = self.gate("morphometry", which)
+            self.assertEqual(refused.returncode, 2, refused.stdout)
+            self.assertIn("no vendored morphoview/lines.py under grid/bordercall/", refused.stdout)
         # then each set's inputs, named in turn
         shutil.rmtree(self.data)
         self.data.mkdir()
@@ -2850,8 +2861,13 @@ esac
 case "$1 $2 $3" in
   '-c import numpy, scipy, nibabel'*|'-c import icontract, beartype'*) exit 0 ;;
   '-m morphometry run')
-    while [ $# -gt 0 ]; do [ "$1" = --out ] && out=$2; [ "$1" = --masks ] && masks=$2; shift; done
+    lines=""
+    while [ $# -gt 0 ]; do [ "$1" = --out ] && out=$2; [ "$1" = --masks ] && masks=$2; [ "$1" = --lines ] && lines=yes; shift; done
     mkdir -p "$out"; rows=$out/rows.csv; printf 'study,level,key,value,note\\n' > "$rows"
+    if [ -n "$lines" ]; then
+      printf 'study,level,key,part,status\\n0001,L1,h_ant,,drawn\\n0001,L1,h_ant,wall,\\n0002,L1,h_ant,,drawn\\n0002,L1,canal_w,,withheld: the construction gives 17.25 where the rows hold 15.5\\n0003,L2,h_ant,,not measured\\n' > "$out/lines.csv"
+      printf 'study,level,ox\\n0001,L1,0.5\\n' > "$out/frames.csv"
+    fi
     n=$(ls "$masks" | wc -l); k=0
     [ "$FAKE_RUN" = nocount ] || echo "$n studies chosen, $n to measure, code ${FAKE_CODE:-@STAMP@}"
     for f in "$masks"/*.nii.gz; do
@@ -2864,13 +2880,15 @@ case "$1 $2 $3" in
         printf '%s,%s,h_ant,%d.0000,\\n%s,%s,h_post_inset,%d.0000,\\n%s,%s,body_index_ant_post,1.%d000,\\n' \\
           "$study" "$level" $((10 + k)) "$study" "$level" $((20 + k)) "$study" "$level" "$k" >> "$rows"
       done
+      [ "$k" -ne 2 ] || [ -z "$lines" ] || printf '%s,L1,flag:lines,,\\n' "$study" >> "$rows"
       printf '%s,study,code,,%s\\n' "$study" "$code" >> "$rows"
     done
     case "$FAKE_RUN" in died|died_old) echo "a worker died (A process in the process pool was terminated abruptly): run again to measure what is left" ;; esac
     exit 0 ;;
   '-m screening facts') while [ $# -gt 0 ]; do [ "$1" = --out ] && out=$2; shift; done; : > "$out"; exit 0 ;;
   '-m screening whole') while [ $# -gt 0 ]; do [ "$1" = --out ] && out=$2; shift; done; printf 'study,verdict\\n' > "$out"; exit 0 ;;
-  '-c from morphometry.__main__'*) echo "${FAKE_STAMP:-@STAMP@}"; exit 0 ;;
+  '-c from morphometry.__main__ import code_stamp; print(code_stamp(True))'*) echo "${FAKE_STAMP:-@STAMP@}"; exit 0 ;;
+  '-c from morphometry.__main__'*) echo @OLD@; exit 0 ;;
   '- '*rows.csv*run.log*) [ "$FAKE_RUN" != nocheck ] || exit 1 ;;
 esac
 exec python3 "$@"
@@ -2918,6 +2936,16 @@ exec python3 "$@"
         # is no study's own value
         self.assertIn("    | L1 | 6 | 13.50 | 23.50 | 1.350 |\n    | L2 | 5 | 13.00 | 23.00 | 1.300 |\n"
                       "    | L3 | 4 | - | - | - |\n", report)
+        # the run draws the lines (--lines, under code_stamp(True)), whose files are digested and whose
+        # rows are counted by level and status alone: a withheld line's values stay on the grid
+        out = self.tmp / "go2432" / "morphometry" / "enhance"
+        for name in ("lines", "frames"):
+            self.assertRegex(report, rf"(?m)^- ENHANCE\.PET {name}: {re.escape(str(out / (name + '.csv')))} \(\d+ bytes, sha256 [0-9a-f]{{64}}\)$")
+        self.assertIn("- ENHANCE.PET lines per level by status (counts of line rows, and the vertebrae whose rows flag lines):\n"
+                      "    | level | drawn | not measured | withheld | flag:lines |\n    |---|---|---|---|---|\n"
+                      "    | L1 | 2 | 0 | 1 | 1 |\n    | L2 | 0 | 1 | 0 | 0 |\n", report)
+        self.assertNotIn("17.25", report)
+        self.assertNotIn("the run said", report)
         reasons = {
             "died": "a worker died during the run, so some studies it chose were not measured by it",
             "died_old": "a worker died during the run, so some studies it chose were not measured by it; "
@@ -2935,6 +2963,9 @@ exec python3 "$@"
             self.assertIn(failed + "\n", report, mode)
             self.assertNotIn("ENHANCE.PET per level", report, mode)
             self.assertRegex(report, r"- exit 1 at [^\n]*\n$", mode)
+            if mode.startswith("died"):
+                self.assertIn("- ENHANCE.PET: the run said: a worker died (A process in the process pool was terminated "
+                              "abruptly): run again to measure what is left\n", report, mode)
             # the reason is worded so the gate's report shapes show it whole
             shown = subprocess.run(["awk", "-v", f"data={self.data}", "-v", f"runs={self.runs}", "-v", f"models={self.models}",
                                     "-v", f"repo={self.repo}", "-f", str(GRID / "shape-words.awk"), "-f", str(GRID / "report-shapes.awk")],

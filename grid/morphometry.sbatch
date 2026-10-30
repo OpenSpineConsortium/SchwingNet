@@ -103,10 +103,15 @@ PYEOF
 # move with its version, so the report names the versions beside the code stamp.
 report "interpreter: $PY ($(versions)) for the measuring"
 [ -f "$ENGINE/morphometry/__main__.py" ] || { report "FAILED: no vendored morphometry at $ENGINE (tools/bordercall_vendor.py)"; finish 2; }
+# The run draws each measure's line and each vertebra's frame beside the rows (--lines, bordercall PR 47,
+# for PR 45's stage 1), which imports morphoview.lines before it measures a study.
+[ -f "$ENGINE/morphoview/lines.py" ] || { report "FAILED: no vendored morphoview/lines.py at $ENGINE, which the run's lines need (tools/bordercall_vendor.py)"; finish 2; }
 report "bordercall copy: $(head -n 1 "$ENGINE/VENDORED" 2>/dev/null | cut -c1-120)"
 # The stamp the engine gives its own code, which every row it writes carries: the report names it and
-# measure holds the rows to it, so a report never names an engine its rows were not measured by.
-STAMP=$("$PY" -c 'from morphometry.__main__ import code_stamp; print(code_stamp())' 2>/dev/null | tail -n 1)
+# measure holds the rows to it, so a report never names an engine its rows were not measured by. A run
+# with the lines has a stamp of its own, over morphoview/lines.py too (code_stamp(True)), and that is
+# the one its rows carry.
+STAMP=$("$PY" -c 'from morphometry.__main__ import code_stamp; print(code_stamp(True))' 2>/dev/null | tail -n 1)
 [[ $STAMP =~ ^[0-9a-f]{16}$ ]] || { report "FAILED: the engine gave no code stamp of the plain form, so no row could be tied to the code that measured it"; finish 2; }
 report "code stamp: $STAMP"
 
@@ -221,18 +226,46 @@ if count and len(codes) != int(count.group(1)):
 print("not whole: " + "; ".join(problems) if problems else "whole %d" % len(codes))
 PYEOF
 }
+lines_table() {  # lines_table LINES.csv ROWS.csv: per level, the line rows by status and the flag:lines rows, counts alone
+  "$PY" - "$1" "$2" <<'PYEOF'
+import csv, sys
+from collections import Counter, defaultdict
+lines, flags = defaultdict(Counter), Counter()
+with open(sys.argv[1], newline="", encoding="utf-8") as handle:
+    for row in csv.DictReader(handle):
+        if not row.get("part"):
+            # a withheld line's status carries its study's values after the colon, which stay on the grid
+            lines[row.get("level", "")][(row.get("status", "").split(":")[0].strip() or "(blank)")] += 1
+try:
+    with open(sys.argv[2], newline="", encoding="utf-8") as handle:
+        for row in csv.DictReader(handle):
+            if row.get("key") == "flag:lines":
+                flags[row.get("level", "")] += 1
+except OSError:
+    pass
+statuses = sorted({s for c in lines.values() for s in c})
+print("    | level | " + " | ".join(statuses) + " | flag:lines |")
+print("    " + "|---" * (len(statuses) + 2) + "|")
+for level in sorted(set(lines) | set(flags)):
+    print("    | %s | %s | %d |" % (level, " | ".join(str(lines[level][s]) for s in statuses), flags[level]))
+PYEOF
+}
 measure() {  # measure NAME MASKS SCHEME OUTDIR: morphometry run over MASKS into OUTDIR, its aggregates into the report; 1 where it failed
   local name=$1 masks=$2 scheme=$3 out=$4 began rc first errors whole
   mkdir -p "$out"
   STEPS=$out
   began=$(date +%s)
-  step run "$PY" -m morphometry run --masks "$masks" --scheme "$scheme" --out "$out" --workers "$CPUS"
+  step run "$PY" -m morphometry run --masks "$masks" --scheme "$scheme" --out "$out" --workers "$CPUS" --lines
   rc=$?
   STEPS=$OUT
   first=$(grep -m1 'studies chosen' "$out/run.log" 2>/dev/null)
   errors=$(grep -c 'flag:error' "$out/rows.csv" 2>/dev/null || true)
   report "$name: $(ls "$masks" 2>/dev/null | wc -l) masks linked; ${first:-the run printed no count}; ${errors:-0} studies flagged error; $(( $(date +%s) - began )) s wall; its lines in $out/run.log"
   report "$name rows: $(digest_line "$out/rows.csv")"
+  report "$name lines: $(digest_line "$out/lines.csv")"
+  report "$name frames: $(digest_line "$out/frames.csv")"
+  # The engine's own line when a worker of its pool was killed; rows_whole below fails the set on it.
+  grep -m1 '^a worker died' "$out/run.log" 2>/dev/null | cut -c1-200 | while read -r died; do report "$name: the run said: $died"; done
   # A run whose worker died still joins every chosen study's file it finds and ends 0, an earlier
   # engine's files among them where they were not set aside, so the rows are held to the run's own
   # count and to the report's code stamp before they are reported as measured; rows that are not the
@@ -249,6 +282,10 @@ measure() {  # measure NAME MASKS SCHEME OUTDIR: morphometry run over MASKS into
   if [ -f "$out/rows.csv" ]; then
     report "$name per level (rows with h_post_inset, medians over values that parse as finite, each where 5 or more studies give one, - otherwise):"
     level_table "$out/rows.csv" >> "$REPORT.part" 2>&1 || report "  the level table could not be read"
+  fi
+  if [ -f "$out/lines.csv" ]; then
+    report "$name lines per level by status (counts of line rows, and the vertebrae whose rows flag lines):"
+    lines_table "$out/lines.csv" "$out/rows.csv" >> "$REPORT.part" 2>&1 || report "  the lines table could not be read"
   fi
   return "$rc"
 }
