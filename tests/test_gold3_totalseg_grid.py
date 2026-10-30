@@ -9,6 +9,7 @@ import contextlib
 import io
 import json
 import os
+import re
 import sys
 import tempfile
 import types
@@ -39,6 +40,31 @@ class Studies(unittest.TestCase):
         # TotalSegmentator subjects and ENHANCE.PET's 1379 ask for what their releases left out.
         self.assertEqual(by_member, {"verse": 27, "totalsegmentator": 10, "enhance_pet": 1}, by_member)
         self.assertEqual([s["id"] for s in asked if s["member"] == "enhance_pet"], ["1379"])
+        # each release's own segmenter draws for it (the owner, 2026-10-30 09:33 UTC)
+        self.assertEqual({s["member"]: s["segmenter"] for s in asked},
+                         {"verse": "TotalSegmentator", "totalsegmentator": "TotalSegmentator", "enhance_pet": "MOOSE"})
+
+    def test_mooses_ids_are_the_buckets_and_the_segmenter_tables_and_the_release_ids_are_each_schemes(self):
+        # the ids run cuts MOOSE's multilabel by, and writes ENHANCE.PET's arm files at, are the
+        # vertebrae model's in the bucket's labels.json copy (read leniently: the copy carries a
+        # trailing comma) and in schwingnet.segmenters' table
+        text = (ROOT / "grid" / "enhance-pet-labels.json").read_text(encoding="utf-8")
+        bucket = json.loads(re.sub(r",(\s*[}\]])", r"\1", text))["clin_ct_vertebrae"]
+        for target, value in tool.MOOSE_IDS.items():
+            self.assertEqual(bucket[str(value)], tool.MOOSE_NAMES[target], (target, value))
+        sys.path.insert(0, str(ROOT / "src"))
+        try:
+            from schwingnet import segmenters
+        except ImportError:
+            segmenters = None
+        if segmenters is not None:
+            table = segmenters.MOOSEZ_MODELS["clin_ct_vertebrae"]
+            for target, value in tool.MOOSE_IDS.items():
+                self.assertEqual(table[value], tool.MOOSE_NAMES[target])
+            self.assertEqual(segmenters.VERSE_IDS["C2"] if hasattr(segmenters, "VERSE_IDS") else 2, 2)
+        self.assertEqual(tool.RELEASE_IDS["verse"], {"C2": 2, "sacrum": 26})
+        self.assertEqual(tool.RELEASE_IDS["enhance_pet"], tool.MOOSE_IDS)
+        self.assertEqual(tool.RELEASE_IDS["totalsegmentator"], {"C2": 1, "sacrum": 1})
 
     def test_a_study_that_asks_for_other_levels_alone_or_is_not_admitted_is_left_out(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -127,13 +153,14 @@ class Locate(unittest.TestCase):
         self.assertEqual(jobs["left_out"][0]["id"], "s0437")
         self.assertEqual(jobs["segmenter"], "TotalSegmentator")
         self.assertEqual(jobs["task"]["roi_subset"], ["vertebrae_C2", "sacrum"])
+        self.assertEqual(jobs["studies"][0]["segmenter"], "TotalSegmentator")
         # the report, with nothing run yet, lists the prepared study as not run and names no path
         with contextlib.redirect_stdout(io.StringIO()):
             self.assertEqual(tool.report(types.SimpleNamespace(out=str(out))), 0)
         text = (out / "REPORT.md").read_text(encoding="utf-8")
         self.assertIn("studies asked: 2 (totalsegmentator 2); prepared: 1; not prepared: 1", text)
-        self.assertIn("| s0102 | totalsegmentator | totalsegmentator_v300 | C2 sacrum | - | - | not run |", text)
-        self.assertIn("| s0437 | totalsegmentator | - | sacrum | - | - | not prepared |", text)
+        self.assertIn("| s0102 | totalsegmentator | TotalSegmentator | totalsegmentator_v300 | C2 sacrum | - | - | not run |", text)
+        self.assertIn("| s0437 | totalsegmentator | TotalSegmentator | - | sacrum | - | - | not prepared |", text)
         self.assertIn("- s0437 (totalsegmentator): no folder of the subject's name", text)
         self.assertNotIn(str(self.tmp), text)
 
@@ -226,29 +253,35 @@ class Report(unittest.TestCase):
             (out / "jobs.json").write_text(json.dumps({
                 "asked": 3, "prepared": 2, "not_prepared": 1,
                 "studies": [{"member": "verse", "id": "verse607", "verdict": "admitted", "targets": ["sacrum"], "complete": ["sacrum"],
-                             "ct": "/x", "release": "/y", "ct_store": "versefusion", "release_store": "verse_masks_2026_10_29"},
-                            {"member": "totalsegmentator", "id": "s0102", "verdict": "look", "targets": ["C2", "sacrum"],
+                             "segmenter": "TotalSegmentator", "ct": "/x", "release": "/y", "ct_store": "versefusion", "release_store": "verse_masks_2026_10_29"},
+                            {"member": "totalsegmentator", "id": "s0102", "verdict": "look", "targets": ["C2", "sacrum"], "segmenter": "TotalSegmentator",
                              "complete": ["C2", "sacrum"], "ct": "/x", "release": "/y", "ct_store": "totalsegmentator_v300",
-                             "release_store": "totalsegmentator_v300"}],
+                             "release_store": "totalsegmentator_v300"},
+                            {"member": "enhance_pet", "id": "1380", "verdict": "admitted", "targets": ["C2"], "segmenter": "MOOSE",
+                             "complete": ["C2"], "ct": "/x", "release": "/y", "ct_store": "aws_enhance_pet_ct", "release_store": "aws_enhance_pet_labels"}],
                 "left_out": [{"member": "enhance_pet", "id": "1379", "targets": ["C2"], "reason": "no CT of the study's id under aws_enhance_pet_ct"}],
             }), encoding="utf-8")
             records = [
-                {"id": "verse607", "member": "verse", "ct_store": "versefusion", "version": "2.18.0",
-                 "targets": {"sacrum": {"kept": True, "voxels": 5000, "gap_mm": 3.2, "nearest_release_level": "label 24",
-                                        "undrawn_between": [], "file": "verse607_totalseg_sacrum_abc123def456.nii.gz"}}},
-                {"id": "s0102", "member": "totalsegmentator", "ct_store": "totalsegmentator_v300", "version": "2.18.0",
+                {"id": "verse607", "member": "verse", "ct_store": "versefusion", "version": "2.18.0", "segmenter": "TotalSegmentator", "label_scheme": "VerSe label ids",
+                 "targets": {"sacrum": {"kept": True, "voxels": 5000, "gap_mm": 3.2, "nearest_release_level": "label 24", "label_value": 26,
+                                        "undrawn_between": [], "file": "verse607_totalsegmentator_sacrum_abc123def456.nii.gz"}}},
+                {"id": "s0102", "member": "totalsegmentator", "ct_store": "totalsegmentator_v300", "version": "2.18.0", "segmenter": "TotalSegmentator",
                  "targets": {"C2": {"kept": False, "reason": "x" * 300}, "sacrum": {"kept": False, "reason": "TotalSegmentator wrote no file for it"}}},
+                {"id": "1380", "member": "enhance_pet", "ct_store": "aws_enhance_pet_ct", "version": "3.2.2", "segmenter": "MOOSE",
+                 "error": "moose-one ended 1: no zip"},
             ]
             (out / "records.jsonl").write_text("".join(json.dumps(r) + "\n" for r in records), encoding="utf-8")
             with contextlib.redirect_stdout(io.StringIO()):
                 self.assertEqual(tool.report(types.SimpleNamespace(out=str(out))), 0)
             text = (out / "REPORT.md").read_text(encoding="utf-8")
-        self.assertIn("studies asked: 3 (enhance_pet 1, totalsegmentator 1, verse 1); prepared: 2; not prepared: 1", text)
-        self.assertIn("segmenter: TotalSegmentator 2.18.0, task total, roi_subset vertebrae_C2 sacrum", text)
-        self.assertIn("targets kept: 1 (0 C2, 1 sacrum) in 1 studies; targets refused: 2; studies in error: 0", text)
-        self.assertIn("| verse607 | verse | versefusion | sacrum | - | kept | verse607_totalseg_sacrum_abc123def456.nii.gz |", text)
-        self.assertIn("| s0102 | totalsegmentator | totalsegmentator_v300 | C2 sacrum | refused | refused | - |", text)
-        self.assertIn("- verse607 sacrum: 5000 voxels, gap 3.2 mm to label 24, undrawn between: none", text)
+        self.assertIn("studies asked: 3 (enhance_pet 2, totalsegmentator 1, verse 1); prepared: 2; not prepared: 1", text)
+        self.assertIn("segmenters: TotalSegmentator 2.18.0 (task total, roi_subset vertebrae_C2 sacrum) for verse, totalsegmentator; MOOSE 3.2.2 (clin_ct_vertebrae) for enhance_pet", text)
+        self.assertIn("targets kept: 1 (0 C2, 1 sacrum) in 1 studies; targets refused: 2; studies in error: 1", text)
+        self.assertIn("| verse607 | verse | TotalSegmentator | versefusion | sacrum | - | kept | verse607_totalsegmentator_sacrum_abc123def456.nii.gz |", text)
+        self.assertIn("| s0102 | totalsegmentator | TotalSegmentator | totalsegmentator_v300 | C2 sacrum | refused | refused | - |", text)
+        self.assertIn("| 1380 | enhance_pet | MOOSE | aws_enhance_pet_ct | - | - | - | error |", text)
+        self.assertIn("- verse607 sacrum: 5000 voxels, gap 3.2 mm to label 24, undrawn between: none; written at id 26 (VerSe label ids)", text)
+        self.assertIn("- 1380: moose-one ended 1: no zip", text)
         self.assertIn("- s0102 C2: " + "x" * 157 + "...", text)
         self.assertIn("- 1379 (enhance_pet): no CT of the study's id", text)
         self.assertNotIn("/x", text)
