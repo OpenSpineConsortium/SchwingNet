@@ -3578,6 +3578,8 @@ exit "${FAKE_RC:-0}"
         gate = (ROOT / "grid" / "gate.sh").read_text(encoding="utf-8")
         self.assertIn('\nAUTOANATOMIST_COUNTED="gold3_latent_smoke gold3_latent_screen"\n', gate)
         self.assertIn('\nAUTOANATOMIST_RERUNS=""\n', gate)
+        # every GPU part goes to galhp's L40S cards: the smoke's first send stopped at its compile on a V100
+        self.assertIn('\nAUTOANATOMIST_PARTITION=galhp\n', gate)
         # and the screen waits for the smoke, as its PREREG says (section 5)
         self.assertIn('\nAUTOANATOMIST_AFTER="gold3_latent_screen:gold3_latent_smoke"\n', gate)
         self.assertEqual(self.gate("autoanatomist").returncode, 64)
@@ -3623,7 +3625,8 @@ exit "${FAKE_RC:-0}"
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
         lines = self.submitted()
         self.assertEqual(len(lines), 1, lines)
-        for said in (f"--class gpu --name autoanatomist_{self.SCREEN} --cpus 8 --mem 64G --time 12:00:00 --no-requeue autoanatomist.sbatch |",
+        # on galhp's L40S cards alone, since JAX 0.10.2 found no configuration for the trials' compile on a V100
+        for said in (f"--class gpu --name autoanatomist_{self.SCREEN} --partition galhp --cpus 8 --mem 64G --time 12:00:00 --no-requeue autoanatomist.sbatch |",
                      " PART=series ", f" PLAN={self.SCREEN} ", " TRIAL_TASKS=2 ", f" AUTOANATOMIST_ROOT={self.screen_root()}"):
             self.assertIn(said, lines[0])
         full = re.search(r" AUTOANATOMIST_COMMIT=([0-9a-f]{40}) ", lines[0])
@@ -3691,7 +3694,8 @@ exit "${FAKE_RC:-0}"
         lines = self.submitted()
         self.assertEqual(len(lines), 3, lines)
         array, join = lines[1:]
-        self.assertIn(f"--class gpu --name autoanatomist_gold3_latent_screen --array 0-{trials - 1} --cpus 8 --mem 64G --time 12:00:00 --no-requeue autoanatomist.sbatch |", array)
+        self.assertIn(f"--class gpu --name autoanatomist_gold3_latent_screen --array 0-{trials - 1} --partition galhp --cpus 8 --mem 64G "
+                      "--time 12:00:00 --no-requeue autoanatomist.sbatch |", array)
         self.assertIn(" PART=trial ", array)
         self.assertIn(f" TRIAL_TASKS={trials} ", array)
         self.assertIn("--class batch --name autoanatomist_gold3_latent_screen_join --dependency=afterany:102 --kill-on-invalid-dep=yes "

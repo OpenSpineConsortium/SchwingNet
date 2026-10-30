@@ -9,10 +9,11 @@ Reads STUDY_FOLDER/trials/<trial>/entry.json for every trial of the plan
 (entry_problems) by counting its trial as failed, with the reason the trial left in why.txt where
 it wrote no entry, decides each arm against the null (decide) and
 writes STUDY_FOLDER/join/DECISION.json first, then curves.png, finals.png and SUMMARY.md, plots
-first with a line on how to read each. A failed trial is shown failed, never dropped: its arm, and
-every arm when the null is the one that failed, is undecided. Exit 0 when every trial wrote an entry
-that holds, 3 when some did not (the decision and the plots are written all the same), 2 when the
-plan itself does not hold.
+first with a line on how to read each, and below the verdicts the numbers the two plots draw, which
+the gate's report carries off the grid where the figures stay. A failed trial is shown failed,
+never dropped: its arm, and every arm when the null is the one that failed, is undecided. Exit 0
+when every trial wrote an entry that holds, 3 when some did not (the decision and the plots are
+written all the same), 2 when the plan itself does not hold.
 """
 
 import argparse
@@ -44,6 +45,13 @@ FINALS_NOTE = (
     "Each dot is one seed's distance after the last epoch. An arm beats the null when every one of its "
     "dots sits left of every one of the null's."
 )
+# The gate cuts every line of a report it prints at 200 characters (LINE_CHARS in grid/gate.sh),
+# so the note under the numbers stays short and a trial's readings go on lines of ten.
+NUMBERS_NOTE = (
+    "The numbers the plots draw: each seed's final value by arm, the null first, then each trial's "
+    "value at every reading as epoch=value, none where a reading holds none."
+)
+READINGS_A_LINE = 10
 
 
 def why_none(folder):
@@ -145,13 +153,40 @@ def verdict_word(value):
     return {True: "beats the null", False: "does not beat the null", None: "undecided"}[value]
 
 
-def summary_text(plan, decision, failed):
+def number(value):
+    """A value in two decimals, or none."""
+    return "none" if value is None else f"{value:.2f}"
+
+
+def numbers_text(plan, decision, entries):
+    """The numbers behind finals.png and curves.png: each seed's final value by arm, the null first,
+    then each trial's value at every reading, a trial with no entry said to have none."""
+    finals = {plan.null: decision["null_finals"], **{arm: d["finals"] for arm, d in decision["arms"].items()}}
+    seeds = sorted(plan.seeds)
+    lines = ["## The numbers behind the plots", "", NUMBERS_NOTE, ""]
+    for arm in [plan.null] + sorted(set(plan.arms) - {plan.null}):
+        said = ", ".join(f"s{seed} {number(value)}" for seed, value in zip(seeds, finals[arm], strict=True))
+        lines.append(f"- final {plan.measure} of {arm}{' (the null)' if arm == plan.null else ''}: {said}")
+    lines.append("")
+    for trial in trials(plan):
+        entry = entries.get(trial.id)
+        if entry is None:
+            lines.append(f"- {trial.id}: no readings, since it failed")
+            continue
+        pairs = [f"{e['epoch']}={number(e[plan.measure])}" for e in entry["epochs"]]
+        for at in range(0, len(pairs), READINGS_A_LINE):
+            lines.append(f"- {trial.id}{' (cont.)' if at else ''}: {' '.join(pairs[at:at + READINGS_A_LINE])}")
+    return lines
+
+
+def summary_text(plan, decision, failed, entries):
     lines = [f"# {plan.screen}", "", plan.purpose, "", "![every trial's curve](curves.png)", "", CURVES_NOTE, "",
              "![each seed's last epoch](finals.png)", "", FINALS_NOTE, "", decision["rule"] + ".", ""]
     for arm, d in sorted(decision["arms"].items()):
         lines.append(f"- {arm} {verdict_word(d['beats_null'])}: {d['why']}.")
     for trial, why in sorted(failed.items()):
         lines.append(f"- {trial} failed: {why}.")
+    lines += [""] + numbers_text(plan, decision, entries)
     return "\n".join(lines) + "\n"
 
 
@@ -174,7 +209,7 @@ def main(argv=None):
     (join / "DECISION.json").write_text(json.dumps(decision, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     plot_curves(plan, entries, failed, join / "curves.png")
     plot_finals(plan, decision, join / "finals.png")
-    (join / "SUMMARY.md").write_text(summary_text(plan, decision, failed), encoding="utf-8")
+    (join / "SUMMARY.md").write_text(summary_text(plan, decision, failed, entries), encoding="utf-8")
     for arm, d in sorted(decision["arms"].items()):
         print(f"autoanatomist_join: {arm} {verdict_word(d['beats_null'])}")
     for trial, why in sorted(failed.items()):
