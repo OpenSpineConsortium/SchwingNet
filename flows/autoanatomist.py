@@ -209,11 +209,10 @@ def plan_in_force(plan_file):
         # The job script keeps its step files in <out>/<plan>/<chain>/, the folder the run works in.
         found = [f"screen: the plan's own name, {plan_part(plan_file)}, not {record['screen']!r}"]
     if not found:
-        found = screen.rows_problems(record, str(rule.get("salt")), float(rule.get("validation_share", 0.0)),
-                                     test_persons())
-    if not found:
-        found = screen.unit_problems(record["rows"], repeat_units(), str(rule["salt"]), float(rule["validation_share"]),
-                                     test_persons())
+        rule_in_force = screen.SplitRule(str(rule.get("salt")), float(rule.get("validation_share", 0.0)),
+                                         test_persons())
+        found = (screen.rows_problems(record, rule_in_force)
+                 or screen.unit_problems(record["rows"], repeat_units(), rule_in_force))
     if found:
         raise AutoanatomistFault(f"the plan {Path(plan_file).name} does not hold: {found[0]}")
     return screen.plan_of(record)

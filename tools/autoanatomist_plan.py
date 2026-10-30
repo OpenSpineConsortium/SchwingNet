@@ -42,6 +42,7 @@ from schwingnet.autoanatomist_screen import (  # noqa: E402
     NAMES,
     TEST_LISTS,
     UNIT_LISTS,
+    SplitRule,
     plan_problems,
     rows_problems,
     rule_part,
@@ -113,8 +114,8 @@ def read_json(path):
 
 
 def split_inputs():
-    """The frozen rule's salt and share, every person on a test list, and every unit of probable
-    repeat scans, its key to its persons."""
+    """The frozen rule with every person on a test list, and every unit of probable repeat scans,
+    its key to its persons."""
     rule = read_json(RULE)
     persons = {entry["person"] for path in TEST_LISTS for entry in read_json(path)}
     entries = [entry for path in UNIT_LISTS for entry in read_json(path)]
@@ -122,12 +123,12 @@ def split_inputs():
     if len(units) != len(entries):
         # A key standing twice would leave the first unit's persons to the rule alone.
         raise SystemExit("autoanatomist_plan: a unit's key stands twice in " + ", ".join(UNIT_LISTS))
-    return rule["salt"], float(rule["validation_share"]), frozenset(persons), units
+    return SplitRule(rule["salt"], float(rule["validation_share"]), frozenset(persons)), units
 
 
-def unit_parts(salt, share, test_persons, units):
+def unit_parts(rule, units):
     """Each study of a unit, to the part the rule gives its unit's key."""
-    return {person: rule_part(salt, share, test_persons, key) for key, persons in units.items() for person in persons}
+    return {person: rule_part(rule, key) for key, persons in units.items() for person in persons}
 
 
 def export_rows(export):
@@ -141,15 +142,16 @@ def export_rows(export):
     return [json.loads(line) for line in text.splitlines() if line.strip()]
 
 
-def eligible(row, salt, share, test_persons, unit_part):
+def eligible(row, rule, unit_part):
     """A row the screen may take: ENHANCE.PET, normal, confirmed by its masks, trainable, no
     holdout, its CT in hand, off every test list, in the part the rule gives its person and, for a
     study of a unit of probable repeat scans, in its unit's part too."""
     keep = (row["source"] == SOURCE and row["tier"] == "gold3" and row["class"] == "normal"
             and row["status"] == "confirmed_by_masks" and row["training_allowed"] == 1
             and row["holdout"] == 0 and row["needs_ct"] == 0 and row["part"] in ("train", "validation"))
-    part = rule_part(salt, share, test_persons, row["person"])
-    return keep and row["person"] not in test_persons and part == row["part"] and unit_part.get(row["person"], part) == part
+    part = rule_part(rule, row["person"])
+    return (keep and row["person"] not in rule.test_persons and part == row["part"]
+            and unit_part.get(row["person"], part) == part)
 
 
 def chosen(rows, part, count):
@@ -165,7 +167,7 @@ def chosen(rows, part, count):
     raise SystemExit(f"only {len(picked)} {part} persons are eligible, and the plan asks {count}")
 
 
-def plan_record(screen, spec, rows, salt, share):
+def plan_record(screen, spec, rows, rule):
     taken = chosen(rows, "train", spec["train"]) + chosen(rows, "validation", spec["validation"])
     return {
         "screen": screen,
@@ -174,7 +176,7 @@ def plan_record(screen, spec, rows, salt, share):
         "layout": spec["layout"],
         "data": {DATA_KEY: ENHANCE_DATA},
         "rows": [{"item": r["item"], "person": r["person"], "part": r["part"], "source": DATA_KEY} for r in taken],
-        "split": {"salt": salt, "validation_share": share},
+        "split": {"salt": rule.salt, "validation_share": rule.validation_share},
         "test": "off",
         "fixed": FIXED,
         "arms": {arm: SCHEDULES[arm] for arm in spec["arms"]},
@@ -191,23 +193,22 @@ def plan_text(record):
     return json.dumps(record, indent=2, ensure_ascii=True) + "\n"
 
 
-def problems_of(record, salt, share, test_persons, units):
-    return (plan_problems(record) or rows_problems(record, salt, share, test_persons)
-            or unit_problems(record["rows"], units, salt, share, test_persons))
+def problems_of(record, rule, units):
+    return plan_problems(record) or rows_problems(record, rule) or unit_problems(record["rows"], units, rule)
 
 
 def command_write(args):
-    salt, share, test_persons, units = split_inputs()
-    unit_part = unit_parts(salt, share, test_persons, units)
+    rule, units = split_inputs()
+    unit_part = unit_parts(rule, units)
     exported = export_rows(args.export)
-    rows = [r for r in exported if eligible(r, salt, share, test_persons, unit_part)]
-    split_off = [r for r in exported if eligible(r, salt, share, test_persons, {}) and r not in rows]
+    rows = [r for r in exported if eligible(r, rule, unit_part)]
+    split_off = [r for r in exported if eligible(r, rule, {}) and r not in rows]
     print(f"{len(rows)} eligible rows ({sum(r['part'] == 'train' for r in rows)} train); {len(split_off)} left out "
           f"since their unit's part is not their own")
     assert set(ENHANCE_DATA["names"].values()) <= set(NAMES)
     for screen, spec in PLANS.items():
-        record = plan_record(screen, spec, rows, salt, share)
-        found = problems_of(record, salt, share, test_persons, units)
+        record = plan_record(screen, spec, rows, rule)
+        found = problems_of(record, rule, units)
         if found:
             raise SystemExit(f"{screen}: {found[0]}")
         path = ROOT / SCREENS / f"{screen}.json"
@@ -218,7 +219,7 @@ def command_write(args):
 
 
 def command_check(args):
-    salt, share, test_persons, units = split_inputs()
+    rule, units = split_inputs()
     failed = 0
     for screen in PLANS:
         path = ROOT / SCREENS / f"{screen}.json"
@@ -226,7 +227,7 @@ def command_check(args):
             print(f"autoanatomist_plan: {path.relative_to(ROOT)} is missing")
             failed += 1
             continue
-        found = problems_of(json.loads(path.read_text(encoding="utf-8")), salt, share, test_persons, units)
+        found = problems_of(json.loads(path.read_text(encoding="utf-8")), rule, units)
         for line in found:
             print(f"autoanatomist_plan: {path.relative_to(ROOT)}: {line}")
         failed += bool(found)

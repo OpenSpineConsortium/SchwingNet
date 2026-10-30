@@ -153,6 +153,16 @@ class TrialSpec:
     words: tuple[str, ...]
 
 
+@dataclass(frozen=True)
+class SplitRule:
+    """The frozen split a screen keeps: data/splits/rule.json's salt and validation share, and every
+    person on a test list (TEST_LISTS), whom no part but test ever holds."""
+
+    salt: str
+    validation_share: float
+    test_persons: frozenset[str]
+
+
 # --- names, numbers and words ---------------------------------------------------------------------
 
 
@@ -236,21 +246,25 @@ def _names_problems(source: str, names: object) -> list[str]:
     return []
 
 
+def _source_problems(source: object, entry: object) -> list[str]:
+    if not _is_id(source):
+        return [f"data: a source is lower-case letters, digits and _, not {source!r}"]
+    if not isinstance(entry, dict) or set(entry) != set(DATA_KEYS):
+        return [f"data: {source} holds {', '.join(DATA_KEYS)}, and nothing else"]
+    for key in ("ct", "labels"):
+        if not _is_relative(entry[key]):
+            return [f"data: {source}'s {key} is a folder under the data root: {entry[key]!r}"]
+    folder = entry["labels_folder"]
+    if not isinstance(folder, str) or not folder or "/" in folder or folder in (".", ".."):
+        return [f"data: {source}'s labels_folder is one folder's name, not {folder!r}"]
+    return _names_problems(cast(str, source), entry["names"])
+
+
 def _data_problems(data: object) -> list[str]:
     if not isinstance(data, dict) or not data:
         return ["data: one entry a source: where its CTs and label maps are, what each label is"]
     for source, entry in data.items():
-        if not _is_id(source):
-            return [f"data: a source is lower-case letters, digits and _, not {source!r}"]
-        if not isinstance(entry, dict) or set(entry) != set(DATA_KEYS):
-            return [f"data: {source} holds {', '.join(DATA_KEYS)}, and nothing else"]
-        for key in ("ct", "labels"):
-            if not _is_relative(entry[key]):
-                return [f"data: {source}'s {key} is a folder under the data root: {entry[key]!r}"]
-        folder = entry["labels_folder"]
-        if not isinstance(folder, str) or not folder or "/" in folder or folder in (".", ".."):
-            return [f"data: {source}'s labels_folder is one folder's name, not {folder!r}"]
-        found = _names_problems(source, entry["names"])
+        found = _source_problems(source, entry)
         if found:
             return found
     return []
@@ -412,19 +426,19 @@ def plan_of(record: Mapping[str, object]) -> Plan:
 
 
 @beartype
-@require(lambda validation_share: 0 < validation_share < 1, "a share strictly between 0 and 1")
+@require(lambda rule: 0 < rule.validation_share < 1, "a share strictly between 0 and 1")
 @ensure(lambda result: result in ("train", "validation", "test"), "one of the three parts")
 @ensure(
-    lambda result, person, test_persons: (result == "test") == (person in test_persons),
+    lambda result, rule, person: (result == "test") == (person in rule.test_persons),
     "test exactly for a person on the test list",
 )
-def rule_part(salt: str, validation_share: float, test_persons: frozenset[str], person: str) -> str:
-    """data/splits/rule.json's part of a person: test for a person on data/splits/test-persons.json
-    whatever the hash says, validation where the hash is below the validation share, training
-    otherwise; the same hash the search uses (autoanatomist_search.hash_value)."""
-    if person in test_persons:
+def rule_part(rule: SplitRule, person: str) -> str:
+    """data/splits/rule.json's part of a person: test for a person on a test list whatever the
+    hash says, validation where the hash is below the validation share, training otherwise; the
+    same hash the search uses (autoanatomist_search.hash_value)."""
+    if person in rule.test_persons:
         return "test"
-    if hash_value(salt, person) < validation_share * HASH_SPAN:
+    if hash_value(rule.salt, person) < rule.validation_share * HASH_SPAN:
         return "validation"
     return "train"
 
@@ -432,50 +446,34 @@ def rule_part(salt: str, validation_share: float, test_persons: frozenset[str], 
 @beartype
 @require(lambda record: not plan_problems(record), "a plan that holds (plan_problems)")
 @ensure(lambda result: all(isinstance(line, str) and line for line in result), "lines in words")
-def rows_problems(
-    record: Mapping[str, object], salt: str, validation_share: float, test_persons: frozenset[str]
-) -> list[str]:
+def rows_problems(record: Mapping[str, object], rule: SplitRule) -> list[str]:
     """What keeps a plan's rows from the frozen split: a salt or a share other than the rule
     file's, a person on the test list, an item that is itself on it, or a row whose part is not the
     one the rule gives its person. The trial reads a row's files by its item, so an item a test list
     names is refused whatever person the row gives it. The flow, the gate's check and
-    scripts/check.sh pass the rule and the test list."""
+    scripts/check.sh pass the rule and the test lists."""
     split = cast(Mapping[str, object], record["split"])
-    if split["salt"] != salt or split["validation_share"] != validation_share:
+    if split["salt"] != rule.salt or split["validation_share"] != rule.validation_share:
         said = f"{split['salt']!r} at {split['validation_share']!r}"
-        return [f"split: the plan says {said}, and the rule {salt!r} at {validation_share!r}"]
-    if not 0 < validation_share < 1:
+        ruled = f"{rule.salt!r} at {rule.validation_share!r}"
+        return [f"split: the plan says {said}, and the rule {ruled}"]
+    if not 0 < rule.validation_share < 1:
         return ["split: the rule's validation share is not strictly between 0 and 1"]
     for row in cast(Sequence[Mapping[str, str]], record["rows"]):
-        part = rule_part(salt, validation_share, test_persons, row["person"])
+        part = rule_part(rule, row["person"])
         item, person = row["item"], row["person"]
         if part == "test":
             return [f"rows: {item}'s person {person} is on a test list, which a screen never reads"]
-        if item in test_persons:
+        if item in rule.test_persons:
             return [f"rows: {item} is itself on a test list, whatever person the row names"]
         if part != row["part"]:
             return [f"rows: {item} is in {row['part']}, and the rule puts {person} in {part}"]
     return []
 
 
-@beartype
-@require(lambda validation_share: 0 < validation_share < 1, "a share strictly between 0 and 1")
-@ensure(lambda result: all(isinstance(line, str) and line for line in result), "lines in words")
-def unit_problems(
-    rows: Sequence[Mapping[str, object]],
-    units: Mapping[str, Sequence[str]],
-    salt: str,
-    validation_share: float,
-    test_persons: frozenset[str],
-) -> list[str]:
-    """What keeps a plan's rows from keeping each unit of probable repeat scans in one part: a row
-    whose person is in a unit and whose part is not the one the rule gives the unit's key, so no
-    patient's two scans sit in training and in validation as far as the units know (UNIT_LISTS).
-    units maps each unit's key to its persons; a row in no unit is the rule's alone. Units that do
-    not hold together, a key outside its own unit or a person in two, are a problem first, since
-    either would leave a person's part to whichever unit came last; so is a unit that holds a study
-    of a test list beside studies of none, since its others would be repeat scans of a held-back
-    study free to train."""
+def _units_problems(units: Mapping[str, Sequence[str]], test_persons: frozenset[str]) -> list[str]:
+    """What keeps the units from holding together: a key outside its own unit, a unit holding a
+    study of a test list beside studies of none, or a person in two units or twice in one."""
     unit_of: dict[str, str] = {}
     for key, persons in units.items():
         if key not in persons:
@@ -488,12 +486,33 @@ def unit_problems(
             if person in unit_of:
                 return [f"units: {person} is in two units, {unit_of[person]} and {key}"]
             unit_of[person] = key
+    return []
+
+
+@beartype
+@require(lambda rule: 0 < rule.validation_share < 1, "a share strictly between 0 and 1")
+@ensure(lambda result: all(isinstance(line, str) and line for line in result), "lines in words")
+def unit_problems(
+    rows: Sequence[Mapping[str, object]], units: Mapping[str, Sequence[str]], rule: SplitRule
+) -> list[str]:
+    """What keeps a plan's rows from keeping each unit of probable repeat scans in one part: a row
+    whose person is in a unit and whose part is not the one the rule gives the unit's key, so no
+    patient's two scans sit in training and in validation as far as the units know (UNIT_LISTS).
+    units maps each unit's key to its persons; a row in no unit is the rule's alone. Units that do
+    not hold together, a key outside its own unit or a person in two, are a problem first, since
+    either would leave a person's part to whichever unit came last; so is a unit that holds a study
+    of a test list beside studies of none, since its others would be repeat scans of a held-back
+    study free to train."""
+    found = _units_problems(units, rule.test_persons)
+    if found:
+        return found
+    unit_of = {person: key for key, persons in units.items() for person in persons}
     for row in rows:
         person = str(row.get("person"))
         unit = unit_of.get(person)
         if unit is None:
             continue
-        part = rule_part(salt, validation_share, test_persons, unit)
+        part = rule_part(rule, unit)
         if row.get("part") != part:
             item, given = row.get("item"), row.get("part")
             where = f"is in the unit {unit}, whose part is {part}, not {given}"
@@ -713,6 +732,16 @@ def _verdict(
     return max(cast(Sequence[float], arm_values)) < min(cast(Sequence[float], null_values))
 
 
+def _why(verdict: bool | None, arm: str, plan: Plan) -> str:
+    """An arm's verdict against the null in words."""
+    if verdict is None:
+        wrote = f"a trial of {arm} or of {plan.null} wrote no final {plan.measure}"
+        return f"{wrote}, so nothing is decided"
+    if verdict:
+        return f"every seed of {arm} ends below every seed of {plan.null}"
+    return f"some seed of {arm} ends at or above some seed of {plan.null}"
+
+
 @beartype
 @require(lambda plan: plan.batch >= 1 and plan.epochs >= 1, "a batch and epochs")
 @require(lambda plan: plan.null in plan.arms and len(plan.seeds) >= 1, "the null an arm; a seed")
@@ -738,15 +767,7 @@ def decide(plan: Plan, entries: Mapping[str, object]) -> dict[str, object]:
     arms: dict[str, dict[str, object]] = {}
     for arm in sorted(set(plan.arms) - {plan.null}):
         verdict = _verdict(by_arm[arm], null_values)
-        why = {
-            True: f"every seed of {arm} ends below every seed of {plan.null}",
-            False: f"some seed of {arm} ends at or above some seed of {plan.null}",
-            None: (
-                f"a trial of {arm} or of {plan.null} wrote no final {plan.measure}, "
-                "so nothing is decided"
-            ),
-        }[verdict]
-        arms[arm] = {"finals": by_arm[arm], "beats_null": verdict, "why": why}
+        arms[arm] = {"finals": by_arm[arm], "beats_null": verdict, "why": _why(verdict, arm, plan)}
     return {
         "screen": plan.screen,
         "measure": plan.measure,

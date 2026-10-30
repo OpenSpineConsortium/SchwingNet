@@ -28,6 +28,7 @@ from schwingnet.autoanatomist_screen import (
     TEST_LISTS,
     UNIT_LISTS,
     Plan,
+    SplitRule,
     decide,
     entry_problems,
     evaluation_epochs,
@@ -48,6 +49,12 @@ ROOT = Path(__file__).resolve().parents[2]
 RULE = json.loads((ROOT / "data/splits/rule.json").read_text(encoding="utf-8"))
 SALT, SHARE = RULE["salt"], RULE["validation_share"]
 NO_TEST: frozenset[str] = frozenset()
+
+
+def split_rule(test_persons: frozenset[str] = NO_TEST, salt: str = SALT, share: float = SHARE) -> SplitRule:
+    """The frozen rule as the flow passes it: the rule file's salt and share, and the persons
+    on a test list, none unless a test names them."""
+    return SplitRule(salt, share, test_persons)
 
 
 def rule_hash_part(person: str) -> str:
@@ -136,7 +143,7 @@ def test_a_plan_that_holds_is_read_whole_and_typed() -> None:
     )
     assert plan.arms["null"] == ("schedule=fixed", "lam_fixed=1", "w_fixed=0")
     assert len(plan.rows) == 7 and train_count(plan) == 5
-    assert rows_problems(record, SALT, SHARE, NO_TEST) == []
+    assert rows_problems(record, split_rule()) == []
 
 
 FAULTS = [
@@ -208,22 +215,22 @@ def test_every_fault_of_a_plan_is_said_in_words(record: Any, said: str) -> None:
 
 def test_the_split_is_the_rule_files_hash_and_the_test_list_wins() -> None:
     for person in TRAIN + VALIDATION + [f"verse:{n}" for n in range(50)]:
-        assert rule_part(SALT, SHARE, NO_TEST, person) == rule_hash_part(person)
-    assert rule_part(SALT, SHARE, frozenset({TRAIN[0]}), TRAIN[0]) == "test"
+        assert rule_part(split_rule(), person) == rule_hash_part(person)
+    assert rule_part(split_rule(frozenset({TRAIN[0]})), TRAIN[0]) == "test"
 
 
 def test_a_row_off_the_frozen_split_or_on_the_test_list_is_refused() -> None:
     record = good_plan()
-    assert "on a test list" in rows_problems(record, SALT, SHARE, frozenset({VALIDATION[1]}))[0]
+    assert "on a test list" in rows_problems(record, split_rule(frozenset({VALIDATION[1]})))[0]
     moved = copy.deepcopy(record)
     moved["rows"][0]["part"] = "validation"
-    assert "the rule puts" in rows_problems(moved, SALT, SHARE, NO_TEST)[0]
-    assert "the rule" in rows_problems(record, "another-salt", SHARE, NO_TEST)[0]
-    assert "the rule" in rows_problems(record, SALT, 0.2, NO_TEST)[0]
+    assert "the rule puts" in rows_problems(moved, split_rule())[0]
+    assert "the rule" in rows_problems(record, split_rule(salt="another-salt"))[0]
+    assert "the rule" in rows_problems(record, split_rule(share=0.2))[0]
     # the trial reads a row's files by its item, so an item on a test list is refused under any person
     swapped = copy.deepcopy(record)
     swapped["rows"][0]["item"] = "enhance_pet:7777"
-    found = rows_problems(swapped, SALT, SHARE, frozenset({"enhance_pet:7777"}))
+    found = rows_problems(swapped, split_rule(frozenset({"enhance_pet:7777"})))
     assert found == ["rows: enhance_pet:7777 is itself on a test list, whatever person the row names"]
 
 
@@ -234,25 +241,30 @@ def test_a_study_outside_its_units_part_is_refused_and_one_inside_or_in_no_unit_
     assert rows[0]["part"] == "train"
     # a unit keyed by a training person keeps its studies in training
     units = {TRAIN[4]: (TRAIN[4], trained)}
-    assert unit_problems(rows, units, SALT, SHARE, NO_TEST) == []
+    assert unit_problems(rows, units, split_rule()) == []
     # keyed by a validation person, the same study sits outside its unit's part
     units = {VALIDATION[0]: (VALIDATION[0], trained)}
-    found = unit_problems(rows, units, SALT, SHARE, NO_TEST)
+    found = unit_problems(rows, units, split_rule())
     assert found and f"{trained} is in the unit {VALIDATION[0]}, whose part is validation" in found[0]
     # a row in no unit is the rule's alone
-    assert unit_problems(rows, {"enhance_pet:9999": ("enhance_pet:9999",)}, SALT, SHARE, NO_TEST) == []
+    assert unit_problems(rows, {"enhance_pet:9999": ("enhance_pet:9999",)}, split_rule()) == []
     # units that do not hold together leave a person's part to whichever came last, so they are refused first
-    found = unit_problems(rows, {TRAIN[4]: (TRAIN[3], trained)}, SALT, SHARE, NO_TEST)
+    found = unit_problems(rows, {TRAIN[4]: (TRAIN[3], trained)}, split_rule())
     assert found == [f"units: the unit {TRAIN[4]} does not hold its own key"]
-    found = unit_problems(rows, {TRAIN[4]: (TRAIN[4], trained), VALIDATION[0]: (VALIDATION[0], trained)}, SALT, SHARE, NO_TEST)
+    found = unit_problems(rows, {TRAIN[4]: (TRAIN[4], trained), VALIDATION[0]: (VALIDATION[0], trained)}, split_rule())
     assert found == [f"units: {trained} is in two units, {TRAIN[4]} and {VALIDATION[0]}"]
     # a unit holding a held-back study beside others would let its repeat scans train
     listed = frozenset({"enhance_pet:9999"})
-    found = unit_problems(rows, {TRAIN[4]: (TRAIN[4], "enhance_pet:9999")}, SALT, SHARE, listed)
+    found = unit_problems(rows, {TRAIN[4]: (TRAIN[4], "enhance_pet:9999")}, split_rule(listed))
     assert found == [f"units: the unit {TRAIN[4]} holds enhance_pet:9999 of a test list beside studies of none"]
-    assert unit_problems(rows, {"enhance_pet:9999": ("enhance_pet:9999",)}, SALT, SHARE, listed) == []
+    assert unit_problems(rows, {"enhance_pet:9999": ("enhance_pet:9999",)}, split_rule(listed)) == []
+    # a person twice in one unit is refused as a person in two would be
+    found = unit_problems(rows, {TRAIN[4]: (TRAIN[4], trained, trained)}, split_rule())
+    assert found == [f"units: {trained} is in two units, {TRAIN[4]} and {TRAIN[4]}"]
     with pytest.raises(ViolationError):
-        unit_problems(rows, {}, SALT, 1.0, NO_TEST)
+        unit_problems(rows, {}, split_rule(share=1.0))
+    with pytest.raises(ViolationError):
+        rule_part(split_rule(share=0.0), TRAIN[0])
 
 
 def test_the_unit_lists_hold_disjoint_units_each_keyed_by_one_of_its_studies() -> None:
