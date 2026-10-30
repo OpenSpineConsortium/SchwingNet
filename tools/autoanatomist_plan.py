@@ -8,16 +8,19 @@
 write takes the store's training rows (`tools/gold3_ct.py export --tier gold3 --training-only`, or
 the file --export names), keeps ENHANCE.PET's rows of the normal class whose masks confirmed the
 call, with no holdout and no CT still to fetch, leaves out every person on a test list
-(schwingnet.autoanatomist_screen.TEST_LISTS), checks each row's part against data/splits/rule.json, orders the persons by a hash of
+(schwingnet.autoanatomist_screen.TEST_LISTS) and every study of a unit of probable repeat scans
+(UNIT_LISTS) whose own part is not the part of its unit's key, so no unit straddles training and
+validation, checks each row's part against data/splits/rule.json, orders the persons by a hash of
 their own under SUBSET_SALT and keeps the first of each part, so the smoke's rows are the screen's
 first rows and a person's place never depends on the other rows. One label scheme for every row:
 ENHANCE.PET's C3 to L6 masks, labels 3 to 25, named as the vendored name head names them. The
 plans are frozen by docs/research/autoanatomist-screen/PREREG.md's Covers lines, so write is run
 before the freeze and never after.
 
-check reads the committed plans and fails where one does not hold (plan_problems) or where a row
-has left the frozen split or stands on a test list (rows_problems), so a test list that grows to
-take a planned person stops the check rather than the run. scripts/check.sh runs it where pixi
+check reads the committed plans and fails where one does not hold (plan_problems), where a row
+has left the frozen split or stands on a test list (rows_problems), or where a row sits outside its
+unit's part (unit_problems), so a test list or a unit that grows to take a planned person stops the
+check rather than the run. scripts/check.sh runs it where pixi
 is, since it imports the package's contracts, and the gate lane runs it on every pull request
 (tests/schwingnet/test_autoanatomist_screen.py).
 """
@@ -38,9 +41,11 @@ if str(ROOT / "vendor" / "beethoven-qa" / "src") not in sys.path:
 from schwingnet.autoanatomist_screen import (  # noqa: E402
     NAMES,
     TEST_LISTS,
+    UNIT_LISTS,
     plan_problems,
     rows_problems,
     rule_part,
+    unit_problems,
 )
 from schwingnet.autoanatomist_search import hash_value  # noqa: E402
 
@@ -105,10 +110,21 @@ def read_json(path):
 
 
 def split_inputs():
-    """The frozen rule's salt and share, and every person on a test list."""
+    """The frozen rule's salt and share, every person on a test list, and every unit of probable
+    repeat scans, its key to its persons."""
     rule = read_json(RULE)
     persons = {entry["person"] for path in TEST_LISTS for entry in read_json(path)}
-    return rule["salt"], float(rule["validation_share"]), frozenset(persons)
+    entries = [entry for path in UNIT_LISTS for entry in read_json(path)]
+    units = {entry["unit"]: tuple(entry["persons"]) for entry in entries}
+    if len(units) != len(entries):
+        # A key standing twice would leave the first unit's persons to the rule alone.
+        raise SystemExit("autoanatomist_plan: a unit's key stands twice in " + ", ".join(UNIT_LISTS))
+    return rule["salt"], float(rule["validation_share"]), frozenset(persons), units
+
+
+def unit_parts(salt, share, test_persons, units):
+    """Each study of a unit, to the part the rule gives its unit's key."""
+    return {person: rule_part(salt, share, test_persons, key) for key, persons in units.items() for person in persons}
 
 
 def export_rows(export):
@@ -122,13 +138,15 @@ def export_rows(export):
     return [json.loads(line) for line in text.splitlines() if line.strip()]
 
 
-def eligible(row, salt, share, test_persons):
+def eligible(row, salt, share, test_persons, unit_part):
     """A row the screen may take: ENHANCE.PET, normal, confirmed by its masks, trainable, no
-    holdout, its CT in hand, off every test list and in the part the rule gives its person."""
+    holdout, its CT in hand, off every test list, in the part the rule gives its person and, for a
+    study of a unit of probable repeat scans, in its unit's part too."""
     keep = (row["source"] == SOURCE and row["tier"] == "gold3" and row["class"] == "normal"
             and row["status"] == "confirmed_by_masks" and row["training_allowed"] == 1
             and row["holdout"] == 0 and row["needs_ct"] == 0 and row["part"] in ("train", "validation"))
-    return keep and row["person"] not in test_persons and rule_part(salt, share, test_persons, row["person"]) == row["part"]
+    part = rule_part(salt, share, test_persons, row["person"])
+    return keep and row["person"] not in test_persons and part == row["part"] and unit_part.get(row["person"], part) == part
 
 
 def chosen(rows, part, count):
@@ -170,17 +188,23 @@ def plan_text(record):
     return json.dumps(record, indent=2, ensure_ascii=True) + "\n"
 
 
-def problems_of(record, salt, share, test_persons):
-    return plan_problems(record) or rows_problems(record, salt, share, test_persons)
+def problems_of(record, salt, share, test_persons, units):
+    return (plan_problems(record) or rows_problems(record, salt, share, test_persons)
+            or unit_problems(record["rows"], units, salt, share, test_persons))
 
 
 def command_write(args):
-    salt, share, test_persons = split_inputs()
-    rows = [r for r in export_rows(args.export) if eligible(r, salt, share, test_persons)]
+    salt, share, test_persons, units = split_inputs()
+    unit_part = unit_parts(salt, share, test_persons, units)
+    exported = export_rows(args.export)
+    rows = [r for r in exported if eligible(r, salt, share, test_persons, unit_part)]
+    split_off = [r for r in exported if eligible(r, salt, share, test_persons, {}) and r not in rows]
+    print(f"{len(rows)} eligible rows ({sum(r['part'] == 'train' for r in rows)} train); {len(split_off)} left out "
+          f"since their unit's part is not their own")
     assert set(ENHANCE_DATA["names"].values()) <= set(NAMES)
     for screen, spec in PLANS.items():
         record = plan_record(screen, spec, rows, salt, share)
-        found = problems_of(record, salt, share, test_persons)
+        found = problems_of(record, salt, share, test_persons, units)
         if found:
             raise SystemExit(f"{screen}: {found[0]}")
         path = ROOT / SCREENS / f"{screen}.json"
@@ -191,7 +215,7 @@ def command_write(args):
 
 
 def command_check(args):
-    salt, share, test_persons = split_inputs()
+    salt, share, test_persons, units = split_inputs()
     failed = 0
     for screen in PLANS:
         path = ROOT / SCREENS / f"{screen}.json"
@@ -199,7 +223,7 @@ def command_check(args):
             print(f"autoanatomist_plan: {path.relative_to(ROOT)} is missing")
             failed += 1
             continue
-        found = problems_of(json.loads(path.read_text(encoding="utf-8")), salt, share, test_persons)
+        found = problems_of(json.loads(path.read_text(encoding="utf-8")), salt, share, test_persons, units)
         for line in found:
             print(f"autoanatomist_plan: {path.relative_to(ROOT)}: {line}")
         failed += bool(found)

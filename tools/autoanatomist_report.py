@@ -26,7 +26,7 @@ STUDY = "autoanatomist-screen"
 PREREG = ROOT / "docs" / "research" / "autoanatomist-screen" / "PREREG.md"
 # The pre-registration the design answers restate, by its sha256: PREREG.md as frozen, the digest
 # PREREG.md.sha256 beside it holds (tests/test_autoanatomist_report.py holds the two together).
-DESIGN = "2a3572cae29b9c4529f1af5afd96ea02c9d695459ad1a6f7864750b760cfe994"
+DESIGN = "648c082994464ecb26bab977ce51a49441a6bfaa92751f562d7b8c704ee44280"
 LICENCES = ROOT / "data" / "licences.json"
 SOURCE = "scidb_enhance_pet_1_6k"
 
@@ -154,15 +154,25 @@ def fact_missing_data(run):
                          "and the trial is shown failed (PREREG.md section 5)")
 
 
+def split_files(run):
+    """The split files the chain's start checked its plan against, each by the first 16 hex of its sha256."""
+    files = run["record"].get("splits") or {}
+    return "; ".join(f"{path} {str(sha)[:16]}" for path, sha in sorted(files.items())) or "none recorded"
+
+
 def fact_partitions(run):
     return restated(run, "a person is a study, its part the one data/splits/rule.json gives it (salt schwingnet-2026-10-21, "
-                         "validation share 0.1); no person on a test list is read and the test part is never read")
+                         "validation share 0.1), and each unit of probable repeat scans keeps the part its key's person has; "
+                         "no person on a test list (data/splits/test-persons.json and the latent shape priors' reserve) is "
+                         f"read and the test part is never read; the files checked: {split_files(run)}")
 
 
 def fact_disjoint(run):
-    return restated(run, "the flow's start refuses a plan whose rows leave the rule or stand on a test list, so each study sits "
-                         "in one part; known limit: autoPET's 1,014 studies are 900 persons, matched to persons by no record "
-                         "here, so one person's two scans can sit in both parts (PREREG.md section 6)")
+    return restated(run, "the flow's start refuses a plan whose rows leave the rule, stand on a test list or put a study of a "
+                         "unit of probable repeat scans outside its unit's part, so each study and each unit sits in one part; "
+                         "known limit: autoPET's 1,014 studies are 900 persons with no record matching them, and the units "
+                         "link repeat scans by their vertebral volumes, spacings and ribs alone, so a repeat they miss can "
+                         "still sit in both parts (PREREG.md section 6)")
 
 
 def fact_model(run):

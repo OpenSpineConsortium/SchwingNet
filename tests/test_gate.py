@@ -2846,12 +2846,23 @@ exit "${FAKE_RC:-0}"
     def screen_root(self):
         return self.tmp / "go2432" / "autoanatomist"
 
+    def smoke_report(self, commit, code):
+        """The smoke's report as its series part leaves it, ending in its exit line."""
+        logs = self.repo / "grid" / "logs"
+        logs.mkdir(parents=True, exist_ok=True)
+        report = logs / f"AUTOANATOMIST-{self.SCREEN}.md"
+        report.write_text(f"# autoanatomist {self.SCREEN}: job 4040 on node, commit {commit}, 2026-10-30 10:00:00 UTC\n"
+                          f"- exit {code} at 2026-10-30 11:00:00 UTC\n", encoding="utf-8")
+        return report
+
     def test_autoanatomist_refuses_a_plan_without_the_owners_count_a_frozen_cover_or_its_inputs(self):
         # the committed count is the owner's: the smoke of 03:20 UTC and the screen's two jobs of 08:56 UTC,
         # and no plan is sent again on his word yet
         gate = (ROOT / "grid" / "gate.sh").read_text(encoding="utf-8")
         self.assertIn('\nAUTOANATOMIST_COUNTED="gold3_latent_smoke gold3_latent_screen"\n', gate)
         self.assertIn('\nAUTOANATOMIST_RERUNS=""\n', gate)
+        # and the screen waits for the smoke, as its PREREG says (section 5)
+        self.assertIn('\nAUTOANATOMIST_AFTER="gold3_latent_screen:gold3_latent_smoke"\n', gate)
         self.assertEqual(self.gate("autoanatomist").returncode, 64)
         refused = self.gate("autoanatomist", "gold3_latent_nope")
         self.assertEqual(refused.returncode, 64, refused.stdout)
@@ -2936,7 +2947,8 @@ exit "${FAKE_RC:-0}"
         self.assertEqual(len(self.submitted()), 1)
 
     def test_autoanatomist_queues_a_counted_array_as_a_task_a_trial_and_a_cpu_join_afterany_them(self):
-        self.screen_ready()
+        commit = self.screen_ready()
+        self.smoke_report(commit, 0)
         plan = json.loads((ROOT / "grid" / "screens" / "gold3_latent_screen.json").read_text(encoding="utf-8"))
         # the gate counts the trials as schwingnet.autoanatomist_screen.trials does: every arm at every seed
         trials = len(plan["arms"]) * len(plan["seeds"])
@@ -2948,10 +2960,17 @@ exit "${FAKE_RC:-0}"
         self.assertIn("cancelled the trials' array 101, since its join was refused", refused.stdout)
         self.assertEqual((self.fake / "scancel.log").read_text(encoding="utf-8").split(), ["101"])
         logs = self.repo / "grid" / "logs"
-        self.assertFalse((logs / "AUTOANATOMIST-gold3_latent_screen.md.part").exists())
+        # the array's record stands from the moment it was queued, and says the join was refused
+        record = (logs / "AUTOANATOMIST-gold3_latent_screen.md.part").read_text(encoding="utf-8")
+        self.assertTrue(record.startswith(f"# autoanatomist gold3_latent_screen: job 101 queued, commit {commit},"), record)
+        self.assertIn("- join: refused, so the gate cancelled the trials' array 101", record)
+        self.assertFalse((logs / "AUTOANATOMIST-gold3_latent_screen.sent").exists())
+        # cancelled before any trial made its folder, it spent nothing, so the next send queues the plan at once
         (self.fake / "refuse").write_text("", encoding="utf-8")
         done = self.gate("autoanatomist", "gold3_latent_screen")
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("Slurm ended the send above before any part of it started", done.stdout)
+        self.assertTrue((logs / "AUTOANATOMIST-gold3_latent_screen-101-unstarted.md").exists())
         lines = self.submitted()
         self.assertEqual(len(lines), 3, lines)
         array, join = lines[1:]
@@ -2964,7 +2983,9 @@ exit "${FAKE_RC:-0}"
             self.assertIn(said, join)
         recorded = self.recorded()
         self.assertEqual((recorded["autoanatomist_gold3_latent_screen"], recorded["autoanatomist_gold3_latent_screen_join"]), ("102", "103"))
-        self.assertIn("job 102 queued", (logs / "AUTOANATOMIST-gold3_latent_screen.md.part").read_text(encoding="utf-8"))
+        record = (logs / "AUTOANATOMIST-gold3_latent_screen.md.part").read_text(encoding="utf-8")
+        self.assertIn("job 102 queued", record)
+        self.assertIn("- join: job 103 on a CPU node, afterany the trials' array", record)
         # while only the join lasts a send still waits, and reads the trials of the array's folder
         self.live(103)
         busy = self.gate("autoanatomist", "gold3_latent_screen")
@@ -2983,6 +3004,14 @@ exit "${FAKE_RC:-0}"
         self.assertEqual(self.gate("autoanatomist", self.SCREEN).returncode, 0)
         self.assertEqual(self.submitted(), [])
         report.write_text(failed.format(self.SCREEN, "0000000"), encoding="utf-8")
+        # a send refused past that finding leaves the record where the next send reads it
+        labels, hidden = self.data / "aws_enhance_pet_labels", self.tmp / "labels-aside"
+        labels.rename(hidden)
+        refused = self.gate("autoanatomist", self.SCREEN)
+        self.assertEqual(refused.returncode, 2, refused.stdout)
+        self.assertTrue(report.exists())
+        self.assertFalse((logs / f"AUTOANATOMIST-{self.SCREEN}-4242.md").exists())
+        hidden.rename(labels)
         again = self.gate("autoanatomist", self.SCREEN)
         self.assertEqual(again.returncode, 0, again.stdout + again.stderr)
         self.assertIn("ended in failure on older code: queueing the plan again", again.stdout)
@@ -3023,9 +3052,106 @@ exit "${FAKE_RC:-0}"
             self.assertIn(f"AUTOANATOMIST_RERUNS={self.SCREEN}:lost", refused.stdout)
         self.assertEqual(len(self.submitted()), 1)
         self.set_gate_line("AUTOANATOMIST_RERUNS", f"{self.SCREEN}:lost")
+        # the owner's word lets one more send through, and a send refused before it queues keeps the mark
+        labels, hidden = self.data / "aws_enhance_pet_labels", self.tmp / "labels-aside"
+        labels.rename(hidden)
+        self.assertEqual(self.gate("autoanatomist", self.SCREEN).returncode, 2)
+        self.assertTrue(sent.exists())
+        hidden.rename(labels)
         done = self.gate("autoanatomist", self.SCREEN)
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
         self.assertEqual(len(self.submitted()), 2)
+        self.assertFalse(sent.exists())
+
+    def test_autoanatomist_sends_the_screen_only_once_the_smokes_report_ends_in_exit_0(self):
+        commit = self.screen_ready()
+        # no smoke yet, or one that failed: the screen's eight cards wait (PREREG.md, section 5)
+        refused = self.gate("autoanatomist", "gold3_latent_screen")
+        self.assertEqual(refused.returncode, 2, refused.stdout)
+        self.assertIn(f"once the report of {self.SCREEN} (logs/AUTOANATOMIST-{self.SCREEN}.md) ends in exit 0", refused.stdout)
+        self.assertIn(f"send autoanatomist {self.SCREEN} first", refused.stdout)
+        report = self.smoke_report(commit, 1)
+        refused = self.gate("autoanatomist", "gold3_latent_screen")
+        self.assertEqual(refused.returncode, 2, refused.stdout)
+        self.assertEqual(self.submitted(), [])
+        # a smoke still running has no report, so the screen waits for it too
+        report.unlink()
+        (self.repo / "grid" / "logs" / f"AUTOANATOMIST-{self.SCREEN}.md.part").write_text(
+            f"# autoanatomist {self.SCREEN}: job 4040 queued, commit {commit}, 2026-10-30 10:00:00 UTC; no part of it has started yet\n", encoding="utf-8")
+        self.assertEqual(self.gate("autoanatomist", "gold3_latent_screen").returncode, 2)
+        self.smoke_report(commit, 0)
+        done = self.gate("autoanatomist", "gold3_latent_screen")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertEqual(len(self.submitted()), 2)
+        # the smoke itself waits for nothing
+        self.assertEqual(self.gate("autoanatomist", self.SCREEN).returncode, 0)
+
+    def test_autoanatomist_join_waits_for_the_setup_as_the_trials_do(self):
+        # environments not made from this lock: the setup job rebuilds them, and both parts of the screen wait for it,
+        # so a setup that fails ends the trials and the join before either starts
+        self.screen_prereg()
+        commit = self.git_repo()
+        self.realism_inputs("ct", "truth")
+        self.smoke_report(commit, 0)
+        done = self.gate("autoanatomist", "gold3_latent_screen")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        setup, array, join = self.submitted()
+        self.assertIn("00-setup.sbatch", setup)
+        self.assertIn("--name autoanatomist_gold3_latent_screen --dependency=afterok:101 --kill-on-invalid-dep=yes --array 0-7 ", array)
+        self.assertIn("--name autoanatomist_gold3_latent_screen_join --dependency=afterok:101,afterany:102 --kill-on-invalid-dep=yes ", join)
+        # Slurm ended both once the setup failed, before any trial made its folder: the send spent nothing
+        self.assertFalse((self.screen_root() / "gold3_latent_screen" / "102").exists())
+        again = self.gate("autoanatomist", "gold3_latent_screen")
+        self.assertEqual(again.returncode, 0, again.stdout + again.stderr)
+        self.assertIn("Slurm ended the send above before any part of it started", again.stdout)
+        self.assertEqual(len(self.submitted()), 6)
+
+    def test_autoanatomist_keeps_the_record_of_an_array_whose_join_was_refused_and_whose_cancel_failed(self):
+        commit = self.screen_ready()
+        self.smoke_report(commit, 0)
+        (self.fake / "scancel").write_text('#!/bin/bash\necho "$*" >> "$FAKE/scancel.log"\nexit 1\n', encoding="utf-8")
+        (self.fake / "refuse").write_text("--dependency=afterany:101", encoding="utf-8")
+        refused = self.gate("autoanatomist", "gold3_latent_screen")
+        self.assertEqual(refused.returncode, 1, refused.stdout)
+        self.assertIn("the cancel of the trials' array 101 failed: it may still run", refused.stdout)
+        logs = self.repo / "grid" / "logs"
+        record = logs / "AUTOANATOMIST-gold3_latent_screen.md.part"
+        self.assertIn("- join: refused, and the gate's cancel of the trials' array 101 failed", record.read_text(encoding="utf-8"))
+        # its trials ran with no join: the record stands, and at the same commit the plan is not queued again
+        (self.screen_root() / "gold3_latent_screen" / "101" / "trials").mkdir(parents=True)
+        (self.fake / "refuse").write_text("", encoding="utf-8")
+        for _ in range(2):
+            shown = self.gate("autoanatomist", "gold3_latent_screen")
+            self.assertEqual(shown.returncode, 0, shown.stdout + shown.stderr)
+            self.assertIn("## AUTOANATOMIST-gold3_latent_screen.md unfinished", shown.stdout)
+        self.assertEqual(len(self.submitted()), 1)
+        self.assertFalse((logs / "AUTOANATOMIST-gold3_latent_screen.sent").exists())
+
+    def test_autoanatomist_marks_a_send_only_past_what_could_refuse_it_without_queueing(self):
+        self.screen_ready()
+        sent = self.repo / "grid" / "logs" / f"AUTOANATOMIST-{self.SCREEN}.sent"
+        # a job script no flow names is refused before the mark, as submit would refuse it after
+        registry = self.repo / "flows" / "registry.txt"
+        listed = registry.read_text(encoding="utf-8")
+        self.assertIn("  autoanatomist.sbatch  ", listed)
+        registry.write_text(listed.replace("  autoanatomist.sbatch  ", "  autoanatomist-old.sbatch  "), encoding="utf-8")
+        refused = self.gate("autoanatomist", self.SCREEN)
+        self.assertEqual(refused.returncode, 90, refused.stdout)
+        self.assertIn("names grid/autoanatomist.sbatch as no flow's job script", refused.stdout)
+        registry.write_text(listed, encoding="utf-8")
+        # a shape the scheduler refuses marks nothing either
+        (self.fake / "refuse").write_text(f"--name autoanatomist_{self.SCREEN} ", encoding="utf-8")
+        refused = self.gate("autoanatomist", self.SCREEN)
+        self.assertEqual(refused.returncode, 1, refused.stdout)
+        self.assertFalse(sent.exists())
+        self.assertEqual(self.submitted(), [])
+        # past the mark the series' shape is not asked again, so its submission fails only where its answer may be lost
+        (self.fake / "refuse").write_text("", encoding="utf-8")
+        checks = self.fake / "checks.log"
+        done = self.gate("autoanatomist", self.SCREEN, HPCW_CHECK_LOG=str(checks))
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertEqual(len(checks.read_text(encoding="utf-8").splitlines()), 1)
+        self.assertEqual(len(self.submitted()), 1)
         self.assertFalse(sent.exists())
 
     def test_the_screen_job_installs_exactly_the_pins_the_trial_holds_its_environment_to(self):

@@ -21,9 +21,10 @@ is never carried into another send; a trial that fails is shown failed by the jo
 
 The rule of 2026-10-29 is kept through flows/stage.py: start holds the run to the kind's frozen
 PREREG and to the part of it that covers the plan by its bytes, as the sweep's plans are, and then
-refuses a plan that does not hold or whose rows leave the frozen split or stand on a test list;
-end holds it again, since a resume clones start; each step keeps its line on the run's progress
-page, a trial's moving with its PROGRESS.txt.
+refuses a plan that does not hold, whose rows leave the frozen split or stand on a test list, or
+that puts a study of a unit of probable repeat scans outside its unit's part, and keeps each split
+file it checked by its sha256 for the record; end holds it again, since a resume clones start;
+each step keeps its line on the run's progress page, a trial's moving with its PROGRESS.txt.
 """
 
 import hashlib
@@ -175,6 +176,28 @@ def test_persons():
     return frozenset(persons)
 
 
+def repeat_units():
+    """Every unit of probable repeat scans (schwingnet.autoanatomist_screen.UNIT_LISTS), its key
+    to its persons."""
+    units = {}
+    for path in screen.UNIT_LISTS:
+        entries = read_json(REPO / path)
+        if not isinstance(entries, list):
+            raise AutoanatomistFault(f"{path} cannot be read as a list of units")
+        for entry in entries:
+            # A key standing twice would leave the first unit's persons to the rule alone.
+            if entry["unit"] in units:
+                raise AutoanatomistFault(f"{path}: the unit {entry['unit']} stands twice")
+            units[entry["unit"]] = tuple(entry["persons"])
+    return units
+
+
+def split_files():
+    """The files a plan is checked against, each by its sha256, so the record says which split the
+    run kept: the rule, every test list and every list of units."""
+    return {path: file_sha256(REPO / path) for path in ("data/splits/rule.json", *screen.TEST_LISTS, *screen.UNIT_LISTS)}
+
+
 def plan_in_force(plan_file):
     """The plan a file holds, checked whole and against the frozen split and the test lists."""
     record = read_json(plan_file)
@@ -187,6 +210,9 @@ def plan_in_force(plan_file):
         found = [f"screen: the plan's own name, {plan_part(plan_file)}, not {record['screen']!r}"]
     if not found:
         found = screen.rows_problems(record, str(rule.get("salt")), float(rule.get("validation_share", 0.0)),
+                                     test_persons())
+    if not found:
+        found = screen.unit_problems(record["rows"], repeat_units(), str(rule["salt"]), float(rule["validation_share"]),
                                      test_persons())
     if found:
         raise AutoanatomistFault(f"the plan {Path(plan_file).name} does not hold: {found[0]}")
@@ -228,6 +254,7 @@ class AutoanatomistFlow(FlowSpec):
             self.plan_file = from_launcher(self.plan)
             stage.hold_to_prereg(self, KIND, plan_part(self.plan_file), file_sha256(self.plan_file))
             plan = plan_in_force(self.plan_file)
+            self.splits = split_files()
             fault = words_problems(self, plan)
             if fault:
                 raise AutoanatomistFault(fault)
@@ -287,6 +314,7 @@ class AutoanatomistFlow(FlowSpec):
                          "epochs": plan.epochs, "evaluate_every": plan.evaluate_every, "batch": plan.batch,
                          "measure": plan.measure, "null": plan.null, "seeds": list(plan.seeds)},
                 "trials": [{"id": t.id, "arm": t.arm, "seed": t.seed, "words": list(t.words)} for t in screen.trials(plan)],
+                "splits": self.splits,
                 "files": {str(path.relative_to(folder)): file_sha256(path) for path in names},
                 "progress_page": str(stage.page_path())}
 

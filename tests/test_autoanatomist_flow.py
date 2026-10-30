@@ -12,6 +12,7 @@ python, which has none, skips the file; run it with the train-cpu environment:
     pixi run -e train-cpu python -m unittest tests.test_autoanatomist_flow -v
 """
 
+import hashlib
 import importlib.util
 import json
 import os
@@ -37,7 +38,8 @@ COPIED = ("flows/autoanatomist.py", "flows/stage.py", "flows/stage_progress.py",
           "tools/autoanatomist_report.py", "data/reporting/checklists.json", "data/reporting/study.json",
           "data/reporting/studies/flux-realism.json", "data/reporting/studies/drr-domain-gap.json",
           "data/reporting/studies/autoanatomist-screen.json", "data/licences.json", "data/splits/rule.json",
-          "data/splits/test-persons.json", "grid/autoanatomist.sbatch", "grid/screens/gold3_latent_smoke.json",
+          "data/splits/test-persons.json", "data/splits/latent-prior-test-reserve.json",
+          "data/splits/latent-prior-repeat-groups.json", "grid/autoanatomist.sbatch", "grid/screens/gold3_latent_smoke.json",
           "grid/screens/gold3_latent_screen.json", PREREG, PREREG + ".sha256")
 
 # A stand-in for tools/autoanatomist_trial.py: the trial the words name, its entry written as the
@@ -191,6 +193,10 @@ class AutoanatomistFlowTest(unittest.TestCase):
         self.assertIn("trials/null_s1/entry.json", record["files"])
         self.assertIn("join/DECISION.json", record["files"])
         self.assertEqual(len(record["where"]["commit"]), 40)
+        # the split it kept, each file by its sha256, so a later run that starts from its checkpoint can check it
+        splits = ("data/splits/rule.json", "data/splits/test-persons.json", "data/splits/latent-prior-test-reserve.json",
+                  "data/splits/latent-prior-repeat-groups.json")
+        self.assertEqual(record["splits"], {path: hashlib.sha256((ROOT / path).read_bytes()).hexdigest() for path in splits})
         self.assertTrue(record["where"]["clean_tree"], record["where"])
         summary = (self.folder() / "SUMMARY.md").read_text(encoding="utf-8")
         self.assertIn("- lambda_then_w: beats the null", summary)

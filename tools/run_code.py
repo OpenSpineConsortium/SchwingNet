@@ -104,7 +104,8 @@ KINDS = {
     "autoanatomist": (*ENVIRONMENT, *CONTRACTS, "src/schwingnet/__init__.py", "src/schwingnet/autoanatomist_screen.py",
                       "src/schwingnet/autoanatomist_search.py", "flows/autoanatomist.py", "flows/stage.py",
                       "flows/stage_registry.py", "tools/autoanatomist_trial.py", "tools/autoanatomist_join.py",
-                      "grid/autoanatomist/", "data/splits/rule.json", "data/splits/test-persons.json"),
+                      "grid/autoanatomist/", "data/splits/rule.json", "data/splits/test-persons.json",
+                      "data/splits/latent-prior-test-reserve.json", "data/splits/latent-prior-repeat-groups.json"),
 }
 
 NAMES_THE_RUN = "names the run: the files it lists are the digest, so a change to the lists changes the digest by itself"

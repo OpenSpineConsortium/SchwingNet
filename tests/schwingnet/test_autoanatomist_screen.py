@@ -24,6 +24,7 @@ from schwingnet.autoanatomist_screen import (
     PINS,
     SCREEN_KEYS,
     TEST_LISTS,
+    UNIT_LISTS,
     Plan,
     decide,
     entry_problems,
@@ -38,6 +39,7 @@ from schwingnet.autoanatomist_screen import (
     train_count,
     trial_id,
     trials,
+    unit_problems,
 )
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -216,6 +218,41 @@ def test_a_row_off_the_frozen_split_or_on_the_test_list_is_refused() -> None:
     assert "the rule puts" in rows_problems(moved, SALT, SHARE, NO_TEST)[0]
     assert "the rule" in rows_problems(record, "another-salt", SHARE, NO_TEST)[0]
     assert "the rule" in rows_problems(record, SALT, 0.2, NO_TEST)[0]
+
+
+def test_a_study_outside_its_units_part_is_refused_and_one_inside_or_in_no_unit_is_not() -> None:
+    record = good_plan()
+    rows = record["rows"]
+    trained = rows[0]["person"]
+    assert rows[0]["part"] == "train"
+    # a unit keyed by a training person keeps its studies in training
+    units = {TRAIN[4]: (TRAIN[4], trained)}
+    assert unit_problems(rows, units, SALT, SHARE, NO_TEST) == []
+    # keyed by a validation person, the same study sits outside its unit's part
+    units = {VALIDATION[0]: (VALIDATION[0], trained)}
+    found = unit_problems(rows, units, SALT, SHARE, NO_TEST)
+    assert found and f"{trained} is in the unit {VALIDATION[0]}, whose part is validation" in found[0]
+    # a row in no unit is the rule's alone
+    assert unit_problems(rows, {"enhance_pet:9999": ("enhance_pet:9999",)}, SALT, SHARE, NO_TEST) == []
+    # units that do not hold together leave a person's part to whichever came last, so they are refused first
+    found = unit_problems(rows, {TRAIN[4]: (TRAIN[3], trained)}, SALT, SHARE, NO_TEST)
+    assert found == [f"units: the unit {TRAIN[4]} does not hold its own key"]
+    found = unit_problems(rows, {TRAIN[4]: (TRAIN[4], trained), VALIDATION[0]: (VALIDATION[0], trained)}, SALT, SHARE, NO_TEST)
+    assert found == [f"units: {trained} is in two units, {TRAIN[4]} and {VALIDATION[0]}"]
+    with pytest.raises(ViolationError):
+        unit_problems(rows, {}, SALT, 1.0, NO_TEST)
+
+
+def test_the_unit_lists_hold_disjoint_units_each_keyed_by_one_of_its_studies() -> None:
+    seen: set[str] = set()
+    for path in UNIT_LISTS:
+        units = json.loads((ROOT / path).read_text(encoding="utf-8"))
+        assert isinstance(units, list) and units
+        for unit in units:
+            assert {"unit", "persons", "outside_export", "why"} <= set(unit)
+            assert unit["unit"] in unit["persons"] and len(unit["persons"]) >= 2
+            assert not seen & set(unit["persons"]), unit["unit"]
+            seen |= set(unit["persons"])
 
 
 def test_an_epoch_is_the_training_columns_over_the_batch_rounded_up() -> None:
@@ -398,6 +435,7 @@ def test_the_pins_name_one_version_each_and_the_test_lists_are_the_repositorys()
     names = [pin.split("==")[0].split("[")[0] for pin in PINS]
     assert all(pin.count("==") == 1 and pin.split("==")[1] for pin in PINS)
     assert len(set(names)) == len(names) and {"jax", "flax", "optax", "nibabel"} <= set(names)
+    assert "data/splits/latent-prior-test-reserve.json" in TEST_LISTS
     for path in TEST_LISTS:
         persons = json.loads((ROOT / path).read_text(encoding="utf-8"))
         assert isinstance(persons, list) and all("person" in entry for entry in persons)
@@ -438,5 +476,31 @@ def test_a_planned_person_put_on_a_test_list_fails_the_plan_check(tmp_path: Path
     listed.write_text(json.dumps(entries, indent=1) + "\n", encoding="utf-8")
     done = plan_check(tmp_path)
     assert done.returncode == 1, done.stdout + done.stderr
+    assert "grid/screens/gold3_latent_smoke.json" in done.stdout
+    assert "grid/screens/gold3_latent_screen.json" in done.stdout
+
+
+def test_a_planned_study_put_in_a_unit_of_the_other_part_fails_the_plan_check(tmp_path: Path) -> None:
+    (tmp_path / "tools").mkdir()
+    shutil.copy(ROOT / "tools" / "autoanatomist_plan.py", tmp_path / "tools")
+    for name in ("src", "vendor"):
+        (tmp_path / name).symlink_to(ROOT / name, target_is_directory=True)
+    for name in ("data/splits", "grid/screens"):
+        shutil.copytree(ROOT / name, tmp_path / name)
+    groups = tmp_path / UNIT_LISTS[0]
+    units = json.loads(groups.read_text(encoding="utf-8"))
+    in_units = {person for unit in units for person in unit["persons"]}
+    tested = {entry["person"] for path in TEST_LISTS for entry in json.loads((ROOT / path).read_text(encoding="utf-8"))}
+    smoke = tmp_path / "grid" / "screens" / "gold3_latent_smoke.json"
+    # a smoke row in no unit yet, whose part the new unit's key, a person of the other part in no unit
+    # and on no test list, contradicts; the smoke's rows are the screen's first, so it stands in both plans
+    row = next(r for r in json.loads(smoke.read_text(encoding="utf-8"))["rows"] if r["person"] not in in_units)
+    key = next(p for p in persons_in("validation" if row["part"] == "train" else "train", 40)
+               if p not in in_units and p not in tested)
+    units.append({"unit": key, "persons": [key, row["person"]], "outside_export": [], "why": "a test"})
+    groups.write_text(json.dumps(units, indent=1) + "\n", encoding="utf-8")
+    done = plan_check(tmp_path)
+    assert done.returncode == 1, done.stdout + done.stderr
+    assert f"is in the unit {key}" in done.stdout
     assert "grid/screens/gold3_latent_smoke.json" in done.stdout
     assert "grid/screens/gold3_latent_screen.json" in done.stdout

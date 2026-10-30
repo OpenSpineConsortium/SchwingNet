@@ -71,7 +71,11 @@ PINS = (
 )
 # The lists of persons a screen never reads, each a JSON list of {person, why}: the project's test
 # part, and the reserve the latent shape priors' plan holds back for its own test.
-TEST_LISTS = ("data/splits/test-persons.json",)
+TEST_LISTS = ("data/splits/test-persons.json", "data/splits/latent-prior-test-reserve.json")
+# The lists of units of probable repeat scans, each a JSON list of {unit, persons, outside_export,
+# why}: a unit is one patient's studies as far as their vertebral volumes, spacings and ribs say,
+# keyed by the person of its lowest study, and its rows keep the part the rule gives that key.
+UNIT_LISTS = ("data/splits/latent-prior-repeat-groups.json",)
 # The keys a plan holds, every one required, so a plan is read the same way twice.
 SCREEN_KEYS = (
     "screen",
@@ -450,6 +454,43 @@ def rows_problems(
     return []
 
 
+@beartype
+@require(lambda validation_share: 0 < validation_share < 1, "a share strictly between 0 and 1")
+@ensure(lambda result: all(isinstance(line, str) and line for line in result), "lines in words")
+def unit_problems(
+    rows: Sequence[Mapping[str, object]],
+    units: Mapping[str, Sequence[str]],
+    salt: str,
+    validation_share: float,
+    test_persons: frozenset[str],
+) -> list[str]:
+    """What keeps a plan's rows from keeping each unit of probable repeat scans in one part: a row
+    whose person is in a unit and whose part is not the one the rule gives the unit's key, so no
+    patient's two scans sit in training and in validation as far as the units know (UNIT_LISTS).
+    units maps each unit's key to its persons; a row in no unit is the rule's alone. Units that do
+    not hold together, a key outside its own unit or a person in two, are a problem first, since
+    either would leave a person's part to whichever unit came last."""
+    unit_of: dict[str, str] = {}
+    for key, persons in units.items():
+        if key not in persons:
+            return [f"units: the unit {key} does not hold its own key"]
+        for person in persons:
+            if person in unit_of:
+                return [f"units: {person} is in two units, {unit_of[person]} and {key}"]
+            unit_of[person] = key
+    for row in rows:
+        person = str(row.get("person"))
+        unit = unit_of.get(person)
+        if unit is None:
+            continue
+        part = rule_part(salt, validation_share, test_persons, unit)
+        if row.get("part") != part:
+            item, given = row.get("item"), row.get("part")
+            where = f"is in the unit {unit}, whose part is {part}, not {given}"
+            return [f"rows: {item}'s person {person} {where}"]
+    return []
+
+
 # --- the trials -----------------------------------------------------------------------------------
 
 
@@ -520,13 +561,12 @@ def trials(plan: Plan) -> list[TrialSpec]:
 
 
 @beartype
-@require(lambda plan: plan.batch >= 1 and plan.epochs >= 1, "a batch and epochs")
-@require(lambda plan: train_count(plan) >= 1, "a row to train on")
 @ensure(lambda result, plan: all(isinstance(line, str) for line in result), "lines in words")
 def task_problems(plan: Plan, task: int, tasks: int) -> list[str]:
-    """What keeps an array task from naming one trial: a count other than the plan's trials, or a
-    task outside it. The gate submits exactly len(trials(plan)) tasks."""
-    count = len(trials(plan))
+    """What keeps an array task from naming one trial: a count other than the plan's trials, every
+    arm at every seed as trials counts them, or a task outside it. The gate submits exactly that
+    many tasks (grid/gate.sh counts the plan's arms and seeds the same way)."""
+    count = len(plan.arms) * len(plan.seeds)
     if tasks != count:
         return [f"the array has {tasks} tasks and the plan {count} trials"]
     if not 0 <= task < count:

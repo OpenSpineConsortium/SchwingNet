@@ -37,12 +37,6 @@
   },
   "rows": [
     {
-      "item": "enhance_pet:1541",
-      "person": "enhance_pet:1541",
-      "part": "train",
-      "source": "enhance_pet"
-    },
-    {
       "item": "enhance_pet:0504",
       "person": "enhance_pet:0504",
       "part": "train",
@@ -51,6 +45,12 @@
     {
       "item": "enhance_pet:0039",
       "person": "enhance_pet:0039",
+      "part": "train",
+      "source": "enhance_pet"
+    },
+    {
+      "item": "enhance_pet:0337",
+      "person": "enhance_pet:0337",
       "part": "train",
       "source": "enhance_pet"
     },

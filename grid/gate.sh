@@ -173,7 +173,9 @@
 #                   out as a series is one GPU job, its trials one after another and then the join; one laid out as an
 #                   array is a GPU array of a task a trial and a CPU join afterany it, both queued or neither. A plan is
 #                   queued only where AUTOANATOMIST_COUNTED names it, the owner's word and count committed by pull
-#                   request, and only while the frozen PREREG covers its bytes (exit 90); the next send prints
+#                   request, only while the frozen PREREG covers its bytes (exit 90), and only once the plans
+#                   AUTOANATOMIST_AFTER puts before it have reports ending in exit 0 (the screen after the
+#                   smoke); the next send prints
 #                   logs/AUTOANATOMIST-<plan>.md, or its unfinished .part, and every later one prints it again and
 #                   queues nothing, a failed or unfinished one queued once more only once a fix has moved the
 #                   checkout, and any other only where AUTOANATOMIST_RERUNS carries the owner's word; a send while its
@@ -288,6 +290,10 @@ AUTOANATOMIST_ROOT=${AUTOANATOMIST_ROOT:-$VOLUME/go2432/autoanatomist}
 # the two jobs of his word of 2026-10-30 08:56 UTC ("Yes to both", to the ask that named those two jobs
 # and said they were outside the 03:20 count).
 AUTOANATOMIST_COUNTED="gold3_latent_smoke gold3_latent_screen"
+# The plans sent only once another plan's report ends in exit 0, <plan>:<the plan before it>
+# (word_autoanatomist): the PREREG (section 5) sends the screen only after the smoke's two trials and
+# its join end in exit 0, so the screen's eight cards wait for the smoke to show the code runs.
+AUTOANATOMIST_AFTER="gold3_latent_screen:gold3_latent_smoke"
 # The owner's word for one more send of a plan whose record stands, <plan>:<job that record's first line
 # names>, or <plan>:lost for a submission whose answer was lost; one word, one more send.
 AUTOANATOMIST_RERUNS=""
@@ -2073,6 +2079,19 @@ autoanatomist_rerun_allowed() {  # autoanatomist_rerun_allowed WHAT: AUTOANATOMI
   case " $AUTOANATOMIST_RERUNS " in *" $id:$1 "*) return 0 ;; esac
   return 1
 }
+autoanatomist_waits() {  # autoanatomist_waits PLAN: the plans AUTOANATOMIST_AFTER puts before PLAN whose reports do not end in exit 0, space-separated
+  local pair before waits=""
+  for pair in $AUTOANATOMIST_AFTER; do
+    [ "${pair%%:*}" = "$1" ] || continue
+    before=${pair#*:}
+    [ -f "$LOGS/AUTOANATOMIST-$before.md" ] && tail -n 1 "$LOGS/AUTOANATOMIST-$before.md" | grep -q '^- exit 0 ' \
+      || waits=${waits:+$waits }$before
+  done
+  echo "$waits"
+}
+autoanatomist_note() {  # autoanatomist_note LINE: one more line on the send's record, where the record stands
+  [ ! -f "$LOGS/AUTOANATOMIST-$id.md.part" ] || echo "- $1" >> "$LOGS/AUTOANATOMIST-$id.md.part"
+}
 flow_prereg() {  # flow_prereg KIND: the PREREG flows/registry.txt names for a launched flow's kind, else nothing
   awk -v kind="$1" '$1 == kind && NF == 5 { print $5; exit }' "$REPO/flows/registry.txt" 2>/dev/null
 }
@@ -2186,7 +2205,7 @@ autoanatomist_queued() {  # autoanatomist_queued CHAIN WHAT: the send's record w
 }
 word_autoanatomist() {  # one plan of the auto-anatomist screen, on the owner's count: queued once, its report printed on every later send
   local plan=$REPO/grid/screens/$id.json report=$LOGS/AUTOANATOMIST-$id.md sent=$LOGS/AUTOANATOMIST-$id.sent
-  local layout class trials busy record job kept again="" missing full setup opts screen chain join
+  local layout class trials busy record job kept again="" aside="" waits missing full setup opts screen chain join
   [ -f "$plan" ] || { echo "refusing: no plan grid/screens/$id.json at commit $commit"; return 64; }
   autoanatomist_counted "$id" || {
     echo "refusing: the plan $id waits for the owner's word and count of its jobs, committed in AUTOANATOMIST_COUNTED in grid/gate.sh by pull request; nothing was queued"
@@ -2229,15 +2248,20 @@ word_autoanatomist() {  # one plan of the auto-anatomist screen, on the owner's 
     else
       return 0
     fi
-    mv "$record" "$LOGS/AUTOANATOMIST-$id-$job$kept.md" || return 1
+    aside=$LOGS/AUTOANATOMIST-$id-$job$kept.md
   elif [ -f "$sent" ]; then
-    # A submission whose answer was lost leaves no record and no live job the gate knows.
+    # A submission whose answer was lost leaves no record and no live job the gate knows; the mark
+    # stays until the new send's own mark takes its place.
     autoanatomist_rerun_allowed lost || {
       echo "refusing: a send of the plan $id was submitted at $(cat "$sent") and no job id came back, so it may be queued or ended under Slurm's name schwingnet-autoanatomist_$id; another waits for the owner's word, committed as AUTOANATOMIST_RERUNS=$id:lost in grid/gate.sh"
       return 64
     }
-    rm -f "$sent"
     again="a submission whose answer was lost came before, and AUTOANATOMIST_RERUNS lets the owner's word run once more"
+  fi
+  waits=$(autoanatomist_waits "$id")
+  if [ -n "$waits" ]; then
+    echo "refusing: the plan $id is sent only once the report of ${waits// / and } (logs/AUTOANATOMIST-${waits%% *}.md) ends in exit 0, as its PREREG says; send autoanatomist ${waits%% *} first; nothing was queued"
+    return 2
   fi
   missing=$(autoanatomist_inputs_missing "$plan")
   [ -z "$missing" ] || { echo "refusing: the plan $id needs $missing"; return 2; }
@@ -2246,8 +2270,15 @@ word_autoanatomist() {  # one plan of the auto-anatomist screen, on the owner's 
   setup=$(setup_dependency) || return 1
   [ -z "$setup" ] || echo "  the environments: after the setup job that rebuilds them (${setup#afterok:})"
   screen=(PLAN="$id" TRIAL_TASKS="$trials" AUTOANATOMIST_COMMIT="$full" AUTOANATOMIST_ROOT="$AUTOANATOMIST_ROOT" DATA_ROOT="$DATA_ROOT")
-  # Each shape is asked before the send is marked, so a refused shape marks nothing; an array is asked
-  # as one of its tasks, since job submit asks no array first (grid/hpcw.sh).
+  # What can refuse a send without queueing anything is asked before the send is marked, so the
+  # submission after the mark can fail only where its answer may have been lost, which the mark is
+  # for: the job script, which submit refuses for a GPU job no flow names, and each shape, an array
+  # asked as one of its tasks, since job submit asks no array first (grid/hpcw.sh). The series is
+  # then submitted with HPCW_CHECKED, so job submit does not ask its shape a second time after the mark.
+  launched_script autoanatomist.sbatch || {
+    echo "refusing: flows/registry.txt names grid/autoanatomist.sbatch as no flow's job script, and every GPU job starts through flows/launch.py; nothing was queued"
+    return 90
+  }
   hpcw_check "autoanatomist_$id" gpu "${screen[@]}" PART="$([ "$layout" = series ] && echo series || echo trial)" \
     --cpus 8 --mem 64G --time 12:00:00 --no-requeue -- autoanatomist.sbatch || return 1
   if [ "$layout" = array ]; then
@@ -2255,26 +2286,42 @@ word_autoanatomist() {  # one plan of the auto-anatomist screen, on the owner's 
   fi
   [ -z "$again" ] || echo "  $again: queueing the plan again at $commit"
   depend_on "$setup" || return 1
+  # The record a send again replaces moves aside only here, past every refusal, so a send refused
+  # leaves it where the next send reads it, and the new send's record never meets the old one.
+  [ -z "$aside" ] || mv "$record" "$aside" || return 1
   echo "$(date -u '+%F %T') UTC at commit $commit" > "$sent"
   if [ "$layout" = series ]; then
-    chain=$(submit "autoanatomist_$id" gpu "${screen[@]}" PART=series ${opts[@]+"${opts[@]}"} \
+    chain=$(HPCW_CHECKED=1 submit "autoanatomist_$id" gpu "${screen[@]}" PART=series ${opts[@]+"${opts[@]}"} \
       --cpus 8 --mem 64G --time 12:00:00 --no-requeue -- autoanatomist.sbatch) || return 1
-    rm -f "$sent"
+    # The mark goes once the send's record stands, so a record that could not be written leaves the
+    # send read as one whose answer was lost, never as no send at all.
     autoanatomist_queued "$chain" "one GPU job, the plan's $trials trials one after another on one card, then the join on the same node"
+    [ ! -f "$report.part" ] || rm -f "$sent"
     echo "submitted the plan $id: one GPU job ($chain) that trains its $trials trials one after another on one card and then joins them, in $AUTOANATOMIST_ROOT/$id/$chain. Send autoanatomist $id again once it ends to read its report, logs/AUTOANATOMIST-$id.md."
     return 0
   fi
   chain=$(submit "autoanatomist_$id" gpu "${screen[@]}" PART=trial ${opts[@]+"${opts[@]}"} --array "0-$((trials - 1))" \
     --cpus 8 --mem 64G --time 12:00:00 --no-requeue -- autoanatomist.sbatch) || return 1
-  rm -f "$sent"
+  # The record names the array as soon as it is queued, before its join is asked for, so trials whose
+  # join is refused and whose cancel then fails leave a record a later send reads, and are never
+  # queued again on the same count; a send Slurm ended before any trial started reads as unstarted.
+  autoanatomist_queued "$chain" "the trials' array $chain, $trials tasks of a card each, and its join on a CPU node afterany it"
+  [ ! -f "$report.part" ] || rm -f "$sent"
   # Both or neither, as the DRR domain-gap study queues its steps: trials whose join was refused would
-  # leave no decision and no report.
-  if ! depend_on "afterany:$chain" || ! join=$(submit "autoanatomist_${id}_join" batch "${screen[@]}" PART=join TRIALS_JOB="$chain" \
+  # leave no decision and no report. The join waits for the setup as the trials do, so a setup that
+  # fails ends both before either starts, the send then reading as one that never started.
+  if ! depend_on "$(joined "$setup" "afterany:$chain")" || ! join=$(submit "autoanatomist_${id}_join" batch "${screen[@]}" PART=join TRIALS_JOB="$chain" \
     ${opts[@]+"${opts[@]}"} --cpus 4 --mem 16G --time 02:00:00 --no-requeue -- autoanatomist.sbatch); then
-    "$SCANCEL" "$chain" && echo "  cancelled the trials' array $chain, since its join was refused"
+    if "$SCANCEL" "$chain"; then
+      autoanatomist_note "join: refused, so the gate cancelled the trials' array $chain"
+      echo "  cancelled the trials' array $chain, since its join was refused"
+    else
+      autoanatomist_note "join: refused, and the gate's cancel of the trials' array $chain failed"
+      echo "  the join was refused and the cancel of the trials' array $chain failed: it may still run, and its record stands, so the plan is not queued again on this count"
+    fi
     return 1
   fi
-  autoanatomist_queued "$chain" "the trials' array $chain, $trials tasks of a card each, then the join $join on a CPU node afterany it"
+  autoanatomist_note "join: job $join on a CPU node, afterany the trials' array"
   echo "submitted the plan $id: the trials' array $chain ($trials tasks, each on the first card of the gpu class that frees) and the join $join afterany it on a CPU node, in $AUTOANATOMIST_ROOT/$id/$chain. Send autoanatomist $id again once they end to read its report, logs/AUTOANATOMIST-$id.md."
 }
 
