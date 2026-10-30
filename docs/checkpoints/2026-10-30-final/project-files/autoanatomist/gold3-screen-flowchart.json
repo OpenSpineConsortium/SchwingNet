@@ -1,0 +1,251 @@
+{
+  "about": "The auto-anatomist thread's gold tier 3 annealer screen, as data for the shared flowchart page (PIPE runs and N steps). Flow kind autoanatomist, class AutoanatomistFlow, gate word `autoanatomist <plan>`, driver grid/autoanatomist.sbatch, PREREG docs/research/autoanatomist-screen/PREREG.md, all on SchwingNet PR 483, none landed yet.",
+  "pipe": [
+    {
+      "run": "aa_smoke",
+      "title": "Gold 3 smoke (the auto-anatomist thread's)",
+      "jobs": "1 GPU job; proposed as greg's '1 short GPU smoke' if the planning thread agrees, else not counted yet",
+      "items": [
+        [
+          "node",
+          "aa_plan"
+        ],
+        [
+          "edge",
+          "4 CTs, their parts"
+        ],
+        [
+          "node",
+          "aa_rows"
+        ],
+        [
+          "edge",
+          "one crop per vertebra"
+        ],
+        [
+          "deck",
+          {
+            "label": "2 trials in series on one card",
+            "note": "lambda-then-w and the null, 300 steps each",
+            "subs": [
+              "aa_trial"
+            ]
+          }
+        ],
+        [
+          "edge",
+          "seconds per crop, both curves"
+        ],
+        [
+          "node",
+          "aa_join"
+        ]
+      ]
+    },
+    {
+      "run": "aa_screen",
+      "title": "Gold 3 annealer screen (the auto-anatomist thread's)",
+      "jobs": "2 jobs: 1 GPU array of 8 tasks, then 1 CPU join; not counted yet",
+      "items": [
+        [
+          "node",
+          "aa_plan"
+        ],
+        [
+          "edge",
+          "96 training and 24 validation CTs, split by person"
+        ],
+        [
+          "node",
+          "aa_rows"
+        ],
+        [
+          "edge",
+          "one crop per vertebra"
+        ],
+        [
+          "deck",
+          {
+            "label": "8 trials, one GPU card each",
+            "note": "4 anneal schedules x 2 seeds, 50 epochs",
+            "subs": [
+              "aa_trial"
+            ]
+          }
+        ],
+        [
+          "edge",
+          "each trial's validation numbers and curve"
+        ],
+        [
+          "node",
+          "aa_join"
+        ],
+        [
+          "edge",
+          "the table, the curves"
+        ],
+        [
+          "node",
+          "aa_report"
+        ]
+      ]
+    }
+  ],
+  "steps": {
+    "aa_plan": {
+      "step": "@step start",
+      "job": [
+        "file",
+        "inside each run"
+      ],
+      "title": "Plan and split",
+      "glyph": "plan",
+      "short": "Which CTs, which part each person is in, which trial this task is.",
+      "does": "Reads the plan file and the gold 3 store's ENHANCE.PET rows (CT and label map). Puts each person in train, validation or test by the project's frozen hash rule, and keeps a fixed subset by a second hash. Never reads a test person.",
+      "reads": "grid/screens/gold3_latent_screen.json (or gold3_latent_smoke.json); data/splits/rule.json; the gold 3 store's rows on the grid",
+      "writes": "RUN.json and the manifest of rows with their parts, in the run folder",
+      "waits": "SchwingNet PR 483 (the flow and the plans); the PREREG frozen",
+      "nums": [
+        [
+          96,
+          "training CTs"
+        ],
+        [
+          24,
+          "validation CTs"
+        ],
+        [
+          0,
+          "test CTs read"
+        ]
+      ]
+    },
+    "aa_rows": {
+      "step": "inside @step work",
+      "job": [
+        "file",
+        "each trial job builds them once, cached"
+      ],
+      "title": "Crops",
+      "glyph": "crop",
+      "short": "A box around every vertebra, centred on its mask.",
+      "does": "Cuts one crop per labelled vertebra around the mask's centroid, top down, with no landmark oracle. 48 x 56 x 32 voxels at 2 mm. Shares the volume rows with a person key that your stage 4 reads; my crops are whole columns, your three-body windows are yours.",
+      "reads": "the CTs and label maps (NIfTI) on the grid",
+      "writes": "a crop cache named by each row's digest, so a rerun reads it back",
+      "waits": "bordercall PR 40 (frame=centroid), vendored at afe1952 on PR 483",
+      "nums": [
+        [
+          48,
+          "x 56 x 32 voxels a crop"
+        ],
+        [
+          2,
+          "mm a voxel"
+        ]
+      ]
+    },
+    "aa_trial": {
+      "step": "@step work (part trial)",
+      "job": [
+        "gpu",
+        "one array task, one card"
+      ],
+      "title": "Train one schedule",
+      "glyph": "train",
+      "short": "50 epochs of the fully latent network under one anneal schedule.",
+      "legend": "New drawing, the anneal: a strip of four small panels of what the privileged branch sees as lambda rises, (1) the target vertebra's mask, (2) every vertebra's mask, (3) both blurred, (4) a soft threshold of the CT; under it w, that branch's weight, falling from 1 to 0. Beside it four tiny curve pairs over training: lambda-then-w (lambda rises over 15-55 percent of the steps, w falls over 45-85), joint (both over 15-55), w-first (w over 15-55, lambda over 45-85), and the null, flat at lambda 1 and w 0.",
+      "does": "Trains objective=mask: the decoder gives the privileged mask channels back and a name head reads the bottleneck, with no measurement anywhere. Only the anneal varies between arms. The null never anneals: it reads the CT alone from step 0, so it is the network with no privileged information. Then evaluates on the validation persons.",
+      "reads": "the training crops; the trial's words (schedule, seed)",
+      "writes": "the trial's ledger entry (final validation Dice, mean surface distance in mm, name accuracy), its per-epoch curve, the checkpoint, the latent vector of every validation crop",
+      "waits": "a GPU card; nothing else",
+      "jobnote": "An epoch is ceil(training CTs / batch) steps at batch 2 whole spines, so 48 steps; 50 epochs is 2,400 steps. The anneal spans the whole run.",
+      "nums": [
+        [
+          8,
+          "trials"
+        ],
+        [
+          4,
+          "schedules"
+        ],
+        [
+          2,
+          "seeds each"
+        ],
+        [
+          50,
+          "epochs"
+        ],
+        [
+          2400,
+          "steps a trial"
+        ]
+      ]
+    },
+    "aa_join": {
+      "step": "@step work (part join)",
+      "job": [
+        "cpu",
+        "afterany the array"
+      ],
+      "title": "Compare with the null",
+      "glyph": "mergeScreen",
+      "short": "Does any anneal schedule beat no anneal at all?",
+      "does": "Gathers the 8 ledger entries. A schedule beats the null when both its seeds' final validation surface distance sit below both null seeds'. Plots every trial's curve. A trial that failed is shown failed, never dropped.",
+      "reads": "the 8 trials' ledger entries",
+      "writes": "DECISION.json, the curves, the table",
+      "waits": "the array, afterany"
+    },
+    "aa_report": {
+      "step": "@step end",
+      "job": [
+        "none",
+        "in the join job"
+      ],
+      "title": "Report",
+      "glyph": "report",
+      "short": "Plots with short notes, and the CLAIM report.",
+      "does": "Writes the CLAIM and REFORMS report from the run folders, plots first.",
+      "reads": "DECISION.json and the curves",
+      "writes": "the report under the run folder",
+      "waits": "the join"
+    }
+  },
+  "placement": "Beside your stage 4, independent of your stages 1 to 3: it needs no export, no PDM and no head block. It shares the volume rows with a person key. Its question is the anneal schedule with the head held at F; yours is the head with the schedule held.",
+  "decisions": [
+    {
+      "who": "greg",
+      "card": "Start with a fully latent approach: objective=mask, no measurement in the loss."
+    },
+    {
+      "who": "greg",
+      "card": "Short 50-epoch runs, as many in parallel as possible, each trial its own GPU card."
+    },
+    {
+      "who": "the auto-anatomist thread",
+      "card": "The question is whether the annealer helps, so the arms are the anneal schedules and the null never anneals.",
+      "why": "greg asked to evaluate the annealer's performance; a null with no privileged information is the only fair yardstick."
+    },
+    {
+      "who": "the auto-anatomist thread",
+      "card": "Two seeds each, 8 trials.",
+      "why": "8 cards in one array; the decision needs every seed of an arm to beat every null seed, so one seed cannot pass by luck."
+    },
+    {
+      "who": "the auto-anatomist thread",
+      "card": "ENHANCE.PET CTs only, 96 training and 24 validation.",
+      "why": "One label scheme, and 1,558 of the store's 1,733 gold 3 rows (1,725 of them allowed for training); a short run that answers in hours. VerSe and TotalSegmentator join the full run."
+    },
+    {
+      "who": "the auto-anatomist thread",
+      "card": "The naming term is off; the name head stays on.",
+      "why": "The naming term needs every spine to have the same count of crops, and real columns differ. The name head reads each crop alone."
+    },
+    {
+      "who": "the auto-anatomist thread",
+      "card": "JAX 0.10.2 and Flax 0.12.8 on the grid.",
+      "why": "The grid's training environment is Python 3.11, which the newest JAX does not support; bordercall's 86 tests pass on these versions."
+    }
+  ]
+}
