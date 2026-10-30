@@ -163,7 +163,7 @@ node_ready() {  # node_ready gpu|cpu: the copy, the freeze, the plan, the card a
   copy_code || { report "FAILED: the code at ${COMMIT:0:7} could not be copied under $OUT"; part_end 2; }
   report "code: commit $COMMIT copied to $CODE, which every part of the chain runs"
   prereg_frozen || { report "STOP: PREREG.md changed since the freeze"; part_end 90; }
-  report "PREREG.md: $STUDY_DIR's, as frozen, sha256 $(cut -c1-16 "$CODE/$STUDY_DIR/PREREG.md.sha256")"
+  report "PREREG.md: as frozen, sha256 $(cut -c1-16 "$CODE/$STUDY_DIR/PREREG.md.sha256")"
   [ -f "$CODE/grid/screens/$PLAN.json" ] || { report "FAILED: no grid/screens/$PLAN.json at ${COMMIT:0:7}"; part_end 2; }
   if [ "$1" = gpu ]; then
     # The card is read here, on the node, and not inside the container, whose nvidia-smi only --nv brings in.
