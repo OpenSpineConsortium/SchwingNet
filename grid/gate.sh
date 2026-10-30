@@ -1797,6 +1797,7 @@ word_census() {  # the gold tier census (the owner's tap of 2026-10-29 12:26 UTC
     echo "## $(basename "$report") ($(date -r "$report" '+%F %T'))"
     head -n 400 "$report" | LC_ALL=C tr -cd '\11\12\40-\176' | report_shapes | masked | head -c 40000
     job=$(census_job_of "$report")
+    census_detail "$job"
     census_rerun_allowed "$job" || return 0
     mv "$report" "$LOGS/CENSUS-$id-$job.md" || return 1
     again="is job $job's, which CENSUS_RERUNS lets the owner's count run once more"
@@ -1835,6 +1836,43 @@ word_census() {  # the gold tier census (the owner's tap of 2026-10-29 12:26 UTC
   submit "census_$id" batch CENSUS_COMMIT="$(git -C "$REPO" rev-parse HEAD 2>/dev/null || echo "")" -- gold3-census.sbatch > /dev/null || return 1
   rm -f "$sent"
   echo "submitted the census $id job: one CPU job that reads only and segments nothing. Send census $id again once it ends to read its report, logs/CENSUS-$id.md."
+}
+census_detail() {  # census_detail JOB: the two readings the report counts and the owner's rule needs by name (the owner, 2026-10-29 23:46 UTC)
+  # The report carries counts alone. Two of them name what a pull request then records: the planes of
+  # each TotalSegmentator CT the extent part found padded (constant slices at an end), which the CT's
+  # own extent rule reads in place of the cord's guess (tools/gold3_field.py, data/gold3-ct/totalsegmentator/planes.json),
+  # and VerSe's recorded mask names the held part found missing under the data root's VerSeFusion copy,
+  # which the repair fetches. Both are public ids and heights in millimetres, no path; the detail file
+  # stays where the job left it, and the names are read here on the login node, as status reads a quota.
+  local detail="${CENSUS_ROOT:-$VOLUME/go2432/gold3_census}/$1/extent.json" verse=$DATA_ROOT/versefusion/raw/VerSeFusion_data/raw
+  echo "## census gold3 detail: the padded TotalSegmentator CTs' own planes (id, top mm, foot mm; none where the CT ends at its grid), job $1"
+  if [ -f "$detail" ]; then
+    # extent.json is json.dumps(indent=1, sort_keys=True): under "judged" each subject's planes are two
+    # lines after its "planes": [ line, null where the CT gives no plane at that end.
+    awk '
+      /^ "judged": \{$/ { judged = 1; next }
+      judged && /^ "/ { judged = 0 }
+      !judged { next }
+      /^  "[A-Za-z0-9_-]+": \{$/ { id = $1; gsub(/[":]/, "", id); next }
+      /^   "planes": \[$/ { want = 2; top = ""; next }
+      want == 2 { top = $1; sub(/,$/, "", top); want = 1; next }
+      want == 1 { foot = $1; sub(/,$/, "", foot); want = 0
+        if (top != "null" || foot != "null") { gsub(/null/, "none", top); gsub(/null/, "none", foot); print "  planes " id " " top " " foot; listed++ }
+        next }
+      END { print "  planes listed " (listed + 0) "; every other subject the report says it judged again has no padded end and keeps its field" }
+    ' "$detail" | LC_ALL=C tr -cd '\11\12\40-\176' | masked
+  else
+    echo "  no extent detail for job $1 where the census keeps it; the planes are not read"
+  fi
+  echo "## census gold3 detail: VerSe's recorded mask names not found under the data root's VerSeFusion copy"
+  if [ -d "$verse" ] && [ -f "$REPO/data/gold3-ct/verse/facts.jsonl" ]; then
+    LC_ALL=C comm -23 <(grep -o '"[A-Za-z0-9_-]*_seg\.nii\.gz"' "$REPO/data/gold3-ct/verse/facts.jsonl" | tr -d '"' | sort -u) \
+                      <(find "$verse" -type f -name '*_seg.nii.gz' -printf '%f\n' 2>/dev/null | sort -u) \
+      | sed 's/^/  not found /' | masked
+    echo "  (the names are the facts' $(grep -o '"[A-Za-z0-9_-]*_seg\.nii\.gz"' "$REPO/data/gold3-ct/verse/facts.jsonl" | sort -u | wc -l) recorded, matched by name alone; the report's count matched the bytes too)"
+  else
+    echo "  no VerSeFusion copy under the data root, or no facts at this commit; the names are not read"
+  fi
 }
 census_job_of() {  # the job number a census report's first line names
   head -n 1 "$1" | sed -n 's/^# census [a-z0-9]*: job \([0-9][0-9]*\) .*/\1/p'
