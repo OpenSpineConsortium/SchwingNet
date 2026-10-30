@@ -10,7 +10,7 @@ could not be taken. Nothing is resampled, reoriented or written back.
 from __future__ import annotations
 
 import math
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 from scipy import ndimage
@@ -186,7 +186,11 @@ def column_line(cents: List[np.ndarray], whole: List[bool], superior: np.ndarray
 
 
 def measure_volume(vol: np.ndarray, grid: G.VoxelGrid, names: Dict[int, str], study: str,
-                   pelvis: bool = True) -> List[Dict[str, object]]:
+                   pelvis: bool = True, keep: Optional[dict] = None) -> List[Dict[str, object]]:
+    """The study's rows. Where `keep` is given it is filled with what the rows were read from, so
+    that the lines of the measures (morphoview.lines) are drawn on the same vertebrae and checked
+    against the same values: "verts" and "peds" by level, "values" by level, and "discs", the
+    disc's values by its pair of levels."""
     vox = V.vertebra_voxels(vol, names)
     rows: List[Dict[str, object]] = []
     for lv in list(vox):
@@ -202,6 +206,8 @@ def measure_volume(vol: np.ndarray, grid: G.VoxelGrid, names: Dict[int, str], st
     verts: Dict[str, A.Vertebra] = {}
     peds: Dict[str, Dict[str, dict]] = {}
     depths: Dict[str, float] = {}
+    values: Dict[str, Dict[str, float]] = {}
+    disc_values: Dict[Tuple[str, str], Dict[str, float]] = {}
     for lv in spine:
         if lv in SKIP:
             continue
@@ -216,11 +222,14 @@ def measure_volume(vol: np.ndarray, grid: G.VoxelGrid, names: Dict[int, str], st
             continue
         vals, flags, ped = vertebra_values(v)
         rows += rows_of(study, lv, vals, flags)
-        verts[lv], peds[lv], depths[lv] = v, ped, vals.get("endplate_depth", NAN)
+        verts[lv], peds[lv], depths[lv], values[lv] = v, ped, vals.get("endplate_depth", NAN), vals
     measured = [lv for lv in LEVELS if lv in verts]
     for a, b in zip(measured, measured[1:]):
         if adjacent(a, b, vox) and not verts[a].touching[verts[a].body].any() and not verts[b].touching[verts[b].body].any():
-            rows += rows_of(study, "%s-%s" % (a, b), COL.disc(verts[a], verts[b], peds[a], peds[b], depths[b]), {})
+            disc_values[(a, b)] = COL.disc(verts[a], verts[b], peds[a], peds[b], depths[b])
+            rows += rows_of(study, "%s-%s" % (a, b), disc_values[(a, b)], {})
+    if keep is not None:
+        keep.update(verts=verts, peds=peds, values=values, discs=disc_values)
     pel: Dict[str, object] = {}
     if pelvis:
         pel, flags = PELVIS.measures(vol, grid, verts, present=vox)
@@ -229,9 +238,9 @@ def measure_volume(vol: np.ndarray, grid: G.VoxelGrid, names: Dict[int, str], st
     return rows
 
 
-def measure_file(labels: str, scheme: str, study: str) -> List[Dict[str, object]]:
+def measure_file(labels: str, scheme: str, study: str, keep: Optional[dict] = None) -> List[Dict[str, object]]:
     vol, grid, names, problems, _ = V.read_labels(labels, scheme)
-    rows = measure_volume(vol, grid, names, study, pelvis=(scheme == "enhance"))
+    rows = measure_volume(vol, grid, names, study, pelvis=(scheme == "enhance"), keep=keep)
     for p in problems:
         rows.append({"study": study, "level": "study", "key": "flag:labels", "value": "", "note": p})
     return rows

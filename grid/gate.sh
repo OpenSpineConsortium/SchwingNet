@@ -158,8 +158,8 @@
 #                   report kept as logs/TOTALSEG-complete-<job>.md, only where TOTALSEG_RERUNS, committed by pull
 #                   request, carries his word for it
 #   morphometry <set>  bordercall's morphometry engine (the packages morphometry, scanimport and screening,
-#                   pinned under grid/bordercall/ beside the archived package, bordercall ee495d5 since
-#                   2026-10-30) over one gold tier 3 set (the thread "Extract morphometrics from gold tier 3
+#                   and morphoview's lines, pinned under grid/bordercall/ beside the archived package,
+#                   bordercall 9c85de1 since 2026-10-30) over one gold tier 3 set (the thread "Extract morphometrics from gold tier 3
 #                   CT"; the owner's count of 2026-10-29 15:19 UTC: two CPU jobs, and of 2026-10-30 14:33 UTC:
 #                   one more a set and the join once more; grid/morphometry.sbatch): enhance, every ENHANCE.PET
 #                   vertebra label map, or verse, VerSe's 374 int16 copies and then TotalSegmentator's 159
@@ -356,8 +356,9 @@ COVARIATES_RERUNS="covariates:40878978"
 # ended 0 does, since any merge moves the checkout. enhance:40872077 and verse:40877151 are
 # the owner's choice of 2026-10-30 14:33 UTC on the decision card "How many grid jobs for the morphometry
 # rerun on the new engine?", "Three: enhance, verse, covariates": each set measured once more on the
-# merged engine, bordercall ee495d5 (code stamp a56adf14a9e98b15, where both reports name the
-# 81e732f142d3aa16 of bordercall 16f7b40), then the join once more (COVARIATES_RERUNS).
+# merged engine, now bordercall 9c85de1 with morphoview's lines (code stamp 1cee7ea83e4c28db with
+# --lines; ee495d5's was a56adf14a9e98b15, where both reports name the 81e732f142d3aa16 of bordercall
+# 16f7b40), then the join once more (COVARIATES_RERUNS).
 MORPHOMETRY_RERUNS="enhance:40872077 verse:40877151"
 # The owner's word for one more totalseg complete job, complete:<job of the report or the record it
 # replaces>, or complete:lost for a submission whose answer was lost; one word, one more job (word_totalseg). complete:40882547 is his tap of 2026-10-30 16:49 UTC
