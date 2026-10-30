@@ -324,6 +324,12 @@ AUTOANATOMIST_AFTER="gold3_latent_screen:gold3_latent_smoke gold3_latent_smoke2:
 # The owner's word for one more send of a plan whose record stands, <plan>:<job that record's first line
 # names>, or <plan>:lost for a submission whose answer was lost; one word, one more send.
 AUTOANATOMIST_RERUNS=""
+# The partition every GPU part of the screen is sent to (word_autoanatomist): galhp, whose cards are
+# L40S, and not the gpu class's three. The first smoke's first send (job 40884715, 2026-10-30 18:26
+# UTC) landed on a V100 of gvohp, and both its trials stopped at their first compile, JAX 0.10.2's
+# GPU compiler finding no configuration for 46 of 218 instructions on that card; each trial still
+# names its card (the report's GPU line, environment.json). DEVIATIONS.md beside the PREREG, item 1.
+AUTOANATOMIST_PARTITION=galhp
 # The owner's word for one more join of the morphometry rows with sex and age, covariates:<job of the
 # report or the record it replaces>, or covariates:lost for a submission whose answer was lost, then
 # covariates:lost2 for the next such and on, each spent once (logs/MORPHOMETRY-covariates.lost records
@@ -2577,7 +2583,7 @@ word_autoanatomist() {  # one plan of the auto-anatomist screen, on the owner's 
     return 90
   }
   hpcw_check "autoanatomist_$id" gpu "${screen[@]}" PART="$([ "$layout" = series ] && echo series || echo trial)" \
-    --cpus 8 --mem 64G --time 12:00:00 --no-requeue -- autoanatomist.sbatch || return 1
+    --partition "$AUTOANATOMIST_PARTITION" --cpus 8 --mem 64G --time 12:00:00 --no-requeue -- autoanatomist.sbatch || return 1
   if [ "$layout" = array ]; then
     hpcw_check "autoanatomist_${id}_join" batch "${screen[@]}" PART=join TRIALS_JOB=1 --cpus 4 --mem 16G --time 02:00:00 --no-requeue -- autoanatomist.sbatch || return 1
   fi
@@ -2589,20 +2595,20 @@ word_autoanatomist() {  # one plan of the auto-anatomist screen, on the owner's 
   echo "$(date -u '+%F %T') UTC at commit $commit" > "$sent"
   if [ "$layout" = series ]; then
     chain=$(HPCW_CHECKED=1 submit "autoanatomist_$id" gpu "${screen[@]}" PART=series ${opts[@]+"${opts[@]}"} \
-      --cpus 8 --mem 64G --time 12:00:00 --no-requeue -- autoanatomist.sbatch) || return 1
+      --partition "$AUTOANATOMIST_PARTITION" --cpus 8 --mem 64G --time 12:00:00 --no-requeue -- autoanatomist.sbatch) || return 1
     # The mark goes once the send's record stands, so a record that could not be written leaves the
     # send read as one whose answer was lost, never as no send at all.
-    autoanatomist_queued "$chain" "one GPU job, the plan's $trials trials one after another on one card, then the join on the same node"
+    autoanatomist_queued "$chain" "one GPU job on $AUTOANATOMIST_PARTITION, the plan's $trials trials one after another on one card, then the join on the same node"
     [ ! -f "$report.part" ] || rm -f "$sent"
     echo "submitted the plan $id: one GPU job ($chain) that trains its $trials trials one after another on one card and then joins them, in $AUTOANATOMIST_ROOT/$id/$chain. Send autoanatomist $id again once it ends to read its report, logs/AUTOANATOMIST-$id.md."
     return 0
   fi
   chain=$(submit "autoanatomist_$id" gpu "${screen[@]}" PART=trial ${opts[@]+"${opts[@]}"} --array "0-$((trials - 1))" \
-    --cpus 8 --mem 64G --time 12:00:00 --no-requeue -- autoanatomist.sbatch) || return 1
+    --partition "$AUTOANATOMIST_PARTITION" --cpus 8 --mem 64G --time 12:00:00 --no-requeue -- autoanatomist.sbatch) || return 1
   # The record names the array as soon as it is queued, before its join is asked for, so trials whose
   # join is refused and whose cancel then fails leave a record a later send reads, and are never
   # queued again on the same count; a send Slurm ended before any trial started reads as unstarted.
-  autoanatomist_queued "$chain" "the trials' array $chain, $trials tasks of a card each, and its join on a CPU node afterany it"
+  autoanatomist_queued "$chain" "the trials' array $chain, $trials tasks of a card of $AUTOANATOMIST_PARTITION each, and its join on a CPU node afterany it"
   [ ! -f "$report.part" ] || rm -f "$sent"
   # Both or neither, as the DRR domain-gap study queues its steps: trials whose join was refused would
   # leave no decision and no report. The join waits for the setup as the trials do, so a setup that
@@ -2619,7 +2625,7 @@ word_autoanatomist() {  # one plan of the auto-anatomist screen, on the owner's 
     return 1
   fi
   autoanatomist_note "join: job $join on a CPU node, afterany the trials' array"
-  echo "submitted the plan $id: the trials' array $chain ($trials tasks, each on the first card of the gpu class that frees) and the join $join afterany it on a CPU node, in $AUTOANATOMIST_ROOT/$id/$chain. Send autoanatomist $id again once they end to read its report, logs/AUTOANATOMIST-$id.md."
+  echo "submitted the plan $id: the trials' array $chain ($trials tasks, each on the first card of $AUTOANATOMIST_PARTITION that frees) and the join $join afterany it on a CPU node, in $AUTOANATOMIST_ROOT/$id/$chain. Send autoanatomist $id again once they end to read its report, logs/AUTOANATOMIST-$id.md."
 }
 
 word_samples() {

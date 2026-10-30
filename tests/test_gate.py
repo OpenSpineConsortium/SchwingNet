@@ -3579,6 +3579,8 @@ exit "${FAKE_RC:-0}"
         self.assertIn('\nAUTOANATOMIST_COUNTED="gold3_latent_smoke gold3_latent_screen gold3_latent_smoke2 '
                       'gold3_latent_screen2"\n', gate)
         self.assertIn('\nAUTOANATOMIST_RERUNS=""\n', gate)
+        # every GPU part goes to galhp's L40S cards: the first smoke's first send stopped at its compile on a V100
+        self.assertIn('\nAUTOANATOMIST_PARTITION=galhp\n', gate)
         # and each screen waits for its smoke, the second smoke for the first, as its PREREG says (sections 5, 8)
         self.assertIn('\nAUTOANATOMIST_AFTER="gold3_latent_screen:gold3_latent_smoke gold3_latent_smoke2:gold3_latent_smoke '
                       'gold3_latent_screen2:gold3_latent_smoke2"\n', gate)
@@ -3625,7 +3627,8 @@ exit "${FAKE_RC:-0}"
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
         lines = self.submitted()
         self.assertEqual(len(lines), 1, lines)
-        for said in (f"--class gpu --name autoanatomist_{self.SCREEN} --cpus 8 --mem 64G --time 12:00:00 --no-requeue autoanatomist.sbatch |",
+        # on galhp's L40S cards alone, since JAX 0.10.2 found no configuration for the trials' compile on a V100
+        for said in (f"--class gpu --name autoanatomist_{self.SCREEN} --partition galhp --cpus 8 --mem 64G --time 12:00:00 --no-requeue autoanatomist.sbatch |",
                      " PART=series ", f" PLAN={self.SCREEN} ", " TRIAL_TASKS=2 ", f" AUTOANATOMIST_ROOT={self.screen_root()}"):
             self.assertIn(said, lines[0])
         full = re.search(r" AUTOANATOMIST_COMMIT=([0-9a-f]{40}) ", lines[0])
@@ -3693,7 +3696,8 @@ exit "${FAKE_RC:-0}"
         lines = self.submitted()
         self.assertEqual(len(lines), 3, lines)
         array, join = lines[1:]
-        self.assertIn(f"--class gpu --name autoanatomist_gold3_latent_screen --array 0-{trials - 1} --cpus 8 --mem 64G --time 12:00:00 --no-requeue autoanatomist.sbatch |", array)
+        self.assertIn(f"--class gpu --name autoanatomist_gold3_latent_screen --array 0-{trials - 1} --partition galhp --cpus 8 --mem 64G "
+                      "--time 12:00:00 --no-requeue autoanatomist.sbatch |", array)
         self.assertIn(" PART=trial ", array)
         self.assertIn(f" TRIAL_TASKS={trials} ", array)
         self.assertIn("--class batch --name autoanatomist_gold3_latent_screen_join --dependency=afterany:102 --kill-on-invalid-dep=yes "
@@ -3823,6 +3827,7 @@ exit "${FAKE_RC:-0}"
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
         self.assertIn("trains its 5 trials one after another on one card", done.stdout)
         self.assertEqual(len(self.submitted()), 1)
+        self.assertIn("--class gpu --name autoanatomist_gold3_latent_smoke2 --partition galhp ", self.submitted()[0])
         (logs / "AUTOANATOMIST-gold3_latent_smoke2.md.part").unlink()
         (logs / "AUTOANATOMIST-gold3_latent_smoke2.md").write_text(
             f"# autoanatomist gold3_latent_smoke2: job 4041 on node, commit {commit}, 2026-10-30 12:00:00 UTC\n"
@@ -3832,7 +3837,9 @@ exit "${FAKE_RC:-0}"
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
         self.assertEqual(len(self.submitted()), 3)
         self.assertIn("the trials' array", done.stdout)
-        self.assertIn("(12 tasks,", done.stdout)
+        self.assertIn("(12 tasks, each on the first card of galhp that frees)", done.stdout)
+        self.assertIn("--class gpu --name autoanatomist_gold3_latent_screen2 --array 0-11 --partition galhp ", self.submitted()[1])
+        self.assertNotIn("--partition", self.submitted()[2])
 
     def test_autoanatomist_join_waits_for_the_setup_as_the_trials_do(self):
         # environments not made from this lock: the setup job rebuilds them, and both parts of the screen wait for it,
