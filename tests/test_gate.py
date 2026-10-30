@@ -3573,10 +3573,10 @@ exit "${FAKE_RC:-0}"
         return report
 
     def test_autoanatomist_refuses_a_plan_without_the_owners_count_a_frozen_cover_or_its_inputs(self):
-        # the committed count is the owner's: the smoke of 03:20 UTC, the screen's two jobs of 08:56 UTC and
-        # the second screen he chose at 16:52 UTC, and no plan is sent again on his word yet
+        # the committed count is the owner's: the smoke of 03:20 UTC and the screen's two jobs of 08:56 UTC;
+        # the second screen waits for his count, and no plan is sent again on his word yet
         gate = (ROOT / "grid" / "gate.sh").read_text(encoding="utf-8")
-        self.assertIn('\nAUTOANATOMIST_COUNTED="gold3_latent_smoke gold3_latent_screen gold3_latent_smoke2 gold3_latent_screen2"\n', gate)
+        self.assertIn('\nAUTOANATOMIST_COUNTED="gold3_latent_smoke gold3_latent_screen"\n', gate)
         self.assertIn('\nAUTOANATOMIST_RERUNS=""\n', gate)
         # every GPU part goes to galhp's L40S cards: the smoke's first send stopped at its compile on a V100
         self.assertIn('\nAUTOANATOMIST_PARTITION=galhp\n', gate)
@@ -3633,6 +3633,11 @@ exit "${FAKE_RC:-0}"
     def test_autoanatomist_sends_the_second_screens_plans_as_their_own_kind_after_the_first_screens_verdict(self):
         commit = self.screen_ready()
         logs = self.repo / "grid" / "logs"
+        # uncounted, the second screen's plans wait for the owner's word and count
+        refused = self.gate("autoanatomist", "gold3_latent_smoke2")
+        self.assertEqual(refused.returncode, 64, refused.stdout)
+        self.assertIn("AUTOANATOMIST_COUNTED", refused.stdout)
+        self.set_gate_line("AUTOANATOMIST_COUNTED", "gold3_latent_smoke gold3_latent_screen gold3_latent_smoke2 gold3_latent_screen2")
         # its plan is held to the second screen's PREREG, which the first screen's does not stand in for
         refused = self.gate("autoanatomist", "gold3_latent_smoke2")
         self.assertEqual(refused.returncode, 90, refused.stdout)

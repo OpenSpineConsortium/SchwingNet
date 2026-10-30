@@ -311,12 +311,11 @@ AUTOANATOMIST_ROOT=${AUTOANATOMIST_ROOT:-$VOLUME/go2432/autoanatomist}
 # 03:20 UTC ("2 CPU 2 GPU 2 Full run plus 1 short GPU smoke is fine"): one GPU job, its two trials in
 # series and the join. gold3_latent_screen, a GPU array of eight trials and a CPU join afterany it, is
 # the two jobs of his word of 2026-10-30 08:56 UTC ("Yes to both", to the ask that named those two jobs
-# and said they were outside the 03:20 count). gold3_latent_smoke2 (one GPU job, five trials in series
-# and the join) and gold3_latent_screen2 (a GPU array of twelve trials and a CPU join afterany it), the
-# second screen (docs/research/autoanatomist-screen2/PREREG.md), are the owner's choice of 2026-10-30
-# 16:52 UTC ("Build 4 arms after the demo", with a frozen plan for a second screen) under his rule of
-# 16:59 UTC that a thread sends the grid jobs of its agreed work without asking each time.
-AUTOANATOMIST_COUNTED="gold3_latent_smoke gold3_latent_screen gold3_latent_smoke2 gold3_latent_screen2"
+# and said they were outside the 03:20 count). The second screen's plans, gold3_latent_smoke2 (one GPU
+# job, five trials in series and the join) and gold3_latent_screen2 (a GPU array of twelve trials and a
+# CPU join afterany it), are not counted: they wait for the owner's word and count, since his rule of
+# 2026-10-30 21:21 UTC is that every grid job needs both until he lifts it.
+AUTOANATOMIST_COUNTED="gold3_latent_smoke gold3_latent_screen"
 # The plans sent only once another plan's report ends in exit 0, <plan>:<the plan before it>
 # (word_autoanatomist): the PREREG (section 5) sends the screen only after the smoke's two trials and
 # its join end in exit 0, so the screen's eight cards wait for the smoke to show the code runs. The
