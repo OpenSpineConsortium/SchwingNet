@@ -220,6 +220,11 @@ def test_a_row_off_the_frozen_split_or_on_the_test_list_is_refused() -> None:
     assert "the rule puts" in rows_problems(moved, SALT, SHARE, NO_TEST)[0]
     assert "the rule" in rows_problems(record, "another-salt", SHARE, NO_TEST)[0]
     assert "the rule" in rows_problems(record, SALT, 0.2, NO_TEST)[0]
+    # the trial reads a row's files by its item, so an item on a test list is refused under any person
+    swapped = copy.deepcopy(record)
+    swapped["rows"][0]["item"] = "enhance_pet:7777"
+    found = rows_problems(swapped, SALT, SHARE, frozenset({"enhance_pet:7777"}))
+    assert found == ["rows: enhance_pet:7777 is itself on a test list, whatever person the row names"]
 
 
 def test_a_study_outside_its_units_part_is_refused_and_one_inside_or_in_no_unit_is_not() -> None:
@@ -241,6 +246,11 @@ def test_a_study_outside_its_units_part_is_refused_and_one_inside_or_in_no_unit_
     assert found == [f"units: the unit {TRAIN[4]} does not hold its own key"]
     found = unit_problems(rows, {TRAIN[4]: (TRAIN[4], trained), VALIDATION[0]: (VALIDATION[0], trained)}, SALT, SHARE, NO_TEST)
     assert found == [f"units: {trained} is in two units, {TRAIN[4]} and {VALIDATION[0]}"]
+    # a unit holding a held-back study beside others would let its repeat scans train
+    listed = frozenset({"enhance_pet:9999"})
+    found = unit_problems(rows, {TRAIN[4]: (TRAIN[4], "enhance_pet:9999")}, SALT, SHARE, listed)
+    assert found == [f"units: the unit {TRAIN[4]} holds enhance_pet:9999 of a test list beside studies of none"]
+    assert unit_problems(rows, {"enhance_pet:9999": ("enhance_pet:9999",)}, SALT, SHARE, listed) == []
     with pytest.raises(ViolationError):
         unit_problems(rows, {}, SALT, 1.0, NO_TEST)
 
@@ -338,6 +348,7 @@ ENTRY_FAULTS = {
     "names epoch 5 at 6 steps": lambda e: e["epochs"][0].update(epoch=5),
     "not epoch 3 at 9": lambda e: e["epochs"][1].update(steps=8),
     "no number and no null": lambda e: e["epochs"][0].update(dice=math.nan),
+    "loss of epoch 2 is not a finite number, so the trial diverged": lambda e: e["epochs"][0].update(loss=None),
     "measure no number": lambda e: e["epochs"][1].update(surface_missing=-1),
     "holds epoch, steps": lambda e: e["epochs"][1].pop("centroid_mm"),
     "not the reading after the last epoch": lambda e: e["final"].update(dice=0.75),

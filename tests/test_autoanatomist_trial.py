@@ -1,7 +1,8 @@
 """The auto-anatomist screen's trial and join, run for real on small synthetic CTs: two trials of a
 CPU plan train, read their validation CT after each epoch and write entries the join reads and
 decides on, a label the plan does not name never reaches a crop, a row whose CT is missing is
-refused with 2, and environments other than the pinned one are refused with 3.
+refused with 2, environments other than the pinned one are refused with 3, and a trial whose loss or
+weights stop being finite numbers stops with 1 before it reads.
 
 It needs the trial's environment, the packages schwingnet.autoanatomist_screen.PINS names beside
 beartype and icontract, which neither CI's python3 nor the pixi environments hold, so it is skipped
@@ -57,7 +58,7 @@ def plan_record(rows):
             "data": {"synth": {"ct": "ct", "labels": "labels", "labels_folder": "Vertebrae", "names": NAMED}},
             "rows": rows, "split": {"salt": "s", "validation_share": 0.5}, "test": "off",
             "fixed": ["objective=mask", "naming=off", "widths=4:8:8"],
-            "arms": {"joint": ["schedule=joint"], "null": ["schedule=fixed", "lam_fixed=1", "w_fixed=0"]},
+            "arms": {"joint": ["schedule=joint"], "null": ["schedule=fixed", "lam_fixed=1", "w_fixed=0", "w_feature=0"]},
             "null": "null", "seeds": [1], "epochs": 2, "evaluate_every": 1, "batch": 2, "measure": "distance_mm"}
 
 
@@ -101,6 +102,10 @@ class TrialTest(unittest.TestCase):
             self.assertTrue((folder / "session" / "state.npz").is_file())
             environment = json.loads((folder / "environment.json").read_text(encoding="utf-8"))
             self.assertEqual(environment["crops"], {"train": 15, "validation": 5})
+            self.assertEqual(environment["matmul_precision"], "highest")
+            self.assertIn("jax", environment["gpu_stack"])
+            self.assertEqual(environment["step_seconds"]["steps"], 4)
+            self.assertGreater(entry["seconds_per_crop"], 0.0)
             self.assertFalse((folder / "why.txt").exists())
 
     def test_the_latents_are_keyed_by_row_and_level_and_no_unnamed_label_reaches_a_crop(self):
@@ -155,6 +160,84 @@ class TrialTest(unittest.TestCase):
         self.assertEqual(done.returncode, 2, done.stdout + done.stderr)
         self.assertIn("outside the array", done.stdout)
         self.assertFalse(out.exists())
+
+
+def load_tool():
+    """The trial tool as a module; it puts its own folders on the path as it loads, so the test's
+    path is put back after."""
+    kept = list(sys.path)
+    try:
+        spec = importlib.util.spec_from_file_location("autoanatomist_trial", TRIAL)
+        tool = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(tool)
+    finally:
+        sys.path[:] = kept
+    return tool
+
+
+@unittest.skipIf(MISSING, f"needs the trial's environment ({', '.join(MISSING)} missing)")
+class DivergenceTest(unittest.TestCase):
+    """A diverged network outlines nothing, so every crop would read the worst distance as though
+    it were a result: the trial stops with 1 at the first loss, or the first reading's weights,
+    that is not a finite number."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.tool = load_tool()
+        rows = [{"item": f"synth:{n:04d}", "person": f"synth:{n:04d}", "part": part, "source": "synth"}
+                for n, part in enumerate(("train", "train", "train", "validation"))]
+        cls.plan = cls.tool.plan_of(plan_record(rows))
+        cls.tmp = tempfile.TemporaryDirectory()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.tmp.cleanup()
+
+    def session(self, nan_weights):
+        import jax
+        import jax.numpy as jnp
+        from flax import nnx
+
+        sys.path.insert(0, str(ROOT / "grid" / "autoanatomist"))
+        try:
+            from autoanatomist.blocks import parse
+            from autoanatomist.session import Session
+        finally:
+            sys.path.remove(str(ROOT / "grid" / "autoanatomist"))
+        session = Session.new(parse(["objective=mask", "naming=off", "widths=4:8:8", "seed=1"]))
+        if nan_weights:
+            graph, state = nnx.split(session.model)
+            spoiled = jax.tree.map(lambda x: x * jnp.nan if jnp.issubdtype(x.dtype, jnp.floating) else x, state)
+            session.model = nnx.merge(graph, spoiled)
+        return session
+
+    def train_and_read(self, session, totals):
+        def train(ex, steps, on_step):
+            for step, total in zip(range(steps), totals, strict=False):
+                on_step({"step": step, "total": total, "seconds": 0.1})
+
+        def evaluate(ex):
+            raise AssertionError("a diverged network was read")
+
+        session.train, session.evaluate = train, evaluate
+        with self.assertRaises(self.tool.TrialRefused) as caught:
+            self.tool.train_and_read(session, None, None, self.plan, Path(self.tmp.name), lambda line: None)
+        return caught.exception
+
+    def test_a_loss_that_is_not_a_finite_number_stops_the_trial_with_1(self):
+        refused = self.train_and_read(self.session(nan_weights=False), [0.5, float("nan")])
+        self.assertEqual(refused.code, 1)
+        self.assertIn("training diverged: the loss of step 1 is nan", str(refused))
+
+    def test_weights_that_are_not_finite_numbers_stop_the_first_reading_with_1(self):
+        self.assertTrue(self.tool.weights_finite(self.session(nan_weights=False)))
+        refused = self.train_and_read(self.session(nan_weights=True), [0.5, 0.5])
+        self.assertEqual(refused.code, 1)
+        self.assertIn("a weight is not a finite number after epoch 1", str(refused))
+
+    def test_a_steady_step_is_the_median_so_the_steps_that_compile_count_for_nothing(self):
+        self.assertEqual(self.tool.steady_seconds([12.3, 1.92, 1.85, 1.64, 2.21]), 1.92)
+        self.assertEqual(self.tool.steady_seconds([]), 0.0)
 
 
 if __name__ == "__main__":

@@ -26,7 +26,7 @@ STUDY = "autoanatomist-screen"
 PREREG = ROOT / "docs" / "research" / "autoanatomist-screen" / "PREREG.md"
 # The pre-registration the design answers restate, by its sha256: PREREG.md as frozen, the digest
 # PREREG.md.sha256 beside it holds (tests/test_autoanatomist_report.py holds the two together).
-DESIGN = "648c082994464ecb26bab977ce51a49441a6bfaa92751f562d7b8c704ee44280"
+DESIGN = "04f54cd35d4375053580cb3906693390e90dcc2f6916e612ab421edf80b5568d"
 LICENCES = ROOT / "data" / "licences.json"
 SOURCE = "scidb_enhance_pet_1_6k"
 
@@ -292,8 +292,12 @@ def fact_compute(run):
 
 
 def fact_reproduce(run):
+    # GPU arithmetic is not the same to the bit from run to run, and nothing pins the card, so a rerun
+    # repeats the procedure and its finals agree within run-to-run noise, not exactly.
     return met(f"grid/gate.sh's word `autoanatomist {plan(run).get('screen')}` at commit {run['record'].get('commit')}, under "
-               "the frozen PREREG and the plan its Covers line names")
+               "the frozen PREREG and the plan its Covers line names, runs the same procedure again; every card computes "
+               "float32 in full, but a GPU's sums are not the same to the bit from run to run, so its finals agree within "
+               "run-to-run noise, not exactly")
 
 
 def fact_per_part(run):

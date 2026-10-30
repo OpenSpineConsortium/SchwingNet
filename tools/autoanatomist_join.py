@@ -38,7 +38,7 @@ from schwingnet.autoanatomist_screen import (  # noqa: E402
 CURVES_NOTE = (
     "Each line is one trial: its mean surface distance on the validation CTs at each reading, every "
     "few epochs, read from the CT alone. Lower is better. Dashed lines are the null, which never "
-    "anneals."
+    "anneals. A trial that failed has no line, and the title names it."
 )
 FINALS_NOTE = (
     "Each dot is one seed's distance after the last epoch. An arm beats the null when every one of its "
@@ -82,7 +82,7 @@ def arm_colours(plan):
     return {arm: cycle[at % len(cycle)] for at, arm in enumerate(sorted(plan.arms))}
 
 
-def plot_curves(plan, entries, path):
+def plot_curves(plan, entries, failed, path):
     import matplotlib
 
     matplotlib.use("Agg")
@@ -102,7 +102,11 @@ def plot_curves(plan, entries, path):
             axes.plot(*zip(*points), style, color=colours[trial.arm], label=trial.id, linewidth=1.4)
     axes.set_xlabel("epoch")
     axes.set_ylabel(f"validation {plan.measure} (lower is better)")
-    axes.set_title(f"{plan.screen}: every trial's curve")
+    title = f"{plan.screen}: every trial's curve"
+    if failed:
+        # As finals.png says how many of an arm's seeds failed: a failed trial is shown, never dropped.
+        title += f"\n{len(failed)} failed, no line: {', '.join(sorted(failed))}"
+    axes.set_title(title, fontsize=10)
     axes.xaxis.set_major_locator(MaxNLocator(integer=True))
     axes.legend(fontsize=7, frameon=False, loc="upper left", bbox_to_anchor=(1.0, 1.0))
     figure.tight_layout()
@@ -168,7 +172,7 @@ def main(argv=None):
     join = out / "join"
     join.mkdir(parents=True, exist_ok=True)
     (join / "DECISION.json").write_text(json.dumps(decision, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    plot_curves(plan, entries, join / "curves.png")
+    plot_curves(plan, entries, failed, join / "curves.png")
     plot_finals(plan, decision, join / "finals.png")
     (join / "SUMMARY.md").write_text(summary_text(plan, decision, failed), encoding="utf-8")
     for arm, d in sorted(decision["arms"].items()):

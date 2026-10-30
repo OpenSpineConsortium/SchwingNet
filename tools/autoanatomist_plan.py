@@ -71,7 +71,10 @@ SCHEDULES = {
     "lambda_then_w": ["schedule=lambda-then-w"],
     "joint": ["schedule=joint"],
     "w_first": ["schedule=w-first"],
-    "null": ["schedule=fixed", "lam_fixed=1", "w_fixed=0"],
+    # The null is the CT branch alone. At w 0 the mask encoder takes no gradient and stays at its
+    # random start, so the feature term would pull the CT encoder towards a random network's
+    # features, a weight only the null would carry; w_feature=0 takes it out.
+    "null": ["schedule=fixed", "lam_fixed=1", "w_fixed=0", "w_feature=0"],
 }
 PLANS = {
     "gold3_latent_smoke": {

@@ -77,7 +77,8 @@
     "null": [
       "schedule=fixed",
       "lam_fixed=1",
-      "w_fixed=0"
+      "w_fixed=0",
+      "w_feature=0"
     ]
   },
   "null": "null",

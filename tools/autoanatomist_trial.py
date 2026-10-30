@@ -25,7 +25,9 @@ crop's bottleneck vector on the CT-only path, training and validation, keyed by 
 session/ (the weights, the optimizer and every step's row, Session.save), environment.json (the
 host, the card, the packages and the timings) and entry.json last, checked by entry_problems
 before it is written, which the join reads; PROGRESS.txt says where the trial is, a line an event.
-A trial that cannot finish leaves why.txt and no entry, and the join counts it failed.
+A trial that cannot finish leaves why.txt and no entry, and the join counts it failed; so does one
+whose training diverged, a step's loss or, at a reading, a weight no longer a finite number, which
+would otherwise read every crop empty and so a finite worst distance.
 
 Exit 0 with the entry written; 2 for a plan, a task or an input that does not hold; 3 for an
 environment whose packages are not the pinned ones (schwingnet.autoanatomist_screen.PINS); 4 for a
@@ -52,6 +54,7 @@ import os  # noqa: E402
 import platform  # noqa: E402
 import shutil  # noqa: E402
 import socket  # noqa: E402
+import statistics  # noqa: E402
 import tempfile  # noqa: E402
 import time  # noqa: E402
 from importlib import metadata  # noqa: E402
@@ -237,20 +240,36 @@ def plain(value):
     return measure(value)
 
 
+def weights_finite(session):
+    """Whether every weight of the network is a finite number, so a reading reads a trained network
+    and not one the update after the last finite loss made NaN."""
+    import jax
+    import jax.numpy as jnp
+    from flax import nnx
+
+    return all(bool(jnp.isfinite(leaf).all()) for leaf in jax.tree_util.tree_leaves(nnx.state(session.model, nnx.Param)))
+
+
 def train_and_read(session, train_ex, validation_ex, plan, folder, progress):
-    """Every step in one call, a reading after each epoch evaluation_epochs names: (points, the
-    step rows' seconds summed)."""
+    """Every step in one call, a reading after each epoch evaluation_epochs names: (points, each
+    step row's seconds). A step whose loss is not a finite number, or a reading whose weights are
+    not, stops the trial with 1, since a diverged network outlines nothing and every crop would read
+    the worst distance as though it were a result."""
     per_epoch = steps_per_epoch(train_count(plan), plan.batch)
-    read_at, points, losses, spent = set(evaluation_epochs(plan)), [], [], [0.0]
+    read_at, points, losses, seconds = set(evaluation_epochs(plan)), [], [], []
 
     def on_step(row):
+        if not math.isfinite(row["total"]):
+            raise TrialRefused(1, f"training diverged: the loss of step {row['step']} is {row['total']}")
         losses.append(row["total"])
-        spent[0] += row["seconds"]
+        seconds.append(row["seconds"])
         done = row["step"] + 1
         if done % per_epoch:
             return
         epoch = done // per_epoch
         if epoch in read_at:
+            if not weights_finite(session):
+                raise TrialRefused(1, f"training diverged: a weight is not a finite number after epoch {epoch}")
             reading = session.evaluate(validation_ex)
             with open(folder / "readings.jsonl", "a", encoding="utf-8") as handle:
                 handle.write(json.dumps(plain(dict(reading, epoch=epoch))) + "\n")
@@ -261,7 +280,13 @@ def train_and_read(session, train_ex, validation_ex, plan, folder, progress):
             progress(f"epoch {epoch} of {plan.epochs}: loss {sum(losses[-per_epoch:]) / per_epoch:.4f}")
 
     session.train(train_ex, total_steps(plan), on_step=on_step)
-    return points, spent[0]
+    return points, seconds
+
+
+def steady_seconds(seconds):
+    """A step's seconds once nothing compiles: the median step, since a step whose batch has a shape
+    not seen before traces and compiles inside its timing, and those steps are few."""
+    return statistics.median(seconds) if seconds else 0.0
 
 
 def save_latents(session, examples, items, folder):
@@ -297,6 +322,17 @@ def check_environment(plan):
     return found, backend, [d.device_kind for d in jax.devices()]
 
 
+def gpu_stack():
+    """The versions of JAX and of every NVIDIA library the venv holds, which the cuda12 extra takes as
+    ranges, so the CUDA stack a trial ran on is on record beside the pins."""
+    found = {}
+    for dist in metadata.distributions():
+        name = dist.metadata["Name"] or ""
+        if name.lower().startswith(("nvidia-", "jax")):
+            found[name] = dist.version
+    return dict(sorted(found.items()))
+
+
 def write_json(path, value):
     part = path.with_name(path.name + ".part")
     part.write_text(json.dumps(value, indent=1, sort_keys=True) + "\n", encoding="utf-8")
@@ -306,6 +342,11 @@ def write_json(path, value):
 def run_trial(args, plan, trial, folder, progress):
     began = time.time()
     found, backend, devices = check_environment(plan)
+    import jax
+
+    # Every card computes float32 as float32: an L40S would otherwise take its convolutions in TF32
+    # while a V100 cannot, and one array's trials land on both.
+    jax.config.update("jax_default_matmul_precision", "highest")
     from autoanatomist import rows as vendored
     from autoanatomist.blocks import parse
     from autoanatomist.session import Session
@@ -330,12 +371,16 @@ def run_trial(args, plan, trial, folder, progress):
     session.save(str(folder / "session"))
     save_latents(session, examples, items, folder)
     spines = examples["train"].spines()
-    crops = total_steps(plan) * plan.batch * (sum(len(s) for s in spines) / len(spines))
+    step_crops = plan.batch * (sum(len(s) for s in spines) / len(spines))
     environment = {"host": socket.gethostname(), "slurm_job": os.environ.get("SLURM_JOB_ID") or "none",
                    "slurm_array_job": os.environ.get("SLURM_ARRAY_JOB_ID") or "none",
                    "slurm_array_task": os.environ.get("SLURM_ARRAY_TASK_ID") or "none",
                    "python": platform.python_version(), "backend": backend, "devices": devices, "packages": found,
-                   "pins": list(PINS), "workers": args.workers, "render_seconds": round(rendered, 1),
+                   "pins": list(PINS), "gpu_stack": gpu_stack(),
+                   "matmul_precision": str(jax.config.jax_default_matmul_precision),
+                   "step_seconds": {"steps": len(step_seconds), "first": round(step_seconds[0], 3) if step_seconds else None,
+                                    "median": round(steady_seconds(step_seconds), 4), "sum": round(sum(step_seconds), 1)},
+                   "workers": args.workers, "render_seconds": round(rendered, 1),
                    "row_render_seconds_max": round(max(cut), 1) if cut else None,
                    "train_and_read_seconds": round(time.time() - began - rendered, 1),
                    "crops": {part: int(len(ex)) for part, ex in examples.items()}}
@@ -343,7 +388,8 @@ def run_trial(args, plan, trial, folder, progress):
     return {"version": ENTRY_VERSION, "screen": plan.screen, "trial": trial.id, "arm": trial.arm, "seed": trial.seed,
             "words": list(trial.words), "steps": total_steps(plan), "epochs": points,
             "final": {key: points[-1][key] for key in FINAL_KEYS},
-            "seconds": round(time.time() - began, 3), "seconds_per_crop": step_seconds / crops if crops else 0.0,
+            "seconds": round(time.time() - began, 3),
+            "seconds_per_crop": steady_seconds(step_seconds) / step_crops if step_crops else 0.0,
             "train_rows": len(parts["train"]), "validation_rows": len(parts["validation"])}
 
 

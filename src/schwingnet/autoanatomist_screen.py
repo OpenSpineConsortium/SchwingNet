@@ -436,8 +436,10 @@ def rows_problems(
     record: Mapping[str, object], salt: str, validation_share: float, test_persons: frozenset[str]
 ) -> list[str]:
     """What keeps a plan's rows from the frozen split: a salt or a share other than the rule
-    file's, a person on the test list, or a row whose part is not the one the rule gives its
-    person. The flow, the gate's check and scripts/check.sh pass the rule and the test list."""
+    file's, a person on the test list, an item that is itself on it, or a row whose part is not the
+    one the rule gives its person. The trial reads a row's files by its item, so an item a test list
+    names is refused whatever person the row gives it. The flow, the gate's check and
+    scripts/check.sh pass the rule and the test list."""
     split = cast(Mapping[str, object], record["split"])
     if split["salt"] != salt or split["validation_share"] != validation_share:
         said = f"{split['salt']!r} at {split['validation_share']!r}"
@@ -449,6 +451,8 @@ def rows_problems(
         item, person = row["item"], row["person"]
         if part == "test":
             return [f"rows: {item}'s person {person} is on a test list, which a screen never reads"]
+        if item in test_persons:
+            return [f"rows: {item} is itself on a test list, whatever person the row names"]
         if part != row["part"]:
             return [f"rows: {item} is in {row['part']}, and the rule puts {person} in {part}"]
     return []
@@ -469,11 +473,17 @@ def unit_problems(
     patient's two scans sit in training and in validation as far as the units know (UNIT_LISTS).
     units maps each unit's key to its persons; a row in no unit is the rule's alone. Units that do
     not hold together, a key outside its own unit or a person in two, are a problem first, since
-    either would leave a person's part to whichever unit came last."""
+    either would leave a person's part to whichever unit came last; so is a unit that holds a study
+    of a test list beside studies of none, since its others would be repeat scans of a held-back
+    study free to train."""
     unit_of: dict[str, str] = {}
     for key, persons in units.items():
         if key not in persons:
             return [f"units: the unit {key} does not hold its own key"]
+        listed = [person for person in persons if person in test_persons]
+        if listed and len(listed) != len(persons):
+            held = f"{listed[0]} of a test list beside studies of none"
+            return [f"units: the unit {key} holds {held}"]
         for person in persons:
             if person in unit_of:
                 return [f"units: {person} is in two units, {unit_of[person]} and {key}"]
@@ -596,7 +606,12 @@ def _point_problems(trial: str, record: object, epoch: int, per_epoch: int) -> l
     if record["epoch"] != epoch or record["steps"] != epoch * per_epoch:
         named = f"epoch {record['epoch']!r} at {record['steps']!r} steps"
         return [f"{trial}: a reading names {named}, not epoch {epoch} at {epoch * per_epoch}"]
-    if not all(_is_measure(key, record[key]) for key in ("loss", *MEASURE_KEYS)):
+    if not _is_finite(record["loss"]):
+        # Every reading follows a step, so its loss is a number; a loss that is not one is a trial
+        # that diverged, whose empty masks would otherwise read as the crop's worst distance.
+        loss = f"the training loss of epoch {epoch}"
+        return [f"{trial}: {loss} is not a finite number, so the trial diverged"]
+    if not all(_is_measure(key, record[key]) for key in MEASURE_KEYS):
         return [f"{trial}: the reading after epoch {epoch} holds a measure no number and no null"]
     return []
 
