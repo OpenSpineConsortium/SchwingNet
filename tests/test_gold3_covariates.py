@@ -77,6 +77,11 @@ CANAL = {"0013", "0002", "0003", "0004", "0005", "0006", "0007", "0008", "0009"}
 # so it has no disc_h_mean there either, as bordercall's column.py leaves one: s0013's L3-L4.
 UNMEASURED = {("2", "T10-T11")}
 NO_POSTERIOR = {("s0013", "L3-L4")}
+# bordercall's code stamp at ee495d5, which every study's code row carries, and 16f7b40's before it.
+STAMP, OLD_STAMP = "a56adf14a9e98b15", "81e732f142d3aa16"
+# TotalSegmentator's rows carry interpedicular; where no pedicle was found on both sides bordercall flags the
+# hole's width standing in for it: s0001's L4, and s0002's C3, a level outside the tables.
+STAND_INS = {("s0001", "L4"), ("s0002", "C3")}
 
 
 def jitter(study, level):
@@ -87,8 +92,10 @@ def value(study, sex, age, level, index):
     return 20.0 + index + (2.0 if sex.upper() == "M" else 0.0) + age / 100.0 + jitter(study, level)
 
 
-def write_rows(path, studies):
-    """rows.csv as grid/morphometry.sbatch writes it: study, level, key, value, note, long."""
+def write_rows(path, studies, code=lambda study: STAMP, interpedicular=False):
+    """rows.csv as grid/morphometry.sbatch writes it: study, level, key, value, note, long, each study's code
+    row last with the stamp code gives it (none where it gives None), and with interpedicular the flag rows
+    after a vertebra's values, as bordercall's measure.py writes them."""
     path.parent.mkdir(parents=True, exist_ok=True)
     with open(path, "w", newline="", encoding="utf-8") as handle:
         writer = csv.writer(handle, lineterminator="\n")
@@ -98,12 +105,25 @@ def write_rows(path, studies):
                 writer.writerow([study, level, "h_ant", f"{value(study, sex, age, level, index):.4f}", ""])
                 if study.zfill(4) in CANAL:
                     writer.writerow([study, level, "canal_w", f"{value(study, sex, age, level, index) / 2:.4f}", ""])
+                if interpedicular:
+                    write_interpedicular(writer, study, level, value(study, sex, age, level, index) / 3)
             for index, level in enumerate(DISCS):
                 if (study, level) not in UNMEASURED:
                     write_disc(writer, study, level, value(study, sex, age, level, index) / 4)
             writer.writerow([study, "C3", "h_ant", "9.0", ""])
+            if interpedicular:
+                write_interpedicular(writer, study, "C3", 9.0)
             writer.writerow([study, "L1", "not_in_the_vocabulary", "9.0", ""])
             writer.writerow([study, "L2", "h_mid", "nan", "unmeasured"])
+            if code(study) is not None:
+                writer.writerow([study, "study", "code", "", code(study)])
+
+
+def write_interpedicular(writer, study, level, width):
+    """A vertebra's interpedicular, and where STAND_INS names it the flag that says the hole's width stands in."""
+    writer.writerow([study, level, "interpedicular", f"{width:.4f}", ""])
+    if (study, level) in STAND_INS:
+        writer.writerow([study, level, "flag:interpedicular_band", "", "no pedicle found on both sides"])
 
 
 def write_disc(writer, study, level, height):
@@ -174,12 +194,19 @@ class Fake:
             {"source": {"sha256": meta_sha or hashlib.sha256(self.meta_csv()).hexdigest()},
              "subjects": {sid: {"age": age} for sid, (_, age) in TOTALSEG.items()}}))
 
-    def write_rows(self):
+    def write_rows(self, codes=None, totalseg=None):
+        """The three rows files, codes giving each its stamps by its folder (enhance, verse, totalseg), and
+        totalseg the TotalSegmentator subjects measured, every one where it is None."""
+        codes = codes or {}
         enhance = {sid: (sex, age) for sid, (_, sex, age, _) in AUTOPET.items()}
         enhance.update({sid: ("M", 50) for sid in SITES})
-        write_rows(self.morph / "enhance/rows.csv", {str(int(sid)): v for sid, v in enhance.items()})
-        write_rows(self.morph / "verse/rows.csv", {f"{sid}_seg": (sex, age) for sid, (_, sex, age) in VERSE.items()})
-        write_rows(self.morph / "verse/totalseg/rows.csv", {sid: (g, age) for sid, (g, age) in TOTALSEG.items()})
+        write_rows(self.morph / "enhance/rows.csv", {str(int(sid)): v for sid, v in enhance.items()},
+                   codes.get("enhance", lambda study: STAMP))
+        write_rows(self.morph / "verse/rows.csv", {f"{sid}_seg": (sex, age) for sid, (_, sex, age) in VERSE.items()},
+                   codes.get("verse", lambda study: STAMP))
+        write_rows(self.morph / "verse/totalseg/rows.csv",
+                   {sid: (g, age) for sid, (g, age) in TOTALSEG.items() if totalseg is None or sid in totalseg},
+                   codes.get("totalseg", lambda study: STAMP), interpedicular=True)
 
     def ct_path(self, sid):
         person, _, _, folder = AUTOPET[sid]
@@ -210,7 +237,7 @@ class Fake:
     def args(self, **kw):
         base = dict(morphometry=str(self.morph), autopet=str(self.autopet), index=str(self.index),
                     verse_demographics=str(self.verse_table), data=str(self.data), out=str(self.out),
-                    records=str(self.records), workers=1)
+                    records=str(self.records), workers=1, previous=[])
         base.update(kw)
         return Namespace(**base)
 
@@ -271,7 +298,8 @@ class Join(unittest.TestCase):
         with open(self.fake.out / "joined.csv", newline="", encoding="utf-8") as handle:
             joined = list(csv.DictReader(handle))
         self.assertFalse({r["level"] for r in joined} - {*LEVELS, *DISCS}, "levels outside T10 to L5 are left out")
-        self.assertFalse({r["key"] for r in joined} - {"h_ant", "canal_w", "disc_h_ant", "disc_h_mid", "disc_h_post", "disc_h_mean"})
+        self.assertFalse({r["key"] for r in joined} - {"h_ant", "canal_w", "disc_h_ant", "disc_h_mid", "disc_h_post", "disc_h_mean",
+                                                       "interpedicular"})
 
     def test_the_cells_keep_their_minimum_counts(self):
         rc, lines, _ = self.run_join()
@@ -466,11 +494,266 @@ class Join(unittest.TestCase):
         self.assertFalse([row for row in persons.values() if row["member"] in ("autopet", "verse")])
         self.assertTrue(all(row["sex"] == "" for row in persons.values() if row["member"] == "totalseg"))
 
+    def test_the_rows_name_the_one_code_that_measured_them_or_the_join_says_it_cannot(self):
+        rc, lines, _ = self.run_join()
+        self.assertEqual(rc, 0, lines[:3])
+        self.assertIn(f"rows: measuring code {STAMP} for every set's rows", lines)
+        # one set measured on the older engine: its tables would blend two engines' definitions
+        mixed = ("FAILED: the morphometry rows were measured by more than one version of the measuring code, within a "
+                 "set or between the sets, so the tables blend two engines")
+        self.fake.write_rows(codes={"verse": lambda study: OLD_STAMP})
+        rc, lines, _ = self.run_join()
+        self.assertEqual(rc, 3)
+        self.assertEqual([line for line in lines if line.startswith("FAILED: ")], [mixed])
+        self.assertIn(f"rows: measuring code by set, ENHANCE.PET {STAMP}; VerSe {OLD_STAMP}; TotalSegmentator {STAMP}", lines)
+        # and within one set: a study the older engine wrote among the new ones
+        self.fake.write_rows(codes={"enhance": lambda study: OLD_STAMP if study == "5" else STAMP})
+        rc, lines, _ = self.run_join()
+        self.assertEqual(rc, 3)
+        self.assertEqual([line for line in lines if line.startswith("FAILED: ")], [mixed])
+        # a study that names no code, or none of the plain form, ties its rows to no engine, and no such stamp is printed
+        self.fake.write_rows(codes={"totalseg": lambda study: {"s0004": None, "s0005": "fake/x"}.get(study, STAMP)})
+        rc, lines, _ = self.run_join()
+        self.assertEqual(rc, 3)
+        self.assertEqual([line for line in lines if line.startswith("FAILED: ")],
+                         ["FAILED: a study in the morphometry rows names no measuring code of the plain form, so its rows "
+                          "cannot be tied to the engine that measured them"])
+        self.assertIn(f"rows: measuring code {STAMP} where the rows name one", lines)
+        self.assertNotIn("fake", "\n".join(lines))
+        self.assertEqual(gate_filters(["- " + line for line in lines]), ["- " + line for line in lines])
+
+    def test_an_interpedicular_the_holes_width_stands_in_for_is_left_out_and_counted(self):
+        # bordercall reads interpedicular on the pedicles' walls and, where no pedicle is found on both sides,
+        # flags the hole's width standing in for it, which reads otherwise: the stand-in enters no table
+        rc, lines, _ = self.run_join()
+        self.assertEqual(rc, 0, lines[:3])
+        with open(self.fake.out / "joined.csv", newline="", encoding="utf-8") as handle:
+            joined = {(r["person"], r["level"], r["key"]) for r in csv.DictReader(handle)}
+        self.assertNotIn(("totalsegmentator:s0001", "L4", "interpedicular"), joined)
+        self.assertIn(("totalsegmentator:s0001", "L3", "interpedicular"), joined)
+        self.assertIn(("totalsegmentator:s0002", "L4", "interpedicular"), joined)
+        # counted where it would have entered a table: s0002's flagged C3 is outside the levels
+        text = " ".join(" ".join(lines).split())
+        self.assertIn("TotalSegmentator interpedicular stand-ins left out 1,", text)
+        self.assertIn("interpedicular is left out where the rows flag the hole's width standing in", text)
+        cells = cell_lines(lines)
+        self.assertEqual(cells[("totalseg", "interpedicular", "L4")][4], "10", "the man whose L4 it stood in for is out there")
+        self.assertEqual(cells[("totalseg", "interpedicular", "L3")][4], "11")
+
     def test_the_meta_table_is_read_extracted_before_zipped(self):
         extracted = self.fake.data / "totalsegmentator_v300/raw/Totalsegmentator_dataset_v300/meta.csv"
         extracted.parent.mkdir(parents=True)
         extracted.write_bytes(self.fake.meta_csv())
         self.assertEqual(J.meta_bytes(self.fake.data / "totalsegmentator_v300"), self.fake.meta_csv())
+
+
+class AcrossReports(unittest.TestCase):
+    """A join run once more prints its blocks beside an earlier report's: no block printed in both may
+    difference into the readings of fewer than five persons."""
+
+    def setUp(self):
+        self.dir = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.dir)
+        self.fake = Fake(self.dir)
+        self.first = self.dir / "covariates/40878978"
+
+    def join(self, out, previous=()):
+        rc = J.run(self.fake.args(out=str(out), previous=[str(p) for p in previous]), off_grid=off_grid_fake)
+        return rc, (Path(out) / "report.lines").read_text(encoding="ascii").splitlines()
+
+    def assert_nothing_differences(self, earlier, later, lines_a, lines_b):
+        """Every mean both reports print rests on the same readings of the same persons, or on readings that
+        differ in five persons at least, read from the two joined tables alone; the same ones print the same."""
+        a, b = cell_lines(lines_a), cell_lines(lines_b)
+        readings_a, readings_b = readings_from(earlier), readings_from(later)
+        both = 0
+        for place in a.keys() & b.keys():
+            for sex, at in (("M", 5), ("F", 9)):
+                if a[place][at] == "-" or b[place][at] == "-":
+                    continue
+                both += 1
+                ra, rb = readings_a.get((*place, sex), {}), readings_b.get((*place, sex), {})
+                apart = len(ra.keys() ^ rb.keys()) + sum(1 for k in ra.keys() & rb.keys() if ra[k] != rb[k])
+                self.assertTrue(apart == 0 or apart >= J.MIN_CELL, (place, sex, apart))
+                if apart == 0:
+                    self.assertEqual(a[place][at - 1:at + 2], b[place][at - 1:at + 2], (place, sex))
+        for tokens in b.values():
+            if "-" in (tokens[5], tokens[9]):
+                self.assertEqual(tokens[12:14], ["-", "-"], "g goes with a sex's mean")
+        return both
+
+    def test_a_second_join_withholds_every_block_that_differences_against_the_first_into_fewer_than_five(self):
+        rc, before = self.join(self.first)
+        self.assertEqual(rc, 0, before[:3])
+        # the rows measured once more: one man of TotalSegmentator's no longer measured, one woman's L2 height
+        # read otherwise; nothing of autoPET's or VerSe's moved
+        self.fake.write_rows(totalseg=set(TOTALSEG) - {"s0002"})
+        shift(self.fake.morph / "verse/totalseg/rows.csv", "s0007", "L2", "h_ant", 0.75)
+        second = self.dir / "covariates/4343"
+        rc, after = self.join(second, [self.first])
+        self.assertEqual(rc, 0, after[:3])
+        self.assertGreater(self.assert_nothing_differences(self.first, second, before, after), 40)
+        a, b = cell_lines(before), cell_lines(after)
+        # the men's blocks lost one man, so each one the first report printed is withheld, its n still shown
+        self.assertNotEqual(a[("totalseg", "h_ant", "L1")][5], "-")
+        self.assertEqual(b[("totalseg", "h_ant", "L1")][3:7], ["M", "10", "-", "-"])
+        self.assertEqual(b[("totalseg", "h_ant", "L4")][15:17], ["-", "10"], "r over pairs one man apart")
+        self.assertEqual(b[("totalseg", "h_ant", "L1")][20:23], ["-", "-", "10"], "the slope over points one man apart")
+        # the woman's moved reading withholds the blocks it enters, at L2 and the column, r on either side of
+        # L2 and the slope at L2, and leaves the rest of the women's as they were
+        for level in ("L2", J.COLUMN):
+            self.assertNotEqual(a[("totalseg", "h_ant", level)][9], "-")
+            self.assertEqual(b[("totalseg", "h_ant", level)][7:11], ["F", "11", "-", "-"], level)
+        for level in ("L2", "L3"):
+            self.assertNotEqual(a[("totalseg", "h_ant", level)][17], "-")
+            self.assertEqual(b[("totalseg", "h_ant", level)][17:19], ["-", "11"], level)
+        self.assertNotEqual(a[("totalseg", "h_ant", "L2")][23], "-")
+        self.assertEqual(b[("totalseg", "h_ant", "L2")][23:26], ["-", "-", "10"])
+        for level in ("L1", "L4"):
+            self.assertEqual(b[("totalseg", "h_ant", level)][7:11], a[("totalseg", "h_ant", level)][7:11], level)
+            self.assertEqual(b[("totalseg", "h_ant", level)][17:19], a[("totalseg", "h_ant", level)][17:19], level)
+            self.assertEqual(b[("totalseg", "h_ant", level)][23:26], a[("totalseg", "h_ant", level)][23:26], level)
+        # a member whose rows did not move prints what it printed
+        self.assertEqual({k: v for k, v in b.items() if k[0] == "autopet"}, {k: v for k, v in a.items() if k[0] == "autopet"})
+        text = " ".join(" ".join(after).split())
+        self.assertIn("across reports: 1 earlier joins read; a block withheld where an earlier join had persons enough to "
+                      "print it and the two differ by 1 to 4 persons or readings for a mean and SD, 1 to 9 for r and 1 to 9 "
+                      "for a slope; withheld autopet means 0, r 0, slopes 0; verse means 0, r 0, slopes 0; totalseg means ", text)
+        self.assertEqual(gate_filters(["- " + line for line in after]), ["- " + line for line in after])
+        # five men apart is enough: against the first report alone the men's blocks are printed again
+        self.fake.write_rows(totalseg=set(TOTALSEG) - {"s0002", "s0003", "s0004", "s0005", "s0006"})
+        third = self.dir / "covariates/4444"
+        rc, again = self.join(third, [self.first])
+        self.assertEqual(rc, 0, again[:3])
+        self.assert_nothing_differences(self.first, third, before, again)
+        self.assertEqual(cell_lines(again)[("totalseg", "h_ant", "L1")][4], "6")
+        self.assertNotEqual(cell_lines(again)[("totalseg", "h_ant", "L1")][5], "-")
+        # but every earlier join counts: against the second too, four men apart, they are withheld
+        fourth = self.dir / "covariates/4545"
+        rc, last = self.join(fourth, [self.first, second])
+        self.assertEqual(rc, 0, last[:3])
+        self.assert_nothing_differences(self.first, fourth, before, last)
+        self.assert_nothing_differences(second, fourth, after, last)
+        self.assertEqual(cell_lines(last)[("totalseg", "h_ant", "L1")][3:7], ["M", "6", "-", "-"])
+        self.assertIn("across reports: 2 earlier joins read;", " ".join(last))
+
+    def test_the_column_is_withheld_where_its_persons_with_some_levels_alone_differ_from_an_earlier_reports(self):
+        # Six men with every level all read otherwise and one man with some levels but not all new: each level
+        # and the column differ in five or more, yet the levels less the column, set beside the earlier
+        # report's, give that one man's sum, so the column is withheld for him
+        def person(key, levels, moved=0.0):
+            values = {(lv, "h_ant"): 20.0 + i + moved for i, lv in enumerate(levels)}
+            return J.Person(key=key, member="totalseg", part="totalseg", study=key, sex="M", age_read=50.0, values=values)
+        whole, some = J.VERTEBRA_LEVELS, J.VERTEBRA_LEVELS[1:]
+        before = [person(f"w{i}", whole) for i in range(6)] + [person(f"p{i}", some) for i in range(5)]
+        now = [person(f"w{i}", whole, 0.5) for i in range(6)] + [person(f"p{i}", some) for i in range(6)]
+        alone = {(key, level): numbers for key, level, numbers in J.cells_of(now)}
+        taken = Counter()
+        checked = {(key, level): numbers for key, level, numbers in J.cells_of(now, [before], taken)}
+        self.assertTrue(alone[("h_ant", J.COLUMN)]["M"]["shown"], "within one report its six such men let it show")
+        for level in J.VERTEBRA_LEVELS:
+            self.assertTrue(checked[("h_ant", level)]["M"]["shown"], level)
+        self.assertFalse(checked[("h_ant", J.COLUMN)]["M"]["shown"])
+        self.assertEqual(taken["means"], 1)
+
+    def test_an_earlier_join_whose_table_cannot_be_read_withholds_every_mean_r_and_slope(self):
+        rc, lines = self.join(self.dir / "covariates/4343", [self.first])
+        self.assertEqual(rc, 3)
+        self.assertEqual(lines[0], "FAILED: the joined table of an earlier join could not be read (FileNotFoundError), so every "
+                                   "mean, r and slope is withheld, none checked against that join")
+        self.assertEqual(gate_filters(["- " + lines[0]]), ["- " + lines[0]])
+        cells = cell_lines(lines)
+        self.assertGreater(len(cells), 40)
+        for key, tokens in cells.items():
+            self.assertEqual([tokens[i] for i in (5, 6, 9, 10, 12, 13, 15, 17, 20, 21, 23, 24)], ["-"] * 12, key)
+        self.assertEqual(cells[("totalseg", "h_ant", "L1")][4], "11", "the counts are still printed")
+        self.assertIn("and a joined table not read, so every mean, r and slope withheld", " ".join(lines))
+
+    def test_an_earlier_joined_table_that_is_there_but_cannot_be_read_withholds_as_a_missing_one_does(self):
+        # a table without the value column, one that is not UTF-8 and one whose field passes csv's limit
+        bad = {"KeyError": b"person,member,part,study,sex,age,level,key\nx,totalseg,totalseg,s1,M,50,L1,h_ant\n",
+               "UnicodeDecodeError": b"person,member,part,study,sex,age,level,key,value\nx\xff,totalseg,totalseg,s1,M,50,L1,h_ant,1\n",
+               "Error": b"person,member,part,study,sex,age,level,key,value\n\"" + b"x" * 200000 + b"\",totalseg,t,s,M,50,L1,h_ant,1\n"}
+        for kind, table in bad.items():
+            self.first.mkdir(parents=True, exist_ok=True)
+            (self.first / "joined.csv").write_bytes(table)
+            rc, lines = self.join(self.dir / "covariates" / kind, [self.first])
+            self.assertEqual(rc, 3, kind)
+            self.assertEqual(lines[0], f"FAILED: the joined table of an earlier join could not be read ({kind}), so every "
+                                       "mean, r and slope is withheld, none checked against that join")
+            cells = cell_lines(lines)
+            self.assertGreater(len(cells), 40, kind)
+            for key, tokens in cells.items():
+                self.assertEqual([tokens[i] for i in (5, 6, 9, 10, 12, 13, 15, 17, 20, 21, 23, 24)], ["-"] * 12, (kind, key))
+
+    @staticmethod
+    def person(key, values, age=50.0):
+        return J.Person(key=key, member="totalseg", part="totalseg", study=key, sex="M", age_read=age, values=values)
+
+    @staticmethod
+    def checked(now, before):
+        """The blocks of now alone, now checked against before, and what that check took, by kind."""
+        taken = Counter()
+        alone = {(key, level): numbers for key, level, numbers in J.cells_of(now)}
+        checked = {(key, level): numbers for key, level, numbers in J.cells_of(now, [before], taken)}
+        return alone, checked, taken
+
+    def test_a_mean_the_earlier_join_printed_over_exactly_the_least_persons_is_withheld_one_person_on(self):
+        # the earlier report printed the men's L1 mean over exactly MIN_CELL men, so a mean over one man more
+        # would difference into his reading alone; over one man fewer it printed none, and nothing differences
+        before = [self.person(f"m{i}", {("L1", "h_ant"): 20.0 + i * 0.37}) for i in range(J.MIN_CELL)]
+        now = before + [self.person("new", {("L1", "h_ant"): 23.11})]
+        alone, checked, taken = self.checked(now, before)
+        self.assertTrue(alone[("h_ant", "L1")]["M"]["shown"])
+        self.assertFalse(checked[("h_ant", "L1")]["M"]["shown"])
+        self.assertEqual(checked[("h_ant", "L1")]["M"]["summary"][0], J.MIN_CELL + 1, "its n still printed")
+        self.assertEqual(taken["means"], 1)
+        alone, checked, taken = self.checked(now, before[:-1])
+        self.assertTrue(checked[("h_ant", "L1")]["M"]["shown"])
+        self.assertEqual(taken["means"], 0)
+
+    def test_an_r_the_earlier_join_printed_over_exactly_the_least_pairs_is_withheld_one_pair_on(self):
+        def man(i):
+            return self.person(f"m{i}", {("L1", "h_ant"): 20.0 + i * 0.37, ("L2", "h_ant"): 21.0 + i * 0.29 + (i % 3) * 0.11})
+        before = [man(i) for i in range(J.MIN_PAIR)]
+        now = before + [man(J.MIN_PAIR)]
+        alone, checked, taken = self.checked(now, before)
+        self.assertIsNotNone(alone[("h_ant", "L2")]["M"]["r"][0])
+        self.assertEqual(checked[("h_ant", "L2")]["M"]["r"], (None, J.MIN_PAIR + 1), "its n still printed")
+        self.assertEqual(taken["r"], 1)
+        # an r over one pair fewer was never printed, so the r over eleven differences into nothing
+        alone, checked, taken = self.checked(now, before[:-1])
+        self.assertIsNotNone(checked[("h_ant", "L2")]["M"]["r"][0])
+        self.assertEqual(taken["r"], 0)
+
+    def test_a_reading_moved_in_its_last_place_withholds_the_blocks_it_enters(self):
+        # the joined table writes four places, and a block one reading apart in the fourth differences into
+        # that reading, so the check reads all four
+        before = [self.person(f"m{i}", {("L1", "h_ant"): 20.3 + i}) for i in range(J.MIN_SLOPE + 1)]
+        now = [self.person(p.key, dict(p.values)) for p in before]
+        now[0].values[("L1", "h_ant")] += 0.0001
+        alone, checked, taken = self.checked(now, before)
+        self.assertTrue(alone[("h_ant", "L1")]["M"]["shown"])
+        self.assertFalse(checked[("h_ant", "L1")]["M"]["shown"])
+        self.assertEqual(taken["means"], 1)
+        # the same readings to the last place withhold nothing
+        alone, checked, taken = self.checked([self.person(p.key, dict(p.values)) for p in before], before)
+        self.assertTrue(checked[("h_ant", "L1")]["M"]["shown"])
+        self.assertEqual(sum(taken.values()), 0)
+
+    def test_an_age_moved_between_joins_withholds_the_slope_and_no_mean(self):
+        # two slopes over the same readings, one man's age read otherwise, difference into his age and reading
+        before = [self.person(f"m{i}", {("L1", "h_ant"): 20.0 + i * 0.37 + (i % 4) * 0.2}, age=30.0 + 3 * i)
+                  for i in range(J.MIN_SLOPE + 1)]
+        now = [self.person(p.key, dict(p.values), age=p.age_read) for p in before]
+        now[3].age_read += 1.0
+        alone, checked, taken = self.checked(now, before)
+        self.assertIsNotNone(alone[("h_ant", "L1")]["M"]["slope"][0])
+        self.assertEqual(checked[("h_ant", "L1")]["M"]["slope"][:2], (None, None))
+        self.assertEqual(checked[("h_ant", "L1")]["M"]["slope"][2], J.MIN_SLOPE + 1, "its n still printed")
+        self.assertTrue(checked[("h_ant", "L1")]["M"]["shown"], "the mean is over the same readings")
+        self.assertEqual(taken["slopes"], 1)
+        self.assertEqual(taken["means"], 0)
 
 
 class Arithmetic(unittest.TestCase):
@@ -604,6 +887,33 @@ def person_sets(out):
     return sets
 
 
+def readings_from(out):
+    """{(member, measure, level, sex): {person: reading}} behind each mean, read from a job's joined.csv alone,
+    as person_sets reads its persons; at the column a person's reading is every level's value."""
+    with open(Path(out) / "joined.csv", newline="", encoding="utf-8") as handle:
+        rows = [r for r in csv.DictReader(handle) if r["member"] in J.MEMBERS and r["sex"] in J.SEXES
+                and (r["age"] == "" or float(r["age"]) >= J.ADULT_AGE)]
+    found, levels = {}, {}
+    for r in rows:
+        found.setdefault((r["member"], r["key"], r["level"], r["sex"]), {})[r["person"]] = r["value"]
+        levels.setdefault((r["member"], r["key"], r["sex"], r["person"]), {})[r["level"]] = r["value"]
+    for (member, key, sex, person), have in levels.items():
+        if set(have) >= set(J.levels_of(key)):
+            found.setdefault((member, key, J.COLUMN, sex), {})[person] = tuple(have[lv] for lv in J.levels_of(key))
+    return found
+
+
+def shift(path, study, level, key, by):
+    """One reading of a rows file moved by BY, as other code might read it."""
+    with open(path, newline="", encoding="utf-8") as handle:
+        rows = list(csv.reader(handle))
+    for row in rows[1:]:
+        if row[:3] == [study, level, key]:
+            row[3] = f"{float(row[3]) + by:.4f}"
+    with open(path, "w", newline="", encoding="utf-8") as handle:
+        csv.writer(handle, lineterminator="\n").writerows(rows)
+
+
 def gate_filters(lines):
     """The lines as the gate prints a stage report's: report_shapes, then the masks, then the cut."""
     awk = subprocess.run(["awk", "-v", "data=/rs/data", "-v", "runs=/rs/runs", "-v", "models=/rs/models",
@@ -650,6 +960,81 @@ class GridCheck(unittest.TestCase):
         self.assertEqual(off, {"0002", "0003"})
         self.assertEqual((tally["read"], tally["missing"], tally["off"]), (3, 1, 2))
         self.assertEqual(J.off_grid_studies(self.dir / "nowhere", facts, 1), (None, Counter()))
+
+
+class JobHandoff(unittest.TestCase):
+    """grid/morphometry-covariates.sbatch's handoff of the earlier joins to the tool, with a stand-in interpreter
+    that answers the job's probes and keeps the words it is called with, so it needs no numpy and runs on CI."""
+
+    STAND_IN = """#!/bin/bash
+case "$1 $2" in
+  '-c import sys, numpy, sqlite3'*) exit 0 ;;
+  '-c import sys; print'*) echo 3.12.0; exit 0 ;;
+  '-c import numpy; print'*) echo 2.0.0; exit 0 ;;
+  '-c '*) exit 1 ;;
+esac
+printf '%s\\n' "$@" > "$FAKE_ARGS"
+while [ $# -gt 0 ]; do [ "$1" = --out ] && out=$2; shift; done
+echo "a line of the join" > "$out/report.lines"
+"""
+
+    def setUp(self):
+        self.dir = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.dir)
+        self.repo = self.dir / "SchwingNet"
+        for name in ("tools/gold3_covariates.py", "tools/gold3_census.py", "tools/gold3_field.py",
+                     "grid/morphometry-covariates.sbatch"):
+            (self.repo / name).parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy(ROOT / name, self.repo / name)
+        (self.repo / "data/gold3-ct").mkdir(parents=True)
+        (self.repo / "data/gold3-ct/admission.json").write_text("{}\n", encoding="utf-8")
+        quiet = dict(os.environ, GIT_CONFIG_COUNT="1", GIT_CONFIG_KEY_0="gc.auto", GIT_CONFIG_VALUE_0="0")
+        git = ["git", "-C", str(self.repo), "-c", "user.name=t", "-c", "user.email=t@example.org"]
+        subprocess.run(["git", "init", "-q", str(self.repo)], env=quiet, check=True)
+        subprocess.run([*git, "add", "-A"], env=quiet, check=True)
+        subprocess.run([*git, "commit", "-qm", "the join"], env=quiet, check=True)
+        self.commit = subprocess.run([*git, "rev-parse", "HEAD"], env=quiet, capture_output=True, text=True,
+                                     check=True).stdout.strip()
+        self.python = self.dir / "python"
+        self.python.write_text(self.STAND_IN, encoding="utf-8")
+        self.python.chmod(0o755)
+        self.morph = self.dir / "morphometry"
+        self.args = self.dir / "args.txt"
+
+    def run_job(self, job, previous):
+        env = {"PATH": os.environ.get("PATH", ""), "HOME": str(self.dir / "home"), "SCHWINGNET": str(self.repo),
+               "RS_ROOT": str(self.dir / "rs"), "MORPHOMETRY_ROOT": str(self.morph), "COVARIATES_COMMIT": self.commit,
+               "COVARIATES_PYTHON": str(self.python), "COVARIATES_PREVIOUS": previous, "SLURM_JOB_ID": job,
+               "SLURM_CPUS_PER_TASK": "2", "FAKE_ARGS": str(self.args),
+               "GIT_CONFIG_COUNT": "1", "GIT_CONFIG_KEY_0": "gc.auto", "GIT_CONFIG_VALUE_0": "0"}
+        done = subprocess.run(["bash", str(self.repo / "grid/morphometry-covariates.sbatch")], env=env,
+                              capture_output=True, text=True, timeout=120)
+        report = self.repo / "grid/logs/MORPHOMETRY-covariates.md"
+        return done, report.read_text(encoding="ascii").splitlines() if report.is_file() else []
+
+    def test_each_earlier_join_the_gate_names_reaches_the_tool_as_its_job_folder(self):
+        done, report = self.run_job("4343", "4242 77")
+        self.assertIn("SN_COVARIATES_RC=0", done.stdout, done.stdout + done.stderr + "\n".join(report))
+        self.assertIn("- earlier joins read for the check across reports: jobs 4242 77", report)
+        words = self.args.read_text(encoding="utf-8").splitlines()
+        self.assertEqual(words[-4:], ["--previous", str(self.morph / "covariates/4242"),
+                                      "--previous", str(self.morph / "covariates/77")])
+        # a first join names none, and is handed none
+        self.args.unlink()
+        done, report = self.run_job("4444", "")
+        self.assertIn("SN_COVARIATES_RC=0", done.stdout, done.stdout + done.stderr + "\n".join(report))
+        self.assertNotIn("--previous", self.args.read_text(encoding="utf-8").splitlines())
+        self.assertFalse(any("earlier joins read" in line for line in report))
+
+    def test_a_name_that_is_no_job_number_stops_the_job_before_the_tool_runs(self):
+        for previous in ("4242 ../x", "1234567890123", "4242 77x"):
+            done, report = self.run_job("4545", previous)
+            self.assertIn("SN_COVARIATES_RC=2", done.stdout, previous + done.stdout + done.stderr)
+            self.assertEqual([line for line in report if line.startswith("- FAILED: ")],
+                             ["- FAILED: the gate named an earlier join that is no job number, so the check across "
+                              "reports cannot be made; nothing was joined"], previous)
+            self.assertFalse(self.args.exists(), previous)
+            self.assertFalse((self.morph / "covariates/4545/report.lines").exists(), previous)
 
 
 @unittest.skipIf(np is None, "numpy is not installed")
@@ -771,6 +1156,28 @@ class Job(unittest.TestCase):
             self.assertEqual(gate_filters(failed), failed)
             self.assertNotIn("40877151", "\n".join(report))
             self.assertNotIn("PETCT", "\n".join(report))
+
+    def test_the_job_hands_the_join_every_earlier_join_the_gate_names(self):
+        done, first = self.run_job()
+        self.assertIn("SN_COVARIATES_RC=0", done.stdout, done.stdout + done.stderr + "\n".join(first))
+        done, report = self.run_job(SLURM_JOB_ID="4343", COVARIATES_PREVIOUS="4242")
+        self.assertIn("SN_COVARIATES_RC=0", done.stdout, done.stdout + done.stderr + "\n".join(report))
+        self.assertIn("- earlier joins read for the check across reports: jobs 4242", report)
+        text = " ".join(" ".join(line[2:].split()) for line in report)
+        self.assertIn("across reports: 1 earlier joins read;", text)
+        # the same rows joined again difference into nothing, so nothing is withheld and every line is the first's
+        self.assertIn("withheld autopet means 0, r 0, slopes 0; verse means 0, r 0, slopes 0; totalseg means 0, r 0, slopes 0",
+                      text)
+        cells = [line for line in first if line.startswith(("- autopet ", "- totalseg "))]
+        self.assertGreater(len(cells), 40)
+        self.assertEqual([line for line in report if line.startswith(("- autopet ", "- totalseg "))], cells)
+        # a name that is no job number stops the job before any join
+        done, report = self.run_job(SLURM_JOB_ID="4444", COVARIATES_PREVIOUS="4242 ../x")
+        self.assertIn("SN_COVARIATES_RC=2", done.stdout, done.stdout + done.stderr)
+        failed = [line for line in report if line.startswith("- FAILED: ")]
+        self.assertEqual(failed, ["- FAILED: the gate named an earlier join that is no job number, so the check across "
+                                  "reports cannot be made; nothing was joined"])
+        self.assertFalse((self.fake.morph / "covariates/4444/report.lines").exists())
 
     def test_no_commit_named_fails_plainly(self):
         done, report = self.run_job(COVARIATES_COMMIT="")
