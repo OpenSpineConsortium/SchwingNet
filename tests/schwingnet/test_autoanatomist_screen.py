@@ -81,9 +81,9 @@ VALIDATION = persons_in("validation", 2)
 
 
 def good_plan() -> dict[str, Any]:
-    rows = [{"item": p, "person": p, "part": "train", "source": "enhance"} for p in TRAIN]
+    rows = [{"item": p, "person": p, "part": "train", "source": "enhance_pet"} for p in TRAIN]
     rows += [
-        {"item": p, "person": p, "part": "validation", "source": "enhance"} for p in VALIDATION
+        {"item": p, "person": p, "part": "validation", "source": "enhance_pet"} for p in VALIDATION
     ]
     names = {str(label): name for label, name in zip(range(3, 26), NAMES[:23], strict=True)}
     return {
@@ -92,7 +92,7 @@ def good_plan() -> dict[str, Any]:
         "class": "gpu",
         "layout": "array",
         "data": {
-            "enhance": {
+            "enhance_pet": {
                 "ct": "aws_enhance_pet_ct/raw",
                 "labels": "aws_enhance_pet_labels/raw",
                 "labels_folder": "Vertebrae",
@@ -146,6 +146,15 @@ def test_a_plan_that_holds_is_read_whole_and_typed() -> None:
     assert rows_problems(record, split_rule()) == []
 
 
+def another_sources_row() -> dict[str, Any]:
+    """A row given to a second source the data holds, while its item keeps the first source's
+    spelling, so the trial would look for its files under the wrong source."""
+    record = good_plan()
+    record["data"]["verse"] = copy.deepcopy(record["data"]["enhance_pet"])
+    record["rows"][0]["source"] = "verse"
+    return record
+
+
 FAULTS = [
     ([], "a plan is a JSON object"),
     (changed(("screen",), DELETE), "missing screen"),
@@ -157,20 +166,23 @@ FAULTS = [
     (changed(("test",), "on"), "never the test part"),
     (changed(("measure",), "dice"), "measure:"),
     (changed(("data",), {}), "data: one entry a source"),
-    (changed(("data", "enhance", "ct"), "/rs/data"), "a folder under the data root"),
-    (changed(("data", "enhance", "labels"), "a/../b"), "a folder under the data root"),
-    (changed(("data", "enhance", "labels_folder"), "a/b"), "one folder's name"),
-    (changed(("data", "enhance", "names"), {}), "names map each label"),
-    (changed(("data", "enhance", "names"), {"03": "C3"}), "whole numbers from 1"),
-    (changed(("data", "enhance", "names"), {"2": "C2"}), "the name head lacks"),
-    (changed(("data", "enhance", "names"), {"3": "C3", "4": "C3"}), "one level name to two labels"),
-    (changed(("data", "enhance", "extra"), 1), "and nothing else"),
+    (changed(("data",), {"enhance": "x"}), "a source is one the gold 3 store spells"),
+    (changed(("data", "enhance_pet", "ct"), "/rs/data"), "a folder under the data root"),
+    (changed(("data", "enhance_pet", "labels"), "a/../b"), "a folder under the data root"),
+    (changed(("data", "enhance_pet", "labels_folder"), "a/b"), "one folder's name"),
+    (changed(("data", "enhance_pet", "names"), {}), "names map each label"),
+    (changed(("data", "enhance_pet", "names"), {"03": "C3"}), "whole numbers from 1"),
+    (changed(("data", "enhance_pet", "names"), {"2": "C2"}), "the name head lacks"),
+    (changed(("data", "enhance_pet", "names"), {"3": "C3", "4": "C3"}), "one level name to two labels"),
+    (changed(("data", "enhance_pet", "extra"), 1), "and nothing else"),
     (changed(("rows",), []), "rows: from 2"),
     (changed(("rows", 0, "extra"), 1), "a row holds"),
     (changed(("rows", 0, "item"), "Not An Item"), "as the gold 3 store spells them"),
     (changed(("rows", 1, "item"), TRAIN[0]), "listed twice"),
+    (changed(("rows", 0, "person"), TRAIN[1]), "a person is a study here"),
     (changed(("rows", 0, "part"), "test"), "a screen holds no test row"),
     (changed(("rows", 0, "source"), "verse"), "has no entry under data"),
+    (another_sources_row(), "is not spelled verse:<id>"),
     (changed(("split",), {"salt": SALT}), "split:"),
     (changed(("split", "salt"), ""), "salt is a string"),
     (changed(("split", "validation_share"), 1), "validation_share"),
@@ -227,11 +239,12 @@ def test_a_row_off_the_frozen_split_or_on_the_test_list_is_refused() -> None:
     assert "the rule puts" in rows_problems(moved, split_rule())[0]
     assert "the rule" in rows_problems(record, split_rule(salt="another-salt"))[0]
     assert "the rule" in rows_problems(record, split_rule(share=0.2))[0]
-    # the trial reads a row's files by its item, so an item on a test list is refused under any person
+    # the trial reads a row's files by its item and the guards check its person, so a row whose
+    # item is another study than its person is refused before the guards are asked
     swapped = copy.deepcopy(record)
     swapped["rows"][0]["item"] = "enhance_pet:7777"
-    found = rows_problems(swapped, split_rule(frozenset({"enhance_pet:7777"})))
-    assert found == ["rows: enhance_pet:7777 is itself on a test list, whatever person the row names"]
+    said = "and a person is a study here, so the two are one"
+    assert plan_problems(swapped) == [f"rows: enhance_pet:7777's person is {TRAIN[0]}, {said}"]
 
 
 def test_a_study_outside_its_units_part_is_refused_and_one_inside_or_in_no_unit_is_not() -> None:
@@ -311,6 +324,9 @@ def test_the_trials_are_every_arm_at_every_seed_in_one_order_with_the_anneal_spa
     assert task_problems(plan, 0, 6) == [] and task_problems(plan, 5, 6) == []
     assert "6 trials" in task_problems(plan, 0, 8)[0]
     assert "outside" in task_problems(plan, 6, 6)[0]
+    # by arm and then by seed as a number, so seed 10 follows seed 2 as the task numbers count
+    tens = plan_of(changed(("seeds",), [10, 2]))
+    assert [t.id for t in trials(tens)][:2] == ["joint_s2", "joint_s10"]
 
 
 def reading(epoch: int, distance: float | None) -> dict[str, Any]:
@@ -378,6 +394,18 @@ def test_every_fault_of_an_entry_is_said_in_words(said: str, change: Any) -> Non
     assert found and said in found[0], (said, found)
 
 
+def test_a_loss_that_is_no_number_is_refused_and_only_a_null_or_nan_is_called_a_divergence() -> (
+    None
+):
+    plan = plan_of(good_plan())
+    trial = trials(plan)[0]
+    said = f"{trial.id}: the training loss of epoch 3 is not a finite number"
+    for loss, words in ((math.inf, f"{said}, so the trial diverged"), ("1.0", said)):
+        entry = good_entry(trial)
+        entry["epochs"][1]["loss"] = loss
+        assert entry_problems(entry, trial, plan) == [words]
+
+
 def test_an_entry_that_holds_is_read_and_one_of_another_screen_is_not() -> None:
     plan = plan_of(good_plan())
     trial = trials(plan)[0]
@@ -387,14 +415,21 @@ def test_an_entry_that_holds_is_read_and_one_of_another_screen_is_not() -> None:
     assert "for the screen another" in entry_problems(good_entry(trial), trial, other)[0]
 
 
+class Readings(list[Any]):
+    """A list of another type, which isinstance takes for a list and JSON never gives."""
+
+
 def test_an_entry_is_taken_only_in_the_plain_types_json_gives() -> None:
     plan = plan_of(good_plan())
     trial = trials(plan)[0]
     ordered = collections.OrderedDict(good_entry(trial))
     assert "an entry holds" in entry_problems(ordered, trial, plan)[0]
     entry = good_entry(trial)
-    entry["epochs"] = tuple(entry["epochs"])
+    entry["epochs"] = Readings(entry["epochs"])
     assert "a reading after each of epochs" in entry_problems(entry, trial, plan)[0]
+    entry = good_entry(trial)
+    entry["epochs"][0] = collections.OrderedDict(entry["epochs"][0])
+    assert "the reading after epoch 2 holds" in entry_problems(entry, trial, plan)[0]
     entry = good_entry(trial)
     entry["final"] = collections.OrderedDict(entry["final"])
     assert "final holds" in entry_problems(entry, trial, plan)[0]
@@ -465,9 +500,9 @@ def test_the_contracts_refuse_a_plan_that_does_not_hold_and_a_value_of_the_wrong
         steps_per_epoch(3, 0)
     # a seed twice would name its trials twice; plan_problems refuses such a plan before it is one
     twice = dataclasses.replace(plan_of(good_plan()), seeds=(1, 1))
-    with pytest.raises(ViolationError):
+    with pytest.raises(ViolationError, match="each seed once"):
         trials(twice)
-    with pytest.raises(ViolationError):
+    with pytest.raises(ViolationError, match="each seed once"):
         decide(twice, {})
 
 

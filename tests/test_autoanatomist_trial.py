@@ -1,8 +1,8 @@
 """The auto-anatomist screen's trial and join, run for real on small synthetic CTs: two trials of a
 CPU plan train, read their validation CT after each epoch and write entries the join reads and
 decides on, a label the plan does not name never reaches a crop, a row whose CT is missing is
-refused with 2, environments other than the pinned one are refused with 3, and a trial whose loss or
-weights stop being finite numbers stops with 1 before it reads.
+refused with 2, environments other than the pinned one are refused with 3, and a trial whose loss,
+weights or outputs stop being finite numbers stops with 1 before it reads, keeping environment.json.
 
 It needs the trial's environment, the packages schwingnet.autoanatomist_screen.PINS names beside
 beartype and icontract, which neither CI's python3 nor the pixi environments hold, so it is skipped
@@ -55,7 +55,7 @@ def draw_spine(folder, name, seed):
 def plan_record(rows):
     return {"screen": "synthetic_screen", "purpose": "The trial and the join on synthetic CTs.", "class": "batch",
             "layout": "series",
-            "data": {"synth": {"ct": "ct", "labels": "labels", "labels_folder": "Vertebrae", "names": NAMED}},
+            "data": {"enhance_pet": {"ct": "ct", "labels": "labels", "labels_folder": "Vertebrae", "names": NAMED}},
             "rows": rows, "split": {"salt": "s", "validation_share": 0.5}, "test": "off",
             "fixed": ["objective=mask", "naming=off", "widths=4:8:8"],
             "arms": {"joint": ["schedule=joint"], "null": ["schedule=fixed", "lam_fixed=1", "w_fixed=0", "w_feature=0"]},
@@ -72,7 +72,7 @@ class TrialTest(unittest.TestCase):
         rows = []
         for n, part in enumerate(("train", "train", "train", "validation")):
             draw_spine(cls.data, f"{n:04d}", seed=n)
-            rows.append({"item": f"synth:{n:04d}", "person": f"synth:{n:04d}", "part": part, "source": "synth"})
+            rows.append({"item": f"enhance_pet:{n:04d}", "person": f"enhance_pet:{n:04d}", "part": part, "source": "enhance_pet"})
         cls.plan = root / "plan.json"
         cls.plan.write_text(json.dumps(plan_record(rows)), encoding="utf-8")
         cls.done = [cls.trial(task) for task in (0, 1)]
@@ -113,7 +113,7 @@ class TrialTest(unittest.TestCase):
 
         with np.load(self.out / "trials" / "null_s1" / "latents.npz") as z:
             self.assertEqual(z["train_latent"].shape, (15, 8))
-            self.assertEqual(sorted(set(z["validation_item"].tolist())), ["synth:0003"])
+            self.assertEqual(sorted(set(z["validation_item"].tolist())), ["enhance_pet:0003"])
             self.assertEqual(sorted(set(z["train_name"].tolist())), list(range(17, 22)))
         # The tool puts its own folders on the path as it loads, so the test's path is put back after.
         kept = list(sys.path)
@@ -145,7 +145,7 @@ class TrialTest(unittest.TestCase):
 
     def test_a_missing_ct_is_refused_with_2_and_said_in_why(self):
         record = json.loads(self.plan.read_text(encoding="utf-8"))
-        record["rows"][0]["item"] = record["rows"][0]["person"] = "synth:0099"
+        record["rows"][0]["item"] = record["rows"][0]["person"] = "enhance_pet:0099"
         plan = Path(self.tmp.name) / "missing.json"
         plan.write_text(json.dumps(record), encoding="utf-8")
         out = Path(self.tmp.name) / "missing-study"
@@ -160,6 +160,24 @@ class TrialTest(unittest.TestCase):
         self.assertEqual(done.returncode, 2, done.stdout + done.stderr)
         self.assertIn("outside the array", done.stdout)
         self.assertFalse(out.exists())
+
+    def test_a_network_whose_last_update_overflows_its_outputs_stops_with_1_and_keeps_its_environment(self):
+        # The step's loss is taken before its update, so the last update can leave every weight
+        # finite and every output not: a learning rate of 1e30 after three steps of warm-up does.
+        record = json.loads(self.plan.read_text(encoding="utf-8"))
+        record.update({"arms": {"boom": ["lr=1e30", "warmup=3"], "null": record["arms"]["null"]}, "epochs": 1})
+        plan = Path(self.tmp.name) / "boom.json"
+        plan.write_text(json.dumps(record), encoding="utf-8")
+        out = Path(self.tmp.name) / "boom-study"
+        done = self.trial(0, plan=plan, out=out)
+        folder = out / "trials" / "boom_s1"
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("training diverged: an output is not a finite number after epoch 1",
+                      (folder / "why.txt").read_text(encoding="utf-8"))
+        self.assertFalse((folder / "entry.json").exists())
+        environment = json.loads((folder / "environment.json").read_text(encoding="utf-8"))
+        self.assertEqual(environment["matmul_precision"], "highest")
+        self.assertNotIn("train_and_read_seconds", environment)
 
 
 def load_tool():
@@ -184,7 +202,7 @@ class DivergenceTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.tool = load_tool()
-        rows = [{"item": f"synth:{n:04d}", "person": f"synth:{n:04d}", "part": part, "source": "synth"}
+        rows = [{"item": f"enhance_pet:{n:04d}", "person": f"enhance_pet:{n:04d}", "part": part, "source": "enhance_pet"}
                 for n, part in enumerate(("train", "train", "train", "validation"))]
         cls.plan = cls.tool.plan_of(plan_record(rows))
         cls.tmp = tempfile.TemporaryDirectory()
@@ -235,9 +253,65 @@ class DivergenceTest(unittest.TestCase):
         self.assertEqual(refused.code, 1)
         self.assertIn("a weight is not a finite number after epoch 1", str(refused))
 
+    def test_outputs_that_are_not_finite_numbers_stop_the_first_reading_with_1(self):
+        import numpy as np
+
+        session = self.session(nan_weights=False)
+        session.predict = lambda ex: {"logits": np.zeros((2, 3)), "latent": np.array([[0.0, np.inf]])}
+        refused = self.train_and_read(session, [0.5, 0.5])
+        self.assertEqual(refused.code, 1)
+        self.assertIn("an output is not a finite number after epoch 1", str(refused))
+
     def test_a_steady_step_is_the_median_so_the_steps_that_compile_count_for_nothing(self):
         self.assertEqual(self.tool.steady_seconds([12.3, 1.92, 1.85, 1.64, 2.21]), 1.92)
         self.assertEqual(self.tool.steady_seconds([]), 0.0)
+
+
+class Distribution:
+    """A distribution as importlib.metadata gives one, its metadata unreadable where it says so."""
+
+    def __init__(self, name, version, readable=True):
+        self.name, self.version, self.readable = name, version, readable
+
+    @property
+    def metadata(self):
+        if not self.readable:
+            raise UnicodeDecodeError("utf-8", b"\xfc", 0, 1, "invalid start byte")
+        return {"Name": self.name}
+
+
+@unittest.skipIf(MISSING, f"needs the trial's environment ({', '.join(MISSING)} missing)")
+class EnvironmentTest(unittest.TestCase):
+    """What a trial records of its environment, and the pins it refuses to run without."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.tool = load_tool()
+        rows = [{"item": f"enhance_pet:{n:04d}", "person": f"enhance_pet:{n:04d}", "part": part, "source": "enhance_pet"}
+                for n, part in enumerate(("train", "train", "train", "validation"))]
+        cls.plan = cls.tool.plan_of(plan_record(rows))
+
+    def test_a_package_at_another_version_than_its_pin_is_refused_with_3(self):
+        pins = self.tool.PINS
+        self.tool.PINS = ("jax==0.0.1",)
+        try:
+            with self.assertRaises(self.tool.TrialRefused) as caught:
+                self.tool.check_environment(self.plan)
+        finally:
+            self.tool.PINS = pins
+        self.assertEqual(caught.exception.code, 3)
+        self.assertIn("the pins say 0.0.1", str(caught.exception))
+
+    def test_the_gpu_stack_keeps_the_first_copy_of_a_name_and_passes_over_unreadable_metadata(self):
+        found = [Distribution("nvidia-cudnn-cu12", "9.9"), Distribution("broken", "1.0", readable=False),
+                 Distribution("nvidia-cudnn-cu12", "1.0"), Distribution("jax", "0.10.2"), Distribution("numpy", "2.0")]
+        distributions = self.tool.metadata.distributions
+        self.tool.metadata.distributions = lambda: iter(found)
+        try:
+            stack = self.tool.gpu_stack()
+        finally:
+            self.tool.metadata.distributions = distributions
+        self.assertEqual(stack, {"jax": "0.10.2", "nvidia-cudnn-cu12": "9.9"})
 
 
 if __name__ == "__main__":

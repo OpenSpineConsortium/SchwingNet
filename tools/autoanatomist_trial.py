@@ -26,8 +26,10 @@ session/ (the weights, the optimizer and every step's row, Session.save), enviro
 host, the card, the packages and the timings) and entry.json last, checked by entry_problems
 before it is written, which the join reads; PROGRESS.txt says where the trial is, a line an event.
 A trial that cannot finish leaves why.txt and no entry, and the join counts it failed; so does one
-whose training diverged, a step's loss or, at a reading, a weight no longer a finite number, which
-would otherwise read every crop empty and so a finite worst distance.
+whose training diverged, a step's loss or, at a reading, a weight or an output of the CT-only path
+no longer a finite number, which would otherwise read every crop empty and so a finite worst
+distance. environment.json is written before the crops are cut, so a trial that fails keeps its
+packages, card and precision on record, and written again with the timings once it has read.
 
 Exit 0 with the entry written; 2 for a plan, a task or an input that does not hold; 3 for an
 environment whose packages are not the pinned ones (schwingnet.autoanatomist_screen.PINS); 4 for a
@@ -250,11 +252,29 @@ def weights_finite(session):
     return all(bool(jnp.isfinite(leaf).all()) for leaf in jax.tree_util.tree_leaves(nnx.state(session.model, nnx.Param)))
 
 
+def outputs_finite(session, examples):
+    """Whether the CT-only path gives finite logits, name logits and latents on every crop, so a
+    reading reads outlines and not a network whose last update left finite weights that overflow."""
+    import numpy as np
+
+    return all(bool(np.isfinite(value).all()) for value in session.predict(examples).values())
+
+
+def divergence(session, examples):
+    """Why a reading would read a diverged network, or empty where it reads a trained one: a weight,
+    or an output of the CT-only path on the crops, that is not a finite number."""
+    if not weights_finite(session):
+        return "a weight is not a finite number"
+    if not outputs_finite(session, examples):
+        return "an output is not a finite number"
+    return ""
+
+
 def train_and_read(session, train_ex, validation_ex, plan, folder, progress):
     """Every step in one call, a reading after each epoch evaluation_epochs names: (points, each
-    step row's seconds). A step whose loss is not a finite number, or a reading whose weights are
-    not, stops the trial with 1, since a diverged network outlines nothing and every crop would read
-    the worst distance as though it were a result."""
+    step row's seconds). A step whose loss is not a finite number, or a reading whose weights or
+    outputs are not, stops the trial with 1, since a diverged network outlines nothing and every
+    crop would read the worst distance as though it were a result."""
     per_epoch = steps_per_epoch(train_count(plan), plan.batch)
     read_at, points, losses, seconds = set(evaluation_epochs(plan)), [], [], []
 
@@ -268,8 +288,9 @@ def train_and_read(session, train_ex, validation_ex, plan, folder, progress):
             return
         epoch = done // per_epoch
         if epoch in read_at:
-            if not weights_finite(session):
-                raise TrialRefused(1, f"training diverged: a weight is not a finite number after epoch {epoch}")
+            why = divergence(session, validation_ex)
+            if why:
+                raise TrialRefused(1, f"training diverged: {why} after epoch {epoch}")
             reading = session.evaluate(validation_ex)
             with open(folder / "readings.jsonl", "a", encoding="utf-8") as handle:
                 handle.write(json.dumps(plain(dict(reading, epoch=epoch))) + "\n")
@@ -324,12 +345,17 @@ def check_environment(plan):
 
 def gpu_stack():
     """The versions of JAX and of every NVIDIA library the venv holds, which the cuda12 extra takes as
-    ranges, so the CUDA stack a trial ran on is on record beside the pins."""
+    ranges, so the CUDA stack a trial ran on is on record beside the pins. A name found twice keeps
+    its first copy on the path, the one an import loads, and metadata that cannot be read is passed
+    over rather than failing the trial."""
     found = {}
     for dist in metadata.distributions():
-        name = dist.metadata["Name"] or ""
+        try:
+            name = dist.metadata["Name"] or ""
+        except (OSError, UnicodeDecodeError):
+            continue
         if name.lower().startswith(("nvidia-", "jax")):
-            found[name] = dist.version
+            found.setdefault(name, dist.version)
     return dict(sorted(found.items()))
 
 
@@ -337,6 +363,19 @@ def write_json(path, value):
     part = path.with_name(path.name + ".part")
     part.write_text(json.dumps(value, indent=1, sort_keys=True) + "\n", encoding="utf-8")
     os.replace(part, path)
+
+
+def environment_of(args, found, backend, devices):
+    """The trial's host, card, packages and precision, as environment.json holds them before any
+    timing."""
+    import jax
+
+    return {"host": socket.gethostname(), "slurm_job": os.environ.get("SLURM_JOB_ID") or "none",
+            "slurm_array_job": os.environ.get("SLURM_ARRAY_JOB_ID") or "none",
+            "slurm_array_task": os.environ.get("SLURM_ARRAY_TASK_ID") or "none",
+            "python": platform.python_version(), "backend": backend, "devices": devices, "packages": found,
+            "pins": list(PINS), "gpu_stack": gpu_stack(), "matmul_precision": str(jax.config.jax_default_matmul_precision),
+            "workers": args.workers}
 
 
 def run_trial(args, plan, trial, folder, progress):
@@ -347,6 +386,8 @@ def run_trial(args, plan, trial, folder, progress):
     # Every card computes float32 as float32: an L40S would otherwise take its convolutions in TF32
     # while a V100 cannot, and one array's trials land on both.
     jax.config.update("jax_default_matmul_precision", "highest")
+    environment = environment_of(args, found, backend, devices)
+    write_json(folder / "environment.json", environment)
     from autoanatomist import rows as vendored
     from autoanatomist.blocks import parse
     from autoanatomist.session import Session
@@ -372,18 +413,12 @@ def run_trial(args, plan, trial, folder, progress):
     save_latents(session, examples, items, folder)
     spines = examples["train"].spines()
     step_crops = plan.batch * (sum(len(s) for s in spines) / len(spines))
-    environment = {"host": socket.gethostname(), "slurm_job": os.environ.get("SLURM_JOB_ID") or "none",
-                   "slurm_array_job": os.environ.get("SLURM_ARRAY_JOB_ID") or "none",
-                   "slurm_array_task": os.environ.get("SLURM_ARRAY_TASK_ID") or "none",
-                   "python": platform.python_version(), "backend": backend, "devices": devices, "packages": found,
-                   "pins": list(PINS), "gpu_stack": gpu_stack(),
-                   "matmul_precision": str(jax.config.jax_default_matmul_precision),
-                   "step_seconds": {"steps": len(step_seconds), "first": round(step_seconds[0], 3) if step_seconds else None,
-                                    "median": round(steady_seconds(step_seconds), 4), "sum": round(sum(step_seconds), 1)},
-                   "workers": args.workers, "render_seconds": round(rendered, 1),
-                   "row_render_seconds_max": round(max(cut), 1) if cut else None,
-                   "train_and_read_seconds": round(time.time() - began - rendered, 1),
-                   "crops": {part: int(len(ex)) for part, ex in examples.items()}}
+    environment.update({
+        "step_seconds": {"steps": len(step_seconds), "first": round(step_seconds[0], 3) if step_seconds else None,
+                         "median": round(steady_seconds(step_seconds), 4), "sum": round(sum(step_seconds), 1)},
+        "render_seconds": round(rendered, 1), "row_render_seconds_max": round(max(cut), 1) if cut else None,
+        "train_and_read_seconds": round(time.time() - began - rendered, 1),
+        "crops": {part: int(len(ex)) for part, ex in examples.items()}})
     write_json(folder / "environment.json", environment)
     return {"version": ENTRY_VERSION, "screen": plan.screen, "trial": trial.id, "arm": trial.arm, "seed": trial.seed,
             "words": list(trial.words), "steps": total_steps(plan), "epochs": points,

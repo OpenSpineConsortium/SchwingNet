@@ -9,14 +9,16 @@ symmetric surface distance in millimetres. The first screen holds the network at
 objective and varies only the anneal, so its null is the schedule that never anneals: the CT alone
 from the first step, the network with no privileged information. Everything the flow decides is a
 function here, so that the gate proves it and the flow (flows/autoanatomist.py) only carries it
-out: a plan that does not hold is said in words (plan_problems), never guessed at; a row whose part
-is not the one data/splits/rule.json gives its person, or whose person is on the test list, is
-refused (rows_problems), so a screen never reads a test person; and the decision is the same
-however the trials are ordered.
+out: a plan that does not hold is said in words (plan_problems), never guessed at, and a row's
+item, the study whose files the trial reads, must be its person, since a person is a study here; a
+row whose part is not the one data/splits/rule.json gives its person, or whose person is on the test
+list, is refused (rows_problems), so a screen never reads a test person; and the decision is the
+same however the trials are ordered.
 
 Standard library with beartype and beethoven-qa's contracts, as the package's rules ask; nothing
-here reads a file, renders a crop or trains a network. A plan, an entry and a decision are read as
-the JSON they are, dicts and lists, so a mapping of another kind is refused rather than read.
+here reads a file, renders a crop or trains a network. An entry, and each final the decision reads
+from one, is taken as the JSON it is, plain dicts and lists, so a mapping of another kind is refused
+rather than read; a plan is read by isinstance, since plans come from json.loads alone.
 """
 
 import math
@@ -33,6 +35,10 @@ ENTRY_VERSION = 1
 ID_CHARS = frozenset("abcdefghijklmnopqrstuvwxyz0123456789_")
 ITEM_CHARS = frozenset("abcdefghijklmnopqrstuvwxyz0123456789_:.-")
 WORD_KEY_CHARS = frozenset("abcdefghijklmnopqrstuvwxyz_")
+# The sources the gold 3 store spells its items and persons with (tools/gold3_ct.py), the spellings
+# the test lists and the units hold too, so a plan's source is one of them and a person it names is
+# one a list could name.
+STORE_SOURCES = ("enhance_pet", "totalsegmentator", "verse")
 JOB_CLASSES = ("batch", "gpu")
 LAYOUTS = ("array", "series")
 READ_PARTS = ("train", "validation")
@@ -247,8 +253,9 @@ def _names_problems(source: str, names: object) -> list[str]:
 
 
 def _source_problems(source: object, entry: object) -> list[str]:
-    if not _is_id(source):
-        return [f"data: a source is lower-case letters, digits and _, not {source!r}"]
+    if source not in STORE_SOURCES:
+        spelled = ", ".join(STORE_SOURCES)
+        return [f"data: a source is one the gold 3 store spells, {spelled}, not {source!r}"]
     if not isinstance(entry, dict) or set(entry) != set(DATA_KEYS):
         return [f"data: {source} holds {', '.join(DATA_KEYS)}, and nothing else"]
     for key in ("ct", "labels"):
@@ -257,7 +264,7 @@ def _source_problems(source: object, entry: object) -> list[str]:
     folder = entry["labels_folder"]
     if not isinstance(folder, str) or not folder or "/" in folder or folder in (".", ".."):
         return [f"data: {source}'s labels_folder is one folder's name, not {folder!r}"]
-    return _names_problems(cast(str, source), entry["names"])
+    return _names_problems(source, entry["names"])
 
 
 def _data_problems(data: object) -> list[str]:
@@ -279,10 +286,17 @@ def _row_problems(row: object, sources: Sequence[str], seen: set[str]) -> list[s
     if item in seen:
         return [f"rows: {item} is listed twice"]
     seen.add(cast(str, item))
+    if row["person"] != item:
+        # The trial reads a row's files by its item and the split's guards check its person, so the
+        # two are one study, as a person is here.
+        said = f"{item}'s person is {row['person']}"
+        return [f"rows: {said}, and a person is a study here, so the two are one"]
     if row["part"] not in READ_PARTS:
         return [f"rows: {item}'s part is train or validation; a screen holds no test row"]
     if row["source"] not in sources:
         return [f"rows: {item}'s source {row['source']!r} has no entry under data"]
+    if not cast(str, item).startswith(f"{row['source']}:"):
+        return [f"rows: {item} is not spelled {row['source']}:<id>, as its source's items are"]
     return []
 
 
@@ -448,10 +462,10 @@ def rule_part(rule: SplitRule, person: str) -> str:
 @ensure(lambda result: all(isinstance(line, str) and line for line in result), "lines in words")
 def rows_problems(record: Mapping[str, object], rule: SplitRule) -> list[str]:
     """What keeps a plan's rows from the frozen split: a salt or a share other than the rule
-    file's, a person on the test list, an item that is itself on it, or a row whose part is not the
-    one the rule gives its person. The trial reads a row's files by its item, so an item a test list
-    names is refused whatever person the row gives it. The flow, the gate's check and
-    scripts/check.sh pass the rule and the test lists."""
+    file's, a person on the test list, or a row whose part is not the one the rule gives its
+    person. A row's item is its person (plan_problems), so the person checked is the study whose
+    files the trial reads. The flow, the gate's check and scripts/check.sh pass the rule and the
+    test lists."""
     split = cast(Mapping[str, object], record["split"])
     if split["salt"] != rule.salt or split["validation_share"] != rule.validation_share:
         said = f"{split['salt']!r} at {split['validation_share']!r}"
@@ -464,8 +478,6 @@ def rows_problems(record: Mapping[str, object], rule: SplitRule) -> list[str]:
         item, person = row["item"], row["person"]
         if part == "test":
             return [f"rows: {item}'s person {person} is on a test list, which a screen never reads"]
-        if item in rule.test_persons:
-            return [f"rows: {item} is itself on a test list, whatever person the row names"]
         if part != row["part"]:
             return [f"rows: {item} is in {row['part']}, and the rule puts {person} in {part}"]
     return []
@@ -575,7 +587,10 @@ def trial_id(arm: str, seed: int) -> str:
 @ensure(
     lambda result, plan: len(result) == len(plan.arms) * len(plan.seeds), "every arm at every seed"
 )
-@ensure(lambda result: [t.id for t in result] == sorted(t.id for t in result), "in a fixed order")
+@ensure(
+    lambda result: [(t.arm, t.seed) for t in result] == sorted((t.arm, t.seed) for t in result),
+    "by arm, then by seed",
+)
 @ensure(lambda result: len({t.id for t in result}) == len(result), "no trial twice")
 def trials(plan: Plan) -> list[TrialSpec]:
     """Every trial of the screen, in the order the array's task numbers count them: by arm, then
@@ -588,7 +603,7 @@ def trials(plan: Plan) -> list[TrialSpec]:
             plan_words = (f"seed={seed}", f"batch={plan.batch}", f"anneal={steps}")
             words = (*plan.fixed, *plan.arms[arm], *plan_words)
             found.append(TrialSpec(trial_id(arm, seed), arm, seed, words))
-    return sorted(found, key=lambda t: t.id)
+    return found
 
 
 @beartype
@@ -626,13 +641,20 @@ def _point_problems(trial: str, record: object, epoch: int, per_epoch: int) -> l
         named = f"epoch {record['epoch']!r} at {record['steps']!r} steps"
         return [f"{trial}: a reading names {named}, not epoch {epoch} at {epoch * per_epoch}"]
     if not _is_finite(record["loss"]):
-        # Every reading follows a step, so its loss is a number; a loss that is not one is a trial
-        # that diverged, whose empty masks would otherwise read as the crop's worst distance.
-        loss = f"the training loss of epoch {epoch}"
-        return [f"{trial}: {loss} is not a finite number, so the trial diverged"]
+        return [_loss_problem(trial, record["loss"], epoch)]
     if not all(_is_measure(key, record[key]) for key in MEASURE_KEYS):
         return [f"{trial}: the reading after epoch {epoch} holds a measure no number and no null"]
     return []
+
+
+def _loss_problem(trial: str, loss: object, epoch: int) -> str:
+    """A reading's training loss that is not a finite number. Every reading follows a step, so a
+    null, a NaN or an infinity is a trial that diverged, whose empty masks would otherwise read as
+    the crop's worst distance; anything else is a value no trial writes."""
+    said = f"{trial}: the training loss of epoch {epoch} is not a finite number"
+    if loss is None or (isinstance(loss, float) and not math.isfinite(loss)):
+        return f"{said}, so the trial diverged"
+    return said
 
 
 def _epochs_problems(trial: str, points: object, plan: Plan) -> list[str]:
@@ -694,8 +716,9 @@ def evaluation_epochs(plan: Plan) -> list[int]:
 def entry_problems(entry: object, trial: TrialSpec, plan: Plan) -> list[str]:
     """What keeps a trial's entry from being read by the join: its keys, its names and words
     against the trial it should be, its steps and rows against the plan's, a reading after each
-    epoch evaluation_epochs names, every measure a finite number or a null, and the final measures
-    the last reading's. An entry is read from JSON, which gives plain dicts and lists, so the reader
+    epoch evaluation_epochs names, each reading's training loss a finite number, since a trial that
+    diverged has none, every measure a finite number or a null, and the final measures the last
+    reading's. An entry is read from JSON, which gives plain dicts and lists, so the reader
     takes those types exactly: a subclass may answer a lookup its own way, as the contracts gate's
     dict subclass did on 2026-10-30, raising where a plain dict reads."""
     if type(entry) is not dict or set(entry) != set(ENTRY_KEYS):

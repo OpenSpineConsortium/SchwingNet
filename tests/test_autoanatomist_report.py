@@ -2,8 +2,10 @@
 autoanatomist-screen of tools/report.py): a chain folder as flows/autoanatomist.py's join leaves it
 is written and then checked current, every code answer quotes the files RECORD.json names, a file
 whose bytes moved since the record is missing in words, a chain run under another PREREG is never
-reported in this design's words, and the design the module restates is the one frozen beside the
-PREREG. Standard library only, so the required check runs it with the runner's python3.
+reported in this design's words, the design the module restates is the one frozen beside the PREREG,
+with every known limit of its section 6, and the sizes, the chance and the precision are read from
+the chain, not assumed. Standard library only, so the required check runs it with the runner's
+python3.
 """
 
 import hashlib
@@ -19,6 +21,10 @@ ROOT = Path(__file__).resolve().parent.parent
 REPORT = ROOT / "tools" / "report.py"
 STUDY = "autoanatomist-screen"
 TRIALS = (("lambda_then_w_s1", "lambda_then_w", 1), ("null_s1", "null", 1))
+# A word of each of PREREG.md section 6's known limits, in its order, found in the limit and in its
+# restatement (tools/autoanatomist_report.py, LIMITS).
+LIMIT_WORDS = ("centroid", "a person is a study", "one population", "normal spines", "mean over",
+               "64 mm along z", "same to the bit", "frozen teacher")
 
 
 def load_module():
@@ -42,7 +48,7 @@ def reading(epoch, distance):
             "surface_missing": 0, "centroid_mm": 3.0, "name_accuracy": 0.25}
 
 
-def write_chain(folder, prereg_sha256):
+def write_chain(folder, prereg_sha256, precision="highest"):
     """A chain folder of two trials and the join, with RECORD.json naming each file by its sha256."""
     files = {}
     for tid, arm, seed in TRIALS:
@@ -51,7 +57,8 @@ def write_chain(folder, prereg_sha256):
                  "seconds_per_crop": 0.01, "train_rows": 3, "validation_rows": 1}
         entry["final"] = {key: entry["epochs"][-1][key] for key in ("dice", "distance_mm", "surface_missing", "centroid_mm", "name_accuracy")}
         environment = {"host": "gpu-node", "python": "3.11.9", "backend": "gpu", "devices": ["NVIDIA A100"],
-                       "packages": {"jax": "0.10.2", "flax": "0.12.8"}, "train_and_read_seconds": 12.5}
+                       "packages": {"jax": "0.10.2", "flax": "0.12.8"}, "train_and_read_seconds": 12.5,
+                       "matmul_precision": precision if arm == "null" else "highest"}
         for name, value in (("entry.json", entry), ("environment.json", environment)):
             write_json(folder / "trials" / tid / name, value)
             files[f"trials/{tid}/{name}"] = sha256_of(folder / "trials" / tid / name)
@@ -108,6 +115,12 @@ class ReportTest(unittest.TestCase):
         self.assertIn("jax 0.10.2", claim["23"]["evidence"])
         self.assertEqual(claim["1"]["state"], "missing")  # the title is the owner's, and the answers file is empty
         self.assertIn("chain 41000001 of gold3_latent_smoke", (self.folder / "REPORT.md").read_text(encoding="utf-8"))
+        reforms = items(self.folder, "reforms")
+        self.assertIn("the smoke's sizes, 3 training and 1 validation studies at 1 seed an arm", reforms["3e"]["evidence"])
+        self.assertIn("at most one time in 2 at 1 seed a side", claim["29"]["evidence"])
+        self.assertIn("the smoke answers no hypothesis", claim["29"]["evidence"])
+        self.assertIn("every trial computed float32 in full", reforms["2d"]["evidence"])
+        self.assertIn("AUTOANATOMIST_RERUNS", reforms["2d"]["evidence"])
 
     def test_a_file_whose_bytes_moved_since_the_record_answers_nothing(self):
         write_chain(self.folder, self.module.DESIGN)
@@ -127,6 +140,34 @@ class ReportTest(unittest.TestCase):
             with self.subTest(item=item):
                 self.assertEqual(claim[item]["state"], "missing")
                 self.assertIn("the chain ran another design", claim[item]["evidence"])
+
+    def test_a_trial_that_computed_in_another_precision_is_named_and_not_called_full(self):
+        write_chain(self.folder, self.module.DESIGN, precision="default")
+        wrote = report("write", self.folder)
+        self.assertEqual(wrote.returncode, 0, wrote.stdout + wrote.stderr)
+        reproduce = items(self.folder, "reforms")["2d"]["evidence"]
+        self.assertIn("matmul precision was default, highest", reproduce)
+        self.assertIn("not every card computed float32 in full", reproduce)
+        self.assertNotIn("every trial computed float32 in full", reproduce)
+
+    def test_the_screens_sizes_and_chance_are_read_from_its_plan(self):
+        run = {"record": {"prereg_sha256": self.module.DESIGN,
+                          "plan": {"screen": "gold3_latent_screen", "rows": {"train": 96, "validation": 24}, "seeds": [1, 2]}}}
+        sizes = self.module.fact_sample_size(run)[1]
+        self.assertIn("the screen's sizes are its budget, 96 training and 24 validation studies at 2 seeds an arm", sizes)
+        chance = self.module.fact_uncertainty(run)[1]
+        self.assertIn("at most one time in 6 at 2 seeds a side", chance)
+        self.assertNotIn("no hypothesis", sizes + chance)
+
+    def test_every_known_limit_of_the_prereg_is_restated_in_its_order(self):
+        section = self.module.PREREG.read_text(encoding="utf-8").split("## 6.", 1)[1].split("## 7.", 1)[0]
+        limits = [line for line in section.split("Known limits", 1)[1].splitlines() if line.startswith("- ")]
+        self.assertEqual(len(limits), len(self.module.LIMITS))
+        self.assertEqual(len(limits), len(LIMIT_WORDS))
+        for word, limit, restated in zip(LIMIT_WORDS, limits, self.module.LIMITS, strict=True):
+            with self.subTest(word=word):
+                self.assertIn(word, limit.lower())
+                self.assertIn(word, restated.lower())
 
     def test_a_report_the_files_moved_under_is_not_current(self):
         write_chain(self.folder, self.module.DESIGN)

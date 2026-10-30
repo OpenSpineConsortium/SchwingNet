@@ -19,6 +19,7 @@ Standard library only, as tools/report.py is.
 
 import hashlib
 import json
+import math
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -26,9 +27,28 @@ STUDY = "autoanatomist-screen"
 PREREG = ROOT / "docs" / "research" / "autoanatomist-screen" / "PREREG.md"
 # The pre-registration the design answers restate, by its sha256: PREREG.md as frozen, the digest
 # PREREG.md.sha256 beside it holds (tests/test_autoanatomist_report.py holds the two together).
-DESIGN = "04f54cd35d4375053580cb3906693390e90dcc2f6916e612ab421edf80b5568d"
+DESIGN = "29c846c25a46adc19b082a08ef350a8fbf71d810db62b043b55a5873942359a9"
 LICENCES = ROOT / "data" / "licences.json"
 SOURCE = "scidb_enhance_pet_1_6k"
+# The plan PREREG.md section 4 reads no result from: it tests the code path on the grid and times a
+# crop, so its report says its sizes and its chance answer no hypothesis.
+SMOKE = "gold3_latent_smoke"
+# PREREG.md section 6's known limits, one restatement each in the section's order;
+# tests/test_autoanatomist_report.py holds them to the section's bullets, so a limit added there and
+# not here fails the check.
+LIMITS = (
+    "the crops are centred on each level's true centroid, so finding a vertebra is not measured",
+    "a person is a study, so a repeat scan the units of probable repeat scans miss may sit in both parts and make "
+    "validation kinder than a new person would",
+    "one population, ENHANCE.PET, and one network size",
+    "normal spines alone, so nothing is said of the anomalous spines",
+    "each reading is a mean over all levels",
+    "a crop's 64 mm along z cuts off part of the target in about a quarter of the crops, so the distance reads lower "
+    "than a whole outline's would and the arms' differences may be smaller than they are",
+    "a GPU's sums are not the same to the bit, so a trial run again ends within run-to-run noise of its first run",
+    "the feature term runs to the last step, so once w reaches 0 it distils from a frozen teacher, and an anneal "
+    "whose feature term ends with the handover is not tested",
+)
 
 ITEMS = {
     "claim": {
@@ -225,10 +245,21 @@ def fact_metrics(run):
                          f"each read every {plan(run).get('evaluate_every')} epochs")
 
 
+def seeds_said(count):
+    return f"{count} seed{'' if count == 1 else 's'}"
+
+
 def fact_uncertainty(run):
-    return restated(run, f"{len(plan(run).get('seeds') or [])} seeds an arm and no interval: an arm beats the null only when "
-                         "every one of its finals is below every one of the null's, which an arm no different passes by chance "
-                         "one time in six at two seeds a side (PREREG.md section 4)")
+    seeds = len(plan(run).get("seeds") or [])
+    if not seeds:
+        return missing("needs the plan's seeds in RECORD.json")
+    said = (f"{seeds_said(seeds)} an arm and no interval: an arm beats the null only when every one of its finals is below "
+            f"every one of the null's, which an arm no different passes by chance at most one time in "
+            f"{math.comb(2 * seeds, seeds)} at {seeds_said(seeds)} a side, since each seed gives the arm and the null one "
+            "start and one draw of batches")
+    if plan(run).get("screen") == SMOKE:
+        said += "; the smoke answers no hypothesis, so no verdict of it is read as a result"
+    return restated(run, f"{said} (PREREG.md section 4)")
 
 
 def fact_internal_evaluation(run):
@@ -264,9 +295,7 @@ def fact_failure_analysis(run):
 
 
 def fact_limitations(run):
-    return restated(run, "crops centred on each level's true centroid, so finding a vertebra is not measured; a person is a study, "
-                         "so autoPET's repeat scans may cross the parts; one population and one network size; each reading a "
-                         "mean over all levels (PREREG.md section 6)")
+    return restated(run, "; ".join(LIMITS) + " (PREREG.md section 6)")
 
 
 def fact_protocol(run):
@@ -286,18 +315,35 @@ def fact_compute(run):
     lines = []
     for tid, env in sorted(run["environments"].items()):
         if env:
-            lines.append(f"{tid} on {env.get('host')}, {env.get('backend')} {', '.join(env.get('devices') or [])}, "
-                         f"{env.get('train_and_read_seconds')} s")
+            seconds = env.get("train_and_read_seconds")
+            timing = f"{seconds} s" if seconds is not None else "stopped before its timing"
+            lines.append(f"{tid} on {env.get('host')}, {env.get('backend')} {', '.join(env.get('devices') or [])}, {timing}")
     return met("; ".join(lines) + " (trials/*/environment.json)") if lines else missing("needs a trial's environment.json")
+
+
+def precision_said(run):
+    """What the trials' environment.json files say of the precision their cards computed in, or None
+    where none was read."""
+    found = sorted({str(env.get("matmul_precision")) for env in run["environments"].values() if env})
+    if not found:
+        return None
+    if found == ["highest"]:
+        return "every trial computed float32 in full (matmul_precision highest in each trials/*/environment.json)"
+    return (f"the trials' matmul precision was {', '.join(found)} (trials/*/environment.json), so not every card "
+            "computed float32 in full")
 
 
 def fact_reproduce(run):
     # GPU arithmetic is not the same to the bit from run to run, and nothing pins the card, so a rerun
     # repeats the procedure and its finals agree within run-to-run noise, not exactly.
+    precision = precision_said(run)
+    if precision is None:
+        return missing("needs a trial's environment.json")
     return met(f"grid/gate.sh's word `autoanatomist {plan(run).get('screen')}` at commit {run['record'].get('commit')}, under "
-               "the frozen PREREG and the plan its Covers line names, runs the same procedure again; every card computes "
-               "float32 in full, but a GPU's sums are not the same to the bit from run to run, so its finals agree within "
-               "run-to-run noise, not exactly")
+               "the frozen PREREG and the plan its Covers line names, runs the same procedure on a checkout whose logs hold "
+               "no record of the plan, and on the lab's grid, where the record stands, once more only when "
+               f"AUTOANATOMIST_RERUNS in grid/gate.sh names the plan and its job, the owner's word; {precision}; a GPU's "
+               "sums are not the same to the bit from run to run, so its finals agree within run-to-run noise, not exactly")
 
 
 def fact_per_part(run):
@@ -307,8 +353,15 @@ def fact_per_part(run):
 
 
 def fact_sample_size(run):
-    return restated(run, "the screen's sizes are its budget, 96 training and 24 validation studies at two seeds an arm, chosen "
-                         "to select arms for a longer run, not powered for an effect")
+    p = plan(run)
+    rows = p.get("rows") or {}
+    sizes = (f"{rows.get('train')} training and {rows.get('validation')} validation studies at "
+             f"{seeds_said(len(p.get('seeds') or []))} an arm")
+    if p.get("screen") == SMOKE:
+        return restated(run, f"the smoke's sizes, {sizes}, try the code path on the grid and time a crop; the smoke answers "
+                             "no hypothesis (PREREG.md section 4)")
+    return restated(run, f"the screen's sizes are its budget, {sizes}, chosen to select arms for a longer run, not powered "
+                         "for an effect")
 
 
 def fact_models_trained(run):
