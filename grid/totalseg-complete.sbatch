@@ -20,11 +20,17 @@
 # with the body's exit, unless it ended 0 and the flow did not, when the job's exit is the launcher's,
 # as every launched flow's job's is.
 #
-# TotalSegmentator goes into a throwaway virtual environment on the lab volume, made from the
-# train-gpu environment with its site packages (torch and Metaflow among them) and kept for a rerun
-# under a name that carries the pin (grid/venv.sh), so the repository takes no new dependency and
-# pixi.lock is never touched. It never downloads: TOTALSEG_WEIGHTS_PATH names the unpacked zips and
-# TOTALSEG_HOME_DIR a config with usage statistics off. Nothing trains. The job's own files go to
+# Each release's own segmenter draws for it (the owner's word of 09:33 UTC): TotalSegmentator for
+# the VerSe series and the TotalSegmentator subjects, MOOSE's vertebrae model for ENHANCE.PET, whose
+# masks MOOSE made, and every arm file carries the level in its release's own label id. Each
+# segmenter goes into a throwaway virtual environment on the lab volume, made from the train-gpu
+# environment with its site packages (torch and Metaflow among them) and kept for a rerun under a
+# name that carries its pins (grid/venv.sh): TotalSegmentator's own, and MOOSE's the one the DRR
+# domain-gap study's segment job made (grid/drr-seg.sbatch's SEG_PIN, so it is there already); the
+# repository takes no new dependency and pixi.lock is never touched. Neither downloads:
+# TOTALSEG_WEIGHTS_PATH names TotalSegmentator's unpacked zips and TOTALSEG_HOME_DIR a config with
+# usage statistics off, and MOOSE's vertebrae zip (fetch moose_weights) is unpacked where moosez
+# looks, as the segment job unpacks it. Nothing trains. The job's own files go to
 # $TOTALSEG_ROOT (the masks under ts/, the kept arm files under arm/, records.jsonl, REPORT.md); the
 # report is logs/TOTALSEG-complete.md: store and file names only, no path under the data root. Not
 # requeued (--no-requeue from the gate). The checkout holds still while the job lasts (grid/logs/HOLD,
@@ -43,11 +49,15 @@ ENHANCE_LABELS=${ENHANCE_LABELS:-$DATA/aws_enhance_pet_labels/raw}
 OUT=${TOTALSEG_ROOT:-$RS/gold3-totalseg}
 WEIGHTS=$OUT/weights
 ZIPS=$DATA/totalseg_weights/raw
+MOOSE_ZIPS=$DATA/moose_weights/raw
 CPUS=${SLURM_CPUS_PER_TASK:-4}
 # The flow's step runs this script again for the work; the job Slurm starts runs the driver.
 BODY=${SCHWINGNET_FLOW_STEP:-}
 # TotalSegmentator's newest release on PyPI when this line was written (2026-10-30).
 TS_PIN="TotalSegmentator==2.18.0"
+# MOOSE's environment, the DRR domain-gap study's segment job's to the pin (grid/drr-seg.sbatch), so
+# the one already made on the lab volume is reused.
+MOOSE_PIN="moosez==3.2.2 flexray==1.0.2 nanodrr==0.1.5"
 REPORT=$REPO/grid/logs/TOTALSEG-complete.md
 # The body's exit, which it leaves here for the driver: the launcher's own exit is the flow's verdict.
 RC_FILE=$OUT/COMPLETE_RC
@@ -76,12 +86,13 @@ body() {
   ( cd docs/research/gold3-ct/completion 2>/dev/null && sha256sum -c --status PREREG.md.sha256 ) \
     || { report "STOP: PREREG.md changed since the freeze"; body_end 90; }
   VENV=$(venv_ready "$TS_PIN") || { report "FAILED: the environment for $TS_PIN is not whole, though the driver made it"; body_end 1; }
+  MVENV=$(venv_ready "$MOOSE_PIN") || { report "FAILED: the environment for $MOOSE_PIN is not whole, though the driver made it"; body_end 1; }
   # 1. the studies and their files
   tool prepare --admission data/gold3-ct/admission.json --tiers "$TIERS" --ts-root "$TS_ROOT" --enhance-ct "$ENHANCE_CT" \
     --enhance-labels "$ENHANCE_LABELS" --verse-masks "$VERSE_MASKS" --out "$OUT" || body_end 1
   report "prepare: $(tail -n 1 "$OUT/prepare.txt")"
   # 2. TotalSegmentator on each CT that lacks its masks; a failure on one CT is kept and the rest run
-  tool run --out "$OUT" --weights "$WEIGHTS" --device gpu --threads "$CPUS" || ran=$?
+  tool run --out "$OUT" --weights "$WEIGHTS" --moose-python "$MVENV/bin/python" --moose-weights "$MOOSE_ZIPS" --device gpu --threads "$CPUS" || ran=$?
   report "run: $(tail -n 1 "$OUT/run.txt")"
   # 3. and 4. every target checked against the release's own levels, then the report
   tool check --out "$OUT" || body_end 1
@@ -110,12 +121,13 @@ finish() {
   echo "SN_TOTALSEG_RC=$rc"
   exit "$rc"
 }
-zip_missing() {  # the first of the weight zips not whole under the data root's totalseg_weights/raw, by the fetch row's URLs: "<name> missing", "<name> part", "<name> damaged", or "row" where the row was not read
+zip_missing() {  # zip_missing ROW [NAME]: the first of a url row's zips (or the one named NAME) not whole under the data root's <row>/raw: "<name> missing", "<name> part", "<name> damaged", or "row" where the row was not read
   local urls url file whole
-  urls=$(bash grid/run-platform-fetch.sh --args totalseg_weights 2>/dev/null)
+  urls=$(bash grid/run-platform-fetch.sh --args "$1" 2>/dev/null)
   [ -n "$urls" ] || { echo row; return; }
   for url in $urls; do
-    file=$ZIPS/${url##*/}
+    [ -z "${2:-}" ] || [ "${url##*/}" = "$2" ] || continue
+    file=$DATA/$1/raw/${url##*/}
     [ -s "$file" ] || { echo "${url##*/} missing"; return; }
     whole=0; zip_whole "$file" || whole=$?
     case "$whole" in 0) ;; 2) echo "${url##*/} damaged"; return ;; *) echo "${url##*/} part"; return ;; esac
@@ -158,7 +170,7 @@ launcher_stop() {  # the TERM passed on to the launcher, which passes it to the 
   while kill -0 "$LAUNCHER" 2>/dev/null && [ "$waited" -lt "$STOP_GRACE" ]; do sleep 1; waited=$((waited + 1)); done
 }
 driver() {
-  local zip rc said
+  local zip rc said row
   started_at=$(git -C "$REPO" rev-parse HEAD 2>/dev/null)
   echo "# totalseg complete: job ${SLURM_JOB_ID:-none} on $(hostname), commit ${started_at:0:7}, $(date -u '+%F %T') UTC" > "$REPORT.part"
   [ -n "$started_at" ] || { report "FAILED: the checkout at $REPO names no commit"; finish 2; }
@@ -175,20 +187,24 @@ driver() {
   [ -d "$VERSE_MASKS" ] || report "NOTE: no int16 copies of VerSe's masks on the data root; every VerSe study will be left out"
   [ -d "$TS_ROOT" ] || report "NOTE: no totalsegmentator_v300 on the data root; every TotalSegmentator study will be left out"
   [ -d "$ENHANCE_CT" ] && [ -d "$ENHANCE_LABELS" ] || report "NOTE: ENHANCE.PET's CTs or labels are not on the data root; its study will be left out"
-  zip=$(zip_missing)
-  case "$zip" in
-    "") ;;
-    row) report "FAILED: the row totalseg_weights of the platform fetch was not read, so no zip can be named"; finish 2 ;;
-    *" part") report "FAILED: ${zip% part} under $ZIPS is not a whole zip (a part still landing or cut short, which a resend of fetch totalseg_weights resumes)"; finish 2 ;;
-    *" damaged") report "FAILED: ${zip% damaged} under $ZIPS is whole by its record but unzip finds a member damaged: delete it in the grid's shell and resend fetch totalseg_weights, which lands it again"; finish 2 ;;
-    *) report "FAILED: no ${zip% missing} under $ZIPS (fetch totalseg_weights first)"; finish 2 ;;
-  esac
+  for row in totalseg_weights "moose_weights clin_ct_vertebrae_ras_21052025.zip"; do
+    # shellcheck disable=SC2086
+    zip=$(zip_missing $row); row=${row%% *}
+    case "$zip" in
+      "") ;;
+      row) report "FAILED: the row $row of the platform fetch was not read, so no zip can be named"; finish 2 ;;
+      *" part") report "FAILED: ${zip% part} under $DATA/$row/raw is not a whole zip (a part still landing or cut short, which a resend of fetch $row resumes)"; finish 2 ;;
+      *" damaged") report "FAILED: ${zip% damaged} under $DATA/$row/raw is whole by its record but unzip finds a member damaged: delete it in the grid's shell and resend fetch $row, which lands it again"; finish 2 ;;
+      *) report "FAILED: no ${zip% missing} under $DATA/$row/raw (fetch $row first)"; finish 2 ;;
+    esac
+  done
   VENV=$(venv_for "$TS_PIN") || { report "FAILED: the environment for $TS_PIN could not be made"; finish 1; }
+  MVENV=$(venv_for "$MOOSE_PIN") || { report "FAILED: the environment for $MOOSE_PIN could not be made"; finish 1; }
   mkdir -p "$WEIGHTS" "$TOTALSEG_HOME_DIR"
   # usage statistics off before the segmenter's first import writes its own config
   [ -f "$TOTALSEG_HOME_DIR/config.json" ] || printf '{"totalseg_id": "schwingnet-gold3", "send_usage_stats": false, "prediction_counter": 0}\n' > "$TOTALSEG_HOME_DIR/config.json"
   unpack_weights || { report "FAILED: a weight zip could not be unpacked into $WEIGHTS"; finish 1; }
-  report "environment: $TS_PIN; weights: $WEIGHTS (from $ZIPS); CTs and release masks read from the data root; masks written under $OUT/ts"
+  report "environments: $TS_PIN (VerSe and TotalSegmentator studies), $MOOSE_PIN (ENHANCE.PET); weights: $WEIGHTS (from $ZIPS) and $MOOSE_ZIPS; CTs and release masks read from the data root; masks written under $OUT/ts"
   rm -f "$RC_FILE"
   bash grid/box.sh "$VENV/bin/python" flows/launch.py totalseg --max-workers 1 -- --out "$OUT" --weights "$WEIGHTS" &
   LAUNCHER=$!

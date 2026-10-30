@@ -2222,6 +2222,11 @@ esac
         self.assertEqual(part.returncode, 2, part.stdout)
         self.assertIn("is a part", part.stdout)
         self.totalseg_weights_landed()
+        # MOOSE draws ENHANCE.PET's, so its zips must be there too
+        refused = self.gate("totalseg", "complete")
+        self.assertEqual(refused.returncode, 2, refused.stdout)
+        self.assertIn("fetch moose_weights first", refused.stdout)
+        self.moose_weights_landed(self.moose_zips())
         # whole: one GPU job on the launched flow's script, not requeued
         done = self.gate("totalseg", "complete")
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
