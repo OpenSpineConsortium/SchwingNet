@@ -1,0 +1,96 @@
+{
+ "block": 1,
+ "id": "realism_edit",
+ "version": 1,
+ "title": "Realism edit of DRRs",
+ "stage": "prepare",
+ "summary": "FLUX.2 klein-9B edits each DRR zero-shot toward a real X-ray's look; the masks stay as rendered.",
+ "does": "FluXray's zero-shot edit (src/schwingnet/realism.py): FLUX.2 klein-9B, 4 steps at guidance 1.0, on renders of 1024 pixels, stored at 256. The renderer's exact 1024-pixel masks are kept beside every image, so the labels are the CT's, not the edit's. It runs as the realism flow's fixed plan, edit and then stats, under docs/research/flux-realism/PREREG.md; lora and eval are refused until a count of their own.",
+ "glyph": "realism",
+ "inputs": [
+  {
+   "name": "data",
+   "accepts": {
+    "kind": [
+     "data"
+    ],
+    "rank": [
+     2
+    ],
+    "time": "no",
+    "modality": [
+     "drr"
+    ]
+   },
+   "optional": false,
+   "what": "2-D DRRs."
+  }
+ ],
+ "outputs": [
+  {
+   "name": "data",
+   "from": "data",
+   "ops": [
+    [
+     "size",
+     "H",
+     256
+    ],
+    [
+     "size",
+     "W",
+     256
+    ]
+   ],
+   "what": "The edited DRRs, stored at 256 pixels a side, with the renderer's masks."
+  }
+ ],
+ "params": [],
+ "rules": [],
+ "reads": {
+  "parts": []
+ },
+ "job": {
+  "class": "gpu",
+  "hours": 12,
+  "with_upstream": false,
+  "array": false,
+  "cpus": 4,
+  "memory_gb": 64
+ },
+ "deterministic": "declared",
+ "seed_param": "",
+ "nondeterminism": "A diffusion edit on a GPU is not bit-exact between cards; the flow records its settings, and the study's statistics are read over many images, not one.",
+ "generic": {
+  "rank": [
+   2
+  ],
+  "time": "no",
+  "channels": "any",
+  "sizes": "any",
+  "why": "The edit takes 2-D DRR images (src/schwingnet/realism.py); a volume or a clip would need a model of its own."
+ },
+ "resolve": null,
+ "needs": [
+  "python",
+  "numpy",
+  "torch"
+ ],
+ "code": "existing",
+ "implemented_by": [
+  "src/schwingnet/realism.py",
+  "tools/realism.py",
+  "tools/realism_report.py",
+  "flows/realism.py",
+  "grid/realism.sbatch"
+ ],
+ "today": {
+  "status": "flow",
+  "route": "",
+  "word": "",
+  "flow": "RealismFlow",
+  "note": "the words realism edit and realism stats"
+ },
+ "experiment": null,
+ "card": null
+}

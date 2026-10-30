@@ -1,0 +1,181 @@
+{
+ "block": 1,
+ "id": "folder_import",
+ "version": 1,
+ "title": "Your own folder",
+ "stage": "source",
+ "summary": "A folder of your own on the grid, described by a data card; it waits for the bank and catalog steps.",
+ "does": "Describes a folder you hold on the grid so that a pipeline can be planned on it: its axes, dtype, targets, modality, person key and licence class are yours to state in the params and the card. Nothing reads it yet: a folder enters the store only through the bank step (tools/ingest.py hashes it into a shard) and the catalog step (CatalogFlow), and a dataset is added by one pull request and one incremental run.",
+ "glyph": "folder",
+ "inputs": [],
+ "outputs": [
+  {
+   "name": "data",
+   "from": null,
+   "ops": [
+    [
+     "axes",
+     "@param.axes"
+    ],
+    [
+     "set",
+     "dtype",
+     "@param.dtype"
+    ],
+    [
+     "set",
+     "targets",
+     "@param.targets"
+    ],
+    [
+     "set",
+     "modality",
+     "@param.modality"
+    ],
+    [
+     "set",
+     "persons",
+     "@param.persons"
+    ],
+    [
+     "cut",
+     "@param.licence"
+    ]
+   ],
+   "what": "Your samples with the axes, dtype, targets and licence you stated; not split."
+  }
+ ],
+ "params": [
+  {
+   "name": "axes",
+   "kind": "set",
+   "options": [
+    "N",
+    "T",
+    "C",
+    "D",
+    "H",
+    "W",
+    "F"
+   ],
+   "default": [
+    "N",
+    "C",
+    "H",
+    "W"
+   ],
+   "vary": false,
+   "what": "the axes of your samples, in this order; D, H and W give the rank"
+  },
+  {
+   "name": "dtype",
+   "kind": "choice",
+   "choices": [
+    "uint8",
+    "int16",
+    "int32",
+    "float16",
+    "float32",
+    "bool"
+   ],
+   "default": "uint8",
+   "vary": false,
+   "what": "how each value is stored"
+  },
+  {
+   "name": "targets",
+   "kind": "choice",
+   "choices": [
+    "none",
+    "level",
+    "mask",
+    "points",
+    "value"
+   ],
+   "default": "none",
+   "vary": false,
+   "what": "what each sample is labelled with"
+  },
+  {
+   "name": "modality",
+   "kind": "choice",
+   "choices": [
+    "any",
+    "fluoro",
+    "radiograph",
+    "mixed",
+    "ct",
+    "drr",
+    "table"
+   ],
+   "default": "any",
+   "vary": false,
+   "what": "what kind of image or table it is"
+  },
+  {
+   "name": "persons",
+   "kind": "bool",
+   "default": true,
+   "vary": false,
+   "what": "whether each sample names its person, which a split needs"
+  },
+  {
+   "name": "licence",
+   "kind": "choice",
+   "choices": [
+    "commercial",
+    "commercial-share-alike",
+    "non-commercial",
+    "research-internal",
+    "uncut"
+   ],
+   "default": "uncut",
+   "vary": false,
+   "what": "the most open recipe of data/recipes/ that admits the whole folder; uncut when not known"
+  }
+ ],
+ "rules": [],
+ "reads": {
+  "parts": []
+ },
+ "job": {
+  "class": "none",
+  "hours": 0,
+  "with_upstream": false,
+  "array": false,
+  "cpus": 0,
+  "memory_gb": 0
+ },
+ "deterministic": "exact",
+ "seed_param": "",
+ "nondeterminism": "",
+ "generic": null,
+ "resolve": null,
+ "needs": [
+  "python"
+ ],
+ "code": "planned",
+ "implemented_by": [],
+ "today": {
+  "status": "planned",
+  "route": "",
+  "word": "",
+  "flow": "",
+  "note": "the bank and catalog steps (tools/ingest.py, BankFlow, CatalogFlow) bring a folder in"
+ },
+ "experiment": null,
+ "card": {
+  "origin": "A folder of your own on the grid; you state where it came from in this card.",
+  "where": "The grid's data root, once the bank step has hashed it into a shard (tools/ingest.py).",
+  "count": "You state it; nothing counts it until the bank step does.",
+  "persons": "You state the person key; without one no split can keep a person on one side.",
+  "split": "Not split until a split block assigns the persons.",
+  "held_out": "Nothing is held out until a split block holds it out.",
+  "licence": "You state its class from data/licences.json; it stays uncut until a recipe cuts it.",
+  "from": [
+   "tools/ingest.py",
+   "docs/memory/the-data-catalog.md",
+   "data/licences.json"
+  ]
+ }
+}

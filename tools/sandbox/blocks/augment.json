@@ -1,0 +1,100 @@
+{
+ "block": 1,
+ "id": "augment",
+ "version": 1,
+ "title": "Augment the training crops",
+ "stage": "augment",
+ "summary": "Random changes to the training crops each epoch: box jitter, intensity, blur, noise, or the strong set.",
+ "does": "The augmenters of tools/train_blocks.py, applied in their fixed order (AUGMENT_ORDER) whatever order they are named in: box-jitter, intensity, blur, noise, and strong, SyntheX's strong randomisation (#252). They change the training crops only; validation and test are read as they are. None named is version 1's training.",
+ "glyph": "augment",
+ "inputs": [
+  {
+   "name": "data",
+   "accepts": {
+    "kind": [
+     "data"
+    ],
+    "rank": [
+     2
+    ],
+    "time": "no"
+   },
+   "optional": false,
+   "what": "2-D training crops."
+  }
+ ],
+ "outputs": [
+  {
+   "name": "data",
+   "from": "data",
+   "ops": [],
+   "what": "The same data; the changes are drawn while training."
+  }
+ ],
+ "params": [
+  {
+   "name": "augment",
+   "kind": "set",
+   "options": [
+    "box-jitter",
+    "intensity",
+    "blur",
+    "noise",
+    "strong"
+   ],
+   "default": [],
+   "vary": true,
+   "what": "the changes, each named at most once"
+  }
+ ],
+ "rules": [],
+ "reads": {
+  "parts": [
+   "train"
+  ]
+ },
+ "job": {
+  "class": "none",
+  "hours": 0,
+  "with_upstream": false,
+  "array": false,
+  "cpus": 0,
+  "memory_gb": 0
+ },
+ "deterministic": "declared",
+ "seed_param": "",
+ "nondeterminism": "The changes are drawn afresh every epoch from the training run's random state, so a run repeats them only under the same training seed.",
+ "generic": {
+  "rank": [
+   2
+  ],
+  "time": "no",
+  "channels": "any",
+  "sizes": "any",
+  "why": "The augmenters change 2-D crops (tools/train_blocks.py AUGMENTERS); a volume or a clip would need 3-D or time-consistent versions."
+ },
+ "resolve": null,
+ "needs": [
+  "python",
+  "torch",
+  "torchvision"
+ ],
+ "code": "existing",
+ "implemented_by": [
+  "tools/train_blocks.py",
+  "src/schwingnet/blocks.py"
+ ],
+ "today": {
+  "status": "live",
+  "route": "experiment",
+  "word": "",
+  "flow": "",
+  "note": "the request's block line augment"
+ },
+ "experiment": {
+  "blocks": {
+   "augment": "@param.augment"
+  }
+ },
+ "card": null
+}

@@ -1,0 +1,31 @@
+const {chromium} = require("playwright");
+const {serve} = require("./serve.js");
+(async function () {
+  const {server, url} = await serve(__dirname);
+  const browser = await chromium.launch();
+  for (const w of [320, 360, 390, 400, 640, 979, 980, 1280]) {
+    const page = await (await browser.newContext({viewport: {width: w, height: 800}, hasTouch: w < 700})).newPage();
+    const errors = [];
+    page.on("pageerror", function (e) { errors.push(e.message); });
+    page.on("console", function (m) { if (m.type() === "error") errors.push(m.text()); });
+    await page.goto(url + (process.env.PAGE || "final.html"));
+    await page.waitForTimeout(250);
+    const res = [];
+    for (const t of ["experiment_v1", "screen_arms", "ct_to_xray", "latent_prior"]) {
+      await page.evaluate(function (id) { window.sandbox.load(id); window.sandbox.select(null); }, t);
+      await page.waitForTimeout(40);
+      res.push(await page.evaluate(function () { return document.documentElement.scrollWidth; }));
+      await page.evaluate(function () { window.sandbox.select("n2"); });
+      await page.waitForTimeout(40);
+      res.push(await page.evaluate(function () { return document.documentElement.scrollWidth; }));
+    }
+    await page.click("#sb-import");
+    await page.waitForTimeout(40);
+    res.push(await page.evaluate(function () { return document.documentElement.scrollWidth; }));
+    const worst = Math.max.apply(null, res);
+    console.log((worst <= w && !errors.length ? "PASS" : "FAIL") + " width " + w + ": widest scrollWidth " + worst + (errors.length ? " errors " + JSON.stringify(errors) : ""));
+    await page.context().close();
+  }
+  await browser.close();
+  server.close();
+})();

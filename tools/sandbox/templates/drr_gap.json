@@ -1,0 +1,112 @@
+{
+ "sandbox": 1,
+ "id": "drr_gap",
+ "name": "DRR domain gap",
+ "about": "The DRR domain-gap study's shape: CTs labelled by MOOSE, rendered into DRRs and set beside the catalog's real frames by calibrated separation tests, then reported. Today the study runs as the drr_gap flow on TotalSegmentator v2.0.1 CTs (data/domain_gap/groups.json) in three GPU jobs, after the drr_seg flow's MOOSE masks; here it starts from the gold tier 3 store, a plan that waits on the owner's word.",
+ "nodes": [
+  {
+   "id": "n1",
+   "block": "gold3_ct",
+   "version": 1,
+   "params": {}
+  },
+  {
+   "id": "n2",
+   "block": "segment_ct",
+   "version": 1,
+   "params": {
+    "segmenter": "moose"
+   }
+  },
+  {
+   "id": "n3",
+   "block": "render_drr",
+   "version": 1,
+   "params": {}
+  },
+  {
+   "id": "n4",
+   "block": "catalog_v1",
+   "version": 1,
+   "params": {}
+  },
+  {
+   "id": "n5",
+   "block": "domain_gap",
+   "version": 1,
+   "params": {}
+  },
+  {
+   "id": "n6",
+   "block": "report_claim",
+   "version": 1,
+   "params": {}
+  }
+ ],
+ "edges": [
+  {
+   "from": "n1",
+   "out": "data",
+   "to": "n2",
+   "in": "volumes"
+  },
+  {
+   "from": "n2",
+   "out": "data",
+   "to": "n3",
+   "in": "volumes"
+  },
+  {
+   "from": "n3",
+   "out": "data",
+   "to": "n5",
+   "in": "synthetic"
+  },
+  {
+   "from": "n4",
+   "out": "data",
+   "to": "n5",
+   "in": "real"
+  },
+  {
+   "from": "n5",
+   "out": "metrics",
+   "to": "n6",
+   "in": "results"
+  }
+ ],
+ "layout": {
+  "n1": [
+   40,
+   40
+  ],
+  "n2": [
+   340,
+   40
+  ],
+  "n3": [
+   640,
+   40
+  ],
+  "n4": [
+   640,
+   190
+  ],
+  "n5": [
+   940,
+   40
+  ],
+  "n6": [
+   1240,
+   40
+  ]
+ },
+ "expect": {
+  "route": "pipeline",
+  "ready": false,
+  "requests": 0,
+  "gpu_submissions": 2,
+  "cpu_submissions": 0,
+  "gpu_tasks": 2
+ }
+}

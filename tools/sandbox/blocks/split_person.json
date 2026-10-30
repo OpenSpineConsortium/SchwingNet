@@ -1,0 +1,109 @@
+{
+ "block": 1,
+ "id": "split_person",
+ "version": 1,
+ "title": "Split by person",
+ "stage": "split",
+ "summary": "Puts each person in train, validation or test by a salted hash; the frozen test persons stay test.",
+ "does": "The catalog's split rule (src/schwingnet/catalog.py, data/splits/rule.json): a person on data/splits/test-persons.json is test; any other person is validation where the first 8 bytes of sha256 over the salt and the person fall below validation_share of 2**64, training otherwise. Scans travel with their person, so no person is on two sides, and the split check holds every catalog version to the rule. Today the catalog step does it when it builds a version.",
+ "glyph": "split",
+ "inputs": [
+  {
+   "name": "data",
+   "accepts": {
+    "kind": [
+     "data"
+    ],
+    "parts": "unsplit"
+   },
+   "optional": false,
+   "what": "Data with a person key, not split yet."
+  }
+ ],
+ "outputs": [
+  {
+   "name": "data",
+   "from": "data",
+   "ops": [
+    [
+     "parts",
+     [
+      "train",
+      "validation",
+      "test"
+     ]
+    ]
+   ],
+   "what": "The same data with each person in train, validation or test."
+  }
+ ],
+ "params": [
+  {
+   "name": "validation_share",
+   "kind": "float",
+   "low": 0.001,
+   "high": 0.999,
+   "default": 0.1,
+   "vary": false,
+   "what": "the share of persons hashed into validation (data/splits/rule.json: 0.1)"
+  },
+  {
+   "name": "salt",
+   "kind": "choice",
+   "choices": [
+    "schwingnet-2026-10-21"
+   ],
+   "default": "schwingnet-2026-10-21",
+   "vary": false,
+   "what": "the salt of the frozen rule; a new salt is a new split"
+  }
+ ],
+ "rules": [],
+ "reads": {
+  "parts": []
+ },
+ "job": {
+  "class": "none",
+  "hours": 0,
+  "with_upstream": false,
+  "array": false,
+  "cpus": 0,
+  "memory_gb": 0
+ },
+ "deterministic": "exact",
+ "seed_param": "",
+ "nondeterminism": "",
+ "generic": {
+  "rank": [
+   0,
+   1,
+   2,
+   3
+  ],
+  "time": "any",
+  "channels": "any",
+  "sizes": "any",
+  "why": ""
+ },
+ "resolve": null,
+ "needs": [
+  "python"
+ ],
+ "code": "existing",
+ "implemented_by": [
+  "src/schwingnet/catalog.py",
+  "tools/catalog.py",
+  "flows/catalog.py",
+  "data/splits/rule.json",
+  "data/splits/test-persons.json"
+ ],
+ "today": {
+  "status": "flow",
+  "route": "",
+  "word": "",
+  "flow": "CatalogFlow",
+  "note": "the catalog step splits every version it builds"
+ },
+ "experiment": null,
+ "card": null
+}

@@ -1,0 +1,32 @@
+"use strict";
+const fs = require("fs");
+const html = fs.readFileSync("/home/user/SchwingNet/docs/sandbox/pipeline-sandbox.html", "utf8");
+const i = html.indexOf("const SANDBOX_DATA=") + "const SANDBOX_DATA=".length;
+const DATA = JSON.parse(html.slice(i, html.indexOf(";\n", i)).replace(/<\\\//g, "</"));
+const SB = require("/home/user/SchwingNet/tools/sandbox/engine.js");
+const stats = SB.transitionStats(DATA.templates);
+function after(blocks) {
+  const spec = {sandbox: 1, name: "p", nodes: [], edges: []};
+  blocks.forEach(function (b, k) {
+    spec.nodes.push({id: "n" + (k + 1), block: b, version: 1, params: {}});
+    if (k) {
+      const up = DATA.blocks.find(function (m) { return m.id === blocks[k - 1]; });
+      const down = DATA.blocks.find(function (m) { return m.id === b; });
+      spec.edges.push({from: "n" + k, out: up.outputs[0].name, to: "n" + (k + 1), in: down.inputs[0].name});
+    }
+  });
+  const prop = SB.propagate(spec, DATA);
+  const errs = prop.problems.filter(function (p) { return p.level === "error"; });
+  const list = SB.predict(spec, "n" + blocks.length, DATA, stats, {});
+  console.log(blocks.join(" > ") + (errs.length ? "  [errors: " + JSON.stringify(errs.map(function (p) { return [p.code, p.node, p.field]; })) + "]" : ""));
+  list.forEach(function (p) { console.log("    " + p.block.padEnd(22) + String(p.score).padEnd(7) + p.why); });
+}
+after(["catalog_v1"]);
+after(["gold3_ct"]);
+after(["gold3_ct", "segment_ct", "render_drr"]);
+after(["gold3_ct", "segment_ct", "render_drr", "realism_edit"]);
+after(["catalog_v1", "crop_boxes", "normalise", "augment", "classifier"]);
+after(["catalog_v1", "crop_boxes", "normalise", "augment", "classifier", "train_classifier"]);
+after(["gold3_ct", "split_anomaly_aware", "annealer_unet"]);
+after(["folder_import"]);
+after(["carmlspine_sweeps"]);

@@ -1,0 +1,153 @@
+"""Scratch differential fuzz: tools/pipeline_sandbox.py against tools/sandbox/engine.js on many random
+pipelines and manifests, deeper mutations than the unit test makes. Prints each disagreement once."""
+
+import copy
+import json
+import random
+import subprocess
+import sys
+import urllib.parse
+from pathlib import Path
+
+ROOT = Path("/home/user/SchwingNet")
+sys.path.insert(0, str(ROOT / "tests"))
+import test_pipeline_sandbox as t  # noqa: E402
+
+sandbox = t.sandbox
+HERE = Path(__file__).resolve().parent
+SEED = int(sys.argv[1]) if len(sys.argv) > 1 else 1
+COUNT = int(sys.argv[2]) if len(sys.argv) > 2 else 1500
+pick = random.Random(SEED)
+
+FILLERS = [None, 0, -1, 1, 2, 3, 0.5, 1.5, 0.00005, 0.0001, 1e-7, 1e21, 64, 512, 1000, 99999, "", "x", "data", "model",
+           "H", "W", "T", "C", "D", "test", "train", "validation", "any", "yes", "no", "split", "unsplit",
+           "uint8", "float32", "level", "none", "cpu", "gpu", "live", "word", "planned", "own", "existing",
+           "@param.size", "@param.nothing", "@in.data.kind", "@in.data.sizes.H", "@in.nope.kind", "@self.kind",
+           "@self.sizes.Q", "@bad", "@param", [], ["data"], ["H", "W"], [1, 2, 3], [2], ["train", "validation"],
+           {}, {"kind": ["data"]}, {"above": 0}, {"in": ["random"]}, True, False, ["kind", "data"],
+           ["size", "H", 32], ["set", "dtype", "uint8"], ["axes", ["N", "H", "W"]], ["drop_axis", "C"],
+           ["add_axis", "C", "H", 3], ["add_axis", "C", None, None], ["parts", ["train"]], ["licence", "commercial"],
+           ["cut", "non-commercial"], ["set", "classes", None], ["set", "family", "@param.architecture"],
+           ["size", "H", None], ["set", "trained", True]]
+
+
+def paths_of(value, prefix=()):
+    """Every place inside a JSON value, as a tuple of keys and indices."""
+    yield prefix
+    if isinstance(value, dict):
+        for key in value:
+            yield from paths_of(value[key], prefix + (key,))
+    elif isinstance(value, list):
+        for at, item in enumerate(value):
+            yield from paths_of(item, prefix + (at,))
+
+
+def mutate(value, times):
+    value = copy.deepcopy(value)
+    for _ in range(times):
+        places = [p for p in paths_of(value) if p]
+        if not places:
+            return value
+        place = pick.choice(places)
+        parent = value
+        for key in place[:-1]:
+            parent = parent[key]
+        roll = pick.random()
+        if roll < 0.25 and isinstance(parent, dict):
+            del parent[place[-1]]
+        elif roll < 0.35 and isinstance(parent, list):
+            parent.insert(place[-1], copy.deepcopy(pick.choice(FILLERS)))
+        else:
+            parent[place[-1]] = copy.deepcopy(pick.choice(FILLERS))
+    return value
+
+
+def main():
+    data = t.real_data()
+    data["blocks"] = data["blocks"] + [t.good_manifest(), t.peeking_manifest()]
+    templates = data["templates"] + t.edge_specs(data)
+    specs = [mutate(pick.choice(templates), pick.randint(1, 4)) for _ in range(COUNT)]
+    specs += t.varied_specs(data, COUNT // 3)
+    sources = data["blocks"] + [make() for _n, make, _e in t.MUTATIONS if isinstance(make(), dict)]
+    manifests = [mutate(pick.choice(sources), pick.randint(1, 3)) for _ in range(COUNT)]
+    payload = {"data": data, "specs": specs, "manifests": manifests, "contract": data["contract"]}
+    given_path = HERE / "fuzz_given.json"
+    given_path.write_text(json.dumps(sandbox.plain(payload)), encoding="ascii")
+    (HERE / "fuzz_same.js").write_text(t.NODE_SCRIPT, encoding="ascii")
+    run = subprocess.run(["node", str(HERE / "fuzz_same.js"), str(t.ENGINE), str(given_path)], capture_output=True,
+                         text=True, timeout=1200)
+    if run.returncode:
+        print("node failed", run.stderr[-3000:])
+        return 1
+    theirs = t.whole_numbers(json.loads(run.stdout))
+    given = sandbox.load_json(given_path)
+    seen = set()
+    bad = 0
+    for at, (spec, other) in enumerate(zip(given["specs"], theirs["specs"], strict=True)):
+        try:
+            why = compare_spec(spec, other, given["data"])
+        except Exception as error:  # noqa: BLE001 - a scratch fuzz reports a crash as a disagreement
+            why = f"python raised {type(error).__name__}: {error}"
+        if why:
+            bad += 1
+            if why.split(":")[0] not in seen:
+                seen.add(why.split(":")[0])
+                print(f"spec {at}: {why}")
+                (HERE / f"fuzz_spec_{SEED}_{at}.json").write_text(json.dumps(spec), encoding="ascii")
+    for at, (manifest, other) in enumerate(zip(given["manifests"], theirs["manifests"], strict=True)):
+        try:
+            ours = t.pairs(sandbox.check_manifest(manifest, given["contract"]))
+            why = None if ours == t.pairs(other) else f"manifest pairs differ: {ours} vs {t.pairs(other)}"
+        except Exception as error:  # noqa: BLE001
+            why = f"python raised {type(error).__name__}: {error}"
+        if why:
+            bad += 1
+            key = why[:40]
+            if key not in seen:
+                seen.add(key)
+                print(f"manifest {at}: {why}")
+                (HERE / f"fuzz_manifest_{SEED}_{at}.json").write_text(json.dumps(manifest), encoding="ascii")
+    print(f"seed {SEED}: {len(specs)} specs, {len(manifests)} manifests, {bad} disagreements")
+    return 0
+
+
+def compare_spec(spec, other, data):
+    if sandbox.canonical_text(spec, data) != other["canonical"]:
+        return "canonical differs"
+    if sandbox.digest(spec, data) != other["digest"]:
+        return "digest differs"
+    prop = sandbox.propagate(spec, data)
+    theirs = other["propagate"]
+    if prop["order"] != theirs["order"]:
+        return f"order differs: {prop['order']} vs {theirs['order']}"
+    if t.problem_tuples(prop["problems"]) != t.problem_tuples(theirs["problems"]):
+        return f"propagate problems differ: {t.problem_tuples(prop['problems'])} vs {t.problem_tuples(theirs['problems'])}"
+    for node_id, entry in prop["nodes"].items():
+        for key in ("inputs", "outputs", "fan", "combinations"):
+            if t.as_json(entry[key]) != theirs["nodes"][node_id][key]:
+                return f"node {key} differs: {node_id} {t.as_json(entry[key])} vs {theirs['nodes'][node_id][key]}"
+    planned = sandbox.jobs(spec, data, prop)
+    if t.as_json(planned["rows"]) != other["jobs"]["rows"] or t.as_json(planned["totals"]) != other["jobs"]["totals"]:
+        return f"jobs differ: {t.as_json(planned)} vs {other['jobs']}"
+    ours = sandbox.compile_spec(spec, data)
+    mine = other["compile"]
+    for key in ("digest", "route", "ready", "plan", "jobs", "pipeline_issue"):
+        if t.as_json(ours[key]) != mine[key]:
+            return f"compile {key} differs: {t.as_json(ours[key])} vs {mine[key]}"
+    if [w["code"] for w in ours["why"]] != [w["code"] for w in mine["why"]]:
+        return f"why differs: {[w['code'] for w in ours['why']]} vs {[w['code'] for w in mine['why']]}"
+    if len(ours["requests"]) != len(mine["requests"]):
+        return "request count differs"
+    for a, b in zip(ours["requests"], mine["requests"], strict=True):
+        for key in ("title", "body", "named", "lines", "command", "combination", "blocks", "recipe", "epochs", "seed",
+                    "hours", "hours_word"):
+            if t.as_json(a[key]) != b[key]:
+                return f"request {key} differs: {a[key]!r} vs {b[key]!r}"
+        if urllib.parse.parse_qsl(a["url"].split("?", 1)[1], keep_blank_values=True) != urllib.parse.parse_qsl(
+                b["url"].split("?", 1)[1], keep_blank_values=True):
+            return "request url differs"
+    return None
+
+
+if __name__ == "__main__":
+    sys.exit(main())

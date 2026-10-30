@@ -1,0 +1,107 @@
+{
+ "block": 1,
+ "id": "latency_onnx",
+ "version": 1,
+ "title": "Latency and ONNX parity",
+ "stage": "evaluate",
+ "summary": "Exports the checkpoint to ONNX, checks its parity with PyTorch, and times it against the 97 ms budget.",
+ "does": "The latency flow's parts (tools/latency.py): gpu exports best.pt to ONNX, checks ONNX Runtime and PyTorch on CPU and GPU against PyTorch on the CPU over validation crops (the same labels, probabilities within 1e-5), and times them; cpu times both on CPU threads; sweep runs a recorded sweep through the frame path with its overlay (tools/sweep.py). No latency is quoted without parity for the same file. The word latency queues the jobs; the sandbox counts the GPU job (grid/latency-sweep.sbatch: 8 CPUs, 32 GB, 1 h 30).",
+ "glyph": "latency",
+ "inputs": [
+  {
+   "name": "checkpoint",
+   "accepts": {
+    "kind": [
+     "checkpoint"
+    ],
+    "trained": true
+   },
+   "optional": false,
+   "what": "The trained checkpoint."
+  },
+  {
+   "name": "sweeps",
+   "accepts": {
+    "kind": [
+     "data"
+    ],
+    "rank": [
+     2
+    ],
+    "time": "yes"
+   },
+   "optional": true,
+   "what": "Recorded sweeps to play through."
+  }
+ ],
+ "outputs": [
+  {
+   "name": "metrics",
+   "from": "checkpoint",
+   "ops": [
+    [
+     "kind",
+     "metrics"
+    ],
+    [
+     "axes",
+     []
+    ]
+   ],
+   "what": "Parity, latency and the sweep's overlay."
+  }
+ ],
+ "params": [],
+ "rules": [],
+ "reads": {
+  "parts": [
+   "validation",
+   "test"
+  ]
+ },
+ "job": {
+  "class": "gpu",
+  "hours": 1.5,
+  "with_upstream": false,
+  "array": false,
+  "cpus": 8,
+  "memory_gb": 32
+ },
+ "deterministic": "declared",
+ "seed_param": "",
+ "nondeterminism": "Timings vary from run to run and card to card, which is what is measured; parity is held to 1e-5 on the same file.",
+ "generic": {
+  "rank": [
+   2
+  ],
+  "time": "yes",
+  "channels": "any",
+  "sizes": "any",
+  "why": "The sweep input is a clip of 2-D frames (tools/sweep.py) and the network reads 2-D crops; a volume has no sweep to play."
+ },
+ "resolve": null,
+ "needs": [
+  "python",
+  "numpy",
+  "torch",
+  "onnxruntime",
+  "metaflow"
+ ],
+ "code": "existing",
+ "implemented_by": [
+  "tools/latency.py",
+  "tools/sweep.py",
+  "flows/latency.py",
+  "grid/latency-sweep.sbatch",
+  "grid/run-latency-sweep.sh"
+ ],
+ "today": {
+  "status": "flow",
+  "route": "",
+  "word": "",
+  "flow": "LatencyFlow",
+  "note": "the word latency queues its jobs for one v1 run"
+ },
+ "experiment": null,
+ "card": null
+}

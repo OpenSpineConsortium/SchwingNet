@@ -1,0 +1,66 @@
+{
+ "block": 1,
+ "id": "calibrate_temperature",
+ "version": 1,
+ "title": "Temperature scaling",
+ "stage": "calibrate",
+ "summary": "Fits one temperature on the validation part so the classifier's confidence matches its accuracy.",
+ "does": "Planned: divides the logits by one temperature fitted to the validation part's negative log likelihood, which changes no prediction, only how sure each one is. Test is never read. No SchwingNet code fits one yet; the auto-anatomist calibrates its spreads inside training instead (calibrate none, scale or quantile, #483).",
+ "glyph": "calibrate",
+ "inputs": [
+  {
+   "name": "checkpoint",
+   "accepts": {
+    "kind": [
+     "checkpoint"
+    ],
+    "trained": true
+   },
+   "optional": false,
+   "what": "A trained classifier."
+  }
+ ],
+ "outputs": [
+  {
+   "name": "checkpoint",
+   "from": "checkpoint",
+   "ops": [],
+   "what": "The same checkpoint with its temperature."
+  }
+ ],
+ "params": [],
+ "rules": [],
+ "reads": {
+  "parts": [
+   "validation"
+  ]
+ },
+ "job": {
+  "class": "none",
+  "hours": 0,
+  "with_upstream": false,
+  "array": false,
+  "cpus": 0,
+  "memory_gb": 0
+ },
+ "deterministic": "exact",
+ "seed_param": "",
+ "nondeterminism": "",
+ "generic": null,
+ "resolve": null,
+ "needs": [
+  "python",
+  "torch"
+ ],
+ "code": "planned",
+ "implemented_by": [],
+ "today": {
+  "status": "planned",
+  "route": "",
+  "word": "",
+  "flow": "",
+  "note": "waits for the pipeline route"
+ },
+ "experiment": null,
+ "card": null
+}

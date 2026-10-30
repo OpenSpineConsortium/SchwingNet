@@ -1,0 +1,210 @@
+"""The split, augment and model blocks: split_person, split_anomaly_aware, augment, classifier,
+classifier_3d, level_prior_head and annealer_unet."""
+
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from gen_common import (ALL_RANKS, PARTS, choice, generic, integer, manifest, number, options,  # noqa: E402
+                        port_in, port_out, today)
+
+ARCHITECTURES = ["resnet18", "resnet34", "resnet50", "mobilenet-v3-small", "efficientnet-b0", "densenet121",
+                 "se-resnet50", "se-resnext50"]
+RANDOM_HEAD = ("The new head starts from a random draw made under its trainer's seed, so the network "
+               "repeats only with that seed.")
+
+
+def split_person():
+    return manifest(
+        "split_person", "Split by person", "split",
+        "Puts each person in train, validation or test by a salted hash; the frozen test persons stay test.",
+        "The catalog's split rule (src/schwingnet/catalog.py, data/splits/rule.json): a person on "
+        "data/splits/test-persons.json is test; any other person is validation where the first 8 bytes of "
+        "sha256 over the salt and the person fall below validation_share of 2**64, training otherwise. "
+        "Scans travel with their person, so no person is on two sides, and the split check holds every "
+        "catalog version to the rule. Today the catalog step does it when it builds a version.",
+        "split",
+        inputs=[port_in("data", {"kind": ["data"]}, "Data with a person key.")],
+        outputs=[port_out("data", "data", [["parts", list(PARTS)]],
+                          "The same data with each person in train, validation or test.")],
+        params=[
+            number("validation_share", 0.001, 0.999, 0.1, False,
+                   "the share of persons hashed into validation (data/splits/rule.json: 0.1)"),
+            choice("salt", ["schwingnet-2026-10-21"], "schwingnet-2026-10-21", False,
+                   "the salt of the frozen rule; a new salt is a new split"),
+        ],
+        generic_=generic(ALL_RANKS),
+        needs=["python"],
+        implemented_by=["src/schwingnet/catalog.py", "tools/catalog.py", "flows/catalog.py", "data/splits/rule.json",
+                        "data/splits/test-persons.json"],
+        today_=today("flow", flow="CatalogFlow", note="the catalog step splits every version it builds"),
+        experiment=None)
+
+
+def split_anomaly_aware():
+    return manifest(
+        "split_anomaly_aware", "Split with the anomaly holdout", "split",
+        "A person split that holds anomaly persons out by frozen lists and draws validation per variant.",
+        "The anomaly route's lists, applied as a split (planned). The holdout "
+        "(data/splits/anomaly-holdout.json, frozen 2026-10-25) names 43 persons, T13, L6, four-lumbar and "
+        "normal counts, that no checkpoint of the route's lineage may see, and deals the clean read VerSe "
+        "L6 persons into 4 folds, each tested once. The validation draw "
+        "(data/splits/anomaly-validation.json, frozen 2026-10-26: T13 1, L6 6, four-lumbar 1, both L6 and "
+        "T13 1, normal 12) picks the fine-tune's checkpoint and is not drawn yet. No block applies these "
+        "lists to a pipeline's data today.",
+        "splitFamilies",
+        inputs=[port_in("data", {"kind": ["data"]}, "Data with a person key and each person's variant.")],
+        outputs=[port_out("data", "data", [["parts", list(PARTS)]],
+                          "The same data with the holdout as test and a validation drawn per variant.")],
+        generic_=generic(ALL_RANKS),
+        needs=["python"],
+        code="planned", implemented_by=[],
+        today_=today("planned", note="the lists serve the SPINEPS to FleXray anomaly route "
+                                     "(docs/research/spineps-anomaly-route.md)"),
+        experiment=None)
+
+
+def augment():
+    return manifest(
+        "augment", "Augment the training crops", "augment",
+        "Random changes to the training crops each epoch: box jitter, intensity, blur, noise, or the strong set.",
+        "The augmenters of tools/train_blocks.py, applied in their fixed order (AUGMENT_ORDER) whatever "
+        "order they are named in: box-jitter, intensity, blur, noise, and strong, SyntheX's strong "
+        "randomisation (#252). They change the training crops only; validation and test are read as "
+        "they are. None named is version 1's training.",
+        "augment",
+        inputs=[port_in("data", {"kind": ["data"], "rank": [2], "time": "no"}, "2-D training crops.")],
+        outputs=[port_out("data", "data", [], "The same data; the changes are drawn while training.")],
+        params=[options("augment", ["box-jitter", "intensity", "blur", "noise", "strong"], [], True,
+                        "the changes, each named at most once")],
+        reads=["train"],
+        deterministic="declared",
+        nondeterminism="The changes are drawn afresh every epoch from the training run's random state, "
+                       "so a run repeats them only under the same training seed.",
+        generic_=generic([2], "no", why="The augmenters change 2-D crops (tools/train_blocks.py AUGMENTERS); a "
+                                        "volume or a clip would need 3-D or time-consistent versions."),
+        needs=["python", "torch", "torchvision"],
+        implemented_by=["tools/train_blocks.py", "src/schwingnet/blocks.py"],
+        today_=today("live", route="experiment", note="the request's block line augment"),
+        experiment={"blocks": {"augment": "@param.augment"}})
+
+
+def classifier():
+    return manifest(
+        "classifier", "Level classifier network", "model",
+        "A 2-D image classifier with a 27-way level head; grey crops are tiled to 3 channels for its stem.",
+        "One of the eight backbones of tools/train_blocks.py ARCHITECTURES: torchvision's resnet18, "
+        "resnet34, resnet50, mobilenet-v3-small and efficientnet-b0, MONAI's densenet121, se-resnet50 and "
+        "se-resnext50. The head has 27 outputs, the LEVELS of src/schwingnet/catalog.py, whatever the "
+        "data's classes. Grey crops are repeated to 3 channels for the stem, and adaptive pooling lets "
+        "any crop size through. ImageNet weights come from a file, never a download; the grid holds only "
+        "resnet18's file, so the experiment route runs resnet18 alone (grid/experiment-driver.sbatch).",
+        "network",
+        inputs=[port_in("data", {"kind": ["data"], "rank": [2], "time": "no", "has_axes": ["C"],
+                                 "targets": ["level"]}, "2-D crops with level labels.")],
+        outputs=[port_out("model", "data", [["kind", "model"], ["set", "family", "@param.architecture"],
+                                            ["set", "classes", 27]],
+                          "The network, shaped by the crops it will read.")],
+        params=[
+            choice("architecture", ARCHITECTURES, "resnet18", True, "the backbone (src/schwingnet/blocks.py)"),
+            choice("weights", ["imagenet", "none"], "imagenet", True,
+                   "imagenet: the backbone's ImageNet weights from a file (--weights); none: untrained"),
+        ],
+        deterministic="declared", nondeterminism=RANDOM_HEAD,
+        generic_=generic([2], "no", why="2-D torchvision and MONAI networks today (spatial_dims 2, in_channels "
+                                        "3), with grey tiled to 3 channels and a head fixed at the 27 levels; a "
+                                        "volume needs a 3-D network (classifier_3d), and other classes need the "
+                                        "head read from the data."),
+        resolve="a {family} whose {rank}-D stem takes {sizes.C} channel(s) of {sizes.H} x {sizes.W}; head of {classes}",
+        needs=["python", "torch", "torchvision", "monai"],
+        implemented_by=["tools/train_blocks.py", "tools/train.py", "src/schwingnet/blocks.py",
+                        "grid/experiment-driver.sbatch"],
+        today_=today("live", route="experiment", note="resnet18 with ImageNet weights alone on the grid"),
+        experiment={"blocks": {"architecture": "@param.architecture"},
+                    "only": {"architecture": ["resnet18"], "weights": ["imagenet"]}})
+
+
+def classifier_3d():
+    return manifest(
+        "classifier_3d", "3-D level classifier", "model",
+        "A 3-D classifier built from the volume's type: MONAI's networks with spatial_dims 3 (planned).",
+        "Planned: a level head over a 3-D stem, built from the incoming type, spatial_dims 3, in_channels "
+        "from sizes.C and out_channels from classes. MONAI's DenseNet121, SEResNet50 and SEResNext50, "
+        "which tools/train_blocks.py builds with spatial_dims 2 today, take spatial_dims 3 as well. No "
+        "trainer reads volumes yet.",
+        "network",
+        inputs=[port_in("data", {"kind": ["data"], "rank": [3], "time": "no", "has_axes": ["C"]},
+                        "3-D volumes.")],
+        outputs=[port_out("model", "data", [["kind", "model"], ["set", "family", "@param.architecture"]],
+                          "The 3-D network, shaped by the volumes it will read.")],
+        params=[choice("architecture", ["densenet121", "se-resnet50", "se-resnext50"], "densenet121", True,
+                       "the MONAI network, built with spatial_dims 3")],
+        deterministic="declared", nondeterminism=RANDOM_HEAD,
+        generic_=generic([3], "no", why="Planned for volumes only: frames have the 2-D classifier, and a clip "
+                                        "would need a time axis the stem does not take."),
+        resolve="a 3-D {family} whose stem takes {sizes.C} channel(s) of {sizes.D} x {sizes.H} x {sizes.W}; head of {classes}",
+        needs=["python", "torch", "monai"],
+        code="planned", implemented_by=[],
+        today_=today("planned", note="no trainer reads volumes yet"),
+        experiment=None)
+
+
+def level_prior_head():
+    return manifest(
+        "level_prior_head", "Level-map prior head", "model",
+        "Adds the training-only head that learns each frame's projected level map beside the level loss.",
+        "The prior block (#228): a head on the backbone learns a frame's projected level map, 28 classes "
+        "at every pixel (the 27 levels and the background), its loss weighted by weight beside the level "
+        "loss. Only crops whose frame has a map teach it. The head is not in best.pt (prior_head.pt lies "
+        "beside it), so the network that names levels is unchanged (tools/train.py).",
+        "prior",
+        inputs=[port_in("model", {"kind": ["model"], "rank": [2]}, "A 2-D level classifier.")],
+        outputs=[port_out("model", "model", [], "The same network with the prior head for training.")],
+        params=[number("weight", 0, 100, 0.5, True,
+                       "the prior loss's weight beside the level loss, above 0 (grid/sweeps/real.json uses "
+                       "0.5); 100 is the sandbox's cap", above=True)],
+        deterministic="declared", nondeterminism=RANDOM_HEAD,
+        generic_=generic([2], "no", why="The level map is a 2-D frame's projected map (tools/train.py); a "
+                                        "volume would need a 3-D map and a 3-D head."),
+        resolve="{family} with a level-map prior head",
+        needs=["python", "torch"],
+        implemented_by=["tools/train.py", "tools/train_blocks.py", "src/schwingnet/blocks.py"],
+        today_=today("live", route="experiment", note="the request's block lines prior and prior_weight"),
+        experiment={"blocks": {"prior": "level-map", "prior_weight": "@param.weight"}})
+
+
+def annealer_unet():
+    cap = "; 1024 is the sandbox's cap"
+    return manifest(
+        "annealer_unet", "Auto-anatomist network", "model",
+        "The auto-anatomist's 3-D network: a residual U-Net, a plain U-Net or a probe, with its widths and groups.",
+        "The model spot of the auto-anatomist (vendored from bordercall on the unmerged pull request #483, "
+        "grid/autoanatomist/autoanatomist/blocks.py there): residual-unet, plain-unet or probe, the "
+        "encoders' channels at three scales (the key widths, default 16:32:64) and group norm's groups "
+        "(default 8). It reads CT crops around each vertebra with the privileged mask channels its "
+        "trainer anneals away. Nothing on main runs it.",
+        "unet",
+        inputs=[port_in("data", {"kind": ["data"], "rank": [3], "time": "no"},
+                        "3-D CT crops with their masks.")],
+        outputs=[port_out("model", "data", [["kind", "model"], ["set", "family", "@param.architecture"]],
+                          "The network, shaped by the crops it will read.")],
+        params=[
+            choice("architecture", ["residual-unet", "plain-unet", "probe"], "residual-unet", True,
+                   "the network the model spot takes"),
+            integer("width_1", 1, 1024, 16, True, "the encoders' channels at the first scale (widths=a:b:c)" + cap),
+            integer("width_2", 1, 1024, 32, True, "the encoders' channels at the second scale" + cap),
+            integer("width_3", 1, 1024, 64, True, "the encoders' channels at the third scale" + cap),
+            integer("groups", 1, 64, 8, True, "group norm's groups; 64 is the sandbox's cap"),
+        ],
+        deterministic="declared", nondeterminism=RANDOM_HEAD,
+        generic_=generic([3], "no", why="It reads 3-D CT crops around each vertebra (#483); 2-D frames would "
+                                        "need a 2-D U-Net and crops of their own."),
+        resolve="a 3-D {family} over {sizes.C} channel(s)",
+        needs=["python", "jax"],
+        code="planned", implemented_by=[],
+        today_=today("planned", note="Built on the unmerged pull request #483 (grid/autoanatomist/ on its "
+                                      "branch); planned here until it merges, since nothing on main runs it."),
+        experiment=None)
+
+
+MODEL = [split_person, split_anomaly_aware, augment, classifier, classifier_3d, level_prior_head, annealer_unet]

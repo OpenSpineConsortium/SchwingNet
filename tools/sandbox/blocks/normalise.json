@@ -1,0 +1,94 @@
+{
+ "block": 1,
+ "id": "normalise",
+ "version": 1,
+ "title": "Normalise the input",
+ "stage": "prepare",
+ "summary": "Scales the network's input: none, or ImageNet's channel means and spreads on the tiled grey.",
+ "does": "A forward pre-hook on the network's input (tools/train_blocks.py NORMALISERS): none leaves the crops in 0..1 as they are; imagenet subtracts ImageNet's channel means and divides by its spreads, the statistics the pretrained weights saw. It changes no type.",
+ "glyph": "normalise",
+ "inputs": [
+  {
+   "name": "data",
+   "accepts": {
+    "kind": [
+     "data"
+    ],
+    "rank": [
+     2
+    ],
+    "time": "no"
+   },
+   "optional": false,
+   "what": "2-D frames or crops the network reads."
+  }
+ ],
+ "outputs": [
+  {
+   "name": "data",
+   "from": "data",
+   "ops": [],
+   "what": "The same data: the hook lives inside the model."
+  }
+ ],
+ "params": [
+  {
+   "name": "normalise",
+   "kind": "choice",
+   "choices": [
+    "none",
+    "imagenet"
+   ],
+   "default": "none",
+   "vary": true,
+   "what": "the normalise block of src/schwingnet/blocks.py"
+  }
+ ],
+ "rules": [],
+ "reads": {
+  "parts": []
+ },
+ "job": {
+  "class": "none",
+  "hours": 0,
+  "with_upstream": false,
+  "array": false,
+  "cpus": 0,
+  "memory_gb": 0
+ },
+ "deterministic": "exact",
+ "seed_param": "",
+ "nondeterminism": "",
+ "generic": {
+  "rank": [
+   2
+  ],
+  "time": "no",
+  "channels": "any",
+  "sizes": "any",
+  "why": "The normalisers are hooks on the 2-D network's input (tools/train_blocks.py); a volume or a clip would need hooks of its own."
+ },
+ "resolve": null,
+ "needs": [
+  "python",
+  "torch"
+ ],
+ "code": "existing",
+ "implemented_by": [
+  "tools/train_blocks.py",
+  "src/schwingnet/blocks.py"
+ ],
+ "today": {
+  "status": "live",
+  "route": "experiment",
+  "word": "",
+  "flow": "",
+  "note": "the request's block line normalise"
+ },
+ "experiment": {
+  "blocks": {
+   "normalise": "@param.normalise"
+  }
+ },
+ "card": null
+}

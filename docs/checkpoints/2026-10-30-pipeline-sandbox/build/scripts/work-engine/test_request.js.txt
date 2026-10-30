@@ -1,0 +1,91 @@
+// The experiment requests against tools/experiments_panel.py itself: title, body and url byte for byte,
+// and every request passing check_request with no problem.
+"use strict";
+
+var T = require("./t.js");
+var F = require("./fixtures.js");
+var SB = T.SB;
+var cp = require("child_process");
+var fs = require("fs");
+var path = require("path");
+
+var D = F.data();
+var node = F.node, edge = F.edge;
+
+function withPrior(spec, weight) {
+  spec.nodes.push(node("n9", "prior_head", {weight: weight}));
+  spec.edges = spec.edges.filter(function (e) { return e.to !== "n6"; });
+  spec.edges.push(edge("n5", "model", "n9", "model"), edge("n9", "model", "n6", "model"));
+  return spec;
+}
+
+function withRecipe(spec, recipe) {
+  spec.nodes.push(node("n10", "recipe_cut", {recipe: recipe}));
+  spec.edges = spec.edges.filter(function (e) { return e.to !== "n2"; });
+  spec.edges.push(edge("n1", "data", "n10", "data"), edge("n10", "data", "n2", "data"));
+  return spec;
+}
+
+var specs = [];
+specs.push(F.chain("plain"));
+var s1 = F.chain("screen");
+s1.nodes[3].vary = {augment: [[], ["strong"], ["box-jitter", "intensity", "blur", "noise"]]};
+s1.nodes[5].vary = {optimiser: ["adam", "adamw"]};
+specs.push(s1);
+var s2 = F.chain("numbers");
+s2.nodes[5].params = {optimiser: "adamw", weight_decay: 0.0001, backbone_lr_scale: 0.123456, epochs: 200, seed: 999999999, hours: 47.5};
+specs.push(s2);
+var s3 = withPrior(F.chain("prior"), 0.25);
+s3.nodes[5].params = {hours: 0.1};
+specs.push(s3);
+var s4 = withRecipe(withPrior(F.chain("recipe"), 1), "commercial-share-alike");
+s4.nodes[2].params = {normalise: "imagenet"};
+s4.nodes[5].vary = {seed: [0, 1, 2], epochs: [1, 7]};
+specs.push(s4);
+var s5 = withRecipe(F.chain("research"), "research-internal");
+s5.nodes[5].params = {hours: 0.5, backbone_lr_scale: 0.5};
+specs.push(s5);
+var s6 = F.chain("hours");
+s6.nodes[5].params = {hours: 12.345678};
+specs.push(s6);
+var s7 = F.chain("decay");
+s7.nodes[5].params = {optimiser: "adamw"};
+s7.nodes[5].vary = {weight_decay: [0, 0.5, 1, 0.999999]};
+specs.push(s7);
+
+var items = [], requests = [];
+specs.forEach(function (spec) {
+  var c = SB.compile(spec, D);
+  T.begin("compile " + spec.name);
+  T.eq(c.route, "experiment", "route", c.why);
+  c.requests.forEach(function (r) {
+    requests.push(r);
+    items.push([r.named, String(r.epochs), String(r.seed), r.hours_word, r.recipe]);
+  });
+});
+fs.writeFileSync(path.join(__dirname, "requests_in.json"), JSON.stringify(items));
+var py = JSON.parse(cp.execFileSync("python3.12", [path.join(__dirname, "panel.py"), "requests", path.join(__dirname, "requests_in.json")],
+  {encoding: "utf8", cwd: "/home/user/SchwingNet"}));
+T.begin("requests against Python");
+T.eq(py.length, requests.length, "as many answers as requests");
+requests.forEach(function (r, i) {
+  var p = py[i];
+  T.ok(r.title === p.title, "title " + i, [r.title, p.title]);
+  T.ok(r.body === p.body, "body " + i, [r.body, p.body]);
+  T.ok(r.url === p.url, "url " + i, [r.url.slice(0, 300), p.url.slice(0, 300)]);
+  T.eq(p.problems, [], "check_request finds no problem in " + i + " (" + r.named.join(" ") + ")");
+  T.ok(p.record && p.record.epochs === r.epochs && p.record.seed === r.seed && p.record.hours === Number(r.hours_word),
+    "the record reads back the epochs, seed and hours of " + i, p.record);
+  T.ok(p.record && (p.record.recipe === r.recipe || (p.record.recipe === "none" && r.recipe === "none")), "recipe " + i);
+});
+T.eq(requests.length, 1 + 6 + 1 + 1 + 6 + 1 + 1 + 4, "request count");
+T.eq(requests[2].named, ["optimiser=adamw"], "a varied value equal to the default is not named");
+T.eq(requests[5].named, ["augment=box-jitter,intensity,blur,noise", "optimiser=adam"].slice(0, 1), "a list joined by commas");
+T.eq(requests[7].named, ["optimiser=adamw", "weight_decay=0.0001", "backbone_lr_scale=0.123456"], "small floats written plainly");
+T.eq(requests[7].hours_word, "47.5", "hours word 47.5");
+T.eq(requests[8].hours_word, "0.1", "hours word 0.1");
+T.eq(requests[16].hours_word, "12.3457", "hours word of 12.345678 is :g's six digits");
+var last = requests.slice(-4).map(function (r) { return r.named.join(" "); });
+T.eq(last, ["optimiser=adamw", "optimiser=adamw weight_decay=0.5", "optimiser=adamw weight_decay=1", "optimiser=adamw weight_decay=0.999999"],
+  "weight_decay 0 is the default; 1.0 is written 1");
+T.done();

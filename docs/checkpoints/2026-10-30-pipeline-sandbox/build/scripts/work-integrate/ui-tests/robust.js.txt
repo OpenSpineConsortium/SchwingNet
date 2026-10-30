@@ -1,0 +1,109 @@
+// Storage that throws, a corrupt or hostile store, a reload that restores the board, and touch holds.
+const {chromium} = require("playwright");
+const {serve} = require("./serve.js");
+const PAGE = process.env.PAGE || "page.html";
+const sleep = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); };
+const results = [];
+function check(name, ok, seen) {
+  results.push(!!ok);
+  console.log((ok ? "PASS " : "FAIL ") + name + (seen !== undefined ? "  " + JSON.stringify(seen) : ""));
+}
+async function fresh(browser, url, init) {
+  const context = await browser.newContext({viewport: {width: 1300, height: 860}});
+  const page = await context.newPage();
+  const errors = [];
+  page.on("console", function (m) { if (m.type() === "error" || m.type() === "warning") errors.push(m.text()); });
+  page.on("pageerror", function (e) { errors.push(e.message); });
+  if (init) await page.addInitScript(init);
+  await page.goto(url);
+  await sleep(250);
+  return {context: context, page: page, errors: errors};
+}
+(async function () {
+  const {server, url} = await serve(__dirname);
+  const browser = await chromium.launch();
+
+  // 1. localStorage that throws on every touch.
+  let f = await fresh(browser, url + PAGE, function () {
+    Object.defineProperty(window, "localStorage", {get: function () { throw new Error("storage denied"); }});
+  });
+  let g = await f.page.evaluate(function () { return window.sandbox.graph().nodes.length; });
+  await f.page.evaluate(function () { window.sandbox.grow("n8", "wandb_log"); });
+  await sleep(250);
+  check("storage that throws: the page loads version 1 and still edits", g === 8 && f.errors.length === 0, {nodes: g, errors: f.errors});
+  await f.context.close();
+
+  // 2. A corrupt store, then a hostile one (duplicate ids, a script in a name, edges to nowhere).
+  f = await fresh(browser, url + PAGE, function () {
+    try { window.localStorage.setItem("schwingnet.sandbox.v1", "{not json"); } catch (e) {}
+  });
+  g = await f.page.evaluate(function () { return window.sandbox.graph().nodes.length; });
+  check("a corrupt store falls back to version 1", g === 8 && f.errors.length === 0, {nodes: g, errors: f.errors});
+  await f.context.close();
+  f = await fresh(browser, url + PAGE, function () {
+    const spec = {sandbox: 1, name: "<img src=x onerror=alert(1)>", nodes: [
+      {id: "n1", block: "catalog_v1", version: 1, params: {}},
+      {id: "n1", block: "crop_boxes", version: 1, params: {}},
+      {id: "x9", block: "crop_boxes", version: 1, params: {}},
+      {id: "n2", block: "no_such_block", version: 1, params: "bad"},
+      {id: "n3", block: "crop_boxes", version: 1, params: {}}],
+      edges: [{from: "n1", out: "data", to: "n3", in: "frames"}, {from: "n7", out: "data", to: "n3", in: "frames"}, "edge"],
+      layout: {n1: [40, 40], n3: ["a", 1], n2: [340, 200, 5]}};
+    try { window.localStorage.setItem("schwingnet.sandbox.v1", JSON.stringify({v: 1, spec: spec, imported: [{id: "denoise"}], history: {catalog_v1: {crop_boxes: -4, bad: 2}}})); } catch (e) {}
+  });
+  const hostile = await f.page.evaluate(function () {
+    const s = window.sandbox.graph();
+    return {ids: s.nodes.map(function (n) { return n.id + ":" + n.block; }), edges: s.edges.length, layout: Object.keys(s.layout).sort(),
+      imgs: document.querySelectorAll("img").length, cards: document.querySelectorAll(".ncard").length,
+      unknown: document.querySelectorAll(".ncard.unknown").length, nameField: (document.getElementById("sb-name") || {}).value};
+  });
+  check("a hostile store keeps unique well-formed nodes, edges between them, and no markup", hostile.ids.join() === "n1:catalog_v1,n2:no_such_block,n3:crop_boxes" &&
+    hostile.edges === 1 && hostile.imgs === 0 && hostile.cards === 3 && hostile.unknown === 1 && f.errors.length === 0, {seen: hostile, errors: f.errors});
+  await f.context.close();
+
+  // 3. A change survives a reload (saved within the debounce), and the hash wins over the saved board.
+  f = await fresh(browser, url + PAGE + "#drr_gap");
+  const grownId = await f.page.evaluate(function () { return window.sandbox.grow("n4", null); });
+  const before = await f.page.evaluate(function () { return window.sandbox.digest(); });
+  await sleep(300);
+  await f.page.goto(url + PAGE);
+  await sleep(250);
+  const after = await f.page.evaluate(function () { return window.sandbox.digest(); });
+  await f.page.goto(url + PAGE + "#experiment_v1");
+  await f.page.reload();
+  await sleep(250);
+  const viaHash = await f.page.evaluate(function () { return window.sandbox.graph().nodes.length; });
+  check("a change survives a reload, and an address naming a template loads that template", !!grownId && before !== "85370edca50d87c9b2ad012a3821eebf7ede656ad471d2fe9489acdbe6f5d3c8" && before === after && viaHash === 8, {grown: grownId, before: before.slice(0, 12), after: after.slice(0, 12), viaHash: viaHash});
+  await f.context.close();
+
+  // 4. Touch: a press held in a grow zone commits when the ring fills; a release half way cancels; a tap adds at once.
+  f = await fresh(browser, url + PAGE);
+  await f.page.click("#sb-new");
+  await f.page.click('.bchip:has-text("Gold tier 3 CTs")');
+  async function touch(ms, id, dx) {
+    return f.page.evaluate(async function (a) {
+      const c = document.querySelector('.ncard[data-id="' + a.id + '"]').getBoundingClientRect();
+      const stage = document.getElementById("sb-stage");
+      const x = c.right + a.dx, y = c.top + c.height / 2;
+      const opts = {bubbles: true, cancelable: true, clientX: x, clientY: y, pointerType: "touch", pointerId: 7, isPrimary: true, button: 0, buttons: 1};
+      const target = document.elementFromPoint(x, y) || stage;
+      target.dispatchEvent(new PointerEvent("pointerdown", opts));
+      await new Promise(function (r) { setTimeout(r, a.ms); });
+      target.dispatchEvent(new PointerEvent("pointerup", Object.assign({}, opts, {buttons: 0})));
+      await new Promise(function (r) { setTimeout(r, 30); });
+      return window.sandbox.graph().nodes.length;
+    }, {ms: ms, id: id, dx: dx});
+  }
+  const held = await touch(620, "n1", 120);
+  const half = await touch(330, "n2", 120);
+  const tap = await touch(80, "n2", 120);
+  check("touch: a held press commits, a half-way release cancels, a tap adds at once", held === 2 && half === 2 && tap === 3, {held: held, half: half, tap: tap, errors: f.errors});
+  check("no console error in these pages", f.errors.length === 0, f.errors);
+  await f.context.close();
+
+  await browser.close();
+  server.close();
+  const failed = results.filter(function (r) { return !r; }).length;
+  console.log((results.length - failed) + " of " + results.length + " checks pass");
+  process.exit(failed ? 1 : 0);
+}());

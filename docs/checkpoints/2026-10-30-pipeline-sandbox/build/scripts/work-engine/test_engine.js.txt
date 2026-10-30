@@ -1,0 +1,616 @@
+// The engine's sections 4 and 6-12 and 14-15 on the scratch fixtures.
+"use strict";
+
+var T = require("./t.js");
+var F = require("./fixtures.js");
+var SB = T.SB;
+
+var D = F.data();
+var node = F.node, edge = F.edge;
+
+function clone(v) {
+  return JSON.parse(JSON.stringify(v));
+}
+
+function withBlocks(extra, contractChange) {
+  var d = clone(D);
+  extra.forEach(function (m) { d.blocks.push(m); });
+  if (contractChange) contractChange(d.contract);
+  return d;
+}
+
+// ---------------------------------------------------------------------------------------------
+T.begin("API shape");
+["canonical", "sha256", "specOf", "digest", "effectiveParams", "propagate", "jobs", "compile", "checkManifest", "matches",
+  "transitionStats", "predict", "typeSummary", "resolveText"].forEach(function (name) {
+  T.ok(typeof SB[name] === "function", "SB." + name + " is a function");
+});
+
+// ---------------------------------------------------------------------------------------------
+T.begin("empty type");
+T.eq(SB.emptyType(), {kind: "data", axes: [], sizes: {}, dtype: "any", targets: "none", classes: null, parts: [],
+  persons: false, modality: "any", licence: "uncut", sources: [], family: null, rank: 0, trained: false}, "section 4");
+
+// ---------------------------------------------------------------------------------------------
+T.begin("the chain");
+var chain = F.chain("chain");
+var P = SB.propagate(chain, D);
+T.eq(P.problems, [], "no problem");
+T.eq(P.order, ["n1", "n2", "n3", "n4", "n5", "n6", "n7", "n8"], "order");
+var catalogType = P.nodes.n1.outputs.data;
+T.eq(catalogType, {kind: "data", axes: ["N", "C", "H", "W"], sizes: {C: 1}, dtype: "uint8", targets: "level", classes: 27,
+  parts: ["train", "validation", "test"], persons: true, modality: "mixed", licence: "uncut", sources: ["catalog_v1"],
+  family: null, rank: 2, trained: false}, "the catalog's type, its own id in sources");
+T.eq(Object.keys(catalogType), ["kind", "axes", "sizes", "dtype", "targets", "classes", "parts", "persons", "modality",
+  "licence", "sources", "family", "rank", "trained"], "every field present");
+T.eq(P.nodes.n2.outputs.data.sizes, {C: 1, H: 64, W: 64}, "crop sizes from the param");
+T.eq(P.nodes.n3.outputs.data.dtype, "float32", "normalise sets the dtype");
+T.eq(P.nodes.n5.outputs.model.kind, "model", "the classifier gives a model");
+T.eq(P.nodes.n5.outputs.model.family, "resnet18", "the family from the param");
+T.eq(P.nodes.n5.outputs.model.sizes, {C: 1, H: 64, W: 64}, "a model stays flat (its data's sizes)");
+T.eq(P.nodes.n6.outputs.checkpoint.trained, true, "the checkpoint is trained");
+T.eq(P.nodes.n7.outputs.metrics.axes, [], "metrics have no axes");
+T.eq(P.nodes.n7.outputs.metrics.rank, 0, "metrics rank 0");
+T.eq(P.nodes.n8.outputs.report.kind, "report", "a report");
+T.eq(P.nodes.n8.outputs.report.sources, ["catalog_v1"], "lineage carried to the report");
+T.eq(P.nodes.n6.fan, 1, "fan 1");
+T.eq(P.nodes.n6.combinations, 1, "combinations 1");
+T.eq(SB.typeSummary(catalogType), "N x 1 x H x W uint8, level 27, train/validation/test", "typeSummary of the catalog");
+T.eq(SB.typeSummary(P.nodes.n2.outputs.data), "N x 1 x 64 x 64 uint8, level 27, train/validation/test", "typeSummary of a crop");
+T.eq(SB.typeSummary(P.nodes.n5.outputs.model), "model resnet18, N x 1 x 64 x 64 float32, level 27, train/validation/test",
+  "typeSummary of a model");
+T.eq(SB.typeSummary(P.nodes.n7.outputs.metrics), "metrics, level 27, train/validation/test", "typeSummary of metrics");
+T.eq(SB.typeSummary(P.nodes.n6.outputs.checkpoint), "checkpoint resnet18, N x 1 x 64 x 64 float32, level 27, train/validation/test",
+  "typeSummary of a checkpoint");
+T.eq(SB.typeSummary(SB.emptyType()), "unsplit", "typeSummary of the empty type");
+var classifierManifest = D.blocks.filter(function (m) { return m.id === "classifier"; })[0];
+T.eq(SB.resolveText(classifierManifest, P.nodes.n5.outputs.model),
+  "a resnet18 whose 2-D stem takes 1 channel(s) of 64 x 64; head of 27", "resolveText");
+T.eq(SB.resolveText(classifierManifest, SB.emptyType()), "a ? whose 0-D stem takes ? channel(s) of ? x ?; head of ?",
+  "resolveText prints ? for what is missing");
+T.eq(SB.resolveText({resolve: "{nothing} and {sizes.Q}"}, catalogType), "? and ?", "unknown placeholders print ?");
+T.eq(SB.resolveText({resolve: null}, catalogType), "", "no resolve text");
+
+var C1 = SB.compile(chain, D);
+T.eq(C1.route, "experiment", "the experiment route");
+T.eq(C1.ready, true, "ready");
+T.eq(C1.why, [], "no why");
+T.eq(C1.requests.length, 1, "one request");
+T.eq(C1.jobs.gpu, {submissions: 1, tasks: 1, hours: 4}, "one GPU job of 4 hours");
+T.eq(C1.jobs.cpu, {submissions: 0, tasks: 0, hours: 0}, "no CPU job");
+T.eq(C1.plan.map(function (r) { return [r.node, r.block, r["class"], r.submissions, r.tasks, r.hours, r.rides_with, r.stage]; }),
+  [["n6", "train_classifier", "gpu", 1, 1, 4.5, null, "train"], ["n7", "evaluate_heldout", "gpu", 0, 1, 0.5, "n6", "evaluate"]],
+  "the plan: evaluation rides in the training job");
+T.eq(C1.plan[0].today, {status: "live", route: "experiment", word: "", flow: "", note: ""}, "the plan carries today");
+var R1 = C1.requests[0];
+T.eq(R1.named, [], "nothing named");
+T.eq(R1.title, "Experiment: version 1 (no block named), 20 epochs", "the title");
+T.eq(R1.recipe, "none", "recipe none");
+T.eq(R1.hours_word, "4", "hours word");
+T.eq(R1.lines, ["recipe: none", "epochs: 20", "seed: 1", "hours: 4"], "lines");
+T.ok(R1.body.indexOf("<!-- schwingnet-experiment -->\nrecipe: none\nepochs: 20\nseed: 1\nhours: 4\n\nRequested") === 0, "the body opens");
+T.ok(R1.url.indexOf("https://github.com/OpenSpineConsortium/SchwingNet/issues/new?title=Experiment%3A+version+1+%28no+block+named%29%2C+20+epochs&labels=experiment&body=%3C%21--+schwingnet-experiment+--%3E%0Arecipe%3A+none") === 0,
+  "the url", R1.url.slice(0, 200));
+T.eq(SB.digest(chain, D), C1.digest, "compile's digest is digest()");
+T.eq(C1.digest.length, 64, "a hex digest");
+T.eq(C1.pipeline_issue.title, "Pipeline: chain (" + C1.digest.slice(0, 12) + ")", "both routes fill pipeline_issue");
+T.eq(C1.pipeline_issue.body.split("\n").slice(0, 6), ["<!-- schwingnet-pipeline -->", "", "digest: " + C1.digest,
+  "route: experiment", "jobs: 1 GPU submission(s) (1 tasks, 4 GPU-hours), 0 CPU submission(s)", ""], "the issue's head");
+T.ok(C1.pipeline_issue.body.indexOf("```json\n" + SB.canonical(SB.specOf(chain, D)) + "\n```\n\nNothing answers this issue yet: " +
+  "the pipeline route waits on the owner's word (docs/research/pipeline-sandbox/README.md).\n") > 0, "the issue's json and closing");
+
+// ---------------------------------------------------------------------------------------------
+T.begin("canonical spec and digest");
+var spec0 = SB.specOf(chain, D);
+T.eq(Object.keys(spec0), ["sandbox", "name", "nodes", "edges"], "only sandbox, name, nodes and edges");
+T.eq(spec0.nodes[1], {id: "n2", block: "crop_boxes", version: 1, params: {size: 64}, vary: {}}, "a node with defaults filled");
+T.eq(spec0.nodes[5].params, {optimiser: "adam", weight_decay: 0, backbone_lr_scale: 1, epochs: 20, seed: 1, hours: 4},
+  "every param, defaults filled");
+var shuffled = clone(chain);
+shuffled.nodes.reverse();
+shuffled.edges.reverse();
+shuffled.layout = {n1: [999, 999], n5: [1, 2]};
+shuffled.id = "something";
+shuffled.about = "about";
+shuffled.expect = {route: "x"};
+shuffled.nodes[0].params = {results: undefined};
+shuffled.nodes.forEach(function (n) { if (n.block === "crop_boxes") n.params = {size: 64}; });
+T.eq(SB.digest(shuffled, D), C1.digest, "order, layout, id, about, expect and a default given do not change the digest");
+var changed = clone(chain);
+changed.nodes[1].params = {size: 96};
+T.ok(SB.digest(changed, D) !== C1.digest, "a param that differs changes the digest");
+var renamed = clone(chain);
+renamed.name = "other";
+T.ok(SB.digest(renamed, D) !== C1.digest, "the name changes the digest");
+var varied = clone(chain);
+varied.nodes[3].vary = {augment: [], zzz: [1], aaa: [[]]};
+var vspec = SB.specOf(varied, D);
+T.eq(vspec.nodes[3].vary, {aaa: [[]], zzz: [1]}, "vary keeps non-empty lists, keys sorted");
+T.eq(Object.keys(vspec.nodes[3].vary), ["aaa", "zzz"], "vary keys sorted");
+var edgesSpec = {sandbox: 1, name: "e", nodes: [node("n10", "normalise"), node("n2", "catalog_v1"), node("n9", "normalise")],
+  edges: [edge("n2", "data", "n9", "data"), edge("n2", "data", "n10", "data"), edge("n10", "b", "n9", "a"),
+    edge("n10", "a", "n9", "z"), edge("n10", "a", "n9", "b")]};
+var es = SB.specOf(edgesSpec, D);
+T.eq(es.nodes.map(function (n) { return n.id; }), ["n2", "n9", "n10"], "nodes by number, not by text");
+T.eq(es.edges.map(function (e) { return [e.from, e.out, e.to, e["in"]].join(" "); }),
+  ["n2 data n9 data", "n2 data n10 data", "n10 a n9 b", "n10 a n9 z", "n10 b n9 a"], "edges by (from, out, to, in)");
+var unknownNode = SB.specOf({sandbox: 1, name: "u", nodes: [{id: "n1", block: "ghost", params: {a: 1}}], edges: []}, D);
+T.eq(unknownNode.nodes[0], {id: "n1", block: "ghost", version: null, params: {a: 1}, vary: {}},
+  "an unknown block keeps its params; a missing version is null");
+T.eq(SB.effectiveParams({params: {size: 128, extra: true}}, D.blocks[4]), {size: 128, extra: true},
+  "effectiveParams overlays the node's values");
+T.eq(SB.effectiveParams({}, D.blocks[4]), {size: 64}, "effectiveParams fills defaults");
+T.eq(SB.digest({sandbox: 1, name: "caf\u00e9", nodes: [], edges: []}, D), "", "no digest for text canonical JSON cannot write");
+T.eq(SB.digest({sandbox: 1, name: "", nodes: [], edges: []}, D), SB.sha256('{"edges":[],"name":"","nodes":[],"sandbox":1}'),
+  "the digest is the SHA-256 of the canonical JSON");
+
+// ---------------------------------------------------------------------------------------------
+T.begin("screen arms: vary, fan, combinations and requests");
+var screen = F.chain("screen");
+screen.nodes[3].vary = {augment: [[], ["strong"]]};
+screen.nodes[5].vary = {optimiser: ["adam", "adamw"]};
+var PS = SB.propagate(screen, D);
+T.eq(PS.problems, [], "no problem");
+T.eq(["n1", "n2", "n3", "n4", "n5", "n6", "n7", "n8"].map(function (id) { return PS.nodes[id].fan; }), [1, 1, 1, 2, 2, 4, 4, 4], "fans");
+T.eq(PS.nodes.n4.combinations, 2, "augment varies into 2");
+var CS = SB.compile(screen, D);
+T.eq(CS.route, "experiment", "experiment route");
+T.eq(CS.requests.length, 4, "four requests");
+T.eq(CS.requests.map(function (r) { return r.named; }),
+  [[], ["optimiser=adamw"], ["augment=strong"], ["augment=strong", "optimiser=adamw"]], "the named words in order");
+T.eq(CS.requests.map(function (r) { return r.combination.map(function (c) { return c.node + "." + c.param + "=" + JSON.stringify(c.value); }); }),
+  [["n4.augment=[]", "n6.optimiser=\"adam\""], ["n4.augment=[]", "n6.optimiser=\"adamw\""],
+    ["n4.augment=[\"strong\"]", "n6.optimiser=\"adam\""], ["n4.augment=[\"strong\"]", "n6.optimiser=\"adamw\""]], "combinations");
+T.eq(CS.jobs.gpu, {submissions: 4, tasks: 4, hours: 16}, "four GPU submissions");
+T.eq(CS.plan[0].tasks, 4, "the train row has 4 tasks");
+T.eq(CS.requests[3].blocks.augment, ["strong"], "blocks hold every field");
+T.eq(Object.keys(CS.requests[3].blocks), D.experiment.fields, "blocks in the fields' order");
+T.eq(CS.requests[3].blocks.segmenter, "spineps", "a field no node maps keeps its default");
+T.eq(CS.requests[3].title, "Experiment: augment=strong optimiser=adamw, 20 epochs", "title");
+T.eq(CS.requests[3].lines, ["recipe: none", "epochs: 20", "seed: 1", "hours: 4", "block: augment=strong", "block: optimiser=adamw"],
+  "lines");
+T.eq(CS.requests[3].command, D.experiment.flow + " --epochs 20 --seed 1 --hours 4 --block augment=strong --block optimiser=adamw",
+  "command");
+
+// A select node joins the arms: fan returns to its own combinations.
+T.begin("vary and fan through a select node");
+var sel = F.chain("select");
+sel.nodes[5].vary = {optimiser: ["adam", "adamw"], seed: [1, 2, 3]};
+sel.nodes.push(node("n9", "select_on_validation"));
+sel.nodes[6] = node("n7", "evaluate_heldout");
+sel.edges = sel.edges.filter(function (e) { return e.to !== "n7"; });
+sel.edges.push(edge("n6", "checkpoint", "n9", "checkpoint"), edge("n9", "checkpoint", "n7", "checkpoint"));
+var PSel = SB.propagate(sel, D);
+T.eq(PSel.problems, [], "no problem");
+T.eq(PSel.order, ["n1", "n2", "n3", "n4", "n5", "n6", "n9", "n7", "n8"], "order by Kahn, ties by number");
+T.eq(PSel.nodes.n6.fan, 6, "the trainer fans out to 6");
+T.eq(PSel.nodes.n6.combinations, 6, "6 combinations");
+T.eq(PSel.nodes.n9.fan, 1, "the select node joins the arms");
+T.eq(PSel.nodes.n7.fan, 1, "after the select, one arm");
+var JSel = SB.jobs(sel, D);
+T.eq(JSel.rows.map(function (r) { return [r.node, r.submissions, r.tasks, r.hours, r.rides_with]; }),
+  [["n6", 6, 6, 4, null], ["n7", 1, 1, 0.5, null]], "evaluation after a select is its own job (its direct upstream is no compute node)");
+T.eq(JSel.totals.gpu, {submissions: 7, tasks: 7, hours: 24.5}, "totals");
+var CSel = SB.compile(sel, D);
+T.eq(CSel.route, "pipeline", "a select block has no experiment mapping");
+T.eq(CSel.why.map(function (w) { return w.code; }), ["not_mapped"], "why: not_mapped");
+T.eq(CSel.requests, [], "no request on the pipeline route");
+T.eq(CSel.ready, false, "not ready");
+T.eq(CSel.jobs.gpu, {submissions: 7, tasks: 7, hours: 24.5}, "the pipeline route keeps section 11's totals");
+
+// Vary on a node with several params: the product, last fastest; totals across nodes.
+T.begin("combinations across nodes");
+var two = F.chain("two");
+two.nodes[1].vary = {size: [64]};
+two.nodes[5].vary = {seed: [1, 2], epochs: [10, 20, 30]};
+var CT = SB.compile(two, D);
+T.eq(CT.requests.length, 6, "six requests");
+T.eq(CT.requests.map(function (r) { return r.epochs + "/" + r.seed; }), ["10/1", "10/2", "20/1", "20/2", "30/1", "30/2"],
+  "params of one node in name order, the last fastest");
+T.eq(CT.requests.map(function (r) { return r.title; })[0], "Experiment: version 1 (no block named), 10 epochs", "epochs in the title");
+
+// ---------------------------------------------------------------------------------------------
+T.begin("propagate problems: block, version, node, text");
+var bad1 = {sandbox: 1, name: "bad\u00e9", nodes: [node("n1", "catalog_v1"), {id: "n2", block: "ghost", version: 1, params: {}},
+  {id: "n3", block: "normalise", version: 7, params: {}}, {id: "x4", block: "normalise", version: 1},
+  {id: "n1", block: "normalise", version: 1}, {id: "n5", block: "normalise", version: 1, params: {normalise: "caf\u00e9"}}],
+  edges: [edge("n1", "data", "n3", "data"), edge("n1", "data", "n5", "data")]};
+var PB = SB.propagate(bad1, D);
+T.ok(T.has(PB.problems, "block", "n2", null, null, "error"), "block");
+T.ok(T.has(PB.problems, "version", "n3", null, null, "warn"), "version is a warning");
+T.ok(T.has(PB.problems, "node", "x4", null, null, "error"), "a bad id");
+T.ok(T.has(PB.problems, "node", "n1", null, null, "error"), "a duplicate id");
+T.ok(T.has(PB.problems, "text", null, null, "name", "error"), "a name canonical JSON cannot write");
+T.ok(T.has(PB.problems, "text", "n5", null, null, "error"), "a node value canonical JSON cannot write");
+T.ok(T.has(PB.problems, "param", "n5", null, "normalise", "error"), "and that value is no choice");
+T.eq(PB.nodes.n2.outputs, {}, "an unknown block has no types");
+T.ok(PB.nodes.n3.outputs.data !== undefined, "a version warning still computes types");
+T.eq(SB.compile(bad1, D).digest, "", "no digest when the spec cannot be written");
+
+T.begin("propagate problems: cycle");
+var cyc = {sandbox: 1, name: "cycle", nodes: [node("n1", "catalog_v1"), node("n2", "normalise"), node("n3", "normalise"),
+  node("n4", "report_claim")], edges: [edge("n1", "data", "n2", "data"), edge("n2", "data", "n3", "data"),
+  edge("n3", "data", "n2", "data"), edge("n3", "data", "n4", "results")]};
+var PC = SB.propagate(cyc, D);
+T.eq(PC.order, ["n1"], "only the node before the cycle is in order");
+T.ok(T.has(PC.problems, "cycle", "n2") && T.has(PC.problems, "cycle", "n3"), "both nodes on the cycle");
+T.ok(T.has(PC.problems, "cycle", "n4"), "a node after the cycle is left out too");
+T.ok(T.has(PC.problems, "port", "n2", "data"), "the input with two edges");
+T.eq(PC.nodes.n2.outputs, {}, "no types on a cycle");
+T.eq(PC.nodes.n2.fan, 1, "fan of a node on a cycle is its combinations");
+var selfLoop = {sandbox: 1, name: "self", nodes: [node("n1", "normalise")], edges: [edge("n1", "data", "n1", "data")]};
+var PL = SB.propagate(selfLoop, D);
+T.eq(PL.order, [], "a self loop is a cycle");
+T.ok(T.has(PL.problems, "cycle", "n1"), "cycle on the self loop");
+
+T.begin("propagate problems: port and input");
+var ports = {sandbox: 1, name: "ports", nodes: [node("n1", "catalog_v1"), node("n2", "normalise"), node("n3", "report_claim"),
+  node("n4", "evaluate_heldout")],
+  edges: [edge("n1", "nothing", "n2", "data"), edge("n1", "data", "n2", "wrong"), edge("n1", "data", "n9", "data"),
+    edge("n8", "data", "n3", "more"), edge("n1", "data", "n3", "results"), edge("n2", "data", "n3", "results")]};
+var PP = SB.propagate(ports, D);
+T.ok(T.has(PP.problems, "port", "n2", "data"), "an out the upstream does not have");
+T.ok(T.has(PP.problems, "port", "n2", "wrong"), "an in the downstream does not have");
+T.ok(T.has(PP.problems, "port", null, "data"), "an edge to a node that is not there");
+T.ok(T.has(PP.problems, "port", "n3", "more"), "an edge from a node that is not there");
+T.ok(T.has(PP.problems, "port", "n3", "results"), "an input with two edges");
+T.ok(T.has(PP.problems, "input", "n4", "checkpoint"), "a required input with no edge");
+T.ok(!T.has(PP.problems, "input", "n4", "data"), "an optional input may stay unconnected");
+T.ok(!T.has(PP.problems, "input", "n2", "data"), "a port with a (bad) edge counts as connected");
+
+T.begin("propagate problems: param, vary, rule");
+var params = F.chain("params");
+params.nodes[5].params = {weight_decay: 0.1, epochs: 0, colour: "red", hours: 0.00005};
+params.nodes[4].vary = {weights: ["imagenet", "none"]};
+params.nodes[1].vary = {size: [64, 1000, 64.5]};
+var PR = SB.propagate(params, D);
+T.ok(T.has(PR.problems, "rule", "n6", null, null), "the rule fails for the base params");
+T.ok(T.has(PR.problems, "param", "n6", null, "epochs"), "epochs out of range");
+T.ok(T.has(PR.problems, "param", "n6", null, "colour"), "an unknown param");
+T.ok(T.has(PR.problems, "param", "n6", null, "hours"), "a float that is not plain (0.00005)");
+T.ok(T.has(PR.problems, "vary", "n5", null, "weights"), "varying a param that does not vary");
+T.ok(T.has(PR.problems, "param", "n2", null, "size"), "a varied value outside its kind's rules");
+var ruleOnly = F.chain("rule only");
+ruleOnly.nodes[5].vary = {weight_decay: [0, 0.1]};
+var PRO = SB.propagate(ruleOnly, D);
+T.eq(T.keys(PRO.problems), ["rule|n6|-|-|error"], "a rule failing in one combination only");
+var ruleFixed = F.chain("rule fixed");
+ruleFixed.nodes[5].vary = {weight_decay: [0, 0.1]};
+ruleFixed.nodes[5].params = {optimiser: "adamw"};
+T.eq(SB.propagate(ruleFixed, D).problems, [], "no rule problem with adamw");
+var many = F.chain("many");
+var sizes = [];
+for (var i = 32; i < 32 + 65; i++) sizes.push(i);
+many.nodes[1].vary = {size: sizes};
+var PM = SB.propagate(many, D);
+T.ok(T.has(PM.problems, "vary", "n2", null, null), "more than 64 combinations on one node");
+T.ok(T.has(PM.problems, "limit", null, null, null), "and over 64 in all");
+var floatOk = F.chain("float ok");
+floatOk.nodes[5].params = {hours: 0.1, weight_decay: 0.0001, optimiser: "adamw"};
+T.eq(SB.propagate(floatOk, D).problems, [], "0.0001 and 0.1 are plain floats");
+
+T.begin("pattern keys");
+var pickyType = {kind: "data", axes: ["N", "C", "H", "W"], sizes: {}, dtype: "uint8", targets: "level", classes: 27,
+  parts: ["train", "test"], persons: true, modality: "fluoro", licence: "uncut", sources: [], family: null, rank: 2,
+  trained: false};
+var pickyPattern = D.blocks.filter(function (m) { return m.id === "picky"; })[0].inputs[0].accepts;
+var fails = SB.matches(pickyPattern, pickyType, D.contract);
+T.eq(fails.map(function (p) { return p.field; }).sort(), ["dtype", "has_axes", "modality", "needs_parts", "parts", "rank",
+  "targets", "time", "trained"], "every key but kind fails once");
+T.ok(fails.every(function (p) { return p.code === "type" && p.level === "error"; }), "each a type error");
+T.eq(SB.matches({kind: ["model"]}, pickyType, D.contract).map(function (p) { return p.field; }), ["kind"], "kind");
+var anyType = clone(pickyType);
+anyType.dtype = "any";
+anyType.modality = "any";
+T.eq(SB.matches({kind: ["data"], dtype: ["float32"], modality: ["ct"]}, anyType, D.contract), [],
+  "dtype any and modality any pass");
+T.eq(SB.matches({kind: ["data"], time: "no", parts: "split", needs_parts: ["train", "test"], trained: false, rank: [2],
+  has_axes: ["C"], targets: ["level"]}, pickyType, D.contract), [], "a type that meets every key");
+var clip = clone(pickyType);
+clip.axes = ["N", "T", "C", "H", "W"];
+T.eq(SB.matches({kind: ["data"], time: "no"}, clip, D.contract).map(function (p) { return p.field; }), ["time"], "time no");
+T.eq(SB.matches({kind: ["data"], time: "any"}, clip, D.contract), [], "time any");
+T.eq(SB.matches({kind: ["data"], parts: "unsplit"}, SB.emptyType(), D.contract), [], "unsplit takes the empty type");
+T.eq(SB.matches({kind: ["data"], parts: "split"}, SB.emptyType(), D.contract).map(function (p) { return p.field; }), ["parts"],
+  "split refuses the empty type");
+var picky = {sandbox: 1, name: "picky", nodes: [node("n1", "catalog_v1"), node("n2", "picky")],
+  edges: [edge("n1", "data", "n2", "data")]};
+var PK = SB.propagate(picky, D);
+T.eq(T.keys(PK.problems), ["type|n2|data|dtype|error", "type|n2|data|has_axes|error", "type|n2|data|modality|error",
+  "type|n2|data|parts|error", "type|n2|data|rank|error", "type|n2|data|targets|error",
+  "type|n2|data|time|error", "type|n2|data|trained|error"], "propagate reports each failed key on the port");
+
+T.begin("ops");
+var ops = {sandbox: 1, name: "ops", nodes: [node("n1", "catalog_v1"), node("n2", "crop_boxes", {size: 96}),
+  node("n3", "op_mix"), node("n4", "vol_source"), node("n5", "gpu_render", {detector: 128})],
+  edges: [edge("n1", "data", "n3", "data"), edge("n1", "data", "n2", "data"), edge("n2", "data", "n3", "other"),
+    edge("n4", "data", "n5", "volumes")]};
+var PO = SB.propagate(ops, D);
+T.eq(PO.problems, [], "no problem");
+var mix = PO.nodes.n3.outputs.data;
+T.eq(mix.axes, ["N", "T", "C", "H", "W", "P"], "add_axis before C; add_axis at the end; add_axis of a present axis does nothing");
+T.eq(mix.sizes, {T: 8, C: 1, H: 96, W: 96}, "sizes from @param, @in.other.sizes.H and @self.sizes.H; a null size is absent");
+T.eq(mix.classes, 27, "@in.data.classes");
+T.eq(mix.licence, "uncut", "the other input's uncut lineage makes the output uncut (the later of the two)");
+T.eq(mix.parts, ["train", "test"], "parts put in contract order");
+T.eq(mix.persons, false, "persons set false, and the other input's lineage does not raise it");
+T.eq(mix.family, "mix", "family");
+T.eq(mix.rank, 2, "rank recomputed");
+T.eq(mix.sources, ["catalog_v1"], "lineage from both inputs, sorted and unique");
+var flat = PO.nodes.n3.outputs.flat;
+T.eq([flat.kind, flat.axes, flat.sizes, flat.dtype, flat.classes, flat.rank], ["metrics", ["N", "F"], {F: 8}, "any", null, 0],
+  "axes replace and prune sizes; kind; set dtype any; set classes null");
+T.eq(flat.persons, true, "the second output starts from other, and both inputs carry persons");
+var render = PO.nodes.n5.outputs.data;
+T.eq([render.axes, render.sizes, render.rank, render.modality, render.licence, render.sources],
+  [["N", "C", "H", "W"], {C: 1, H: 128, W: 128}, 2, "drr", "non-commercial", ["vol_source"]], "drop_axis D, add then drop K");
+var mixLic = {sandbox: 1, name: "lic", nodes: [node("n1", "catalog_v1"), node("n2", "vol_source"), node("n3", "op_mix", {cut: "uncut"})],
+  edges: [edge("n1", "data", "n3", "data"), edge("n2", "data", "n3", "other")]};
+var PLic = SB.propagate(mixLic, D);
+T.eq(PLic.nodes.n3.outputs.data.licence, "uncut", "licence and cut cannot move uncut below the catalog's uncut");
+T.eq(PLic.nodes.n3.outputs.data.sources, ["catalog_v1", "vol_source"], "lineage united");
+T.eq(PLic.nodes.n3.outputs.flat.licence, "uncut", "the flat output starts from other and merges data's uncut");
+T.eq(PLic.nodes.n3.outputs.flat.sources, ["catalog_v1", "vol_source"], "and its sources");
+var lic2 = {sandbox: 1, name: "lic2", nodes: [node("n1", "vol_source"), node("n2", "op_mix"), node("n3", "op_mix", {cut: "uncut"}),
+  node("n4", "clip_source"), node("n5", "op_mix", {cut: "uncut"})],
+  edges: [edge("n1", "data", "n2", "data"), edge("n1", "data", "n3", "data"), edge("n1", "data", "n5", "data"),
+    edge("n4", "data", "n5", "other")]};
+var PL2 = SB.propagate(lic2, D);
+T.eq(PL2.nodes.n2.outputs.data.licence, "non-commercial", "licence raises non-commercial to research-internal, cut narrows it back");
+T.eq(PL2.nodes.n3.outputs.data.licence, "research-internal", "cut uncut keeps research-internal");
+T.eq(PL2.nodes.n5.outputs.data.licence, "research-internal", "a commercial second input does not lower it");
+T.eq(PL2.nodes.n5.outputs.flat.licence, "non-commercial", "flat starts from the commercial clips and merges the data input's non-commercial");
+T.eq(PL2.nodes.n5.outputs.data.persons, false, "persons set false by the op");
+T.eq(PL2.nodes.n5.outputs.flat.persons, true, "flat: both inputs carry persons");
+T.eq(PL2.nodes.n5.outputs.data.sources, ["clip_source", "vol_source"], "sources united and sorted");
+var unconnectedRef = {sandbox: 1, name: "noother", nodes: [node("n1", "catalog_v1"), node("n2", "op_mix")],
+  edges: [edge("n1", "data", "n2", "data")]};
+var PU = SB.propagate(unconnectedRef, D);
+T.eq(PU.problems, [], "@in of an unconnected port is null and its op does nothing");
+T.eq(PU.nodes.n2.outputs.data.sizes, {T: 8, C: 1}, "size H from a missing port is removed (null), W reads @self.sizes.H = null");
+T.eq(PU.nodes.n2.outputs.flat.axes, ["N", "F"], "an output from an unconnected port starts from the first connected input");
+var opBad = {sandbox: 1, name: "opbad", nodes: [node("n1", "catalog_v1"), node("n2", "op_bad")],
+  edges: [edge("n1", "data", "n2", "data")]};
+var POB = SB.propagate(opBad, D);
+T.eq(T.keys(POB.problems), ["op|n2|data|add_axis|error", "op|n2|data|axes|error", "op|n2|data|frobnicate|error",
+  "op|n2|data|kind|error", "op|n2|data|licence|error", "op|n2|data|parts|error", "op|n2|data|set|error",
+  "op|n2|data|set|error", "op|n2|data|size|error", "op|n2|data|size|error"],
+  "every failing op is one op problem on its output, field = the op's name");
+T.eq(POB.nodes.n2.outputs.data.axes, ["N", "C", "H", "W"], "a failed op leaves the type as it was");
+
+T.begin("reads: test and parts");
+var reads = {sandbox: 1, name: "reads", nodes: [node("n1", "vol_source"), node("n2", "peeker"), node("n3", "catalog_v1"),
+  node("n4", "peeker"), node("n5", "clip_source"), node("n6", "augment")],
+  edges: [edge("n1", "data", "n2", "data"), edge("n3", "data", "n4", "data"), edge("n5", "data", "n6", "data")]};
+var PRd = SB.propagate(reads, D);
+T.ok(T.has(PRd.problems, "test", "n2", null, null), "test read outside evaluate and report");
+T.ok(T.has(PRd.problems, "test", "n4", null, null), "on every node of the block");
+T.ok(T.has(PRd.problems, "parts", "n2", "data", null), "unsplit data lacks the parts read");
+T.ok(!T.has(PRd.problems, "parts", "n4"), "split data has them");
+T.ok(T.has(PRd.problems, "parts", "n6", "data", null), "test-only data lacks train");
+T.ok(T.has(PRd.problems, "type", "n6", "data", "needs_parts"), "and the pattern says so too");
+
+T.begin("graph limits");
+var big = {sandbox: 1, name: "big", nodes: [node("n1", "catalog_v1")], edges: []};
+for (var k = 2; k <= 61; k++) {
+  big.nodes.push(node("n" + k, "normalise"));
+  big.edges.push(edge("n" + (k - 1), "data", "n" + k, "data"));
+}
+for (var e2 = 0; e2 < 61; e2++) big.edges.push(edge("n1", "data", "n2", "data"));
+var PBig = SB.propagate(big, D);
+T.eq(PBig.problems.filter(function (p) { return p.code === "limit"; }).length, 2, "nodes and edges over their limits");
+T.ok(PBig.problems.filter(function (p) { return p.code === "limit"; }).every(function (p) { return p.node === null; }), "node null");
+var spread = F.chain("spread");
+spread.nodes[1].vary = {size: [64, 65, 66, 67, 68, 69, 70, 71]};
+spread.nodes[3].vary = {augment: [[], ["blur"], ["noise"], ["strong"], ["blur", "noise"], ["intensity"], ["box-jitter"], ["blur", "strong"]]};
+spread.nodes[5].vary = {seed: [1, 2]};
+var PSp = SB.propagate(spread, D);
+T.eq(T.keys(PSp.problems), ["limit|-|-|-|error"], "128 combinations in all, no node above 64");
+T.eq(PSp.nodes.n6.fan, 128, "the fan multiplies along the chain");
+var CSp = SB.compile(spread, D);
+T.eq(CSp.why.map(function (w) { return w.code; }), ["errors", "only", "too_many"], "why: errors, only (size), too_many");
+
+// ---------------------------------------------------------------------------------------------
+T.begin("jobs: with_upstream and classes");
+var jobsSpec = {sandbox: 1, name: "jobs", nodes: [node("n1", "vol_source"), node("n2", "gpu_render"), node("n3", "gpu_follow"),
+  node("n4", "cpu_measure"), node("n5", "cpu_measure"), node("n6", "gpu_follow")],
+  edges: [edge("n1", "data", "n2", "volumes"), edge("n2", "data", "n3", "data"), edge("n1", "data", "n4", "data"),
+    edge("n2", "data", "n5", "data"), edge("n3", "data", "n6", "data")]};
+jobsSpec.nodes[1].vary = {detector: [128, 256, 512]};
+var J = SB.jobs(jobsSpec, D);
+T.eq(J.rows.map(function (r) { return [r.node, r.block, r["class"], r.submissions, r.tasks, r.hours, r.rides_with]; }),
+  [["n2", "gpu_render", "gpu", 3, 3, 1.25, null], ["n3", "gpu_follow", "gpu", 0, 3, 0.25, "n2"],
+    ["n4", "cpu_measure", "cpu", 1, 1, 1.5, null], ["n5", "cpu_measure", "cpu", 3, 3, 1.5, null],
+    ["n6", "gpu_follow", "gpu", 0, 3, 0.25, "n2"]],
+  "riders add their hours to the host, a rider of a rider rides with the host, no compute upstream or another class: own job");
+T.eq(J.totals, {cpu: {submissions: 4, tasks: 4, hours: 6}, gpu: {submissions: 3, tasks: 3, hours: 3.75}}, "totals");
+T.eq(J.problems, [], "no job problem");
+var arrays = {sandbox: 1, name: "arrays", nodes: [node("n1", "catalog_v1"), node("n2", "trial_array")],
+  edges: [edge("n1", "data", "n2", "data")]};
+arrays.nodes[1].vary = {trial: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], hours: [3, 4]};
+var JA = SB.jobs(arrays, D);
+T.eq(JA.rows.map(function (r) { return [r.node, r.submissions, r.tasks, r.hours]; }), [["n2", 1, 20, 2.5]],
+  "an array is one submission of fan tasks, hours from the base params");
+T.eq(JA.totals.gpu, {submissions: 1, tasks: 20, hours: 50}, "array totals");
+var bigArrayData = clone(D);
+bigArrayData.contract.limits.combinations = 5000;
+var bigArray = {sandbox: 1, name: "bigarray", nodes: [node("n1", "catalog_v1"), node("n2", "recipe_cut"), node("n3", "trial_array")],
+  edges: [edge("n1", "data", "n2", "data"), edge("n2", "data", "n3", "data")]};
+bigArray.nodes[1].vary = {recipe: ["commercial", "non-commercial", "research-internal"]};
+var trials = [];
+for (var tr = 0; tr < 334; tr++) trials.push(tr);
+bigArray.nodes[2].vary = {trial: trials};
+var PBA = SB.propagate(bigArray, bigArrayData);
+T.eq(PBA.problems, [], "no propagation problem under the raised limit");
+var JBA = SB.jobs(bigArray, bigArrayData);
+T.eq(T.keys(JBA.problems), ["limit|n3|-|-|error"], "an array of 1002 tasks is over 1000");
+var CBA = SB.compile(bigArray, bigArrayData);
+T.ok(T.has(CBA.problems, "limit", "n3"), "compile carries the array limit");
+T.eq(CBA.why[0].code, "errors", "and counts it as an error");
+var JSpec = SB.jobs(jobsSpec, D, SB.propagate(jobsSpec, D));
+T.eq(JSpec, J, "jobs with a propagation given is the same");
+
+// ---------------------------------------------------------------------------------------------
+T.begin("experiment route: why codes");
+function whyOf(spec, data) {
+  return SB.compile(spec, data || D).why.map(function (w) { return w.code; });
+}
+var noCatalog = F.chain("no catalog");
+noCatalog.nodes.shift();
+noCatalog.edges.shift();
+T.eq(whyOf(noCatalog), ["errors", "catalog", "unconnected"], "no catalog: its input is unconnected (error) and nothing is reached");
+var twoClassifiers = F.chain("two classifiers");
+twoClassifiers.nodes.push(node("n9", "classifier"));
+twoClassifiers.edges.push(edge("n4", "data", "n9", "data"));
+T.eq(whyOf(twoClassifiers), ["classifier", "duplicate"], "two classifiers");
+var noTrainer = {sandbox: 1, name: "no trainer", nodes: [node("n1", "catalog_v1"), node("n2", "classifier")],
+  edges: [edge("n1", "data", "n2", "data")]};
+T.eq(whyOf(noTrainer), ["train"], "no trainer");
+var noClassifier = {sandbox: 1, name: "no classifier", nodes: [node("n1", "catalog_v1"), node("n2", "report_claim")],
+  edges: [edge("n1", "data", "n2", "results")]};
+T.eq(whyOf(noClassifier), ["classifier", "train"], "no classifier and no trainer");
+var dup = F.chain("dup");
+dup.nodes.push(node("n9", "normalise"));
+dup.edges.push(edge("n3", "data", "n9", "data"));
+T.eq(whyOf(dup), ["duplicate"], "a block used twice");
+var extraSource = F.manifest("extra_source", "source", "folder", {
+  outputs: [{name: "data", from: null, ops: [["axes", ["N", "F"]]], what: "x"}], card: F.CARD, experiment: {}});
+var DX = withBlocks([extraSource]);
+var island = F.chain("island");
+island.nodes.push(node("n9", "extra_source"));
+T.eq(whyOf(island, DX), ["unconnected"], "a node the catalog does not reach");
+var notMapped = F.chain("not mapped");
+notMapped.nodes.push(node("n9", "calibrate_temperature"));
+notMapped.edges.push(edge("n6", "checkpoint", "n9", "checkpoint"));
+T.eq(whyOf(notMapped), ["not_mapped"], "a block with no experiment mapping");
+var only = F.chain("only");
+only.nodes[1].params = {size: 96};
+only.nodes[4].vary = {architecture: ["resnet18", "resnet34"]};
+var CO = SB.compile(only, D);
+T.eq(CO.why.map(function (w) { return w.code; }), ["only"], "only: the size and a varied architecture");
+T.ok(/n2 size 96/.test(CO.why[0].text) && /n5 architecture "resnet34"/.test(CO.why[0].text), "only's text names both", CO.why[0].text);
+var weights = F.chain("weights");
+weights.nodes[4].params = {weights: "none"};
+T.eq(whyOf(weights), ["only"], "only: the classifier's weights");
+var prior = F.chain("prior");
+prior.nodes.push(node("n9", "prior_head"));
+prior.edges = prior.edges.filter(function (e) { return e.to !== "n6"; });
+prior.edges.push(edge("n5", "model", "n9", "model"), edge("n9", "model", "n6", "model"));
+var CP = SB.compile(prior, D);
+T.eq(CP.why, [], "the prior head maps two blocks");
+T.eq(CP.requests[0].named, ["prior=level-map", "prior_weight=0.5"], "a literal and a float ref");
+prior.nodes[8].params = {weight: 0.00005};
+T.eq(whyOf(prior), ["errors", "float_plain"], "0.00005 is refused: a param error and float_plain");
+prior.nodes[8].params = {weight: 0.0001};
+var CP2 = SB.compile(prior, D);
+T.eq(CP2.why, [], "0.0001 is taken");
+T.eq(CP2.requests[0].named, ["prior=level-map", "prior_weight=0.0001"], "and written plainly");
+prior.nodes[8].params = {weight: 1};
+T.eq(SB.compile(prior, D).requests[0].named, ["prior=level-map", "prior_weight=1"], "a whole float is written as an integer");
+var literal = F.manifest("literal_weight", "prepare", "prior", {
+  inputs: [{name: "data", accepts: {kind: ["data"]}, optional: false, what: "x"}],
+  outputs: [{name: "data", from: "data", ops: [], what: "x"}], generic: F.EVERYTHING,
+  experiment: {blocks: {prior_weight: 0.00005}}});
+var DL = withBlocks([literal]);
+var lit = F.chain("literal");
+lit.nodes.push(node("n9", "literal_weight"));
+lit.edges = lit.edges.filter(function (e) { return e.to !== "n5"; });
+lit.edges.push(edge("n4", "data", "n9", "data"), edge("n9", "data", "n5", "data"));
+T.eq(whyOf(lit, DL), ["float_plain"], "a literal float that is not plain");
+var tooMany = F.chain("too many");
+tooMany.nodes[5].vary = {seed: [1, 2, 3, 4, 5, 6, 7, 8, 9]};
+tooMany.nodes[3].vary = {augment: [[], ["blur"], ["noise"], ["strong"], ["blur", "noise"], ["intensity"], ["box-jitter"], ["blur", "strong"]]};
+T.eq(whyOf(tooMany), ["errors", "too_many"], "72 combinations: a limit error and too_many");
+var wd = F.chain("weight decay");
+wd.nodes[5].params = {optimiser: "adamw", weight_decay: 0.05, backbone_lr_scale: 0.25, hours: 2.5, epochs: 50, seed: 7};
+wd.nodes[0].params = {};
+var CW = SB.compile(wd, D);
+T.eq(CW.requests[0].named, ["optimiser=adamw", "weight_decay=0.05", "backbone_lr_scale=0.25"], "fields' order");
+T.eq(CW.requests[0].lines, ["recipe: none", "epochs: 50", "seed: 7", "hours: 2.5", "block: optimiser=adamw",
+  "block: weight_decay=0.05", "block: backbone_lr_scale=0.25"], "lines");
+T.eq(CW.jobs.gpu.hours, 2.5, "hours of the request");
+var withRecipe = F.chain("recipe");
+withRecipe.nodes.push(node("n9", "recipe_cut", {recipe: "non-commercial"}));
+withRecipe.edges = withRecipe.edges.filter(function (e) { return e.to !== "n2"; });
+withRecipe.edges.push(edge("n1", "data", "n9", "data"), edge("n9", "data", "n2", "data"));
+var CR = SB.compile(withRecipe, D);
+T.eq(CR.requests[0].recipe, "non-commercial", "the recipe from its node");
+T.ok(CR.requests[0].command.indexOf("--hours 4 --recipe non-commercial") > 0, "the command names the recipe");
+T.eq(SB.propagate(withRecipe, D).nodes.n2.outputs.data.licence, "non-commercial", "the cut narrows the licence");
+
+T.begin("pipeline issue");
+var pipe = {sandbox: 1, name: "measure", nodes: [node("n1", "vol_source"), node("n2", "cpu_measure"), node("n3", "report_claim")],
+  edges: [edge("n1", "data", "n2", "data"), edge("n2", "table", "n3", "results")]};
+var CPipe = SB.compile(pipe, D);
+T.eq(CPipe.route, "pipeline", "pipeline");
+T.eq(CPipe.why.map(function (w) { return w.code; }), ["not_mapped", "catalog", "classifier", "train", "unconnected"], "why");
+T.eq(CPipe.jobs, {cpu: {submissions: 1, tasks: 1, hours: 1.5}, gpu: {submissions: 0, tasks: 0, hours: 0}}, "jobs");
+var body = CPipe.pipeline_issue.body;
+T.eq(body, "<!-- schwingnet-pipeline -->\n\ndigest: " + CPipe.digest + "\nroute: pipeline\n" +
+  "jobs: 0 GPU submission(s) (0 tasks, 0 GPU-hours), 1 CPU submission(s)\n\n```json\n" + SB.canonical(SB.specOf(pipe, D)) +
+  "\n```\n\nNothing answers this issue yet: the pipeline route waits on the owner's word (docs/research/pipeline-sandbox/README.md).\n",
+  "the whole body");
+T.eq(CPipe.pipeline_issue.title, "Pipeline: measure (" + CPipe.digest.slice(0, 12) + ")", "the title");
+T.eq(CPipe.plan[0].stage, "analyse", "the plan's stage");
+T.eq(CPipe.plan[0].today.word, "morphometry enhance", "the plan's today");
+
+// ---------------------------------------------------------------------------------------------
+T.begin("prediction");
+var stats = SB.transitionStats([F.chain("t1"), F.chain("t2"), screen, {nodes: [node("n1", "catalog_v1"), node("n2", "evaluate_heldout")],
+  edges: [edge("n1", "data", "n2", "data")]}]);
+T.eq(stats.catalog_v1, {crop_boxes: 3, evaluate_heldout: 1}, "transitionStats counts template edges");
+T.eq(stats.train_classifier, {evaluate_heldout: 3}, "train to evaluate");
+function top(spec, anchor, hist) {
+  return SB.predict(spec, anchor, D, stats, hist || {});
+}
+var lone = {sandbox: 1, name: "grow", nodes: [node("n1", "catalog_v1")], edges: []};
+var p1 = top(lone, "n1");
+T.ok(p1.length > 0 && p1.length <= 5, "at most five");
+var stageOf = {};
+D.blocks.forEach(function (m) { stageOf[m.id] = m.stage; });
+T.eq(stageOf[p1[0].block], "prepare", "after the catalog, a prepare block", p1);
+T.eq(p1[0].block, "crop_boxes", "the templates' choice first");
+T.ok(/after catalog v1, the templates go to crop boxes \(3 of 4\)/.test(p1[0].why), "the why names the templates", p1[0].why);
+T.ok(p1.some(function (x) { return /the pipeline has no prepare step yet/.test(x.why); }), "another prepare block: the missing stage", p1);
+var noStats = SB.predict(lone, "n1", D, {}, {});
+T.eq(stageOf[noStats[0].block], "prepare", "with no statistics, still a prepare block", noStats);
+T.ok(/the pipeline has no prepare step yet/.test(noStats[0].why), "why: the missing stage", noStats[0].why);
+var upToTrain = F.chain("grow");
+upToTrain.nodes = upToTrain.nodes.slice(0, 6);
+upToTrain.edges = upToTrain.edges.slice(0, 5);
+var p2 = top(upToTrain, "n6");
+T.ok(["evaluate_heldout", "calibrate_temperature", "select_on_validation"].indexOf(p2[0].block) >= 0, "after training", p2);
+T.eq(p2[0].block, "evaluate_heldout", "evaluate held out first, from the templates");
+var p2b = SB.predict(upToTrain, "n6", D, {}, {});
+T.ok(["evaluate_heldout", "calibrate_temperature", "select_on_validation"].indexOf(p2b[0].block) >= 0, "after training, no stats", p2b);
+var upToEval = F.chain("grow");
+upToEval.nodes = upToEval.nodes.slice(0, 7);
+upToEval.edges = upToEval.edges.slice(0, 6);
+var p3 = top(upToEval, "n7");
+T.eq(p3[0].block, "report_claim", "after evaluation, the report", p3);
+var p3b = SB.predict(upToEval, "n7", D, {}, {});
+T.ok(["report_claim", "wandb_log"].indexOf(p3b[0].block) >= 0, "after evaluation, no stats: a report block", p3b);
+var hist = {train_classifier: {calibrate_temperature: 5}};
+var p4 = top(upToTrain, "n6", hist);
+T.eq(p4[0].block, "calibrate_temperature", "the viewer's history weighs twice", p4);
+T.ok(/your own pipelines went to/.test(p4[0].why), "why names the history", p4[0].why);
+var already = F.chain("already");
+var p5 = top(already, "n4");
+T.ok(p5[0].block !== "classifier", "a block on the board falls back", p5);
+var p5all = SB.predict(already, "n4", D, stats, {});
+var all5 = p5all.map(function (x) { return x.block; });
+T.ok(all5.indexOf("classifier") < 0 || p5all[all5.indexOf("classifier")].score < p5all[0].score, "classifier below the top", p5all);
+var lone2 = {sandbox: 1, name: "on board", nodes: [node("n1", "catalog_v1"), node("n2", "classifier")],
+  edges: [edge("n1", "data", "n2", "data")]};
+var p6 = SB.predict(lone2, "n1", D, {}, {});
+T.ok(p6.every(function (x) { return x.block !== "classifier"; }) || /already on the board/.test(p6.filter(function (x) {
+  return x.block === "classifier"; })[0].why), "an on-board block says so", p6);
+T.eq(top(already, "n99"), [], "an unknown anchor gives nothing");
+T.eq(top({sandbox: 1, name: "g", nodes: [{id: "n1", block: "ghost", version: 1}], edges: []}, "n1"), [], "an unknown block gives nothing");
+var again = top(lone, "n1");
+T.eq(again, p1, "deterministic");
+T.ok(p1.every(function (x, i) { return i === 0 || p1[i - 1].score > x.score || (p1[i - 1].score === x.score && p1[i - 1].block < x.block); }),
+  "sorted by score, ties by id");
+T.ok(p1.every(function (x) { return stageOf[x.block] !== "source"; }), "never a source");
+
+T.done();

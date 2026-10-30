@@ -1,0 +1,128 @@
+{
+ "block": 1,
+ "id": "crop_boxes",
+ "version": 1,
+ "title": "Crop the level boxes",
+ "stage": "prepare",
+ "summary": "Cuts each labelled level box into a square grey crop of size x size pixels, the trainer's input.",
+ "does": "The trainer's crop step (tools/train.py): each labelled box of a frame is cut with its pad, turned grey (Pillow's convert L), resized to size x size and scaled to 0..1 as float32; the network then repeats the grey channel three times. The experiment route passes no --size, so it trains at the default 64. A projected level mask (render_drr) would give each level's box by its extent; that reading is planned (docs/research/xr-from-3d/README.md), and the trainer reads only the catalog's boxes today.",
+ "glyph": "crop",
+ "inputs": [
+  {
+   "name": "frames",
+   "accepts": {
+    "kind": [
+     "data"
+    ],
+    "rank": [
+     2
+    ],
+    "time": "no",
+    "has_axes": [
+     "C",
+     "H",
+     "W"
+    ],
+    "targets": [
+     "level",
+     "mask"
+    ]
+   },
+   "optional": false,
+   "what": "2-D frames with level boxes, or (planned) projected level masks."
+  }
+ ],
+ "outputs": [
+  {
+   "name": "crops",
+   "from": "frames",
+   "ops": [
+    [
+     "size",
+     "H",
+     "@param.size"
+    ],
+    [
+     "size",
+     "W",
+     "@param.size"
+    ],
+    [
+     "size",
+     "C",
+     1
+    ],
+    [
+     "set",
+     "dtype",
+     "float32"
+    ],
+    [
+     "set",
+     "targets",
+     "level"
+    ]
+   ],
+   "what": "One grey crop per labelled level, N x 1 x size x size, float32 in 0..1."
+  }
+ ],
+ "params": [
+  {
+   "name": "size",
+   "kind": "int",
+   "low": 32,
+   "high": 512,
+   "default": 64,
+   "vary": true,
+   "what": "pixels a side; the trainer takes any (--size, default 64); the smoke check decides 32, 64, 96 and 128 (tools/block_sweep.py); 512 is the sandbox's cap"
+  }
+ ],
+ "rules": [],
+ "reads": {
+  "parts": []
+ },
+ "job": {
+  "class": "none",
+  "hours": 0,
+  "with_upstream": false,
+  "array": false,
+  "cpus": 0,
+  "memory_gb": 0
+ },
+ "deterministic": "exact",
+ "seed_param": "",
+ "nondeterminism": "",
+ "generic": {
+  "rank": [
+   2
+  ],
+  "time": "no",
+  "channels": "any",
+  "sizes": "any",
+  "why": "The trainer cuts 2-D boxes from frames (tools/train.py); a volume or a clip would need a 3-D box or one crop per time step, which no code cuts yet."
+ },
+ "resolve": null,
+ "needs": [
+  "python",
+  "numpy"
+ ],
+ "code": "existing",
+ "implemented_by": [
+  "tools/train.py"
+ ],
+ "today": {
+  "status": "live",
+  "route": "experiment",
+  "word": "",
+  "flow": "",
+  "note": "at the trainer's default size 64"
+ },
+ "experiment": {
+  "only": {
+   "size": [
+    64
+   ]
+  }
+ },
+ "card": null
+}

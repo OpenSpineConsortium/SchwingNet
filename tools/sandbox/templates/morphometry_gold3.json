@@ -1,0 +1,62 @@
+{
+ "sandbox": 1,
+ "id": "morphometry_gold3",
+ "name": "Morphometry of gold tier 3",
+ "about": "Morphometry of the gold tier 3 masks as the word morphometry runs it: one CPU job for a set (enhance here, verse the other), the rows kept on the grid and only aggregates reported.",
+ "nodes": [
+  {
+   "id": "n1",
+   "block": "gold3_ct",
+   "version": 1,
+   "params": {}
+  },
+  {
+   "id": "n2",
+   "block": "morphometry",
+   "version": 1,
+   "params": {}
+  },
+  {
+   "id": "n3",
+   "block": "report_claim",
+   "version": 1,
+   "params": {}
+  }
+ ],
+ "edges": [
+  {
+   "from": "n1",
+   "out": "data",
+   "to": "n2",
+   "in": "masks"
+  },
+  {
+   "from": "n2",
+   "out": "table",
+   "to": "n3",
+   "in": "results"
+  }
+ ],
+ "layout": {
+  "n1": [
+   40,
+   40
+  ],
+  "n2": [
+   340,
+   40
+  ],
+  "n3": [
+   640,
+   40
+  ]
+ },
+ "expect": {
+  "route": "pipeline",
+  "ready": false,
+  "requests": 0,
+  "gpu_submissions": 0,
+  "cpu_submissions": 1,
+  "gpu_tasks": 0
+ }
+}

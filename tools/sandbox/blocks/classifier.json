@@ -1,0 +1,144 @@
+{
+ "block": 1,
+ "id": "classifier",
+ "version": 1,
+ "title": "Level classifier network",
+ "stage": "model",
+ "summary": "A 2-D image classifier with a 27-way level head; grey crops are tiled to 3 channels for its stem.",
+ "does": "One of the eight backbones of tools/train_blocks.py ARCHITECTURES: torchvision's resnet18, resnet34, resnet50, mobilenet-v3-small and efficientnet-b0, MONAI's densenet121, se-resnet50 and se-resnext50. The head has 27 outputs, the LEVELS of src/schwingnet/catalog.py, whatever the data's classes. Grey crops are repeated to 3 channels for the stem, and adaptive pooling lets any crop size through. ImageNet weights come from a file, never a download; the grid holds only resnet18's file, so the experiment route runs resnet18 alone (grid/experiment-driver.sbatch).",
+ "glyph": "network",
+ "inputs": [
+  {
+   "name": "data",
+   "accepts": {
+    "kind": [
+     "data"
+    ],
+    "rank": [
+     2
+    ],
+    "time": "no",
+    "has_axes": [
+     "C"
+    ],
+    "targets": [
+     "level"
+    ]
+   },
+   "optional": false,
+   "what": "2-D crops with level labels."
+  }
+ ],
+ "outputs": [
+  {
+   "name": "model",
+   "from": "data",
+   "ops": [
+    [
+     "kind",
+     "model"
+    ],
+    [
+     "set",
+     "family",
+     "@param.architecture"
+    ],
+    [
+     "set",
+     "classes",
+     27
+    ]
+   ],
+   "what": "The network, shaped by the crops it will read."
+  }
+ ],
+ "params": [
+  {
+   "name": "architecture",
+   "kind": "choice",
+   "choices": [
+    "resnet18",
+    "resnet34",
+    "resnet50",
+    "mobilenet-v3-small",
+    "efficientnet-b0",
+    "densenet121",
+    "se-resnet50",
+    "se-resnext50"
+   ],
+   "default": "resnet18",
+   "vary": true,
+   "what": "the backbone (src/schwingnet/blocks.py)"
+  },
+  {
+   "name": "weights",
+   "kind": "choice",
+   "choices": [
+    "imagenet",
+    "none"
+   ],
+   "default": "imagenet",
+   "vary": true,
+   "what": "imagenet: the backbone's ImageNet weights from a file (--weights); none: untrained"
+  }
+ ],
+ "rules": [],
+ "reads": {
+  "parts": []
+ },
+ "job": {
+  "class": "none",
+  "hours": 0,
+  "with_upstream": false,
+  "array": false,
+  "cpus": 0,
+  "memory_gb": 0
+ },
+ "deterministic": "declared",
+ "seed_param": "",
+ "nondeterminism": "The new head starts from a random draw made under its trainer's seed, so the network repeats only with that seed.",
+ "generic": {
+  "rank": [
+   2
+  ],
+  "time": "no",
+  "channels": "any",
+  "sizes": "any",
+  "why": "2-D torchvision and MONAI networks today (spatial_dims 2, in_channels 3), with grey tiled to 3 channels and a head fixed at the 27 levels; a volume needs a 3-D network (classifier_3d), and other classes need the head read from the data."
+ },
+ "resolve": "a {family} whose {rank}-D stem takes {sizes.C} channel(s) of {sizes.H} x {sizes.W}; head of {classes}",
+ "needs": [
+  "python",
+  "torch",
+  "torchvision",
+  "monai"
+ ],
+ "code": "existing",
+ "implemented_by": [
+  "tools/train_blocks.py",
+  "tools/train.py",
+  "src/schwingnet/blocks.py",
+  "grid/experiment-driver.sbatch"
+ ],
+ "today": {
+  "status": "live",
+  "route": "experiment",
+  "word": "",
+  "flow": "",
+  "note": "resnet18 with ImageNet weights alone on the grid"
+ },
+ "experiment": {
+  "blocks": {
+   "architecture": "@param.architecture"
+  },
+  "only": {
+   "architecture": [
+    "resnet18"
+   ],
+   "weights": [
+    "imagenet"
+   ]
+  }
+ },
+ "card": null
+}
