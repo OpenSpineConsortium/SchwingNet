@@ -276,7 +276,8 @@ def has_part(weights, part):
 def weights_guard(weights):
     """What stands in for TotalSegmentator's download_pretrained_weights: a part the folder holds
     needs nothing, a part this roi_subset never computes is passed over, and any other is refused."""
-    def guard(part, *rest, **words):
+    def guard(*given, **words):
+        part = given[0] if given else words.get("task_id")
         if has_part(weights, part) or int(part) in PARTS_NOT_COMPUTED:
             return None
         raise RuntimeError(f"TotalSegmentator asked for weight part {part}, which the weights folder lacks; the job downloads nothing")

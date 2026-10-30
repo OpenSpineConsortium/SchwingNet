@@ -296,6 +296,10 @@ class Weights(unittest.TestCase):
         self.assertEqual(self.draw(), {})
         self.assertEqual(self.downloaded, [])
         self.assertIs(self.api.download_pretrained_weights, held, "the guard is taken off after the run")
+        guard = tool.weights_guard(str(self.weights))
+        self.assertIsNone(guard(task_id=293))
+        with self.assertRaisesRegex(RuntimeError, "weight part 297"):
+            guard(task_id=297)
 
     def test_a_part_the_folder_lacks_that_the_run_needs_is_refused(self):
         __import__("shutil").rmtree(self.weights / "Dataset292_TotalSegmentator_part2_vertebrae_1559subj")
