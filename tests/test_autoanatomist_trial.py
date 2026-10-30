@@ -142,6 +142,18 @@ class TrialTest(unittest.TestCase):
         self.assertIn(decision["arms"]["joint"]["beats_null"], (True, False))
         for name in ("curves.png", "finals.png", "SUMMARY.md"):
             self.assertTrue((self.out / "join" / name).is_file(), name)
+        # the numbers the plots draw, in the summary the gate's report carries off the grid
+        summary = (self.out / "join" / "SUMMARY.md").read_text(encoding="utf-8")
+        null, joint = decision["null_finals"][0], decision["arms"]["joint"]["finals"][0]
+        self.assertIn(f"- final distance_mm of null (the null): s1 {null:.2f}\n", summary)
+        self.assertIn(f"- final distance_mm of joint: s1 {joint:.2f}\n", summary)
+        for trial in ("joint_s1", "null_s1"):
+            entry = json.loads((self.out / "trials" / trial / "entry.json").read_text(encoding="utf-8"))
+            said = " ".join(f"{p['epoch']}={p['distance_mm']:.2f}" for p in entry["epochs"])
+            self.assertIn(f"- {trial}: {said}\n", summary)
+        numbers = summary.index("## The numbers behind the plots")
+        self.assertLess(summary.index("- joint "), numbers)
+        self.assertTrue(all(len(line) <= 200 for line in summary[numbers:].splitlines()))
 
     def test_a_missing_ct_is_refused_with_2_and_said_in_why(self):
         record = json.loads(self.plan.read_text(encoding="utf-8"))
