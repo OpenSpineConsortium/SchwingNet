@@ -45,14 +45,17 @@ class Targets(unittest.TestCase):
         self.assertEqual(G.head_targets({"levels": {"C3": {"voxels": 10}, "C4": {"voxels": 900}}}), ["C2", "C3"])
         self.assertEqual(G.head_targets(facts_row("sacrum")), [])
 
-    def test_the_committed_admission_asks_for_35_studies_and_34_have_facts(self):
+    def test_the_committed_admission_asks_for_43_studies_and_42_have_facts(self):
+        # 27 VerSe (the 21 admitted, each its sacrum, and the 6 border cases' lists), 15 TotalSegmentator (11
+        # admitted with levels to add, 4 of them on the CT's own planes since 2026-10-30, and the 4 border
+        # cases those planes made) and ENHANCE.PET 1379, which has no facts row
         studies = G.studies_to_complete(ROOT / "data/gold3-ct/admission.json", ROOT / "data/gold3-ct")
         by_member = {}
         for study in studies:
             by_member[study["member"]] = by_member.get(study["member"], 0) + 1
             self.assertEqual(study["targets"], [n for n in G.ORDER if n in study["targets"]], study["id"])
             self.assertTrue(study["targets"], study["id"])
-        self.assertEqual(by_member, {"verse": 27, "totalsegmentator": 7, "enhance_pet": 1})
+        self.assertEqual(by_member, {"verse": 27, "totalsegmentator": 15, "enhance_pet": 1})
         missing = [s["id"] for s in studies if not s["has_facts"]]
         self.assertEqual(missing, ["1379"])
 
