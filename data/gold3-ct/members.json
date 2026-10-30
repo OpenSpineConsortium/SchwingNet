@@ -169,6 +169,16 @@
  "completion": {
   "rule": "The levels from C2 to the sacrum an admitted study's release does not draw (admission.json, complete) are drawn by SPINEPS from the masks the census already holds on the grid, never re-run and never TotalSegmentator (the owner's science rule), kept as a machine arm of their own beside the release's masks, recorded by segmenter, version and sha256, never pooled with the release's masks and never raising a tier.",
   "state": "the grid arm is the gate word bordercall complete (grid/bordercall-complete.sbatch, tools/gold3_complete_grid.py, bordercall's holdings/fullspine_complete.py vendored under grid/bordercall/holdings/), one CPU job on the owner's count of 2026-10-29 15:22 UTC, sent once as job 40870822 on 2026-10-29 at 19:35 UTC from commit 5d7842d; it started on 2026-10-30 at 05:01 UTC on hao1 from commit 6b243e7, after the sweep 40870220, ended at 05:16 UTC with exit 0 (15 min 19 s), and its report logs/BORDERCALL-complete.md was read with the same word at 05:50 UTC (counts below); the container arm (SPINEPS 2.1.2, a cloud thread, SchwingNet #458) drew 13 of the 34 VerSe and TotalSegmentator studies of commit 5d7842d; ENHANCE.PET 1379 has no census mask and no fetched CT; the two arms are never pooled",
+  "totalseg_arm": {
+   "state": "built 2026-10-30, not sent; two jobs wait for the owner's count (fetch totalseg_weights, then totalseg complete)",
+   "owner_word": "2026-10-30 08:54 UTC: Add sacrum and c2 w total seg, which for C2 and the sacrum alone sets aside the rule never to run TotalSegmentator",
+   "segmenter": "TotalSegmentator 2.18.0, task total, roi_subset vertebrae_C2 sacrum, on each study's own CT",
+   "asked_at_freeze": {"verse": 27, "totalsegmentator": 10, "enhance_pet": 1},
+   "prereg": "docs/research/gold3-ct/completion/PREREG.md",
+   "gate_word": "totalseg complete",
+   "report": "logs/TOTALSEG-complete.md",
+   "where": "the lab volume's gold3-totalseg/ (ts/, arm/, records.jsonl)"
+  },
   "job_40870822": {
    "asked": {"verse": 27, "totalsegmentator": 15, "enhance_pet": 1},
    "prepared": 27,
