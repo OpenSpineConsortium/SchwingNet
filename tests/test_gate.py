@@ -2225,6 +2225,10 @@ esac
         copy = self.data / "versefusion" / "raw" / "VerSeFusion_data" / "raw" / "dataset-verse20" / "verse547"
         copy.mkdir(parents=True)
         (copy / "verse547_seg.nii.gz").write_bytes(b"x")
+        # the copy keeps many masks as symbolic links to files, which the census's walk counts as found
+        (self.tmp / "elsewhere").mkdir()
+        (self.tmp / "elsewhere" / "verse047_seg.nii.gz").write_bytes(b"y")
+        (copy / "verse047_seg.nii.gz").symlink_to(self.tmp / "elsewhere" / "verse047_seg.nii.gz")
         done = self.gate("census", "gold3")
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
         self.assertEqual(self.submitted(), [])
@@ -2234,8 +2238,9 @@ esac
         self.assertNotIn("  planes s0213 none none", lines)
         self.assertIn("  planes listed 2; every other subject the report says it judged again has no padded end and keeps its field", lines)
         self.assertIn("  not found verse020_CT-sag_seg.nii.gz", lines)
-        self.assertIn("  not found verse047_seg.nii.gz", lines)
+        self.assertNotIn("  not found verse047_seg.nii.gz", lines)
         self.assertNotIn("  not found verse547_seg.nii.gz", lines)
+        self.assertEqual([l for l in lines if l.startswith("  not found ")], ["  not found verse020_CT-sag_seg.nii.gz"])
         self.assertIn("  (the names are the facts' 3 recorded, matched by name alone; the report's count matched the bytes too)", lines)
         # a census that kept no detail says so and still prints the report
         shutil.rmtree(detail)

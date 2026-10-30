@@ -57,9 +57,9 @@
    },
    "grid": {
     "root": "$DATA_ROOT/aws_enhance_pet_labels/raw",
-    "held": "not_held",
+    "held": "checked 2026-10-29, census job 40870542",
     "note": "`fetch aws_enhance_pet_labels` landed the whole ground-truth prefix on 2026-10-29; held says whether its files are the ones recorded, set by the grid session once the vertebra and rib masks hash to SHA256SUMS (docs/checkpoints/2026-10-28-gold3-ct-grid/HANDOFF.md), and FACTS.json says where the facts were read and read again. autoPET's CTs are held as FDG-PET-CT-Lesions (/rs/rs_grp_oschome/go2432/data/tcia_fdg_pet_ct_lesions) but no mask has been matched to its CT yet (shape and affine, the scanner columns breaking ties); Leipzig's and Careggi's CTs are not held.",
-    "held_note": "the masks were read from the public bucket; the labels and the CTs of all three sites were fetched to the data root for the FluXray reproduction (`fetch aws_enhance_pet_labels` and `fetch aws_enhance_pet_ct`, jobs 40860402 and 40860413, landed by 02:56 UTC on 2026-10-29), and held waits for the census job (`census gold3`) to compare their sums with SHA256SUMS and the bucket's listing; autoPET's CTs are on the grid as FDG-PET-CT-Lesions too, which the same job matches to the masks"
+    "held_note": "the census job 40870542 (`census gold3`, its report read 2026-10-29 23:37 UTC) compared the data root's files with the records: the vertebra and rib masks match SHA256SUMS, 3,194 files, none on the grid unrecorded; the 1,597 CTs hold the bytes the bucket lists, 1,596 of them on their masks' grid and 1 off it, whose study is named only in the report on the grid and is not held by the definition until its grid is explained; the CTs' sums are written beside the report on the grid (digest 5a2b b23d 1c52 e50e). The labels and the CTs of all three sites came to the data root for the FluXray reproduction (`fetch aws_enhance_pet_labels` and `fetch aws_enhance_pet_ct`, jobs 40860402 and 40860413, landed by 02:56 UTC on 2026-10-29). autoPET's CTs on the grid as FDG-PET-CT-Lesions (900 NIfTI CTs by the acquisition screen's cases.csv) were matched to the 1,014 autoPET studies by shape and affine: 900 matched, each CT to one study, 96 with the nearest farther than 10 mm, 5 within 10 mm and 13 with no CT of the same shape; the matched gold 3 studies are 867 persons, inside the 865 to 900 recorded"
    },
    "repair_record": "the Claude project's files, folder enhance-pet-repair (README, SHA256SUMS, repaired/<id>.nii.gz)",
    "persons_by_records": [865, 1479],
@@ -99,8 +99,8 @@
      "${HOME}/VerSeFusion/data/raw"
     ],
     "canonical": "the data root's VerSeFusion copy, by the definition of held; the grid home's copy is another copy",
-    "held": "unchecked",
-    "held_note": "364 of 374 series are on the grid by the source records; the 10 VerSe'20 series never downloaded (grid/README.md) are not held",
+    "held": "checked 2026-10-29, census job 40870542",
+    "held_note": "the census job compared the 473 recorded mask files (453 names) with the data root's VerSeFusion copy by name and sha256: 436 match, 17 are not found and none is on the grid unrecorded, so the series those 17 files belong to are not held: verse020, verse060, verse078, verse124, verse133, verse500, verse564, verse604, verse606, verse613 and verse640, verse202 (verse402's), verse235 and verse290 (verse412's), each its only mask file, and verse055, verse093 and verse227 their verse19 copy beside a verse20 file that is there, named by the census word's detail on 2026-10-30 at 00:19 UTC; every one of the 17 series is out by the field test, so all 21 gold 3 series are held and nothing is fetched. 364 of 374 series are on the grid by the source records; the 10 VerSe'20 series never downloaded (grid/README.md) are not held",
     "pattern": "/rs/rs_grp_oschome/go2432/data/versefusion/raw/VerSeFusion_data/raw/**/*{id}*.nii.gz"
    },
    "persons_by_records": [21, 21],
@@ -122,10 +122,10 @@
    "name": "TotalSegmentator v3",
    "rows": "data/gold3-ct/totalsegmentator/facts.jsonl",
    "studies_listed": 1939,
-   "gold3": 154,
+   "gold3": 159,
    "gold4": 0,
-   "silver3": 1623,
-   "tier_per_study": "by the field test (rule 3): gold 3 for the 154 subjects admitted, 7 of them provisional while a segmenter adds a level; silver 3 for the 1,623 others with part of the column, 0 of them border cases; 162 subjects draw no vertebra above the sacrum and have no row. The release's masks are model output refined by hand, counted as a person's annotation and flagged",
+   "silver3": 1618,
+   "tier_per_study": "by the field test (rule 3): gold 3 for the 159 subjects admitted (154 by the masks' own planes, 5 more once the census read each CT's own extent, data/gold3-ct/totalsegmentator/planes.json), 11 of them provisional while a segmenter adds a level; silver 3 for the 1,618 others with part of the column, 4 of them border cases by the CT's own planes; 162 subjects draw no vertebra above the sacrum and have no row. The release's masks are model output refined by hand, counted as a person's annotation and flagged",
    "scheme": {
     "vertebrae": "the release's named files, vertebrae_C1 to vertebrae_L6 and sacrum.nii.gz (v3 ships an L6 file for every subject and no separate S1, which the sacrum holds); no T13",
     "ribs": "24 named rib files, rib_left_1 to rib_right_12",
@@ -144,16 +144,17 @@
      "${HOME}/data/TotalSegmentator_v3"
     ],
     "canonical": "the data root's totalsegmentator_v300, by the definition of held; the grid home's copy is another copy",
-    "held": "unchecked",
+    "held": "checked 2026-10-29, census job 40870542",
+    "held_note": "the census job compared the 1,939 subjects' 54 mask files each with the facts' digest on the data root's canonical copy: 1,939 match; it read every subject's CT whole and hashed it (the sums beside the report on the grid, digest e313 4672 809d 876d), 1,730 on the same grid as the facts and 209 on another",
     "pattern": "<root>/{id}/ct.nii.gz with <root>/{id}/segmentations/*.nii.gz"
    },
-   "persons_by_records": [154, 154],
-   "persons": "1,939 subject folders, one person each by release id; the 154 admitted are 154 person keys once byte-identical duplicates share one",
+   "persons_by_records": [159, 159],
+   "persons": "1,939 subject folders, one person each by release id; the 159 admitted are 159 person keys once byte-identical duplicates share one",
    "caveats": [
     "v3 names an L6 and no T13, so an L6 its masks draw is a candidate and a thirteenth thoracic body cannot be named; a count needs a reader from C2, SPINEPS and VERIDAH, or Hofmann's 70 reads.",
     "286 of the 1,924 subjects meta.csv gives an age for are under 18 at the scan (15 have none), whose unfused S1 can read as a free body: flagged (child), never left out.",
     "A subject whose masks are byte for byte another's is one scan under two ids: its row names duplicate_of and shares the first's person. Only s2107, s2109 and s2110 are; the release's notes count 1,935 distinct scans of 1,939 folders, and s1445 with s1446 and s2093 with s2094 share a grid but not their masks, so they stay apart until their CTs' sums show them one scan.",
-    "Some v3 CTs are padded inside their grid with slices that hold no image; the field test takes the plane where the spinal cord and the column stop together as the field's edge there (tools/gold3_field.py, image_planes), from the masks, until a read of the CTs records each image's own extent.",
+    "Some v3 CTs are padded inside their grid with slices that hold no image: the census job 40870542 read every CT and found 62 padded at the head end and none at the foot; their planes are data/gold3-ct/totalsegmentator/planes.json, and the field test takes each CT's own extent there (tools/gold3_field.py), the cord's guess (image_planes) no longer used for TotalSegmentator.",
     "meta.csv's ages are not checked against the spine: s1411, s1532 and s2065 are recorded 21 to 25 with a child's column (flagged small_column), and s1776, s1774 and s1839 are recorded 115, 117 and 118."
    ],
    "rows_made_by": "bordercall holdings/fullspine_facts.py from the release's masks (Zenodo record 22688904, Totalsegmentator_dataset_v300.zip, read by byte ranges), in the thread's container on 2026-10-28; FACTS.json beside the rows records where, the commit and the check of every subject's masks against its CT's header; subjects.json carries meta.csv's age, institute and split",
@@ -167,7 +168,61 @@
  },
  "completion": {
   "rule": "The levels from C2 to the sacrum an admitted study's release does not draw (admission.json, complete) are drawn by SPINEPS from the masks the census already holds on the grid, never re-run and never TotalSegmentator (the owner's science rule), kept as a machine arm of their own beside the release's masks, recorded by segmenter, version and sha256, never pooled with the release's masks and never raising a tier.",
-  "state": "the grid arm is the gate word bordercall complete (grid/bordercall-complete.sbatch, tools/gold3_complete_grid.py, bordercall's holdings/fullspine_complete.py vendored under grid/bordercall/holdings/), one CPU job on the owner's count of 2026-10-29 15:22 UTC, not yet sent; the container arm (SPINEPS 2.1.2, a cloud thread, SchwingNet #458) drew 13 of the 34 VerSe and TotalSegmentator studies; ENHANCE.PET 1379 has no census mask and no fetched CT; no count is recorded here until a job's report is read"
+  "state": "the grid arm is the gate word bordercall complete (grid/bordercall-complete.sbatch, tools/gold3_complete_grid.py, bordercall's holdings/fullspine_complete.py vendored under grid/bordercall/holdings/), one CPU job on the owner's count of 2026-10-29 15:22 UTC, sent once as job 40870822 on 2026-10-29 at 19:35 UTC from commit 5d7842d; it started on 2026-10-30 at 05:01 UTC on hao1 from commit 6b243e7, after the sweep 40870220, ended at 05:16 UTC with exit 0 (15 min 19 s), and its report logs/BORDERCALL-complete.md was read with the same word at 05:50 UTC (counts below); the container arm (SPINEPS 2.1.2, a cloud thread, SchwingNet #458) drew 13 of the 34 VerSe and TotalSegmentator studies of commit 5d7842d; ENHANCE.PET 1379 has no census mask and no fetched CT; the two arms are never pooled",
+  "job_40870822": {
+   "asked": {"verse": 27, "totalsegmentator": 15, "enhance_pet": 1},
+   "prepared": 27,
+   "not_prepared": {"enhance_pet_1379": "no release mask on the grid and no census mask", "totalsegmentator_14": "the tool looked for <root>/<id>/segmentations/ while the data root's copy nests the subjects under the release's own folder (fixed in tools/gold3_complete_grid.py after the run; a second job on the owner's count would prepare them)", "totalsegmentator_s1593": "no census row in tier1.tsv or tier2.tsv, so no SPINEPS mask to read"},
+   "segmenter": "SPINEPS 2.1.1, the census's masks, never re-run",
+   "matcher_rows": 27,
+   "studies_with_a_level_added": 6,
+   "levels_added": {"verse018": ["C7"], "verse033": ["C6"], "verse255": ["C6"], "verse559": ["C2"], "verse561": ["C2"], "verse607": ["C2"]},
+   "studies_refused_whole": 21,
+   "sacrum": "no VerSe series got its sacrum: the census's SPINEPS masks draw no sacrum, so the grid arm cannot add one and every VerSe series stays provisional for it",
+   "why_refused": "the sacrum in all 27 (the segmenter draws none; verse759 by the disc reading over the release's own levels); the cervical levels above the first one added where the segmenter's column ends at that level, so its outer side cannot be read (verse018, 033, 255, 531, 558), verse588's C2 where the segmenter calls the level C1, verse593's C2 to C4 by a body height ratio of 0.59",
+   "where": "the records, the completed facts rows and the six machine masks under the lab volume's bordercall/complete/matcher/, the prepared inputs under bordercall/complete/prepared/; each machine mask named <id>_machine_<sha256 prefix>.nii.gz"
+  }
+ },
+ "census": {
+  "job": "40870542, the gate word census gold3 (grid/gold3-census.sbatch, tools/gold3_census.py), one CPU job on the owner's tap of 2026-10-29 12:26 UTC, sent once at 19:01 UTC from commit 5989dca, started 19:02:20 UTC on amx2, ended by a signal during gold4 at 19:10:19 UTC (exit 143), started again under its id on mmi9 at 19:13:21 UTC with ts142 and autopet kept, ended 22:27:54 UTC exit 0 after 3 h 14 min; its report logs/CENSUS-gold3.md was read with the same word at 23:37 UTC and every later send prints it again",
+  "ts142": "the older TotalSegmentator list names 142 subjects and its sha256 matches the record; 141 are among rule 3's 154 admitted, 1 only in the older list (s1310: head out, foot drawn, by the facts' planes) and 13 only among rule 3's (s1018, s1088, s1411, s1532, s1593, s1597, s1606, s1845, s1869, s1877, s1890, s2043, s2065); none outside the release's 1,939",
+  "autopet": "see enhance_pet grid.held_note: 900 of 1,014 studies matched to the 900 FDG-PET-CT-Lesions CTs",
+  "gold4": {
+   "masks": "17,198 census SPINEPS masks (the tier lists' rows with a mask, each once): 16,668 read, 530 set aside for SPINEPS's raw ids (13 VerSe, 517 TotalSegmentator), 0 unreadable",
+   "new": "1,388 studies new to the dataset, gold 4 by rule 3's field test, 1,388 persons by the census's person key (VerSe, TotalSegmentator and FDG-PET-CT-Lesions, which is ENHANCE.PET's autoPET, apart)",
+   "by_collection": {
+    "abdomenatlas3_mini": [5771, 641, 0],
+    "idc": [2950, 439, 4],
+    "ts": [1660, 69, 14],
+    "panorama": [910, 53, 4],
+    "quadra_hc": [47, 47, 0],
+    "curvas": [52, 46, 1],
+    "deep_psma": [42, 42, 0],
+    "aortaseg60": [55, 40, 0],
+    "amos22": [719, 2, 0],
+    "waw_tace": [212, 2, 0],
+    "carmlspine": [149, 1, 0],
+    "cobra": [681, 1, 0],
+    "curvas_pdacvi": [94, 1, 0],
+    "kidney_thoraxabdomen": [214, 1, 0],
+    "pengwin2026": [11, 1, 0],
+    "ribfrac": [655, 1, 0],
+    "spinesac": [2, 1, 0],
+    "barts_crl": [208, 0, 0],
+    "csi2014": [20, 0, 0],
+    "ctpelvic1k_clinic": [6, 0, 0],
+    "ctsp": [801, 0, 0],
+    "ctspine1k": [216, 0, 0],
+    "deepfluoro": [6, 0, 0],
+    "geneva": [1, 0, 0],
+    "nlst_pilot": [489, 0, 0]
+   },
+   "by_collection_columns": "rows with a mask, admitted (gold 4, each its own person), look (border cases); the members apart: tcia_fdg_pet_ct_lesions 853 rows, 820 admitted and matched to their ENHANCE.PET study, 1 look, 32 not admitted; verse 374 rows, 21 admitted, 8 look, 13 set aside; ts is TotalSegmentator's census masks, whose admitted 69 are gold 4 by the SPINEPS mask only where the release's masks did not admit the subject",
+   "ends_and_flags": "the new gold 4's ends (head, foot): drawn drawn 968, drawn in_view 46, in_view drawn 366, in_view in_view 8; flags: c2_at_field_top 32, cut_in_plane 7, label_spans_levels 12, level_past_sacrum_top 103, name_skipped 42, no_l5 68, sacrum_at_field_foot 14, small_column 9, stray_labels 31",
+   "against_the_release": "ENHANCE.PET's SPINEPS masks against its release masks' verdicts (release, SPINEPS): admitted admitted 820, not_admitted look 1, not_admitted not_admitted 32; VerSe's: admitted admitted 20, look look 4, look not_admitted 2, not_admitted admitted 1, not_admitted look 4, not_admitted not_admitted 330"
+  },
+  "extent": "every TotalSegmentator CT (1,939 of 1,939) read whole on the canonical copy: 62 have constant planes at the grid's last slices, 0 at its first; re-judged with the CT's own planes, 14 verdicts or ends change: to admitted s0102, s0931, s1310, s1762 and s1778; to look s0437, s0621, s1329 and s1344; s0213, s0580, s0651, s1750 and s1882 stay not admitted with an end moved. Applied on 2026-10-30 by the owner's rule of 2026-10-29 23:46 UTC: the 62 padded CTs' planes, printed by the census word's detail (#492), are data/gold3-ct/totalsegmentator/planes.json, and admission.json reads them (README section 8, decision 21)",
+  "left_for_the_owner": "the 1 ENHANCE.PET CT off its masks' grid; the count for one more bordercall complete job, for the levels of s0102, s0931, s1762 and s1778; VerSe's 17 recorded mask files not found all belong to series the field test leaves out, so no repair is needed"
  },
  "auto_anatomist": {
   "spines": "VerSe, TotalSegmentator and ENHANCE.PET (the owner, 2026-10-28 23:03 UTC: \"i meant verse+totalsegmentator+PET\")",

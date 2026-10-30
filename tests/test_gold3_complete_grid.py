@@ -45,14 +45,17 @@ class Targets(unittest.TestCase):
         self.assertEqual(G.head_targets({"levels": {"C3": {"voxels": 10}, "C4": {"voxels": 900}}}), ["C2", "C3"])
         self.assertEqual(G.head_targets(facts_row("sacrum")), [])
 
-    def test_the_committed_admission_asks_for_35_studies_and_34_have_facts(self):
+    def test_the_committed_admission_asks_for_43_studies_and_42_have_facts(self):
+        # 27 VerSe (the 21 admitted, each its sacrum, and the 6 border cases' lists), 15 TotalSegmentator (11
+        # admitted with levels to add, 4 of them on the CT's own planes since 2026-10-30, and the 4 border
+        # cases those planes made) and ENHANCE.PET 1379, which has no facts row
         studies = G.studies_to_complete(ROOT / "data/gold3-ct/admission.json", ROOT / "data/gold3-ct")
         by_member = {}
         for study in studies:
             by_member[study["member"]] = by_member.get(study["member"], 0) + 1
             self.assertEqual(study["targets"], [n for n in G.ORDER if n in study["targets"]], study["id"])
             self.assertTrue(study["targets"], study["id"])
-        self.assertEqual(by_member, {"verse": 27, "totalsegmentator": 7, "enhance_pet": 1})
+        self.assertEqual(by_member, {"verse": 27, "totalsegmentator": 15, "enhance_pet": 1})
         missing = [s["id"] for s in studies if not s["has_facts"]]
         self.assertEqual(missing, ["1379"])
 
@@ -96,6 +99,16 @@ class Releases(unittest.TestCase):
         self.assertEqual(G.release_of("totalsegmentator", "s1411", "", str(self.dir)),
                          (str(self.dir / "s1411" / "segmentations"), None))
         self.assertIn("census holds no SPINEPS mask", G.release_of("enhance_pet", "1379", "", "")[1])
+
+    def test_a_totalsegmentator_subject_is_found_where_the_release_nests_it(self):
+        # The data root's copy keeps the subjects under the release's own folder; job 40870822 left
+        # 14 of them unprepared by looking at <root>/<id>/ alone.
+        nested = self.dir / "Totalsegmentator_dataset_v201" / "s0102"
+        (nested / "segmentations").mkdir(parents=True)
+        (nested / "ct.nii.gz").write_bytes(b"")
+        (nested / "segmentations" / "vertebrae_L1.nii.gz").write_bytes(b"")
+        self.assertEqual(G.release_of("totalsegmentator", "s0102", "", str(self.dir)), (str(nested / "segmentations"), None))
+        self.assertIn("no folder of the subject's name", G.release_of("totalsegmentator", "s0437", "", str(self.dir))[1])
 
 
 class Report(unittest.TestCase):
