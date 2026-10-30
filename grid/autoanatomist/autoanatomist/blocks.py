@@ -14,8 +14,9 @@ back canonically (0.00200 reads as 0.002, a pair as a:b, a switch as on or off),
 one configuration have one digest. The defaults are the smoke run's numbers (train.LOSS_WEIGHTS,
 HUBER_KNEE_MM and SPREAD_FLOOR_MM, smoke.LR and SPINES_PER_BATCH, ladder.Schedule's spans,
 ladder.BLUR_MAX_MM and THRESHOLD_WIDTH_HU, gates.BONE_HU, model.Config's widths and groups,
-optax.adamw's weight decay), spelled here as literals so that this module imports no JAX;
-tests/test_autoanatomist_blocks.py holds the two apart.
+optax.adamw's weight decay; and, for the second screen's arms, which the smoke run leaves off,
+ladder.CYCLE_LAM, CYCLE_W, ADAPT_EVERY and RUNG_SPANS), spelled here as literals so that this
+module imports no JAX; tests/test_autoanatomist_blocks.py holds the two apart.
 
 What each block steers, in the order a session meets them (session.py):
 
@@ -33,8 +34,11 @@ What each block steers, in the order a session meets them (session.py):
   spread, and never the probe, whose decoder reads landmarks);
 - the schedule of lambda and w: schedule (lambda-then-w, the smoke run's, lambda over lam_span and
   w over w_span; joint, both over lam_span; w-first, the spans swapped, so the earlier span is w's;
-  fixed, lam_fixed and w_fixed throughout), lam_span and w_span (shares of the anneal's steps),
-  lam_fixed and w_fixed, anneal (the steps the shares are shares of; 0 takes the first training
+  fixed, lam_fixed and w_fixed throughout; cyclic, lambda-then-w twice in half the steps each, going
+  back between the passes to lambda cycle_lam and w cycle_w; adaptive, w as lambda-then-w's and
+  lambda moved every adapt_every steps by the error's own slope, never behind a floor; ladder.py
+  says how), lam_span and w_span (shares of the anneal's steps), lam_fixed and w_fixed, cycle_lam,
+  cycle_w and adapt_every, anneal (the steps the shares are shares of; 0 takes the first training
   budget the session is given);
 - the encoder's input: intensity (off; gain-offset, a gain and an offset in HU on the CT the
   encoder reads; gain-offset-noise, Gaussian noise added), drawn on the host for the encoder's
@@ -44,7 +48,10 @@ What each block steers, in the order a session meets them (session.py):
   the smoke run's; plain-unet; probe, the framework's test piece whose answer is known), widths (the
   three scales' channels), groups (group norm's groups);
 - the ladder: blur_mm (the blur rung's largest sigma), threshold_hu and threshold_width_hu (the
-  soft threshold of the CT the last rung ends on);
+  soft threshold of the CT the last rung ends on), ladder (in-turn, the rungs one after another, a
+  third of lambda each; overlapping, half of lambda each, a quarter apart; together, all of it);
+- the restraint: restraint (off; abf, ABF's mean force on a collective variable, mid-anneal,
+  train.py says how) and abf_weight, its weight;
 - the calibration of the spread: calibrate (none; scale; quantile; calibrate.py), coverage (the
   quantile calibration's target coverage);
 - seed, for the network's initialisation and the session's own random numbers.
@@ -92,11 +99,15 @@ TABLE: Tuple[Key, ...] = (
     Key("objective", "choice", "what the decoder is trained to give: the oracle's landmarks, or the privileged "
         "mask channels themselves (the fully latent objective, with no measurement anywhere)",
         choices=("landmarks", "mask")),
-    Key("schedule", "choice", "how lambda's and w's ramps are placed", choices=("lambda-then-w", "joint", "w-first", "fixed")),
+    Key("schedule", "choice", "how lambda's and w's ramps are placed",
+        choices=("lambda-then-w", "joint", "w-first", "fixed", "cyclic", "adaptive")),
     Key("lam_span", "pair", "lambda's ramp, as shares of the anneal's steps"),
     Key("w_span", "pair", "w's ramp, as shares of the anneal's steps"),
     Key("lam_fixed", "float", "lambda under schedule=fixed", low=0.0, high=1.0),
     Key("w_fixed", "float", "w under schedule=fixed", low=0.0, high=1.0),
+    Key("cycle_lam", "float", "the lambda schedule=cyclic goes back to between its passes", low=0.0, high=1.0),
+    Key("cycle_w", "float", "the w schedule=cyclic goes back to between its passes", low=0.0, high=1.0),
+    Key("adapt_every", "int", "the steps between two checks of schedule=adaptive", low=1),
     Key("anneal", "int", "the steps the spans are shares of; 0 takes the first training budget", low=0),
     Key("intensity", "choice", "a gain, an offset and noise on the encoder's input", choices=("off", "gain-offset", "gain-offset-noise")),
     Key("normalise", "choice", "how the encoder's CT channel is scaled", choices=("clip", "clip-zscore")),
@@ -107,11 +118,16 @@ TABLE: Tuple[Key, ...] = (
     Key("blur_mm", "float", "the blur rung's largest sigma, mm", low=0.0),
     Key("threshold_hu", "float", "the soft threshold of the CT the ladder ends on, HU"),
     Key("threshold_width_hu", "float", "that threshold's width, HU", above=0.0),
+    Key("ladder", "choice", "how much of lambda each rung spans: a third in turn, half overlapping, or all of it together",
+        choices=("in-turn", "overlapping", "together")),
+    Key("restraint", "choice", "an adaptive biasing force on a collective variable, mid-anneal (train.py)", choices=("off", "abf")),
+    Key("abf_weight", "float", "the restraint's weight", low=0.0),
     Key("calibrate", "choice", "the calibration of the values' spreads", choices=("none", "scale", "quantile")),
     Key("coverage", "float", "the quantile calibration's target coverage", above=0.0, below=1.0),
     Key("seed", "int", "the network's initialisation and the session's draws", low=0),
 )
 KEYS: Dict[str, Key] = {k.name: k for k in TABLE}
+RUNG_SPANS = {"in-turn": None, "overlapping": 0.5, "together": 1.0}     # ladder.RUNG_SPANS, spelled here to import no JAX
 
 
 @dataclass(frozen=True)
@@ -139,6 +155,9 @@ class Blocks:
     w_span: Tuple[float, float] = (0.45, 0.85)
     lam_fixed: float = 0.0
     w_fixed: float = 1.0
+    cycle_lam: float = 0.5
+    cycle_w: float = 0.3
+    adapt_every: int = 20
     anneal: int = 0
     intensity: str = "off"
     normalise: str = "clip"
@@ -148,6 +167,9 @@ class Blocks:
     blur_mm: float = 4.0
     threshold_hu: float = 200.0
     threshold_width_hu: float = 60.0
+    ladder: str = "in-turn"
+    restraint: str = "off"
+    abf_weight: float = 1.0
     calibrate: str = "none"
     coverage: float = 0.68
     seed: int = 0
@@ -173,8 +195,12 @@ class Blocks:
                 "feature": self.w_feature, "naming": self.w_naming, "mask": self.w_mask, "name": self.w_name}
 
     def rungs(self) -> Dict[str, float]:
-        """The ladder's settings in ladder.degrade's keyword form."""
-        return {"bone_hu": self.threshold_hu, "width_hu": self.threshold_width_hu, "blur_max_mm": self.blur_mm}
+        """The ladder's settings in ladder.degrade's keyword form, the rungs' span among them where
+        they do not go in turn."""
+        out = {"bone_hu": self.threshold_hu, "width_hu": self.threshold_width_hu, "blur_max_mm": self.blur_mm}
+        if self.ladder != "in-turn":
+            out["rung_span"] = RUNG_SPANS[self.ladder]
+        return out
 
 
 DEFAULTS = Blocks()

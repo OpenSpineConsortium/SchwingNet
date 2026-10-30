@@ -27,12 +27,15 @@ STUDY = "autoanatomist-screen"
 PREREG = ROOT / "docs" / "research" / "autoanatomist-screen" / "PREREG.md"
 # The pre-registration the design answers restate, by its sha256: PREREG.md as frozen, the digest
 # PREREG.md.sha256 beside it holds (tests/test_autoanatomist_report.py holds the two together).
-DESIGN = "29c846c25a46adc19b082a08ef350a8fbf71d810db62b043b55a5873942359a9"
+DESIGN = "659b8e15f43f08daed79b5039031b9af05aea3f7e98787a814ea16ed51ec621f"
 LICENCES = ROOT / "data" / "licences.json"
 SOURCE = "scidb_enhance_pet_1_6k"
-# The plan PREREG.md section 4 reads no result from: it tests the code path on the grid and times a
-# crop, so its report says its sizes and its chance answer no hypothesis.
-SMOKE = "gold3_latent_smoke"
+# The plans PREREG.md reads no result from, each with the section that says so: each tests the code
+# path on the grid and times a crop, so its report says its sizes and its chance answer no hypothesis.
+SMOKES = {"gold3_latent_smoke": "section 4", "gold3_latent_smoke2": "section 8"}
+# The plans of PREREG.md section 8, the second screen, whose known limits are section 8's beside
+# section 6's.
+SECOND = ("gold3_latent_smoke2", "gold3_latent_screen2")
 # PREREG.md section 6's known limits, one restatement each in the section's order;
 # tests/test_autoanatomist_report.py holds them to the section's bullets, so a limit added there and
 # not here fails the check.
@@ -48,6 +51,14 @@ LIMITS = (
     "a GPU's sums are not the same to the bit, so a trial run again ends within run-to-run noise of its first run",
     "the feature term runs to the last step, so once w reaches 0 it distils from a frozen teacher, and an anneal "
     "whose feature term ends with the handover is not tested",
+)
+# PREREG.md section 8's known limits of the second screen, one restatement each in its order, held to
+# its bullets the same way.
+SECOND_LIMITS = (
+    "the four new words run at their defaults, chosen on phantoms and tuned on nothing here",
+    "under objective=mask the restraint's variable is the target's volume share alone",
+    "the adaptive schedule's lambda path differs from seed to seed by design",
+    "wherever w stands at 0 the feature term distils from a mask branch that takes no gradient",
 )
 
 ITEMS = {
@@ -257,8 +268,13 @@ def fact_uncertainty(run):
             f"every one of the null's, which an arm no different passes by chance at most one time in "
             f"{math.comb(2 * seeds, seeds)} at {seeds_said(seeds)} a side, since each seed gives the arm and the null one "
             "start and one draw of batches")
-    if plan(run).get("screen") == SMOKE:
+    screen = plan(run).get("screen")
+    if screen in SMOKES:
         said += "; the smoke answers no hypothesis, so no verdict of it is read as a result"
+        return restated(run, f"{said} (PREREG.md {SMOKES[screen]})")
+    if screen in SECOND:
+        said += "; five arms are read against one null, so a chance pass of some arm is likely"
+        return restated(run, f"{said} (PREREG.md sections 4 and 8)")
     return restated(run, f"{said} (PREREG.md section 4)")
 
 
@@ -295,6 +311,8 @@ def fact_failure_analysis(run):
 
 
 def fact_limitations(run):
+    if plan(run).get("screen") in SECOND:
+        return restated(run, "; ".join(LIMITS + SECOND_LIMITS) + " (PREREG.md sections 6 and 8)")
     return restated(run, "; ".join(LIMITS) + " (PREREG.md section 6)")
 
 
@@ -357,9 +375,9 @@ def fact_sample_size(run):
     rows = p.get("rows") or {}
     sizes = (f"{rows.get('train')} training and {rows.get('validation')} validation studies at "
              f"{seeds_said(len(p.get('seeds') or []))} an arm")
-    if p.get("screen") == SMOKE:
+    if p.get("screen") in SMOKES:
         return restated(run, f"the smoke's sizes, {sizes}, try the code path on the grid and time a crop; the smoke answers "
-                             "no hypothesis (PREREG.md section 4)")
+                             f"no hypothesis (PREREG.md {SMOKES[p.get('screen')]})")
     return restated(run, f"the screen's sizes are its budget, {sizes}, chosen to select arms for a longer run, not powered "
                          "for an effect")
 

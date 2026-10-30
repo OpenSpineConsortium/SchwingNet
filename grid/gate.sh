@@ -309,12 +309,18 @@ AUTOANATOMIST_ROOT=${AUTOANATOMIST_ROOT:-$VOLUME/go2432/autoanatomist}
 # 03:20 UTC ("2 CPU 2 GPU 2 Full run plus 1 short GPU smoke is fine"): one GPU job, its two trials in
 # series and the join. gold3_latent_screen, a GPU array of eight trials and a CPU join afterany it, is
 # the two jobs of his word of 2026-10-30 08:56 UTC ("Yes to both", to the ask that named those two jobs
-# and said they were outside the 03:20 count).
-AUTOANATOMIST_COUNTED="gold3_latent_smoke gold3_latent_screen"
+# and said they were outside the 03:20 count). gold3_latent_smoke2 (one GPU job, five trials in series
+# and the join) and gold3_latent_screen2 (a GPU array of twelve trials and a CPU join afterany it), the
+# second screen of the PREREG's section 8, are the owner's choice of 2026-10-30 16:52 UTC ("Build 4
+# arms after the demo", with a frozen plan for a second screen), his rule of 17:00 UTC that a job
+# within agreed work is sent without asking, and his word of 18:05 UTC for whatever a training run on
+# gold tier 3 needs while he is in the operating room.
+AUTOANATOMIST_COUNTED="gold3_latent_smoke gold3_latent_screen gold3_latent_smoke2 gold3_latent_screen2"
 # The plans sent only once another plan's report ends in exit 0, <plan>:<the plan before it>
 # (word_autoanatomist): the PREREG (section 5) sends the screen only after the smoke's two trials and
-# its join end in exit 0, so the screen's eight cards wait for the smoke to show the code runs.
-AUTOANATOMIST_AFTER="gold3_latent_screen:gold3_latent_smoke"
+# its join end in exit 0, so the screen's eight cards wait for the smoke to show the code runs; its
+# section 8 sends the second smoke after the first and the second screen after the second smoke.
+AUTOANATOMIST_AFTER="gold3_latent_screen:gold3_latent_smoke gold3_latent_smoke2:gold3_latent_smoke gold3_latent_screen2:gold3_latent_smoke2"
 # The owner's word for one more send of a plan whose record stands, <plan>:<job that record's first line
 # names>, or <plan>:lost for a submission whose answer was lost; one word, one more send.
 AUTOANATOMIST_RERUNS=""
