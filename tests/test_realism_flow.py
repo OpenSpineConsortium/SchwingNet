@@ -13,6 +13,7 @@ import hashlib
 import importlib.util
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -64,6 +65,10 @@ def only():
 with open(os.environ["FLOW_TEST_CALLS"], "a", encoding="utf-8") as calls:
     calls.write(command + (" " + Path(value("--only")).stem if value("--only") else "") + "\n")
 out = Path(value("--out"))
+if command == "inputs" and os.environ.get("FLOW_TEST_REFUSE_INPUTS"):
+    print("detail: the paths the refusal names", file=sys.stderr)
+    print("refused: the environment differs from the pins: thunderpack absent, pinned 0.0.2", file=sys.stderr)
+    sys.exit(2)
 if command == "inputs":
     record = {"model": "klein-9b", "samples_sha256": "1" * 64, "samples_rows": 60, "samples_not_in_db": 1,
               "db_sha256": "2" * 64, "klein_sha256": "3" * 64, "bundle_sha256": "4" * 64, "imagenet_sha256": "6" * 64,
@@ -297,6 +302,24 @@ class RealismFlowTest(unittest.TestCase):
             self.assertNotEqual(code, 0, out)
             self.assertIn("lora and eval wait for a count and a PREREG of their own", out)
             self.assertEqual(calls, [])
+
+    def report_lines(self, out):
+        """The flow's own lines as grid/realism.sbatch copies them into the stage's report."""
+        job = (ROOT / "grid" / "realism.sbatch").read_text(encoding="utf-8")
+        expression = re.search(r"^sed -n '([^']*RealismFlow: [^']*)' ", job, re.M).group(1)
+        return subprocess.run(["sed", "-n", expression], input=out, capture_output=True, text=True, timeout=60).stdout.splitlines()
+
+    def test_a_refused_input_check_is_said_in_the_stage_report_with_no_path(self):
+        # the first edit (job 40865836) failed here and its report said only that the launcher exited 1
+        code, said, out, calls = self.run_stage("edit", 1, FLOW_TEST_REFUSE_INPUTS="1")
+        self.assertNotEqual(code, 0, out)
+        self.assertEqual(calls, ["inputs"])
+        failed = [line for line in self.report_lines(out) if line.startswith("FAILED: ")]
+        self.assertEqual(failed, ["FAILED: RealismFault: the realism tool step inputs exited 2: refused: the environment "
+                                  "differs from the pins: thunderpack absent, pinned 0.0.2"], out)
+        # a fault the flow raises itself is said the same way
+        code, said, out, calls = self.run_stage("lora", 2)
+        self.assertTrue(any(line.startswith("FAILED: StageFault: the stage") for line in self.report_lines(out)), out)
 
     def test_the_stats_refuse_without_an_edit_that_ended_well(self):
         code, said, out, calls = self.run_stage("stats", 1)

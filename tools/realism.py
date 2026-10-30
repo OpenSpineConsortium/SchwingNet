@@ -61,6 +61,7 @@ import time  # noqa: E402
 import zlib  # noqa: E402
 
 from collections import Counter  # noqa: E402
+from itertools import groupby  # noqa: E402
 
 from schwingnet import realism  # noqa: E402
 
@@ -97,7 +98,39 @@ TRAIN_FRACTION = 0.7
 
 
 class Refused(Exception):
-    """An input the tool will not read, said in words."""
+    """An input the tool will not read, said in words. The words are the job log's last line, which
+    the gate's status shows only where they quote no value (grid/report-shapes.awk), so a refusal
+    the owner must read keeps paths, names and long numbers out of them and puts them in detail,
+    a line printed before it, which stays in the run's logs on the grid."""
+
+    def __init__(self, words, detail=""):
+        super().__init__(words)
+        self.detail = detail
+
+
+def id_shape(text):
+    """A name as the shape of its runs, letters as a<n> and digits as d<n>, a hyphen, an underscore
+    or a space kept and any other mark as ? (enhance_0001 is a7_d4), so a refusal says how two sets
+    name their subjects without quoting a name."""
+    def kind(char):
+        if char.isascii() and char.isalpha():
+            return "a"
+        if char.isascii() and char.isdigit():
+            return "d"
+        return char if char in "-_ " else "?"
+
+    shape = []
+    for mark, run in groupby(str(text)[:64], key=kind):
+        shape.append(f"{mark}{len(list(run))}" if mark in ("a", "d") else mark * len(list(run)))
+    return "".join(shape) or "empty"
+
+
+def shapes_of(names, most=3):
+    """The commonest shapes of a set of names, with how many have each, as plain words."""
+    counts = Counter(id_shape(name) for name in names)
+    if not counts:
+        return "none"
+    return ", ".join(f"{shape} ({count:,})" for shape, count in counts.most_common(most))
 
 
 # --- small files -------------------------------------------------------------------------------------
@@ -369,7 +402,8 @@ def volumes_under(root):
     for path in sorted(Path(root).rglob("*.nii.gz")):
         name = path.name[:-len(".nii.gz")]
         if name in found:
-            raise Refused(f"{name}.nii.gz is under {root} twice ({found[name]} and {path})")
+            raise Refused(f"a CT named as {id_shape(name)} is under the CT folder twice, so which one a render read would be a guess",
+                          detail=f"{name}.nii.gz is under {root} twice ({found[name]} and {path})")
         found[name] = path
     return found
 
@@ -871,7 +905,7 @@ def feature_spaces(args, sets):
 
     spaces = {"physics": {name: np.stack([physics_features(image) for image in images]) for name, (_, _, images) in sets.items()}}
     if args.weights:
-        from fxr import FleXraySegmenter
+        from fxr.inference import FleXraySegmenter
 
         segmenter = FleXraySegmenter.from_pretrained(args.weights, subfolder=args.member, device=args.device)
         spaces["flexray"] = {name: flexray_features(images, segmenter) for name, (_, _, images) in sets.items()}
@@ -1073,6 +1107,17 @@ def folder_digest(files):
     return hashlib.sha256(lines.encode("utf-8")).hexdigest()
 
 
+def record_subject(record):
+    """The subject a FluXray record's metadata names, by the keys FleXray's reader prefers; a record
+    naming none gives no subject, since the reader falls back to the sample key there and would make
+    every sample a subject of its own."""
+    metadata = getattr(record, "metadata", None) or {}
+    for key in ("subject_id", "subject", "subject_key"):
+        if metadata.get(key) is not None:
+            return str(metadata[key])
+    return ""
+
+
 def thunder_ids(db_root):
     """Every FluXray sample in its ThunderDB with its subject and split, by FleXray's own reader of
     each split (the reader the DRR study read FluXray through, tools/domain_gap.py)."""
@@ -1092,9 +1137,10 @@ def thunder_ids(db_root):
             except (KeyError, ValueError, TypeError):
                 continue
         if backend is None:
-            raise Refused(f"FleXray's reader could not open split {split} of the FluXray ThunderDB {db_root}")
+            raise Refused(f"the FleXray reader could not open the split {id_shape(split)} of the FluXray ThunderDB",
+                          detail=f"split {split} of {db_root}")
         for record in backend.records:
-            found[record.data_id] = {"subject_id": record.subject_id or "", "split": split, "backend": backend,
+            found[record.data_id] = {"subject_id": record_subject(record), "split": split, "backend": backend,
                                      "record": record}
     return found
 
@@ -1118,6 +1164,19 @@ def subjects_with_poses(sample_rows, per_subject):
     return {subject for subject, count in counts.items() if count >= per_subject}
 
 
+def eligibility_counts(rows, in_db, volumes, truth, per_subject):
+    """Where the eligible subjects were lost, step by step, with the shapes of the names each set
+    gives, in plain words, so a refusal for too few says which set does not meet the others."""
+    table = {row["subject_id"] for row in rows}
+    held = {row["subject_id"] for row in in_db}
+    posed = subjects_with_poses(in_db, per_subject)
+    vertebrae = {name for folder, name in truth if folder == "Vertebrae"}
+    return (f"of {len(table):,} subjects in the samples table {len(held):,} have samples in the ThunderDB, {len(posed):,} have "
+            f"{per_subject} at poses on the grid, {len(posed & set(volumes)):,} of those a CT and {len(posed & set(volumes) & vertebrae):,} "
+            f"a CT and a vertebra truth; the subjects are shaped {shapes_of(table)}, the CT names {shapes_of(volumes)} "
+            f"and the vertebra truth names {shapes_of(vertebrae)}")
+
+
 def eligible_for_draw(sample_rows, volumes, truth, per_subject):
     """The subjects the draw may take, as PREREG.md section 2 and the draw read eligibility: the
     plan's poses per subject among its samples in the ThunderDB at the paper's grid, and a landed CT
@@ -1127,11 +1186,13 @@ def eligible_for_draw(sample_rows, volumes, truth, per_subject):
 
 
 def environment_record():
-    """The versions the run's python holds, each pinned package against its pin, torch and the GPU."""
+    """The versions the run's python holds, each pinned package against its pin (the frozen ones and
+    those installed beside them), whether each FleXray module the stages import can be imported,
+    torch and the GPU, and every distribution installed, so the record names all the run had."""
     from importlib import metadata
 
     found, wrong = {}, []
-    for pin in realism.PINS:
+    for pin in (*realism.PINS, *realism.EXTRA_PINS):
         name, _, wanted = pin.partition("==")
         try:
             found[name] = metadata.version(name)
@@ -1139,6 +1200,7 @@ def environment_record():
             found[name] = "absent"
         if found[name] != wanted:
             wrong.append(f"{name} {found[name]}, pinned {wanted}")
+    wrong += [problem for problem in map(import_problem, realism.FLEXRAY_IMPORTS) if problem]
     try:
         import torch
 
@@ -1147,52 +1209,108 @@ def environment_record():
         found["gpu"] = torch.cuda.get_device_name(0) if torch.cuda.is_available() else "none"
     except ImportError:
         found["torch"] = "absent"
+    found["installed"] = sorted({f"{dist.metadata['Name']}=={dist.version}" for dist in metadata.distributions()
+                                 if dist.metadata["Name"]}, key=str.lower)
     return found, wrong
 
 
-def pinned_environment(no_pins):
-    """environment_record, refused where a pin differs unless no_pins asks for the difference to be
-    recorded instead (a test, never a run of the count)."""
+def import_problem(spec):
+    """Why one of realism.FLEXRAY_IMPORTS cannot be imported, in words with no dot or quote, or None
+    where it can: a module, or module:name for a name the stages take from it, which may be a
+    submodule (from fxr.configs import datasets)."""
+    import importlib
+
+    module, _, name = spec.partition(":")
+    said = " ".join(part for part in (*module.split("."), name) if part)
+    try:
+        found = importlib.import_module(module)
+        if not name or hasattr(found, name):
+            return None
+        importlib.import_module(f"{module}.{name}")
+    except ModuleNotFoundError as error:
+        if name and error.name == f"{module}.{name}":
+            return f"{said} cannot be imported, the installed release has no {name} there"
+        return f"{said} cannot be imported, missing {(error.name or module).split('.')[0]}"
+    except Exception as error:  # an import may fail for any reason, and each is a refusal in words
+        return f"{said} cannot be imported, {type(error).__name__}"
+    return None
+
+
+def card_problem():
+    """Why this card cannot hold the edit, in plain words, or None: klein-9B goes onto the card
+    whole in bfloat16 (PREREG.md section 2), which takes about 35 GB, so the card must hold
+    realism.EDIT_CARD_GIB and compute bfloat16 natively (compute capability 8.0 or later)."""
+    try:
+        import torch
+    except ImportError:
+        return "torch cannot be imported"
+    if not torch.cuda.is_available():
+        return "no CUDA card is visible"
+    held = torch.cuda.get_device_properties(0).total_memory / 2**30
+    native = torch.cuda.get_device_capability(0) >= (8, 0)
+    if held >= realism.EDIT_CARD_GIB and native:
+        return None
+    return (f"the card {torch.cuda.get_device_name(0)} holds {held:.0f} GiB{'' if native else ' and computes no bfloat16'}, "
+            f"where klein-9B in bfloat16 needs {realism.EDIT_CARD_GIB} GiB or more and bfloat16")
+
+
+def pinned_environment(no_pins, card=False):
+    """environment_record, with card_problem where the stage loads klein-9B, refused where a pin
+    differs, a module cannot be imported or the card cannot hold the edit, unless no_pins asks for
+    the differences to be recorded instead (a test, never a run of the count)."""
     environment, wrong = environment_record()
+    if card:
+        problem = card_problem()
+        environment["card_ok"] = problem is None
+        wrong += [problem] if problem else []
     if wrong and not no_pins:
-        raise Refused("the environment differs from the frozen pins: " + "; ".join(wrong))
+        raise Refused("the environment differs from the pins: " + "; ".join(wrong))
     return environment, wrong
 
 
 def require_weights(bundle, imagenet):
     """The FleXray bundle (its ensemble.json) and the ResNet-18 weights, refused where either is missing."""
-    for path in (Path(bundle) / "ensemble.json", Path(imagenet)):
+    for path, what in ((Path(bundle) / "ensemble.json", "no ensemble record in the FleXray bundle"),
+                       (Path(imagenet), "no ResNet-18 ImageNet weights file")):
         if not path.is_file():
-            raise Refused(f"no {path}")
+            raise Refused(what, detail=f"no {path}")
 
 
 def run_inputs(args):
     """Every input checked before a GPU second is spent, and recorded: the pins, the klein the recipe
     names and no other, FluXray's samples against its ThunderDB, the CTs and truth that landed, the
     FleXray bundle and the ImageNet weights, each with its sha256."""
-    environment, wrong = pinned_environment(args.no_pins)
+    environment, wrong = pinned_environment(args.no_pins, card=True)
     model = realism.FLUXRAY.model
     if not (Path(args.klein) / "model_index.json").is_file():
-        raise Refused(f"no model_index.json in {args.klein}: the recipe's {model} has not landed, and no other klein stands in")
+        raise Refused(f"no model index in the klein folder: {model} of the recipe has not landed, and no other klein stands in",
+                      detail=f"no model_index.json in {args.klein}")
     rows = read_rows(args.samples)
+    if not rows:
+        raise Refused("the samples table of FluXray has no row", detail=f"{args.samples} has no row")
     ids = thunder_ids(args.db)
     unknown = [row["sample_id"] for row in rows if row["sample_id"] not in ids]
     if len(unknown) == len(rows):
-        raise Refused(f"no sample of samples.csv is in the ThunderDB (samples.csv names {rows[0]['sample_id'] if rows else 'nothing'}, "
-                      f"the ThunderDB {next(iter(ids), 'nothing')}), so FluXray's image of a drawn sample could not be read")
+        raise Refused(f"no sample of the samples table is in the ThunderDB (the table names samples shaped {shapes_of(r['sample_id'] for r in rows)}, "
+                      f"the ThunderDB {shapes_of(ids)}), so the FluXray image of a drawn sample could not be read",
+                      detail=f"{args.samples} names {rows[0]['sample_id']}, the ThunderDB {next(iter(ids), 'nothing')}")
     absent = [column for column in POSE_COLUMNS if column not in rows[0]]
     if absent:
-        raise Refused(f"samples.csv has no column {', '.join(absent)}, so no sample's pose can be checked against the paper's grid")
+        raise Refused(f"the samples table has no column {', '.join(absent)}, so no sample pose can be checked against the grid of the paper")
     moved = [row["sample_id"] for row in rows if row["sample_id"] in ids and ids[row["sample_id"]]["subject_id"] not in ("", row["subject_id"])]
     if moved:
-        raise Refused(f"{len(moved)} samples have another subject in the ThunderDB than in samples.csv, {moved[0]} among them")
+        raise Refused(f"{len(moved):,} samples have another subject in the ThunderDB than in the samples table",
+                      detail=f"{moved[0]} among them")
     volumes, truth = volumes_under(args.ct), truth_under(args.truth)
     plan = realism.REPLICATION
-    eligible = eligible_for_draw([row for row in rows if row["sample_id"] in ids], volumes, truth, plan.poses_per_subject)
+    in_db = [row for row in rows if row["sample_id"] in ids]
+    eligible = eligible_for_draw(in_db, volumes, truth, plan.poses_per_subject)
     if len(eligible) < plan.subjects:
-        raise Refused(f"{len(eligible)} FluXray subjects have {plan.poses_per_subject} samples in the ThunderDB at the paper's "
-                      f"poses and a landed CT and vertebra truth, fewer than the {plan.subjects} the plan draws (FluXray names "
-                      f"{rows[0]['subject_id']}, the CTs {next(iter(volumes), 'none')})")
+        raise Refused(f"{len(eligible):,} FluXray subjects have {plan.poses_per_subject} samples in the ThunderDB at poses on "
+                      f"the grid of the paper and a landed CT and vertebra truth, fewer than the {plan.subjects} the plan draws; "
+                      + eligibility_counts(rows, in_db, volumes, truth, plan.poses_per_subject),
+                      detail=f"FluXray names {rows[0]['subject_id']}, the CTs {next(iter(volumes), 'none')}, the vertebra truth "
+                             f"{next((name for folder, name in truth if folder == 'Vertebrae'), 'none')}")
     require_weights(args.bundle, args.imagenet)
     klein, bundle, thunder = folder_files(args.klein), folder_files(args.bundle), folder_files(args.db)
     record = {"model": model, "klein": str(args.klein), "klein_sha256": folder_digest(klein), "klein_files": klein,
@@ -1318,7 +1436,10 @@ def render_one(volume, affine, dense, pose, recipe, targets, channels, device):
                   "x0": [0.0], "y0": [0.0], "height": recipe.render_pixels, "width": recipe.render_pixels}
     request = DRRRenderRequest(rot=torch.tensor([[float(alpha), 0.0, 0.0]]), xyz=torch.tensor([[0.0, float(y), float(z)]]),
                                intrinsics=intrinsics, isocenter=torch.tensor([volume_centre_mm(volume.shape, affine)], dtype=torch.float32),
-                               orientation="AP", n_samples=RAY_SAMPLES, orthographic=False)
+                               orientation="AP", n_samples=RAY_SAMPLES, orthographic=False,
+                               # FleXray's training projects hard masks at 0.0 (its camera runtime's
+                               # default, which the MOOSE config leaves alone); the request's own is 0.5
+                               seg_threshold=0.0)
     with torch.inference_mode():
         result = render_drr(volume=torch.from_numpy(volume)[None].to(device), label=torch.from_numpy(dense).to(device),
                             affine=torch.as_tensor(affine, dtype=torch.float32).to(device), request=request,
@@ -1349,13 +1470,16 @@ def drawn_samples(poses, subjects, per_subject, seed):
 def run_render(args):
     import numpy as np
     import yaml
-    from fxr import FleXraySegmenter
-    from fxr.configs import datasets as dataset_configs
+    from importlib.resources import files
+
+    from fxr.inference import FleXraySegmenter
 
     poses = read_json(args.poses)
     recipe = realism.EditRecipe(render_pixels=args.pixels)
     enhance = load_labels_json(args.labels or ENHANCE_LABELS)
-    moose = yaml.safe_load((Path(dataset_configs.__file__).parent / "MOOSE.yml").read_text(encoding="utf-8"))
+    # FleXray's configs/datasets is a folder with no __init__.py, whose module has no __file__, so it
+    # is read as a resource of fxr.configs, as FleXray reads its own configs (fxr/launch/cli.py).
+    moose = yaml.safe_load(files("fxr.configs").joinpath("datasets", "MOOSE.yml").read_text(encoding="utf-8"))
     stored = {str(k): v for k, v in moose["stored_labels"].items()}
     mapping = moose_dense_ids(enhance, stored)
     segmenter = FleXraySegmenter.from_pretrained(args.weights, subfolder=args.member, device="cpu")
@@ -1480,18 +1604,20 @@ def write_edit(out, log, row, edited, png):
 
 
 def soft_dice(probabilities, truth):
-    """FluXray's filter statistic: the soft Dice averaged over the channels with any truth and over the
-    background, read as what no channel claims (the paper: empty labels ignored, background included)."""
+    """FluXray's filter statistic as FleXray's soft_dice_score computes it (square denominator, 1e-7
+    smoothing, the mean over the channels with any truth): channel 0 is the model's background
+    channel, whose truth is what no other channel claims, since the projected masks leave it empty
+    (the paper: empty labels ignored, background included)."""
     import numpy as np
 
-    channels = truth.reshape(truth.shape[0], -1).astype(np.float64)
-    present = channels.any(axis=1)
-    p = probabilities.reshape(probabilities.shape[0], -1).astype(np.float64)[present]
-    t = channels[present]
-    background_t = (~truth.any(axis=0)).reshape(1, -1).astype(np.float64)
-    background_p = (1.0 - probabilities.max(axis=0)).reshape(1, -1).astype(np.float64)
-    p, t = np.concatenate([p, background_p]), np.concatenate([t, background_t])
-    return float(np.mean(2.0 * (p * t).sum(axis=1) / ((p ** 2).sum(axis=1) + (t ** 2).sum(axis=1) + 1e-7)))
+    t = truth.reshape(truth.shape[0], -1).astype(np.float64)
+    t[0] = 1.0 - t[1:].max(axis=0)
+    p = probabilities.reshape(probabilities.shape[0], -1).astype(np.float64)
+    present = t.any(axis=1)
+    p, t = p[present], t[present]
+    smooth = 1e-7
+    scores = (2.0 * (p * t).sum(axis=1) + smooth) / np.maximum((p ** 2).sum(axis=1) + (t ** 2).sum(axis=1) + smooth, smooth)
+    return float(np.mean(scores))
 
 
 def filter_rows(scores):
@@ -1517,9 +1643,13 @@ def score_edits(args, only):
     recorded."""
     import numpy as np
     import torch
-    from fxr import FleXraySegmenter
+    from fxr.inference import FleXraySegmenter
 
     segmenter = FleXraySegmenter.from_pretrained(args.weights, subfolder=args.member, device=args.device)
+    label_names = list(segmenter.label_names)
+    if not label_names or label_names[0] != "background":
+        raise Refused("the segmenter's first channel is not the background, which the soft Dice reads channel 0 as",
+                      detail=f"first channel {label_names[0] if label_names else 'none'}")
     samples = manifest_rows(args.raw)
     raw_found = images_in(Path(args.raw) / "raw")
     edited_found = images_in(Path(args.edited) / "edited")
@@ -1876,6 +2006,8 @@ def main(argv=None):
     try:
         args.run(args)
     except Refused as error:
+        if error.detail:
+            print(f"detail: {error.detail}", file=sys.stderr)
         print(f"refused: {error}", file=sys.stderr)
         return 2
     return 0

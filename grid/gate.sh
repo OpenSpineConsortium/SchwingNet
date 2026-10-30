@@ -2032,6 +2032,11 @@ word_realism() {  # one stage of the Flux realism programme: queued once, its re
   holds=$(checkout_holders)
   [ -z "$holds" ] || echo "  the checkout: after the live runs that hold it ($holds)"
   depend_on "$(joined "$setup" "$holds")" || return 1
+  # The edit loads klein-9B whole in bfloat16, about 35 GB, which a V100 of 16 GB neither holds nor
+  # computes in, and the first edit was put on one; so it asks for galhp's L40S of 48 GB, the
+  # smallest card of the class that holds it, as a memory problem is the one reason the owner left
+  # for narrowing a GPU job (2026-10-28). The stats stage reads small networks and takes any card.
+  [ "$id" != edit ] || opts+=(--partition galhp)
   submit "realism_$id" "$class" STAGE="$id" DATA_ROOT="$DATA_ROOT" ${opts[@]+"${opts[@]}"} --no-requeue -- realism.sbatch > /dev/null || return 1
   echo "submitted the realism stage $id. Send realism $id again once it ends to read its report, logs/REALISM-$id.md."
 }

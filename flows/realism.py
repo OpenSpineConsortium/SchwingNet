@@ -82,6 +82,19 @@ class RealismFault(Exception):
     """A step of the reproduction could not do what it was asked; the run's fault, said in words."""
 
 
+class Beat(stage.Beat):
+    """stage.Beat, whose fault is also said as one of the flow's own lines, which grid/realism.sbatch
+    copies into the stage's report, so the gate's realism word says why a stage failed: the job's
+    log keeps a fault's type and withholds its words (grid/log-shapes.awk), and the first edit's
+    report said only that the launcher exited 1."""
+
+    def __exit__(self, kind, error, trace):
+        if error is not None:
+            words = (str(error).strip().splitlines() or [kind.__name__])[-1]
+            print(f"RealismFlow: FAILED: {kind.__name__}: {words}", flush=True)
+        return super().__exit__(kind, error, trace)
+
+
 def launcher_folder():
     """The folder the launcher was started in, which a relative path parameter is read from."""
     return Path(os.environ.get("SCHWINGNET_WORKDIR") or os.getcwd())
@@ -228,7 +241,10 @@ def tool(beat, name, *args, line_of=None):
         log.write(f"$ {' '.join(command)}\n{out}{err}\n")
     print(out + err, end="", flush=True)
     if code != 0:
-        raise RealismFault(f"tools/realism.py {name} exited {code}: {last_line(err) or last_line(out)}")
+        # Said with no path and no quote, since the gate's status withholds a reason that holds
+        # either, and this line is the reason a failed stage shows there (grid/report-shapes.awk).
+        said = (last_line(err) or last_line(out)).replace("'", "").replace('"', "")
+        raise RealismFault(f"the realism tool step {name} exited {code}: {said}")
     said = last_line(out)
     beat.say(f"{name}: {said}")
     return said
@@ -252,7 +268,7 @@ class RealismFlow(FlowSpec):
     commit = Parameter("commit", default="")
 
     def beat(self, label):
-        beat = stage.Beat(self, label)
+        beat = Beat(self, label)
         beat.folder = self.folder
         return beat
 
@@ -263,7 +279,7 @@ class RealismFlow(FlowSpec):
     def start(self):
         """The run held to the frozen PREREG and its block, its folder made, and for the edit every
         input checked and hashed before any GPU work; for the stats, the edit read through its pointer."""
-        with stage.Beat(self, f"{self.which}: the PREREG and the inputs") as beat:
+        with Beat(self, f"{self.which}: the PREREG and the inputs") as beat:
             if self.which not in realism.FLOW_STAGES:
                 raise stage.StageFault(f"the stage {self.which!r} is not one this count runs ({', '.join(realism.FLOW_STAGES)}); "
                                        "lora and eval wait for a count and a PREREG of their own")

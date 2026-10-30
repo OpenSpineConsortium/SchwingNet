@@ -41,7 +41,8 @@ RULES = {"neighbours": "5 nearest neighbours, every image of the sample's own su
 COMPONENTS = {"physics": 57, "flexray": 64, "imagenet": 64}
 COUNTS = {"fluxray_samples": 20, "not_in_db": 1, "off_grid": 2, "eligible_subjects": 3, "drawn_subjects": 2,
           "renders": 4, "edits": 8, "kept": 7, "fluxray_exported": 4}
-EDIT_ENVIRONMENT = {"diffusers": "0.42.0", "torch": "2.0.0", "gpu": "EDIT GPU", "cuda": "12.0"}
+EDIT_ENVIRONMENT = {"diffusers": "0.42.0", "torch": "2.0.0", "gpu": "EDIT GPU", "cuda": "12.0", "card_ok": True,
+                    "installed": ["diffusers==0.42.0", "thunderpack==0.0.2", "torch==2.0.0"]}
 STATS_ENVIRONMENT = {"diffusers": "0.42.0", "torch": "2.0.1", "gpu": "STATS GPU", "cuda": "12.1"}
 # What the stats stage copies of the edit's folder under edit/ (flows/realism.py, EDIT_FILES).
 EDIT_FILES = ("RECORD.json", "ENDED.json", "inputs.json", "split/split.json", "filter/filter_kept.csv",
@@ -310,7 +311,9 @@ class StatsRunTest(RealismFolder):
         self.assertIn("edit: commit aaaaaaa from a clean tree, key 0000000000000001, run RealismFlow/1001 (edit/RECORD.json)", code)
         self.assertIn("stats: commit bbbbbbb from a clean tree, key 0000000000000001, run RealismFlow/2002 (RECORD.json)", code)
         software = claim["23"]["evidence"]
-        self.assertIn("the edit job, as edit/inputs.json measured them at its start: cuda 12.0, diffusers 0.42.0, torch 2.0.0", software)
+        self.assertIn("the edit job, as edit/inputs.json measured them at its start: cuda 12.0, diffusers 0.42.0, torch 2.0.0; "
+                      "3 distributions installed in all, each named in the file; pins that differ: none", software)
+        self.assertNotIn("card_ok", software)
         self.assertIn("the stats job, as environment.json measured them at its start: cuda 12.1, diffusers 0.42.0, torch 2.0.1", software)
         self.assertIn("the same bundle the edit's filter read", claim["24"]["evidence"])
         self.assertIn("for the statistics' flexray and imagenet spaces (environment.json)", claim["7"]["evidence"])
