@@ -174,7 +174,7 @@ class Locate(unittest.TestCase):
         self.assertEqual(jobs["studies"][0]["targets"], ["C2", "sacrum"])
         self.assertEqual(jobs["left_out"][0]["id"], "s0437")
         self.assertEqual(jobs["segmenter"], "TotalSegmentator")
-        self.assertEqual(jobs["task"]["roi_subset"], ["vertebrae_C2", "sacrum"])
+        self.assertEqual(jobs["task"]["roi_subset"], ["vertebrae_C2", "sacrum", "vertebrae_S1"])
         self.assertEqual(jobs["studies"][0]["segmenter"], "TotalSegmentator")
         # the report, with nothing run yet, lists the prepared study as not run and names no path
         with contextlib.redirect_stdout(io.StringIO()):
@@ -236,7 +236,7 @@ class Run(unittest.TestCase):
         self.assertEqual(drawn, ["s0437", "s0621", "s0931"])
         for sid in drawn:
             ran = json.loads((self.tmp / "ts" / sid / "run.json").read_text(encoding="utf-8"))
-            self.assertEqual((ran["exit"], ran["files"]), (0, ["sacrum.nii.gz", "vertebrae_C2.nii.gz"]), ran)
+            self.assertEqual((ran["exit"], ran["files"]), (0, ["sacrum.nii.gz", "vertebrae_C2.nii.gz", "vertebrae_S1.nii.gz"]), ran)
             self.assertNotIn("error", ran)
         self.assertEqual(json.loads((self.tmp / "ts" / "s0102" / "run.json").read_text(encoding="utf-8")), {"id": "s0102", "exit": 0})
 
@@ -249,6 +249,8 @@ class Run(unittest.TestCase):
         (site / "python_api.py").write_text(
             "import cProfile  # as torch's imports reach it\n"
             "import os\n\n\n"
+            "def download_pretrained_weights(part):  # bound here as 2.18.0 binds it\n"
+            "    raise RuntimeError('downloaded')\n\n\n"
             "def totalsegmentator(ct, folder, **words):\n"
             "    for name in words['roi_subset']:\n"
             "        open(os.path.join(folder, name + '.nii.gz'), 'wb').close()\n", encoding="utf-8")
@@ -258,7 +260,123 @@ class Run(unittest.TestCase):
                               capture_output=True, text=True, env=env, cwd=str(ROOT), timeout=120)
         ran = json.loads((self.tmp / "ts" / "s0102" / "run.json").read_text(encoding="utf-8"))
         self.assertEqual(said.returncode, 0, said.stdout + said.stderr)
-        self.assertEqual((ran["exit"], ran["files"]), (0, ["sacrum.nii.gz", "vertebrae_C2.nii.gz"]), ran)
+        self.assertEqual((ran["exit"], ran["files"]), (0, ["sacrum.nii.gz", "vertebrae_C2.nii.gz", "vertebrae_S1.nii.gz"]), ran)
+
+
+class Weights(unittest.TestCase):
+    """TotalSegmentator 2.18.0 asks for every part of the total task before it applies roi_subset; the
+    job holds 292 and 298 alone, so the guard must pass over 291, 293, 294 and 295 and refuse the rest."""
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(lambda: __import__("shutil").rmtree(self.tmp, ignore_errors=True))
+        self.weights = self.tmp / "weights"
+        for name in ("Dataset292_TotalSegmentator_part2_vertebrae_1559subj", "Dataset298_TotalSegmentator_total_6mm_1559subj"):
+            (self.weights / name).mkdir(parents=True)
+        self.downloaded = []
+        api = types.ModuleType("totalsegmentator.python_api")
+        exec("def download_pretrained_weights(part):\n    DOWNLOADED.append(part)\n\n"
+             "def totalsegmentator(ct, folder, **words):\n"
+             "    for part in (291, 292, 293, 294, 295, *PARTS):\n"
+             "        download_pretrained_weights(part)\n", api.__dict__)
+        api.DOWNLOADED, api.PARTS = self.downloaded, []
+        self.api = api
+        package = types.ModuleType("totalsegmentator")
+        package.python_api = api
+        patched = mock.patch.dict(sys.modules, {"totalsegmentator": package, "totalsegmentator.python_api": api})
+        patched.start()
+        self.addCleanup(patched.stop)
+
+    def draw(self):
+        args = types.SimpleNamespace(weights=str(self.weights), device="gpu", threads=1)
+        return tool.run_totalseg({"ct": "ct.nii.gz"}, str(self.tmp), args)
+
+    def test_the_parts_this_roi_subset_never_computes_are_passed_over_and_nothing_is_downloaded(self):
+        held = self.api.download_pretrained_weights
+        self.assertEqual(self.draw(), {})
+        self.assertEqual(self.downloaded, [])
+        self.assertIs(self.api.download_pretrained_weights, held, "the guard is taken off after the run")
+        guard = tool.weights_guard(str(self.weights))
+        self.assertIsNone(guard(task_id=293))
+        with self.assertRaisesRegex(RuntimeError, "weight part 297"):
+            guard(task_id=297)
+
+    def test_a_part_the_folder_lacks_that_the_run_needs_is_refused(self):
+        __import__("shutil").rmtree(self.weights / "Dataset292_TotalSegmentator_part2_vertebrae_1559subj")
+        with self.assertRaisesRegex(RuntimeError, "weight part 292"):
+            self.draw()
+        self.api.PARTS.append(297)
+        (self.weights / "Dataset292_x").mkdir()
+        with self.assertRaisesRegex(RuntimeError, "weight part 297"):
+            self.draw()
+        self.assertEqual(self.downloaded, [])
+
+
+class MooseOne(unittest.TestCase):
+    """moose-one inside MOOSE's environment, with moosez and the render tool's helpers stubbed."""
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(lambda: __import__("shutil").rmtree(self.tmp, ignore_errors=True))
+        (self.tmp / "zips").mkdir()
+        (self.tmp / "zips" / "vertebrae.zip").write_bytes(b"z")
+        (self.tmp / "ct.nii.gz").write_bytes(b"ct")
+        self.devices = []
+        fr = types.ModuleType("flexray_render")
+        fr.moosez_metadata = lambda: {tool.MOOSE_MODEL: ("Dataset_vertebrae", "https://x/vertebrae.zip")}
+        fr.zip_of = lambda url: url.rsplit("/", 1)[-1]
+        fr.moosez_disagreements = lambda metadata: []
+        fr.models_directory = lambda: str(self.tmp / "models")
+        fr.unpack_weights = lambda weights, metadata, models: []
+        fr.check_labels = lambda models, metadata: {}
+        fr.dataset_labels = lambda models, folder: ({2: "vertebra_C2", 28: "sacrum"}, None)
+        moosez = types.ModuleType("moosez")
+
+        def moose(ct, models, out, device):
+            import torch_stand_in
+            torch_stand_in.device(device)
+            self.devices.append(device)
+            written = Path(out) / "moosez-out" / "CT_vertebrae_multilabel.nii.gz"
+            written.parent.mkdir(exist_ok=True)
+            written.write_bytes(b"m")
+        moosez.moose = moose
+        torch = types.ModuleType("torch_stand_in")
+
+        def device(word):
+            if word.split(":")[0] not in ("cpu", "cuda", "mps"):
+                raise RuntimeError(f"Expected one of cpu, cuda, ... device type at start of device string: {word}")
+        torch.device = device
+        patched = mock.patch.dict(sys.modules, {"flexray_render": fr, "moosez": moosez, "torch_stand_in": torch})
+        patched.start()
+        self.addCleanup(patched.stop)
+        self.held_path = list(sys.path)
+        self.addCleanup(lambda: sys.path.__setitem__(slice(None), self.held_path))
+
+    def one(self, device):
+        args = types.SimpleNamespace(ct=str(self.tmp / "ct.nii.gz"), folder=str(self.tmp / "ts" / "1379"),
+                                     weights=str(self.tmp / "zips"), device=device)
+        said = io.StringIO()
+        with contextlib.redirect_stdout(said):
+            self.assertEqual(tool.moose_one(args), 0)
+        return json.loads(said.getvalue().splitlines()[-1])
+
+    def test_the_gpu_word_reaches_moose_as_cuda_and_moose_ones_own_default_is_cuda(self):
+        self.one("gpu")
+        self.one("gpu:1")
+        self.assertEqual(self.devices, ["cuda", "cuda:1"])
+        parser_default = [line for line in Path(tool.__file__).read_text(encoding="utf-8").splitlines()
+                          if '"--device", default="cuda"' in line]
+        self.assertEqual(len(parser_default), 1)
+        self.assertEqual(tool.torch_device("cpu"), "cpu")
+
+    def test_a_study_whose_earlier_attempt_wrote_the_multilabel_file_is_drawn_again(self):
+        first = self.one("gpu")
+        # the outer run cuts its targets beside it, then a later fault fails the study, and it runs again
+        Path(self.tmp / "ts" / "1379" / "vertebrae_C2.nii.gz").write_bytes(b"cut")
+        again = self.one("gpu")
+        self.assertEqual(first["multilabel"], again["multilabel"])
+        self.assertTrue(again["multilabel"].endswith("CT_vertebrae_multilabel.nii.gz"))
+        self.assertEqual(len(self.devices), 2)
 
 
 class FakeImage:
@@ -342,6 +460,45 @@ class Check(unittest.TestCase):
         self.assertIn("not the release masks' grid", shifted["reason"])
 
 
+    def test_a_sacrum_is_totalsegmentators_sacrum_and_s1_together(self):
+        # one full sacrum mask, never a separate S1 class (the owner, 22:58 UTC; DEVIATIONS.md item 2)
+        flipped = np.diag([1.0, 1.0, -1.0, 1.0])
+        levels, _ = tool.release_levels("release")
+        sacrum, s1 = self.mask("sac", 48, 55, affine=flipped), self.mask("s1", 40, 47, affine=flipped)
+        alone = tool.check_target("sacrum", sacrum, levels, flipped, ["sacrum"])
+        self.assertFalse(alone["kept"])
+        self.assertIn("112 voxels", alone["reason"])
+        both = tool.check_target("sacrum", [sacrum, s1], levels, flipped, ["sacrum"])
+        self.assertTrue(both["kept"], both)
+        self.assertEqual(both["voxels"], 224)
+        self.mask("s1_off", 40, 47, affine=np.eye(4))
+        with self.assertRaisesRegex(ValueError, "not on"):
+            tool.read_union([sacrum, "s1_off"])
+
+    def test_every_sacrum_totalsegmentator_draws_takes_its_s1(self):
+        names = lambda *a: [os.path.basename(p) for p in tool.target_files("f", *a)]  # noqa: E731
+        self.assertEqual(names("sacrum", "verse", "TotalSegmentator"), ["sacrum.nii.gz", "vertebrae_S1.nii.gz"])
+        self.assertEqual(names("sacrum", "totalsegmentator", "TotalSegmentator"), ["sacrum.nii.gz", "vertebrae_S1.nii.gz"])
+        self.assertEqual(names("sacrum", "enhance_pet", "MOOSE"), ["sacrum.nii.gz"])
+        self.assertEqual(names("C2", "verse", "TotalSegmentator"), ["vertebrae_C2.nii.gz"])
+
+    def test_a_totalsegmentator_releases_s1_is_read_as_part_of_its_sacrum(self):
+        with tempfile.TemporaryDirectory() as folder:
+            for name, lo, hi in (("vertebrae_L5", 20, 30), ("vertebrae_S1", 10, 20), ("sacrum", 0, 10), ("vertebrae_L4", 0, 0)):
+                Path(folder, name + ".nii.gz").write_bytes(b"")
+                self.mask(os.path.join(folder, name + ".nii.gz"), lo, hi)
+            levels, _ = tool.release_levels(folder)
+        names = dict(levels)
+        self.assertEqual(sorted(names), ["sacrum", "vertebrae_L5"])
+        self.assertEqual(int(names["sacrum"].sum()), 16 * 20)
+
+    def test_a_refusal_names_the_segmenter_that_drew_the_target(self):
+        levels, affine = tool.release_levels("release")
+        few = tool.check_target("C2", self.mask("few", 0, 0), levels, affine, ["C2"], "MOOSE")
+        self.assertIn("MOOSE drew 0 voxels", few["reason"])
+        self.assertNotIn("TotalSegmentator", few["reason"])
+
+
 class Report(unittest.TestCase):
     def test_the_report_counts_kept_and_refused_targets_and_cuts_every_reason(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -371,7 +528,7 @@ class Report(unittest.TestCase):
                 self.assertEqual(tool.report(types.SimpleNamespace(out=str(out))), 0)
             text = (out / "REPORT.md").read_text(encoding="utf-8")
         self.assertIn("studies asked: 3 (enhance_pet 2, totalsegmentator 1, verse 1); prepared: 2; not prepared: 1", text)
-        self.assertIn("segmenters: TotalSegmentator 2.18.0 (task total, roi_subset vertebrae_C2 sacrum) for verse, totalsegmentator; MOOSE 3.2.2 (clin_ct_vertebrae) for enhance_pet", text)
+        self.assertIn("segmenters: TotalSegmentator 2.18.0 (task total, roi_subset vertebrae_C2 sacrum vertebrae_S1) for verse, totalsegmentator; MOOSE 3.2.2 (clin_ct_vertebrae) for enhance_pet", text)
         self.assertIn("targets kept: 1 (0 C2, 1 sacrum) in 1 studies; targets refused: 2; studies in error: 1", text)
         self.assertIn("| verse607 | verse | TotalSegmentator | versefusion | sacrum | - | kept | verse607_totalsegmentator_sacrum_abc123def456.nii.gz |", text)
         self.assertIn("| s0102 | totalsegmentator | TotalSegmentator | totalsegmentator_v300 | C2 sacrum | refused | refused | - |", text)

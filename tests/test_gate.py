@@ -2354,6 +2354,26 @@ esac
         self.assertIn(f"TOTALSEG_RERUNS=complete:{job} in grid/gate.sh", refused.stdout)
         self.assertEqual(len(self.totalseg_jobs()), 1, self.submitted())
 
+    def test_totalseg_complete_keeps_its_marker_until_the_gates_list_names_the_job(self):
+        # A rerun queued while the gate's list cannot take its line leaves the marker, so the next send
+        # reads it as a lost answer and queues nothing more without the owner's word for it.
+        report = self.totalseg_ready(77)
+        logs = report.parent
+        self.allow_totalseg_rerun("complete:77")
+        state = logs / "GATE_JOBS.txt"
+        state.unlink()
+        state.mkdir()
+        done = self.gate("totalseg", "complete")
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("does not name the job it queued", done.stdout)
+        self.assertEqual(len(self.totalseg_jobs()), 1, self.submitted())
+        self.assertTrue((logs / "TOTALSEG-complete.sent").is_file())
+        state.rmdir()
+        again = self.gate("totalseg", "complete")
+        self.assertEqual(again.returncode, 64, again.stdout)
+        self.assertIn("TOTALSEG_RERUNS=complete:lost in grid/gate.sh", again.stdout)
+        self.assertEqual(len(self.totalseg_jobs()), 1, self.submitted())
+
     def test_totalseg_complete_queues_nothing_after_a_lost_answer_until_the_owners_word(self):
         report = self.totalseg_ready(77)
         logs = report.parent
