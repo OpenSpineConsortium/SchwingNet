@@ -29,6 +29,11 @@ python3 tools/workers.py check
 # must hold together (docs/agents/AGENTS.md), and an imported agent must be
 # the file it was when it came, so a hand edit is a choice, not an accident.
 python3 tools/agents.py check
+# The organization map, .github/symphony/organization.json, must hold together
+# (docs/research/organization-map.md): an edge to a repository that is not in
+# it, or a kind the file's own list does not name, would draw as a gap on the
+# control panel's Organization tab, so it fails here first.
+python3 tools/organization_map.py check
 # The lessons under docs/learn/ are run, command by command, and their
 # outputs compared with the pages; every module and script must carry the
 # documentation the Reference page is made from, and each lesson's notebook

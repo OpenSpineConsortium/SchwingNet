@@ -1840,6 +1840,8 @@ census_may_queue() {  # whether census $id may queue its one job now (0), else 1
     # unless the owner's word for one more job names the report's job in CENSUS_RERUNS.
     census_show "$report" ""
     job=$(census_job_of "$report")
+    # gold3's report counts two readings that a pull request records by name, printed beside it.
+    [ "$id" != gold3 ] || census_detail "$job"
     census_rerun_allowed "$job" || return 1
     mv "$report" "$LOGS/CENSUS-$id-$job.md" || { stop=1; return 1; }
     again="is job $job's, which CENSUS_RERUNS lets the owner's count run once more"
@@ -1890,6 +1892,45 @@ census_submit() {  # census_submit [K=V...] [job submit options...] -- SCRIPT: c
   echo "$(date -u '+%F %T') UTC at commit $commit" > "$sent"
   submit "census_$id" batch "$@" > /dev/null || return 1
   rm -f "$sent"
+}
+census_detail() {  # census_detail JOB: the two readings the report counts and the owner's rule needs by name (the owner, 2026-10-29 23:46 UTC)
+  # The report carries counts alone. Two of them name what a pull request then records: the planes of
+  # each TotalSegmentator CT the extent part found padded (constant slices at an end), which the CT's
+  # own extent rule reads in place of the cord's guess (tools/gold3_field.py, data/gold3-ct/totalsegmentator/planes.json),
+  # and VerSe's recorded mask names the held part found missing under the data root's VerSeFusion copy,
+  # which the repair fetches. The copy holds many of its masks as symbolic links to files, which the
+  # census's os.walk lists as files, so a link counts as found here too (the read of 2026-10-30 00:08
+  # UTC named 89 with -type f alone, against the report's 17). Both are public ids and heights in millimetres, no path; the detail file
+  # stays where the job left it, and the names are read here on the login node, as status reads a quota.
+  local detail="${CENSUS_ROOT:-$VOLUME/go2432/gold3_census}/$1/extent.json" verse=$DATA_ROOT/versefusion/raw/VerSeFusion_data/raw
+  echo "## census gold3 detail: the padded TotalSegmentator CTs' own planes (id, top mm, foot mm; none where the CT ends at its grid), job $1"
+  if [ -f "$detail" ]; then
+    # extent.json is json.dumps(indent=1, sort_keys=True): under "judged" each subject's planes are two
+    # lines after its "planes": [ line, null where the CT gives no plane at that end.
+    awk '
+      /^ "judged": \{$/ { judged = 1; next }
+      judged && /^ "/ { judged = 0 }
+      !judged { next }
+      /^  "[A-Za-z0-9_-]+": \{$/ { id = $1; gsub(/[":]/, "", id); next }
+      /^   "planes": \[$/ { want = 2; top = ""; next }
+      want == 2 { top = $1; sub(/,$/, "", top); want = 1; next }
+      want == 1 { foot = $1; sub(/,$/, "", foot); want = 0
+        if (top != "null" || foot != "null") { gsub(/null/, "none", top); gsub(/null/, "none", foot); print "  planes " id " " top " " foot; listed++ }
+        next }
+      END { print "  planes listed " (listed + 0) "; every other subject the report says it judged again has no padded end and keeps its field" }
+    ' "$detail" | LC_ALL=C tr -cd '\11\12\40-\176' | masked
+  else
+    echo "  no extent detail for job $1 where the census keeps it; the planes are not read"
+  fi
+  echo "## census gold3 detail: VerSe's recorded mask names not found under the data root's VerSeFusion copy"
+  if [ -d "$verse" ] && [ -f "$REPO/data/gold3-ct/verse/facts.jsonl" ]; then
+    LC_ALL=C comm -23 <(grep -o '"[A-Za-z0-9_-]*_seg\.nii\.gz"' "$REPO/data/gold3-ct/verse/facts.jsonl" | tr -d '"' | sort -u) \
+                      <(find "$verse" \( -type f -o -type l \) -name '*_seg.nii.gz' -printf '%f\n' 2>/dev/null | sort -u) \
+      | sed 's/^/  not found /' | masked
+    echo "  (the names are the facts' $(grep -o '"[A-Za-z0-9_-]*_seg\.nii\.gz"' "$REPO/data/gold3-ct/verse/facts.jsonl" | sort -u | wc -l) recorded, matched by name alone; the report's count matched the bytes too)"
+  else
+    echo "  no VerSeFusion copy under the data root, or no facts at this commit; the names are not read"
+  fi
 }
 census_job_of() {  # the job number a census report's first line names
   head -n 1 "$1" | sed -n 's/^# census [a-z0-9]*: job \([0-9][0-9]*\) .*/\1/p'

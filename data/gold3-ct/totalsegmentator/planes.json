@@ -1,0 +1,256 @@
+{
+ "about": "The TotalSegmentator CTs whose own slices are padded, read on the grid by the census job's extent part: each CT's constant planes at an end of its head-foot axis, and the height in millimetres, at the column, of the first plane past them, as tools/gold3_field.py's named_study takes planes (top, foot; null where the CT ends at its grid). Every subject of the facts was read whole (1,939 of 1,939); a subject not listed here has no padded end and keeps its field's own edges. Written from the gate word census gold3's detail print, never by hand.",
+ "source": "census job 40870542 (gate word census gold3, grid/gold3-census.sbatch, tools/gold3_census.py part extent, commit 5989dca), ended 2026-10-29 22:27 UTC; its detail printed by the same word on 2026-10-30 at 00:08 UTC (symphony-template's branch grid, logs/job-schwingnet-census-gold3.json, request gold3-census-detail-0006) and copied here",
+ "asked": "the owner, 2026-10-29 23:46 UTC: \"if the CTs contain isosurface of C2 and sacrum but the masks dont extend a segmentation should be done to complete it. i only want gold tier 3 and up, no limited FOV spines for now\"",
+ "read": 1939,
+ "planes": {
+  "s0063": [
+   313.3,
+   null
+  ],
+  "s0078": [
+   -478.6,
+   null
+  ],
+  "s0131": [
+   352.3,
+   null
+  ],
+  "s0154": [
+   262.1,
+   null
+  ],
+  "s0183": [
+   505.0,
+   null
+  ],
+  "s0191": [
+   575.1,
+   null
+  ],
+  "s0209": [
+   676.0,
+   null
+  ],
+  "s0253": [
+   393.5,
+   null
+  ],
+  "s0277": [
+   330.0,
+   null
+  ],
+  "s0281": [
+   335.8,
+   null
+  ],
+  "s0362": [
+   594.6,
+   null
+  ],
+  "s0389": [
+   56.0,
+   null
+  ],
+  "s0401": [
+   -223.3,
+   null
+  ],
+  "s0499": [
+   -78.1,
+   null
+  ],
+  "s0530": [
+   950.8,
+   null
+  ],
+  "s0591": [
+   -33.5,
+   null
+  ],
+  "s0611": [
+   49.9,
+   null
+  ],
+  "s0622": [
+   333.8,
+   null
+  ],
+  "s0659": [
+   662.9,
+   null
+  ],
+  "s0735": [
+   0.8,
+   null
+  ],
+  "s0792": [
+   359.1,
+   null
+  ],
+  "s0834": [
+   572.6,
+   null
+  ],
+  "s0845": [
+   390.8,
+   null
+  ],
+  "s0909": [
+   -64.9,
+   null
+  ],
+  "s1057": [
+   18.2,
+   null
+  ],
+  "s1176": [
+   769.1,
+   null
+  ],
+  "s1189": [
+   -26.8,
+   null
+  ],
+  "s1240": [
+   0.5,
+   null
+  ],
+  "s1303": [
+   613.5,
+   null
+  ],
+  "s1332": [
+   1016.9,
+   null
+  ],
+  "s1373": [
+   489.6,
+   null
+  ],
+  "s1443": [
+   173.9,
+   null
+  ],
+  "s1462": [
+   30.8,
+   null
+  ],
+  "s1512": [
+   -719.3,
+   null
+  ],
+  "s1582": [
+   110.0,
+   null
+  ],
+  "s1589": [
+   -589.5,
+   null
+  ],
+  "s1596": [
+   120.8,
+   null
+  ],
+  "s1611": [
+   656.2,
+   null
+  ],
+  "s1638": [
+   177.0,
+   null
+  ],
+  "s1667": [
+   219.7,
+   null
+  ],
+  "s1675": [
+   131.0,
+   null
+  ],
+  "s1699": [
+   326.5,
+   null
+  ],
+  "s1750": [
+   58.0,
+   null
+  ],
+  "s1780": [
+   172.0,
+   null
+  ],
+  "s1831": [
+   1862.5,
+   null
+  ],
+  "s1840": [
+   572.4,
+   null
+  ],
+  "s1846": [
+   1107.0,
+   null
+  ],
+  "s1876": [
+   1083.0,
+   null
+  ],
+  "s1877": [
+   569.5,
+   null
+  ],
+  "s1878": [
+   1117.5,
+   null
+  ],
+  "s1882": [
+   1526.1,
+   null
+  ],
+  "s1891": [
+   1622.5,
+   null
+  ],
+  "s1914": [
+   516.2,
+   null
+  ],
+  "s1921": [
+   508.7,
+   null
+  ],
+  "s1939": [
+   235.6,
+   null
+  ],
+  "s1948": [
+   535.8,
+   null
+  ],
+  "s1951": [
+   199.1,
+   null
+  ],
+  "s1953": [
+   303.9,
+   null
+  ],
+  "s2005": [
+   192.1,
+   null
+  ],
+  "s2027": [
+   -106.7,
+   null
+  ],
+  "s2037": [
+   272.9,
+   null
+  ],
+  "s2114": [
+   -91.0,
+   null
+  ]
+ }
+}

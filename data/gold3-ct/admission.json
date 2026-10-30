@@ -2,7 +2,7 @@
  "about": "The gold tier 3 CT dataset's admission by the field test, rule version 3 (tools/gold3_field.py): every study of the three members with its verdict, its two ends and the levels a segmenter must add. Written by `python3 tools/gold3_field.py write`; never edited by hand.",
  "rule": {
   "version": 3,
-  "rule": "A CT is admitted when its field holds the foot of C2 and the top of the sacrum, whatever its masks hold; a level its masks do not draw is completed by a segmenter, kept as a machine mask of its own. A drawn C2 is in view however the field's top cuts it, unless it cuts the level below C2 too, a sliver of C2, and the end is out; an undrawn C2 is in view when the field's top lies above where C2's foot lies in 95 of 100 spines. A drawn sacrum is in view however little of it the field holds; an undrawn one is in view when the field's foot lies below where the sacrum's top lies in 95 of 100 spines. The field is read over each level along the world's vertical line, and a padded grid's field ends where the spinal cord and the column stop together. A name missing between two drawn levels is a level to add when their centres stand more than room_times the study's spacing of neighbours apart, else a count variant, flagged.",
+  "rule": "A CT is admitted when its field holds the foot of C2 and the top of the sacrum, whatever its masks hold; a level its masks do not draw is completed by a segmenter, kept as a machine mask of its own. A drawn C2 is in view however the field's top cuts it, unless it cuts the level below C2 too, a sliver of C2, and the end is out; an undrawn C2 is in view when the field's top lies above where C2's foot lies in 95 of 100 spines. A drawn sacrum is in view however little of it the field holds; an undrawn one is in view when the field's foot lies below where the sacrum's top lies in 95 of 100 spines. The field is read over each level along the world's vertical line, and a padded grid's field ends where the CT's own constant slices begin once the census has read the CT (planes.json), else where the spinal cord and the column stop together. A name missing between two drawn levels is a level to add when their centres stand more than room_times the study's spacing of neighbours apart, else a count variant, flagged.",
   "asked": "the owner, 2026-10-28 22:58 UTC (#443's question): \"if the full spune is in view in the volume, and just missing a mask or two, that should just be completed using a segmentation software of choice ... i dont think i should leave out any spines that have ct volumes with the full spine in view\"; and for version 3, 2026-10-29 12:58 UTC: \"If the top of the sacrum is visible that is acceptable, which I believe is all of them but check\" and \"Same for the bottom c2\"",
   "thresholds": {
    "level_min_voxels": 200,
@@ -21,208 +21,209 @@
    "tall_label_times": 4
   }
  },
+ "planes": "census job 40870542 (gate word census gold3, grid/gold3-census.sbatch, tools/gold3_census.py part extent, commit 5989dca), ended 2026-10-29 22:27 UTC; its detail printed by the same word on 2026-10-30 at 00:08 UTC (symphony-template's branch grid, logs/job-schwingnet-census-gold3.json, request gold3-census-detail-0006) and copied here",
  "tables": {
   "head": {
    "C3": {
-    "n": 1975,
+    "n": 1984,
     "low": 20.0,
     "median": 30.0,
     "high": 37.5
    },
    "C3 to C2's foot": {
-    "n": 1975,
+    "n": 1984,
     "low": -15.0,
     "median": -9.0,
     "high": -5.0
    },
    "C4": {
-    "n": 1967,
-    "low": 33.0,
+    "n": 1976,
+    "low": 32.5,
     "median": 45.0,
     "high": 55.0
    },
    "C4 to C2's foot": {
-    "n": 1967,
-    "low": -1.9,
+    "n": 1976,
+    "low": -2.0,
     "median": 6.0,
     "high": 12.0
    },
    "C5": {
-    "n": 1962,
-    "low": 43.5,
+    "n": 1972,
+    "low": 43.4,
     "median": 60.0,
     "high": 70.7
    },
    "C5 to C2's foot": {
-    "n": 1962,
+    "n": 1972,
     "low": 9.0,
     "median": 20.0,
     "high": 27.5
    },
    "C6": {
-    "n": 1958,
-    "low": 52.5,
-    "median": 75.0,
+    "n": 1967,
+    "low": 52.4,
+    "median": 74.9,
     "high": 87.0
    },
    "C6 to C2's foot": {
-    "n": 1958,
+    "n": 1967,
     "low": 18.0,
     "median": 34.5,
     "high": 45.0
    },
    "C7": {
-    "n": 1957,
-    "low": 60.8,
-    "median": 86.8,
+    "n": 1966,
+    "low": 60.1,
+    "median": 86.0,
     "high": 102.0
    },
    "C7 to C2's foot": {
-    "n": 1957,
+    "n": 1966,
     "low": 27.0,
-    "median": 47.5,
+    "median": 47.2,
     "high": 60.0
    },
    "T1": {
-    "n": 1945,
+    "n": 1957,
     "low": 72.0,
     "median": 100.0,
-    "high": 117.4
+    "high": 117.1
    },
    "T1 to C2's foot": {
-    "n": 1945,
+    "n": 1957,
     "low": 37.5,
     "median": 60.0,
     "high": 75.0
    },
    "T2": {
-    "n": 1915,
+    "n": 1928,
     "low": 85.0,
     "median": 114.0,
     "high": 135.0
    },
    "T2 to C2's foot": {
-    "n": 1915,
-    "low": 49.9,
+    "n": 1928,
+    "low": 49.5,
     "median": 75.0,
     "high": 92.5
    },
    "T3": {
-    "n": 1872,
-    "low": 102.5,
+    "n": 1885,
+    "low": 102.0,
     "median": 135.0,
     "high": 157.5
    },
    "T3 to C2's foot": {
-    "n": 1872,
+    "n": 1885,
     "low": 65.0,
     "median": 95.0,
     "high": 114.0
    },
    "T4": {
-    "n": 1809,
+    "n": 1827,
     "low": 121.4,
     "median": 155.0,
     "high": 180.0
    },
    "T4 to C2's foot": {
-    "n": 1809,
+    "n": 1827,
     "low": 84.0,
     "median": 115.0,
     "high": 137.5
    },
    "T5": {
-    "n": 1750,
+    "n": 1766,
     "low": 140.0,
     "median": 175.0,
     "high": 202.5
    },
    "T5 to C2's foot": {
-    "n": 1750,
-    "low": 102.5,
-    "median": 136.2,
+    "n": 1766,
+    "low": 102.1,
+    "median": 136.0,
     "high": 160.0
    },
    "T6": {
-    "n": 1731,
-    "low": 161.7,
+    "n": 1740,
+    "low": 160.5,
     "median": 198.0,
     "high": 227.5
    },
    "T6 to C2's foot": {
-    "n": 1731,
+    "n": 1740,
     "low": 125.0,
     "median": 159.0,
     "high": 183.0
    },
    "T7": {
-    "n": 1729,
-    "low": 181.4,
+    "n": 1732,
+    "low": 180.0,
     "median": 220.5,
     "high": 252.0
    },
    "T7 to C2's foot": {
-    "n": 1729,
+    "n": 1732,
     "low": 145.0,
     "median": 182.5,
     "high": 208.5
    },
    "T8": {
-    "n": 1723,
+    "n": 1726,
     "low": 205.0,
     "median": 246.0,
     "high": 278.0
    },
    "T8 to C2's foot": {
-    "n": 1723,
+    "n": 1726,
     "low": 170.0,
     "median": 207.0,
     "high": 235.0
    },
    "T9": {
-    "n": 1722,
+    "n": 1725,
     "low": 230.0,
-    "median": 271.6,
+    "median": 271.5,
     "high": 306.0
    },
    "T9 to C2's foot": {
-    "n": 1722,
+    "n": 1725,
     "low": 195.0,
     "median": 232.5,
     "high": 262.5
    },
    "T10": {
-    "n": 1722,
+    "n": 1725,
     "low": 252.5,
     "median": 297.0,
     "high": 332.5
    },
    "T10 to C2's foot": {
-    "n": 1722,
-    "low": 216.0,
+    "n": 1725,
+    "low": 215.0,
     "median": 257.5,
-    "high": 289.9
+    "high": 289.8
    },
    "T11": {
-    "n": 1717,
-    "low": 276.8,
+    "n": 1720,
+    "low": 276.0,
     "median": 322.5,
     "high": 362.5
    },
    "T11 to C2's foot": {
-    "n": 1717,
+    "n": 1720,
     "low": 240.0,
-    "median": 283.7,
+    "median": 283.6,
     "high": 318.0
    },
    "T12": {
-    "n": 1711,
+    "n": 1713,
     "low": 300.0,
     "median": 352.0,
     "high": 393.0
    },
    "T12 to C2's foot": {
-    "n": 1711,
+    "n": 1713,
     "low": 265.0,
     "median": 312.5,
     "high": 350.0
@@ -234,61 +235,61 @@
     "n": 3
    },
    "L1": {
-    "n": 1710,
+    "n": 1712,
     "low": 330.0,
     "median": 382.5,
     "high": 426.0
    },
    "L1 to C2's foot": {
-    "n": 1710,
-    "low": 292.4,
+    "n": 1712,
+    "low": 292.2,
     "median": 342.5,
     "high": 383.2
    },
    "L2": {
-    "n": 1712,
+    "n": 1714,
     "low": 357.0,
     "median": 415.0,
     "high": 462.0
    },
    "L2 to C2's foot": {
-    "n": 1712,
-    "low": 320.6,
+    "n": 1714,
+    "low": 320.5,
     "median": 375.0,
     "high": 417.9
    },
    "L3": {
-    "n": 1710,
+    "n": 1712,
     "low": 385.0,
     "median": 447.5,
     "high": 497.5
    },
    "L3 to C2's foot": {
-    "n": 1710,
+    "n": 1712,
     "low": 350.0,
     "median": 408.0,
-    "high": 454.1
+    "high": 454.0
    },
    "L4": {
-    "n": 1706,
+    "n": 1708,
     "low": 415.0,
     "median": 480.0,
-    "high": 532.4
+    "high": 532.3
    },
    "L4 to C2's foot": {
-    "n": 1706,
+    "n": 1708,
     "low": 377.5,
     "median": 440.0,
     "high": 487.5
    },
    "L5": {
-    "n": 1660,
+    "n": 1662,
     "low": 437.5,
     "median": 507.5,
     "high": 562.5
    },
    "L5 to C2's foot": {
-    "n": 1660,
+    "n": 1662,
     "low": 400.0,
     "median": 467.5,
     "high": 520.0
@@ -308,55 +309,55 @@
   },
   "foot": {
    "C1": {
-    "n": 1678,
+    "n": 1679,
     "low": -570.0,
     "median": -515.0,
     "high": -441.0
    },
    "C2": {
-    "n": 1689,
+    "n": 1691,
     "low": -549.0,
     "median": -495.0,
     "high": -425.0
    },
    "C3": {
-    "n": 1713,
+    "n": 1717,
     "low": -531.0,
     "median": -480.0,
-    "high": -412.3
+    "high": -411.0
    },
    "C4": {
-    "n": 1713,
+    "n": 1718,
     "low": -513.0,
     "median": -462.5,
-    "high": -398.4
+    "high": -397.5
    },
    "C5": {
-    "n": 1727,
-    "low": -495.7,
+    "n": 1730,
+    "low": -495.6,
     "median": -447.5,
     "high": -384.0
    },
    "C6": {
-    "n": 1746,
+    "n": 1756,
     "low": -480.0,
     "median": -432.5,
     "high": -370.0
    },
    "C7": {
-    "n": 1766,
+    "n": 1788,
     "low": -462.0,
     "median": -417.0,
     "high": -357.5
    },
    "T1": {
-    "n": 1853,
+    "n": 1863,
     "low": -441.0,
     "median": -399.0,
-    "high": -342.9
+    "high": -342.8
    },
    "T2": {
-    "n": 1981,
+    "n": 1983,
     "low": -420.7,
     "median": -380.0,
     "high": -327.5
@@ -374,52 +375,52 @@
     "high": -291.3
    },
    "T5": {
-    "n": 2010,
+    "n": 2013,
     "low": -347.5,
     "median": -310.0,
     "high": -267.0
    },
    "T6": {
-    "n": 2011,
+    "n": 2014,
     "low": -317.5,
     "median": -282.5,
     "high": -240.0
    },
    "T7": {
-    "n": 2023,
+    "n": 2034,
     "low": -290.0,
     "median": -256.5,
     "high": -216.0
    },
    "T8": {
-    "n": 2076,
+    "n": 2094,
     "low": -264.0,
     "median": -232.5,
     "high": -192.0
    },
    "T9": {
-    "n": 2139,
+    "n": 2160,
     "low": -240.0,
     "median": -210.0,
-    "high": -171.0
+    "high": -170.0
    },
    "T10": {
-    "n": 2227,
+    "n": 2243,
     "low": -219.0,
     "median": -189.0,
     "high": -150.0
    },
    "T11": {
-    "n": 2308,
+    "n": 2319,
     "low": -192.5,
     "median": -165.0,
     "high": -127.5
    },
    "T12": {
-    "n": 2346,
+    "n": 2350,
     "low": -159.0,
-    "median": -133.1,
-    "high": -100.5
+    "median": -133.0,
+    "high": -100.2
    },
    "L1": {
     "n": 2370,
@@ -434,19 +435,19 @@
     "high": -43.5
    },
    "L3": {
-    "n": 2384,
+    "n": 2389,
     "low": -48.0,
     "median": -35.0,
     "high": -18.0
    },
    "L4": {
-    "n": 2387,
+    "n": 2396,
     "low": -17.5,
-    "median": -7.3,
-    "high": 8.8
+    "median": -7.1,
+    "high": 9.0
    },
    "L5": {
-    "n": 2361,
+    "n": 2365,
     "low": 9.0,
     "median": 24.0,
     "high": 37.5
@@ -458,8 +459,8 @@
     "high": 40.2
    },
    "last lumbar": {
-    "n": 2417,
-    "low": 12.1,
+    "n": 2421,
+    "low": 12.0,
     "median": 24.0,
     "high": 37.5
    }
@@ -468,7 +469,7 @@
  "checks": {
   "head_with_c1_c2_hidden": {
    "enhance_pet: in_view": 1543,
-   "totalsegmentator: in_view": 364,
+   "totalsegmentator: in_view": 373,
    "verse: in_view": 75
   },
   "foot_with_sacrum_hidden": {
@@ -478,25 +479,25 @@
   },
   "head_most_level_cut_at_the_top": {
    "enhance_pet: out": 36,
-   "totalsegmentator: out": 1193,
+   "totalsegmentator: out": 1026,
    "verse: out": 48
   }
  },
  "sensitivity_s1_view_mm": {
   "10": {
-   "admitted": 1735,
-   "look": 6,
-   "not_admitted": 2169
+   "admitted": 1739,
+   "look": 11,
+   "not_admitted": 2160
   },
   "20": {
-   "admitted": 1733,
-   "look": 7,
-   "not_admitted": 2170
+   "admitted": 1737,
+   "look": 12,
+   "not_admitted": 2161
   },
   "30": {
-   "admitted": 1732,
-   "look": 8,
-   "not_admitted": 2170
+   "admitted": 1736,
+   "look": 13,
+   "not_admitted": 2161
   }
  },
  "members": {
@@ -563,28 +564,33 @@
   "totalsegmentator": {
    "studies": 1939,
    "verdicts": {
-    "admitted": 154,
-    "not_admitted": 1785
+    "admitted": 159,
+    "look": 4,
+    "not_admitted": 1776
    },
-   "admitted_persons": 154,
-   "look_persons": 0,
-   "admitted_whole_by_masks": 147,
-   "admitted_to_complete": 7,
+   "admitted_persons": 159,
+   "look_persons": 4,
+   "admitted_whole_by_masks": 148,
+   "admitted_to_complete": 11,
    "head": {
-    "border": 61,
-    "drawn": 494,
+    "border": 65,
+    "drawn": 495,
+    "in_view": 6,
     "no_column": 162,
-    "out": 1222
+    "out": 1211
    },
    "foot": {
+    "border": 1,
     "drawn": 901,
-    "in_view": 8,
+    "in_view": 13,
     "no_column": 131,
-    "out": 899
+    "out": 893
    },
    "complete": {
-    "C4": 1,
-    "C5": 1,
+    "C2": 4,
+    "C3": 1,
+    "C4": 2,
+    "C5": 2,
     "T4": 1,
     "T5": 1,
     "T6": 2,
@@ -595,20 +601,21 @@
     "T11": 2,
     "T12": 2,
     "L1": 1,
-    "L4": 3,
-    "L5": 3,
-    "sacrum": 2
+    "L3": 1,
+    "L4": 4,
+    "L5": 4,
+    "sacrum": 3
    },
    "flags_admitted": {
-    "c2_at_field_top": 6,
-    "child": 23,
-    "cut_in_plane": 4,
+    "c2_at_field_top": 5,
+    "child": 25,
+    "cut_in_plane": 5,
     "label_spans_levels": 12,
     "level_past_sacrum_top": 2,
     "no_l5": 2,
-    "sacrum_at_field_foot": 17,
+    "sacrum_at_field_foot": 18,
     "small_column": 17,
-    "stray_labels": 10
+    "stray_labels": 11
    }
   }
  },
@@ -20842,7 +20849,6 @@
    "foot": "out",
    "complete": [],
    "flags": [
-    "c2_at_field_top",
     "cut_in_plane"
    ]
   },
@@ -21011,7 +21017,6 @@
    "foot": "out",
    "complete": [],
    "flags": [
-    "c2_at_field_top",
     "stray_labels"
    ]
   },
@@ -21549,10 +21554,19 @@
    "member": "totalsegmentator",
    "id": "s0102",
    "person": "totalsegmentator:s0102",
-   "verdict": "not_admitted",
-   "head": "out",
-   "foot": "out",
-   "complete": [],
+   "verdict": "admitted",
+   "head": "in_view",
+   "foot": "in_view",
+   "complete": [
+    "C2",
+    "C3",
+    "C4",
+    "C5",
+    "L3",
+    "L4",
+    "L5",
+    "sacrum"
+   ],
    "flags": [
     "cut_in_plane",
     "stray_labels"
@@ -22511,7 +22525,7 @@
    "person": "totalsegmentator:s0213",
    "verdict": "not_admitted",
    "head": "out",
-   "foot": "out",
+   "foot": "in_view",
    "complete": [],
    "flags": []
   },
@@ -23320,9 +23334,7 @@
    "head": "drawn",
    "foot": "out",
    "complete": [],
-   "flags": [
-    "c2_at_field_top"
-   ]
+   "flags": []
   },
   {
    "member": "totalsegmentator",
@@ -24737,10 +24749,22 @@
    "member": "totalsegmentator",
    "id": "s0437",
    "person": "totalsegmentator:s0437",
-   "verdict": "not_admitted",
-   "head": "out",
-   "foot": "out",
-   "complete": [],
+   "verdict": "look",
+   "head": "in_view",
+   "foot": "border",
+   "complete": [
+    "C2",
+    "C3",
+    "C4",
+    "C5",
+    "C6",
+    "C7",
+    "L2",
+    "L3",
+    "L4",
+    "L5",
+    "sacrum"
+   ],
    "flags": [
     "stray_labels"
    ]
@@ -26149,7 +26173,7 @@
    "id": "s0580",
    "person": "totalsegmentator:s0580",
    "verdict": "not_admitted",
-   "head": "out",
+   "head": "in_view",
    "foot": "out",
    "complete": [],
    "flags": [
@@ -26206,9 +26230,7 @@
    "head": "drawn",
    "foot": "drawn",
    "complete": [],
-   "flags": [
-    "c2_at_field_top"
-   ]
+   "flags": []
   },
   {
    "member": "totalsegmentator",
@@ -26572,10 +26594,14 @@
    "member": "totalsegmentator",
    "id": "s0621",
    "person": "totalsegmentator:s0621",
-   "verdict": "not_admitted",
-   "head": "out",
+   "verdict": "look",
+   "head": "border",
    "foot": "drawn",
-   "complete": [],
+   "complete": [
+    "C2",
+    "C3",
+    "C4"
+   ],
    "flags": []
   },
   {
@@ -26878,9 +26904,10 @@
    "person": "totalsegmentator:s0651",
    "verdict": "not_admitted",
    "head": "out",
-   "foot": "out",
+   "foot": "in_view",
    "complete": [],
    "flags": [
+    "no_l5",
     "stray_labels"
    ]
   },
@@ -28497,9 +28524,7 @@
    "head": "drawn",
    "foot": "out",
    "complete": [],
-   "flags": [
-    "c2_at_field_top"
-   ]
+   "flags": []
   },
   {
    "member": "totalsegmentator",
@@ -29427,9 +29452,7 @@
    "head": "drawn",
    "foot": "out",
    "complete": [],
-   "flags": [
-    "c2_at_field_top"
-   ]
+   "flags": []
   },
   {
    "member": "totalsegmentator",
@@ -29621,10 +29644,12 @@
    "member": "totalsegmentator",
    "id": "s0931",
    "person": "totalsegmentator:s0931",
-   "verdict": "not_admitted",
-   "head": "out",
+   "verdict": "admitted",
+   "head": "in_view",
    "foot": "drawn",
-   "complete": [],
+   "complete": [
+    "C2"
+   ],
    "flags": []
   },
   {
@@ -33274,13 +33299,11 @@
    "member": "totalsegmentator",
    "id": "s1310",
    "person": "totalsegmentator:s1310",
-   "verdict": "not_admitted",
-   "head": "out",
+   "verdict": "admitted",
+   "head": "drawn",
    "foot": "drawn",
    "complete": [],
-   "flags": [
-    "c2_at_field_top"
-   ]
+   "flags": []
   },
   {
    "member": "totalsegmentator",
@@ -33454,11 +33477,20 @@
    "member": "totalsegmentator",
    "id": "s1329",
    "person": "totalsegmentator:s1329",
-   "verdict": "not_admitted",
-   "head": "out",
-   "foot": "out",
-   "complete": [],
-   "flags": []
+   "verdict": "look",
+   "head": "border",
+   "foot": "in_view",
+   "complete": [
+    "C2",
+    "C3",
+    "C4",
+    "C5",
+    "C6",
+    "sacrum"
+   ],
+   "flags": [
+    "no_l5"
+   ]
   },
   {
    "member": "totalsegmentator",
@@ -33626,10 +33658,13 @@
    "member": "totalsegmentator",
    "id": "s1344",
    "person": "totalsegmentator:s1344",
-   "verdict": "not_admitted",
-   "head": "out",
+   "verdict": "look",
+   "head": "border",
    "foot": "drawn",
-   "complete": [],
+   "complete": [
+    "C2",
+    "C3"
+   ],
    "flags": [
     "stray_labels"
    ]
@@ -37029,7 +37064,6 @@
    "foot": "out",
    "complete": [],
    "flags": [
-    "c2_at_field_top",
     "stray_labels",
     "child"
    ]
@@ -38241,7 +38275,7 @@
    "id": "s1750",
    "person": "totalsegmentator:s1750",
    "verdict": "not_admitted",
-   "head": "out",
+   "head": "border",
    "foot": "out",
    "complete": [],
    "flags": [
@@ -38370,10 +38404,12 @@
    "member": "totalsegmentator",
    "id": "s1762",
    "person": "totalsegmentator:s1762",
-   "verdict": "not_admitted",
-   "head": "out",
+   "verdict": "admitted",
+   "head": "in_view",
    "foot": "drawn",
-   "complete": [],
+   "complete": [
+    "C2"
+   ],
    "flags": [
     "child"
    ]
@@ -38549,10 +38585,12 @@
    "member": "totalsegmentator",
    "id": "s1778",
    "person": "totalsegmentator:s1778",
-   "verdict": "not_admitted",
-   "head": "out",
+   "verdict": "admitted",
+   "head": "in_view",
    "foot": "drawn",
-   "complete": [],
+   "complete": [
+    "C2"
+   ],
    "flags": [
     "sacrum_at_field_foot",
     "child"
@@ -38701,7 +38739,6 @@
    "foot": "out",
    "complete": [],
    "flags": [
-    "c2_at_field_top",
     "stray_labels",
     "child"
    ]
@@ -39730,7 +39767,7 @@
    "person": "totalsegmentator:s1882",
    "verdict": "not_admitted",
    "head": "out",
-   "foot": "out",
+   "foot": "in_view",
    "complete": [],
    "flags": [
     "stray_labels"
