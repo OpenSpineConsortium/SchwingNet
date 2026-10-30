@@ -496,7 +496,7 @@ def unit_problems(
 
 @beartype
 @require(lambda batch: batch >= 1, "at least one spine a step")
-@require(lambda train_rows: train_rows >= 1, "at least one row to train on")
+@require(lambda train_rows: train_rows >= 0, "a count of rows")
 @ensure(
     lambda result, train_rows, batch: (result - 1) * batch < train_rows <= result * batch,
     "ceil(rows / batch)",
@@ -504,7 +504,10 @@ def unit_problems(
 def steps_per_epoch(train_rows: int, batch: int) -> int:
     """The steps an epoch takes: the training columns over the batch, rounded up, the definition
     the screen and the latent shape priors' plan agreed; the session draws whole spines batch at a
-    time, so an epoch shows every column once in expectation."""
+    time, so an epoch shows every column once in expectation. No rows take no steps, which
+    plan_problems never lets a plan reach. The contracts below do not ask a plan for a training
+    row, since CrossHair does not always build a plan holding one within its bound: the gate found
+    total_steps' and trials' preconditions unmet under load on 2026-10-30."""
     return -(-train_rows // batch)
 
 
@@ -521,7 +524,6 @@ def train_count(plan: Plan) -> int:
 
 @beartype
 @require(lambda plan: plan.batch >= 1 and plan.epochs >= 1, "a batch and epochs")
-@require(lambda plan: train_count(plan) >= 1, "a row to train on")
 @ensure(
     lambda result, plan: result == plan.epochs * steps_per_epoch(train_count(plan), plan.batch),
     "epochs times an epoch's steps",
@@ -540,7 +542,7 @@ def trial_id(arm: str, seed: int) -> str:
 
 @beartype
 @require(lambda plan: plan.batch >= 1 and plan.epochs >= 1, "a batch and epochs")
-@require(lambda plan: train_count(plan) >= 1, "a row to train on")
+@require(lambda plan: len(set(plan.seeds)) == len(plan.seeds), "each seed once (plan_problems)")
 @ensure(
     lambda result, plan: len(result) == len(plan.arms) * len(plan.seeds), "every arm at every seed"
 )
@@ -588,7 +590,7 @@ def _is_measure(key: str, value: object) -> bool:
 
 
 def _point_problems(trial: str, record: object, epoch: int, per_epoch: int) -> list[str]:
-    if not isinstance(record, dict) or set(record) != set(EPOCH_KEYS):
+    if type(record) is not dict or set(record) != set(EPOCH_KEYS):
         keys = ", ".join(EPOCH_KEYS)
         return [f"{trial}: the reading after epoch {epoch} holds {keys}, and nothing else"]
     if record["epoch"] != epoch or record["steps"] != epoch * per_epoch:
@@ -601,7 +603,7 @@ def _point_problems(trial: str, record: object, epoch: int, per_epoch: int) -> l
 
 def _epochs_problems(trial: str, points: object, plan: Plan) -> list[str]:
     expected = evaluation_epochs(plan)
-    if not isinstance(points, list) or len(points) != len(expected):
+    if type(points) is not list or len(points) != len(expected):
         return [f"{trial}: epochs holds a reading after each of epochs {_spelled(expected)}"]
     per_epoch = steps_per_epoch(train_count(plan), plan.batch)
     for record, epoch in zip(points, expected, strict=True):
@@ -619,7 +621,7 @@ def _spelled(epochs: Sequence[int]) -> str:
 
 
 def _final_problems(trial: str, final: object, points: Sequence[object]) -> list[str]:
-    if not isinstance(final, dict) or set(final) != set(FINAL_KEYS):
+    if type(final) is not dict or set(final) != set(FINAL_KEYS):
         return [f"{trial}: final holds {', '.join(FINAL_KEYS)}, and nothing else"]
     last = cast(Mapping[str, object], points[-1])
     if any(final[key] != last[key] for key in FINAL_KEYS):
@@ -654,14 +656,15 @@ def evaluation_epochs(plan: Plan) -> list[int]:
 @beartype
 @require(lambda plan: plan.batch >= 1 and plan.epochs >= 1, "a batch and epochs")
 @require(lambda plan: 1 <= plan.evaluate_every <= plan.epochs, "readings within the epochs")
-@require(lambda plan: train_count(plan) >= 1, "a row to train on")
 @ensure(lambda result: all(isinstance(line, str) and line for line in result), "lines in words")
 def entry_problems(entry: object, trial: TrialSpec, plan: Plan) -> list[str]:
     """What keeps a trial's entry from being read by the join: its keys, its names and words
     against the trial it should be, its steps and rows against the plan's, a reading after each
     epoch evaluation_epochs names, every measure a finite number or a null, and the final measures
-    the last reading's."""
-    if not isinstance(entry, dict) or set(entry) != set(ENTRY_KEYS):
+    the last reading's. An entry is read from JSON, which gives plain dicts and lists, so the reader
+    takes those types exactly: a subclass may answer a lookup its own way, as the contracts gate's
+    dict subclass did on 2026-10-30, raising where a plain dict reads."""
+    if type(entry) is not dict or set(entry) != set(ENTRY_KEYS):
         return [f"{trial.id}: an entry holds {', '.join(ENTRY_KEYS)}, and nothing else"]
     if entry["version"] != ENTRY_VERSION or entry["screen"] != plan.screen:
         return [f"{trial.id}: an entry of version {ENTRY_VERSION} for the screen {plan.screen}"]
@@ -676,10 +679,10 @@ def entry_problems(entry: object, trial: TrialSpec, plan: Plan) -> list[str]:
 
 def _final_of(entry: object, measure: str) -> float | None:
     """The entry's final value of the measure, or None where the trial wrote none."""
-    if not isinstance(entry, dict):
+    if type(entry) is not dict:
         return None
     final = entry.get("final")
-    if not isinstance(final, dict):
+    if type(final) is not dict:
         return None
     value = final.get(measure)
     return float(cast(float, value)) if _is_finite(value) else None
@@ -697,8 +700,8 @@ def _verdict(
 
 @beartype
 @require(lambda plan: plan.batch >= 1 and plan.epochs >= 1, "a batch and epochs")
-@require(lambda plan: train_count(plan) >= 1, "a row to train on")
 @require(lambda plan: plan.null in plan.arms and len(plan.seeds) >= 1, "the null an arm; a seed")
+@require(lambda plan: len(set(plan.seeds)) == len(plan.seeds), "each seed once (plan_problems)")
 @ensure(
     lambda result, plan: set(result["arms"]) == set(plan.arms) - {plan.null},
     "every arm but the null",

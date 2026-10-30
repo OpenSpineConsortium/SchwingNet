@@ -3,7 +3,9 @@ keep to the frozen split and never hold a test person, an epoch is the training 
 batch rounded up, the trials are every arm at every seed in one order, an entry is checked whole,
 and an arm beats the null only when every one of its seeds ends below every one of the null's."""
 
+import collections
 import copy
+import dataclasses
 import hashlib
 import json
 import math
@@ -256,7 +258,7 @@ def test_the_unit_lists_hold_disjoint_units_each_keyed_by_one_of_its_studies() -
 
 
 def test_an_epoch_is_the_training_columns_over_the_batch_rounded_up() -> None:
-    assert [steps_per_epoch(n, 2) for n in (1, 2, 3, 96)] == [1, 1, 2, 48]
+    assert [steps_per_epoch(n, 2) for n in (0, 1, 2, 3, 96)] == [0, 1, 1, 2, 48]
     plan = plan_of(good_plan())
     assert total_steps(plan) == 3 * 3
 
@@ -362,6 +364,19 @@ def test_an_entry_that_holds_is_read_and_one_of_another_screen_is_not() -> None:
     assert "for the screen another" in entry_problems(good_entry(trial), trial, other)[0]
 
 
+def test_an_entry_is_taken_only_in_the_plain_types_json_gives() -> None:
+    plan = plan_of(good_plan())
+    trial = trials(plan)[0]
+    ordered = collections.OrderedDict(good_entry(trial))
+    assert "an entry holds" in entry_problems(ordered, trial, plan)[0]
+    entry = good_entry(trial)
+    entry["epochs"] = tuple(entry["epochs"])
+    assert "a reading after each of epochs" in entry_problems(entry, trial, plan)[0]
+    entry = good_entry(trial)
+    entry["final"] = collections.OrderedDict(entry["final"])
+    assert "final holds" in entry_problems(entry, trial, plan)[0]
+
+
 def test_a_trial_reads_every_few_epochs_and_always_after_the_last() -> None:
     assert evaluation_epochs(plan_of(good_plan())) == [2, 3]
     assert evaluation_epochs(plan_of(changed(("evaluate_every",), 1))) == [1, 2, 3]
@@ -422,7 +437,15 @@ def test_the_contracts_refuse_a_plan_that_does_not_hold_and_a_value_of_the_wrong
     with pytest.raises(BeartypeCallHintParamViolation):
         steps_per_epoch(text, 2)
     with pytest.raises(ViolationError):
-        steps_per_epoch(0, 2)
+        steps_per_epoch(-1, 2)
+    with pytest.raises(ViolationError):
+        steps_per_epoch(3, 0)
+    # a seed twice would name its trials twice; plan_problems refuses such a plan before it is one
+    twice = dataclasses.replace(plan_of(good_plan()), seeds=(1, 1))
+    with pytest.raises(ViolationError):
+        trials(twice)
+    with pytest.raises(ViolationError):
+        decide(twice, {})
 
 
 def test_the_plan_keys_and_the_names_are_the_ones_the_module_lists() -> None:
