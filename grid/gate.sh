@@ -176,7 +176,11 @@
 #                   logs/MORPHOMETRY-covariates.md, aggregates alone, a page a send (COVARIATES_PAGE_LINES),
 #                   and every later one the next page and queueing nothing; a second job only where
 #                   COVARIATES_RERUNS, committed by pull request, carries the owner's word for it, one word
-#                   for each job, a lost answer's among them
+#                   for each job, a lost answer's among them; or prior, the gold tier 3 correlation prior
+#                   (grid/prior/gold3_prior.py, grid/morphometry-prior.sbatch; greg, 2026-10-30), one CPU job
+#                   from git's copy of grid/prior at the gate's commit that fits per population how the body
+#                   and end-plate measures move together across levels and measures, the next send printing
+#                   logs/MORPHOMETRY-prior.md, aggregates alone, and a report from older code fitted again
 #   realism <stage> one stage of the FluXray reproduction (docs/research/flux-realism/PREREG.md; the owner's
 #                   count of 2026-10-29 02:35 UTC, two GPU jobs): edit, then stats, each one GPU job that runs
 #                   the Metaflow flow flows/realism.py through flows/launch.py (grid/realism.sbatch) once its
@@ -2079,11 +2083,12 @@ word_morphometry() {  # bordercall's morphometry engine over one gold tier 3 set
   case "$id" in
     enhance|verse) ;;
     covariates) word_morphometry_covariates; return ;;
-    *) echo "refusing: morphometry takes enhance or verse, or covariates once both have run"; return 64 ;;
+    prior) word_morphometry_prior; return ;;
+    *) echo "refusing: morphometry takes enhance or verse, covariates once both have run, or prior"; return 64 ;;
   esac
   # One at a time: both sets hold the checkout and write under one root, and the count is one job a set;
   # the join reads both sets' rows, so neither set is measured again while it runs.
-  busy=$( { live_of morphometry_enhance; live_of morphometry_verse; live_of morphometry_covariates; } | tr '\n' ' ')
+  busy=$( { live_of morphometry_enhance; live_of morphometry_verse; live_of morphometry_covariates; live_of morphometry_prior; } | tr '\n' ' ')
   [ -z "${busy// /}" ] || { echo "refusing: a morphometry job is still queued or running (job $busy); send morphometry $id again once it ends"; return 75; }
   if [ -f "$report" ]; then
     # Kept, so the owner's count of one job a set holds: a report that stands queues nothing.
@@ -2108,6 +2113,45 @@ word_morphometry() {  # bordercall's morphometry engine over one gold tier 3 set
   echo "submitted the morphometry job for $id. Send morphometry $id again once it ends to read its report, logs/MORPHOMETRY-$id.md."
 }
 
+word_morphometry_prior() {  # the gold tier 3 correlation prior fitted from both sets' rows (greg, 2026-10-30): one CPU job, its report printed on the next send
+  # greg's word of 2026-10-30 23:03 UTC lifted the counts for grid work, so a report from older code is
+  # fitted again at this commit, whatever its exit; a report from this commit is printed and queues nothing.
+  local report=$LOGS/MORPHOMETRY-prior.md sent=$LOGS/MORPHOMETRY-prior.sent busy head path
+  busy=$( { live_of morphometry_enhance; live_of morphometry_verse; live_of morphometry_prior; } | tr '\n' ' ')
+  [ -z "${busy// /}" ] || { echo "refusing: a morphometry job is still queued or running (job $busy); send morphometry prior again once it ends"; return 75; }
+  if [ -f "$report" ]; then
+    echo "## $(basename "$report") ($(date -r "$report" '+%F %T'))"
+    head -n 400 "$report" | LC_ALL=C tr -cd '\11\12\40-\176' | report_shapes | masked | head -c 64000
+    began_on_older_code "$report" || return 0
+    mv "$report" "$LOGS/MORPHOMETRY-prior-$(bench_job_of "$report").md" || return 1
+    echo "  the report above is from older code: fitting again at $commit"
+  fi
+  # A marker older than the job's wall time names a submission whose answer was lost and whose job has
+  # ended, so it no longer stands in the way; a younger one may be a job still queued.
+  if [ -f "$sent" ]; then
+    if [ -n "$(find "$sent" -mmin -180 2>/dev/null)" ]; then
+      echo "refusing: a morphometry prior job was submitted at $(cat "$sent") and no job id came back; it may still be queued under Slurm's name schwingnet-morphometry_prior. Send morphometry prior again in three hours, or once squeue shows it ended"
+      return 75
+    fi
+    rm -f "$sent"
+  fi
+  [ -f "$REPO/grid/prior/gold3_prior.py" ] && [ -f "$REPO/grid/morphometry-prior.sbatch" ] || { echo "refusing: no prior tool or job script at this commit"; return 2; }
+  [ -f "$(covariates_morphometry_root)/enhance/rows.csv" ] || { echo "refusing: morphometry prior needs the enhance set's rows (send morphometry enhance first)"; return 2; }
+  head=$(covariates_commit) || { echo "refusing: the gate cannot read the checkout's commit, which the job copies its code from; nothing was queued"; return 2; }
+  for path in grid/prior/gold3_prior.py grid/prior/schwingcheck/correlation.py grid/prior/schwingcheck/__init__.py \
+      data/gold3-ct/admission.json data/gold3-ct/verse/series.json data/splits/latent-prior-test-reserve.json \
+      data/splits/latent-prior-repeat-groups.json; do
+    git -C "$REPO" cat-file -e "$head:$path" 2>/dev/null || { echo "refusing: commit ${head:0:7} holds no $path, which the job copies; nothing was queued"; return 2; }
+  done
+  hpcw_check morphometry_prior batch -- morphometry-prior.sbatch || return 1
+  echo "$(date -u '+%F %T') UTC at commit $commit" > "$sent" 2>/dev/null || {
+    echo "refusing: the gate cannot write logs/$(basename "$sent"), the marker that keeps a lost answer from queueing a second job; nothing was queued"
+    return 1
+  }
+  submit morphometry_prior batch PRIOR_COMMIT="$head" MORPHOMETRY_ROOT="$(covariates_morphometry_root)" -- morphometry-prior.sbatch > /dev/null || return 1
+  rm -f "$sent"
+  echo "submitted the morphometry prior job: one CPU job that reads the rows and writes the priors under the morphometry root. Send morphometry prior again once it ends to read its report, logs/MORPHOMETRY-prior.md."
+}
 word_morphometry_covariates() {  # the morphometry rows joined with each person's sex and age (one CPU job on the owner's count): queued once, its report printed a page a send
   local report=$LOGS/MORPHOMETRY-covariates.md sent=$LOGS/MORPHOMETRY-covariates.sent busy job missing again="" lost="" head part_job path queued
   busy=$( { live_of morphometry_enhance; live_of morphometry_verse; live_of morphometry_covariates; } | tr '\n' ' ')

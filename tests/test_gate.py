@@ -45,7 +45,7 @@ NEW_SCRIPTS = ("gate.sh", "hpcw.sh", "box.sh", "bin/pixi", "bin/train-cpu-python
                "00-carmlspine.sbatch", "v1-driver.sbatch", "experiment-driver.sbatch", "run-xray-chain.sh",
                "run-platform-fetch.sh", "sweep-driver.sbatch", "v1-version.sh", "realism.sbatch", "venv.sh",
                "drr-gap.sbatch", "drr-seg.sbatch", "morphometry.sbatch", "gold3-census.sbatch", "bordercall-complete.sbatch",
-               "autoanatomist.sbatch", "morphometry-covariates.sbatch")
+               "autoanatomist.sbatch", "morphometry-covariates.sbatch", "morphometry-prior.sbatch")
 ENVS = ("default", "train-cpu", "train-gpu", "telemetry")
 # What bench flexray_drr_gap's word says of a mask folder that is there: the study reads too few CTs'
 # masks as none, which its summary says, so the word says only where the folder is.
@@ -2888,6 +2888,76 @@ esac
         self.assertIn("TotalSegmentator: 3 masks linked; 3 studies chosen", report)
         self.assertIn("VerSe: 2 masks linked; 2 studies chosen", report)
         self.assertTrue(all(line.strip() == "1 1" for line in threads.read_text(encoding="utf-8").splitlines()), threads.read_text())
+
+    def prior_commit(self):
+        """The checkout as a git repository whose commit holds grid/prior and the records the prior job
+        copies, with gold tier rows from a known structure under the morphometry root; the commit's id."""
+        sys.path.insert(0, str(ROOT / "tests"))
+        import test_gold3_prior as TP
+        morph, records = TP.make_inputs(self.tmp / "made", n=150)
+        root = self.tmp / "go2432" / "morphometry"
+        shutil.copytree(morph, root, dirs_exist_ok=True)
+        shutil.copytree(records / "gold3-ct", self.repo / "data" / "gold3-ct", dirs_exist_ok=True)
+        quiet = {"GIT_CONFIG_COUNT": "2", "GIT_CONFIG_KEY_0": "gc.auto", "GIT_CONFIG_VALUE_0": "0",
+                 "GIT_CONFIG_KEY_1": "maintenance.auto", "GIT_CONFIG_VALUE_1": "false"}
+        git = ["git", "-C", str(self.repo), "-c", "user.name=t", "-c", "user.email=t@example.org"]
+        env = dict(os.environ, **quiet, GIT_CEILING_DIRECTORIES=str(self.tmp))
+        if not (self.repo / ".git").exists():
+            subprocess.run(["git", "init", "-q", str(self.repo)], env=env, check=True)
+            for key, value in (("gc.auto", "0"), ("gc.autoDetach", "false"), ("maintenance.auto", "false"),
+                               ("maintenance.autoDetach", "false"), ("receive.autogc", "false")):
+                subprocess.run([*git, "config", key, value], env=env, check=True)
+        subprocess.run([*git, "add", "-A", "--", "grid/prior", "data/gold3-ct", "data/splits"], env=env, check=True)
+        subprocess.run([*git, "commit", "-q", "--allow-empty", "-m", "the prior"], env=env, check=True)
+        return subprocess.run([*git, "rev-parse", "HEAD"], env=env, capture_output=True, text=True, check=True).stdout.strip()
+
+    def test_morphometry_prior_queues_one_cpu_job_from_git_and_prints_its_report(self):
+        refused = self.gate("morphometry", "prior")
+        self.assertEqual(refused.returncode, 2, refused.stdout)
+        self.assertIn("needs the enhance set's rows", refused.stdout)
+        head = self.prior_commit()
+        done = self.gate("morphometry", "prior")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("submitted the morphometry prior job", done.stdout)
+        lines = self.submitted()
+        self.assertEqual(len(lines), 1, lines)
+        self.assertIn("--class batch --name morphometry_prior ", lines[0])
+        self.assertIn(f" MORPHOMETRY_ROOT={self.tmp}/go2432/morphometry ", lines[0])
+        self.assertIn(f" PRIOR_COMMIT={head}", lines[0])
+        self.assertNotIn("--dependency", lines[0])
+        self.assertFalse((self.repo / "grid" / "logs" / "MORPHOMETRY-prior.sent").exists())
+        job = self.recorded()["morphometry_prior"]
+        self.live(job)
+        for which in ("prior", "enhance"):
+            busy = self.gate("morphometry", which)
+            self.assertEqual(busy.returncode, 75, busy.stdout)
+            self.assertIn(f"job {job}", busy.stdout)
+        (self.fake / "queue").write_text("", encoding="utf-8")
+        # the job itself, on a python with numpy, from git's copy at the commit
+        env = dict(os.environ, SCHWINGNET=str(self.repo), LAB_VOLUME=str(self.tmp), PRIOR_COMMIT=head,
+                   PRIOR_PYTHON=sys.executable, MORPHOMETRY_ROOT=str(self.tmp / "go2432" / "morphometry"), SLURM_JOB_ID="77")
+        ran = subprocess.run(["bash", str(self.repo / "grid" / "morphometry-prior.sbatch")], cwd=self.repo / "grid", env=env,
+                             capture_output=True, text=True, timeout=300)
+        report = (self.repo / "grid" / "logs" / "MORPHOMETRY-prior.md").read_text(encoding="utf-8")
+        self.assertIn("SN_PRIOR_RC=1", ran.stdout, report)        # verse's own rows are not in the made inputs
+        self.assertIn("- FAILED: no rows for verse", report)
+        self.assertIn("- enhance_pet C3..L5: held out", report)
+        self.assertTrue((self.tmp / "go2432" / "morphometry" / "prior" / "77" / "prior-enhance_pet-C3-L5.json").is_file())
+        # the next send prints it and queues nothing, the report being from this commit
+        (self.repo / "grid" / "logs" / "MORPHOMETRY-prior.md").write_text(
+            report.replace("commit " + head[:7], "commit " + head[:7], 1), encoding="utf-8")
+        shown = self.gate("morphometry", "prior")
+        self.assertEqual(shown.returncode, 0, shown.stdout + shown.stderr)
+        self.assertIn("enhance_pet C3..L5: fitted on", shown.stdout)
+        self.assertNotIn(str(self.tmp), shown.stdout)
+        self.assertEqual(len(self.submitted()), 1)
+        # a report from older code is set aside and fitted again
+        old = report.replace("commit " + head[:7], "commit 0000000", 1).replace("job none", "job 77", 1)
+        (self.repo / "grid" / "logs" / "MORPHOMETRY-prior.md").write_text(old, encoding="utf-8")
+        again = self.gate("morphometry", "prior")
+        self.assertEqual(again.returncode, 0, again.stdout + again.stderr)
+        self.assertIn("from older code: fitting again", again.stdout)
+        self.assertEqual(len(self.submitted()), 2)
 
     def covariates_inputs(self, ended=(0, 0)):
         """What the join reads, as the lab volume and the data root would hold it once both sets have run:
