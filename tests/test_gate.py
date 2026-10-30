@@ -3093,6 +3093,7 @@ exec python3 "$@"
         subprocess.run([*git, "commit", "-q", "--allow-empty", "-m", "the prior"], env=env, check=True)
         return subprocess.run([*git, "rev-parse", "HEAD"], env=env, capture_output=True, text=True, check=True).stdout.strip()
 
+    @unittest.skipUnless(importlib.util.find_spec("numpy"), "the prior job needs numpy, as on the grid")
     def test_morphometry_prior_queues_one_cpu_job_from_git_and_prints_its_report(self):
         refused = self.gate("morphometry", "prior")
         self.assertEqual(refused.returncode, 2, refused.stdout)
