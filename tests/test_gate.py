@@ -2726,6 +2726,72 @@ esac
         self.assertFalse((self.repo / "grid" / "logs").exists())
         self.assertFalse(list((self.tmp).glob("**/MORPHOMETRY-*")))
 
+    def test_the_morphometry_job_stacks_the_totalsegmentator_subjects_in_parallel_and_counts_each_verdict_once(self):
+        """The verse set's TotalSegmentator stacking runs CPUS subjects at a time through a verdict file a
+        subject (the serial loop held the verse job for hours on 2026-10-30): a subject stacked, one that
+        fails, one with no segmentations and one stacked by an earlier job are each counted once, and
+        the measuring and the screening each take the thread caps. The interpreter is a stand-in that
+        answers the engine's calls and hands any other script to python3."""
+        fake_py = self.tmp / "fakepy"
+        fake_py.write_text(
+            "#!/bin/bash\n"
+            "# the engine's calls answered; a heredoc script (python - ...) runs on the real interpreter\n"
+            "echo \"$OMP_NUM_THREADS $OPENBLAS_NUM_THREADS\" >> \"$FAKE_THREADS\"\n"
+            "case \"$1 $2 $3\" in\n"
+            "  '-c import numpy, scipy, nibabel'*|'-c import icontract, beartype'*) exit 0 ;;\n"
+            "  '-m morphometry run') while [ $# -gt 0 ]; do [ \"$1\" = --out ] && out=$2; [ \"$1\" = --masks ] && masks=$2; shift; done;\n"
+            "      mkdir -p \"$out\"; n=$(ls \"$masks\" | wc -l); printf 'study,level,key,value,note\\n' > \"$out/rows.csv\";\n"
+            "      echo \"$n studies chosen, $n to measure, code fake\"; exit 0 ;;\n"
+            "  '-m screening int16') while [ $# -gt 0 ]; do [ \"$1\" = --labels ] && labels=$2; [ \"$1\" = --out ] && out=$2; [ \"$1\" = --manifest ] && man=$2; shift; done;\n"
+            "      case \"$labels\" in *s0003) echo 'int16: a label is missing'; exit 1 ;; esac;\n"
+            "      sleep 0.3; echo \"$(date +%s.%N)\" > \"$out\"; echo '{}' > \"$man\"; exit 0 ;;\n"
+            "  '-m screening facts') while [ $# -gt 0 ]; do [ \"$1\" = --out ] && out=$2; shift; done; : > \"$out\"; exit 0 ;;\n"
+            "  '-m screening whole') while [ $# -gt 0 ]; do [ \"$1\" = --out ] && out=$2; shift; done; printf 'study,verdict\\n' > \"$out\"; exit 0 ;;\n"
+            "  '-c from morphometry.__main__'*) echo fakestamp; exit 0 ;;\n"
+            "esac\n"
+            "exec python3 \"$@\"\n", encoding="utf-8")
+        fake_py.chmod(0o755)
+        self.morphometry_inputs("engine")
+        masks = self.data / "verse_masks_2026_10_29" / "raw"
+        masks.mkdir(parents=True)
+        for name in ("verse004", "verse005"):
+            (masks / f"{name}.nii.gz").write_text("", encoding="utf-8")
+        release = self.data / "totalsegmentator_v300" / "raw" / "Totalsegmentator_dataset_v300"
+        for sid in ("s0001", "s0002", "s0003", "s0005"):
+            (release / sid / "segmentations").mkdir(parents=True)
+        admission = self.repo / "data" / "gold3-ct" / "admission.json"
+        admission.parent.mkdir(parents=True, exist_ok=True)
+        admission.write_text(json.dumps({"studies": [
+            {"id": f"s000{i}", "member": "totalsegmentator", "verdict": "admitted"} for i in range(1, 6)]}), encoding="utf-8")
+        out = self.tmp / "go2432" / "morphometry" / "verse" / "totalseg"
+        (out / "masks").mkdir(parents=True)
+        (out / "manifests").mkdir()
+        (out / "masks" / "s0005.nii.gz").write_text("earlier", encoding="utf-8")
+        (out / "manifests" / "s0005.json").write_text("{}", encoding="utf-8")
+        self.covariates_commit()
+        threads = self.tmp / "threads.txt"
+        env = dict(os.environ, SCHWINGNET=str(self.repo), DATA_ROOT=str(self.data), LAB_VOLUME=str(self.tmp), SET="verse",
+                   MORPHOMETRY_PYTHON=str(fake_py), FAKE_THREADS=str(threads), SLURM_CPUS_PER_TASK="4")
+        done = subprocess.run(["bash", str(self.repo / "grid" / "morphometry.sbatch")], cwd=self.repo / "grid", env=env,
+                              capture_output=True, text=True, timeout=120)
+        report = (self.repo / "grid" / "logs" / "MORPHOMETRY-verse.md").read_text(encoding="utf-8")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr + report)
+        self.assertIn("TotalSegmentator: 5 admitted subjects; 3 stacked into int16 volumes in VerSe's ids (screening int16, "
+                      f"manifests under {out}/manifests, 4 subjects at a time), 1 failed, 1 with no segmentations in the release", report)
+        self.assertEqual(sorted(p.name for p in (out / "stacked").iterdir()),
+                         ["s0001.verdict", "s0002.verdict", "s0003.verdict", "s0004.verdict", "s0005.verdict"])
+        self.assertEqual((out / "stacked" / "s0004.verdict").read_text(encoding="utf-8").strip(), "missing")
+        self.assertEqual((out / "stacked" / "s0003.verdict").read_text(encoding="utf-8").strip(), "failed")
+        self.assertFalse((out / "masks" / "s0003.nii.gz").exists())
+        self.assertEqual((out / "masks" / "s0005.nii.gz").read_text(encoding="utf-8"), "earlier")
+        self.assertIn("a label is missing", (out / "int16" / "s0003.log").read_text(encoding="utf-8"))
+        # the two stacks ran side by side: each slept 0.3 s and wrote its time at the end, which differ by less than that
+        times = sorted(float((out / "masks" / f"{sid}.nii.gz").read_text()) for sid in ("s0001", "s0002"))
+        self.assertLess(times[1] - times[0], 0.3, times)
+        self.assertIn("TotalSegmentator: 3 masks linked; 3 studies chosen", report)
+        self.assertIn("VerSe: 2 masks linked; 2 studies chosen", report)
+        self.assertTrue(all(line.strip() == "1 1" for line in threads.read_text(encoding="utf-8").splitlines()), threads.read_text())
+
     def covariates_inputs(self, ended=(0, 0)):
         """What the join reads, as the lab volume and the data root would hold it once both sets have run:
         each set's report ending with its exit, the three rows files, the census report and its job's
