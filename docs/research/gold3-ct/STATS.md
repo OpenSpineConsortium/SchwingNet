@@ -8,7 +8,7 @@ Written by `python3 tools/gold3_ct.py stats` from the committed files under data
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | enhance_pet | 1,597 | 1,558 | 3 | 36 | 1,558 | 865 to 1,479 | autoPET's range, and at most one person a whole study at the sites with no person id |
 | verse | 374 | 21 | 0 | 353 | 21 | 21 | one person a key |
-| totalsegmentator | 1,777 | 154 | 0 | 1,623 | 154 | 154 | one person a key |
+| totalsegmentator | 1,777 | 159 | 0 | 1,618 | 159 | 159 | one person a key |
 
 ## ENHANCE.PET by site
 
@@ -104,9 +104,10 @@ Rule version 3: a CT is admitted when its field holds the foot of C2 and the top
 
 | Member | Tier | Studies | Persons |
 | --- | --- | --- | --- |
-| totalsegmentator | gold 3, whole by the release's masks | 147 | 147 |
-| totalsegmentator | gold 3, a segmenter adds levels | 7 | 7 |
-| totalsegmentator | silver 3, part of the column | 1,623 | 1,621 |
+| totalsegmentator | gold 3, whole by the release's masks | 148 | 148 |
+| totalsegmentator | gold 3, a segmenter adds levels | 11 | 11 |
+| totalsegmentator | silver 3, part of the column | 1,614 | 1,612 |
+| totalsegmentator | silver 3 until a person's look (a border case) | 4 | 4 |
 | verse | gold 3, a segmenter adds levels | 21 | 21 |
 | verse | silver 3, part of the column | 347 | 329 |
 | verse | silver 3 until a person's look (a border case) | 6 | 6 |
@@ -249,13 +250,13 @@ Persons the SPINEPS to FleXray route holds out or deals into folds (data/splits/
 
 ## Inputs
 
-- data/gold3-ct/admission.json: 2d06fe0a1ccd6239ee078d92b8e76b02bd637747b888936a6bcc7808b6e34fe2
+- data/gold3-ct/admission.json: e9bc2a1c1e5241b6c86348a5fe595a71be4bcd6189e46e00269e063d625dba9d
 - data/gold3-ct/enhance-pet/FACTS.json: 43ef43abe1dbaecdfa6c778815446668a7cc6f9da5ffcdcacb30e0fc90798ae5
 - data/gold3-ct/enhance-pet/bucket.json: 42678637bf4c9243310339b93d0a854ef85916f76953577c35a4656388f5799a
 - data/gold3-ct/enhance-pet/facts-b.jsonl: 12eb15d27f64b58cc2aee20cfe415fc6c88eebaad6936e4fb01d5760a976f7b4
 - data/gold3-ct/enhance-pet/facts.jsonl: 95cc36bf5e4c710bb0000e8a1eb9290dae7ca730c88a347ca9792110f96cd847
 - data/gold3-ct/enhance-pet/record.json: 143d447a7dc5c1aab4c33abb0e68999b08e268acf1fa7067539f097545c946d3
-- data/gold3-ct/members.json: 7f41346058cdea6daa479792c8c0d56658ccfeb9a3d505bc2f91afbb472c000e
+- data/gold3-ct/members.json: b9ed79862a7980cabf7793e8aa8c7fd520819aff663986f78a6348d76dbc0d3a
 - data/gold3-ct/totalsegmentator.json: cc2bb3e7404e04ee73862f1d9e03a92b5dd9b2f685a343d499ef934be6799b7b
 - data/gold3-ct/totalsegmentator/facts.jsonl: a0cb5b927c7b50845912198a003572315b8cccf085eeb6a1121a2eb7c8803356
 - data/gold3-ct/verse.json: 88b4d0f268697532d1cdc53ccf677f012f8e737e4b02a9652f66606a29a7fdea
