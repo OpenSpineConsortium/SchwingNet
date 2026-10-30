@@ -36,8 +36,9 @@ a tier, as the completion rule says (data/gold3-ct/members.json, completion). Th
    CT the subcommand moose-one in MOOSE's own environment (--moose-python), which unpacks the
    vertebrae model's fetched zip where moosez looks, as tools/flexray_render.py segment does, runs
    moosez's entry and leaves the multilabel file, from which run cuts vertebrae_C2 and sacrum by
-   MOOSE's ids; the masks under OUT/ts/<id>/, a run.json beside them, and a study whose masks are
-   already there is not run again, so a job cut short carries on.
+   MOOSE's ids; the masks under OUT/ts/<id>/, a run.json beside them, and a study whose run.json
+   records a run that ended 0 is not run again while one whose run failed is, so a job cut short,
+   or sent again after a fault, carries on.
 3. check: each target's mask against the release's own labels on the same grid: drawn at all
    (MIN_VOXELS), lying on the release's levels no more than OVERLAP_SHARE of its voxels, and on the
    right side of them along the world's vertical, C2 above the release's topmost level and the
@@ -50,7 +51,10 @@ a tier, as the completion rule says (data/gold3-ct/members.json, completion). Th
 
 Standard library here; numpy and nibabel are imported where a mask is read, totalsegmentator and
 moosez where they run, so the parts that need none of them are tested without them
-(tests/test_gold3_totalseg_grid.py).
+(tests/test_gold3_totalseg_grid.py). tools/ leaves sys.path before anything else, since
+tools/profile.py would shadow the standard library's profile, which cProfile imports and torch's
+imports reach: the first job, 40882547, failed on all 37 studies it ran with "module 'profile' has
+no attribute 'run'" for want of it.
 """
 from __future__ import annotations
 
@@ -66,6 +70,7 @@ import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path[:] = [entry for entry in sys.path if Path(entry or ".").resolve() != ROOT / "tools"]
 TARGETS = ("C2", "sacrum")
 TS_NAMES = {"C2": "vertebrae_C2", "sacrum": "sacrum"}
 # Which segmenter draws for which member (the owner, 2026-10-30 09:33 UTC): the one its release was
@@ -155,15 +160,15 @@ def ts_subject_folder(ts_root, sid):
 _FILES = {}
 
 
-def file_named(root, name):
-    """The first file called NAME under ROOT, found by a walk made once per root; None where there is none."""
+def files_named(root, name):
+    """Every file called NAME under ROOT, in the order a walk made once per root finds them; [] where there is none."""
     if root not in _FILES:
         found = {}
         for folder, _, files in os.walk(root):
             for file in files:
-                found.setdefault(file, os.path.join(folder, file))
+                found.setdefault(file, []).append(os.path.join(folder, file))
         _FILES[root] = found
-    return _FILES[root].get(name)
+    return _FILES[root].get(name, [])
 
 
 def locate(study, verse_ct, ts_root, enhance_ct, enhance_labels, verse_masks):
@@ -188,18 +193,17 @@ def locate(study, verse_ct, ts_root, enhance_ct, enhance_labels, verse_masks):
             return None, None, "no segmentations/ folder with vertebrae_*.nii.gz for the subject under totalsegmentator_v300"
         return os.path.join(folder, "ct.nii.gz"), release, None
     if member == "enhance_pet":
-        ct = file_named(enhance_ct, sid + ".nii.gz") if os.path.isdir(enhance_ct) else None
-        if ct is None:
+        cts = files_named(enhance_ct, sid + ".nii.gz") if os.path.isdir(enhance_ct) else []
+        if not cts:
             return None, None, "no CT of the study's id under aws_enhance_pet_ct"
-        release = file_named(enhance_labels, sid + ".nii.gz") if os.path.isdir(enhance_labels) else None
-        release = release if release and os.path.basename(os.path.dirname(release)) == "Vertebrae" else None
-        if release is None:
-            vertebrae = [p for p in (_FILES.get(enhance_labels) or {}).values()
-                         if os.path.basename(p) == sid + ".nii.gz" and os.path.basename(os.path.dirname(p)) == "Vertebrae"]
-            release = vertebrae[0] if vertebrae else None
+        # The ground truth is seven folders of label maps, each holding a file of the study's name, so
+        # the Vertebrae folder's is taken from all of them, whichever folder the walk lists first: the
+        # first job took only the first file of the name and left 1379 out.
+        labels = files_named(enhance_labels, sid + ".nii.gz") if os.path.isdir(enhance_labels) else []
+        release = next((p for p in labels if os.path.basename(os.path.dirname(p)) == "Vertebrae"), None)
         if release is None:
             return None, None, "no Vertebrae mask of the study's id under aws_enhance_pet_labels"
-        return ct, release, None
+        return cts[0], release, None
     return None, None, "a member this tool does not know"
 
 
@@ -325,8 +329,18 @@ def moose_one(args):
     return 0
 
 
+def ran_cleanly(done):
+    """Whether a study's run.json records a run that ended 0, whose masks stand; a failed run's
+    record says only why it failed, so that study is run again."""
+    try:
+        with open(done, encoding="utf-8") as fh:
+            return json.load(fh).get("exit") == 0
+    except (OSError, ValueError, AttributeError):
+        return False
+
+
 def run(args):
-    """TotalSegmentator or MOOSE on every prepared CT whose masks are not there yet; its exit is 0
+    """TotalSegmentator or MOOSE on every prepared CT whose last run did not end 0; its exit is 0
     only where every study has its masks, drawn now or before."""
     if args.weights:
         os.environ["TOTALSEG_WEIGHTS_PATH"] = args.weights
@@ -335,7 +349,7 @@ def run(args):
     for study in jobs["studies"]:
         folder = os.path.join(args.out, "ts", study["id"])
         done = os.path.join(folder, "run.json")
-        if os.path.exists(done):
+        if ran_cleanly(done):
             continue
         os.makedirs(folder, exist_ok=True)
         began = time.time()

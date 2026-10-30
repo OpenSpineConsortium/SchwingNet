@@ -10,11 +10,13 @@ import io
 import json
 import os
 import re
+import subprocess
 import sys
 import tempfile
 import types
 import unittest
 from pathlib import Path
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
@@ -132,6 +134,26 @@ class Locate(unittest.TestCase):
         ct, release, why = tool.locate({"member": "enhance_pet", "id": "1"}, cts, *args)
         self.assertIn("no CT of the study's id", why)
 
+    def test_enhance_pets_vertebrae_file_is_found_whichever_label_folder_the_walk_lists_first(self):
+        # the ground truth is seven folders of label maps, each with a file of the study's name: the
+        # first job took the first file of the name alone and left 1379 out
+        self.touch("aws_enhance_pet_ct", "raw", "CT", "1379.nii.gz")
+        for folder in ("Peripheral-Bones", "Ribs", "Vertebrae"):
+            self.touch("aws_enhance_pet_labels", "raw", folder, "1379.nii.gz")
+        args = (str(self.tmp / "none"), str(self.tmp / "aws_enhance_pet_ct" / "raw"),
+                str(self.tmp / "aws_enhance_pet_labels" / "raw"), str(self.tmp / "none"))
+        for reverse in (False, True):
+            tool._FILES.clear()
+            with mock.patch.object(tool.os, "walk", walk_sorted(reverse)):
+                ct, release, why = tool.locate({"member": "enhance_pet", "id": "1379"}, {}, *args)
+            self.assertIsNone(why, reverse)
+            self.assertEqual((Path(ct).parent.name, Path(release).parent.name), ("CT", "Vertebrae"))
+        self.touch("aws_enhance_pet_labels", "raw", "Ribs", "1380.nii.gz")
+        self.touch("aws_enhance_pet_ct", "raw", "CT", "1380.nii.gz")
+        tool._FILES.clear()
+        ct, release, why = tool.locate({"member": "enhance_pet", "id": "1380"}, {}, *args)
+        self.assertIn("no Vertebrae mask", why)
+
     def test_prepare_writes_jobs_json_with_store_names_and_no_data_root_path_in_its_summary(self):
         self.touch("totalsegmentator_v300", "s0102", "ct.nii.gz")
         self.touch("totalsegmentator_v300", "s0102", "segmentations", "vertebrae_L1.nii.gz")
@@ -163,6 +185,80 @@ class Locate(unittest.TestCase):
         self.assertIn("| s0437 | totalsegmentator | TotalSegmentator | - | sacrum | - | - | not prepared |", text)
         self.assertIn("- s0437 (totalsegmentator): no folder of the subject's name", text)
         self.assertNotIn(str(self.tmp), text)
+
+
+def walk_sorted(reverse):
+    """os.walk with each folder's subfolders visited in name order, or in its reverse."""
+    walk = os.walk
+
+    def ordered(top, *rest, **words):
+        for folder, dirs, files in walk(top, *rest, **words):
+            dirs.sort(reverse=reverse)
+            yield folder, dirs, files
+    return ordered
+
+
+def study(sid, root):
+    return {"member": "totalsegmentator", "id": sid, "verdict": "admitted", "targets": ["C2", "sacrum"], "complete": ["C2", "sacrum"],
+            "segmenter": "TotalSegmentator", "ct": str(root / sid / "ct.nii.gz"), "release": str(root / sid / "segmentations"),
+            "ct_store": "totalsegmentator_v300", "release_store": "totalsegmentator_v300"}
+
+
+class Run(unittest.TestCase):
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(lambda: __import__("shutil").rmtree(self.tmp, ignore_errors=True))
+
+    def record(self, sid, text):
+        folder = self.tmp / "ts" / sid
+        folder.mkdir(parents=True, exist_ok=True)
+        (folder / "run.json").write_text(text, encoding="utf-8")
+
+    def test_a_study_whose_run_failed_is_run_again_and_one_that_ended_0_is_not(self):
+        # the first job's 37 failed run.json files must not stop the rerun from drawing them
+        ids = ("s0102", "s0437", "s0621", "s0931")
+        (self.tmp / "jobs.json").write_text(json.dumps({"studies": [study(sid, self.tmp) for sid in ids], "left_out": []}),
+                                            encoding="utf-8")
+        self.record("s0102", json.dumps({"id": "s0102", "exit": 0}))
+        self.record("s0437", json.dumps({"id": "s0437", "exit": 1, "error": "AttributeError: module 'profile' has no attribute 'run'"}))
+        self.record("s0931", "not json")
+        drawn = []
+
+        def draw(found, folder, args):
+            drawn.append(found["id"])
+            for name in tool.TASK["roi_subset"]:
+                Path(folder, name + ".nii.gz").write_bytes(b"x")
+            return {}
+
+        args = types.SimpleNamespace(out=str(self.tmp), weights="", device="cpu", threads=1)
+        with mock.patch.object(tool, "run_totalseg", draw), contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(tool.run(args), 0)
+        self.assertEqual(drawn, ["s0437", "s0621", "s0931"])
+        for sid in drawn:
+            ran = json.loads((self.tmp / "ts" / sid / "run.json").read_text(encoding="utf-8"))
+            self.assertEqual((ran["exit"], ran["files"]), (0, ["sacrum.nii.gz", "vertebrae_C2.nii.gz"]), ran)
+            self.assertNotIn("error", ran)
+        self.assertEqual(json.loads((self.tmp / "ts" / "s0102" / "run.json").read_text(encoding="utf-8")), {"id": "s0102", "exit": 0})
+
+    def test_run_as_the_job_runs_it_the_segmenters_imports_reach_the_standard_librarys_profile(self):
+        # the first job (40882547) failed on every study it ran: started as a script, the tool had tools/
+        # first on sys.path, so the cProfile that the segmenter's imports reach found tools/profile.py
+        site = self.tmp / "site" / "totalsegmentator"
+        site.mkdir(parents=True)
+        (site / "__init__.py").write_text("", encoding="utf-8")
+        (site / "python_api.py").write_text(
+            "import cProfile  # as torch's imports reach it\n"
+            "import os\n\n\n"
+            "def totalsegmentator(ct, folder, **words):\n"
+            "    for name in words['roi_subset']:\n"
+            "        open(os.path.join(folder, name + '.nii.gz'), 'wb').close()\n", encoding="utf-8")
+        (self.tmp / "jobs.json").write_text(json.dumps({"studies": [study("s0102", self.tmp)], "left_out": []}), encoding="utf-8")
+        env = dict(os.environ, PYTHONPATH=str(self.tmp / "site"), PYTHONNOUSERSITE="1")
+        said = subprocess.run([sys.executable, str(ROOT / "tools" / "gold3_totalseg_grid.py"), "run", "--out", str(self.tmp), "--device", "cpu"],
+                              capture_output=True, text=True, env=env, cwd=str(ROOT), timeout=120)
+        ran = json.loads((self.tmp / "ts" / "s0102" / "run.json").read_text(encoding="utf-8"))
+        self.assertEqual(said.returncode, 0, said.stdout + said.stderr)
+        self.assertEqual((ran["exit"], ran["files"]), (0, ["sacrum.nii.gz", "vertebrae_C2.nii.gz"]), ran)
 
 
 class FakeImage:
