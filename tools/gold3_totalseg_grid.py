@@ -31,8 +31,8 @@ a tier, as the completion rule says (data/gold3-ct/members.json, completion). Th
    int16 copies, the subject's segmentations/ folder, the Vertebrae file under aws_enhance_pet_labels),
    into OUT/jobs.json; a study with no CT or no release on the grid is listed with its reason.
 2. run: TotalSegmentator's Python entry on each VerSe or TotalSegmentator CT with roi_subset
-   vertebrae_C2, sacrum and vertebrae_S1 (a VerSe sacrum is the union of the last two, since VerSe's
-   26 holds S1 and TotalSegmentator draws it apart; DEVIATIONS.md item 2), which crops with the 6 mm model and runs the vertebrae part alone, the
+   vertebrae_C2, sacrum and vertebrae_S1 (the sacrum is always the union of the last two, one full
+   mask, since the owner trusts no segmenter's S1 class; DEVIATIONS.md item 2), which crops with the 6 mm model and runs the vertebrae part alone, the
    weights read from the folder TOTALSEG_WEIGHTS_PATH names, never downloaded; on each ENHANCE.PET
    CT the subcommand moose-one in MOOSE's own environment (--moose-python), which unpacks the
    vertebrae model's fetched zip where moosez looks, as tools/flexray_render.py segment does, runs
@@ -96,11 +96,12 @@ TS_SUBJECT = re.compile(r"^s\d{4}$")
 REASON_CHARS = 160
 SEGMENTER = "TotalSegmentator"
 TASK = {"task": "total", "roi_subset": ["vertebrae_C2", "sacrum", "vertebrae_S1"], "fast": False}
-# TotalSegmentator's sacrum leaves out S1, a class of its own, where VerSe's id 26 is the whole
-# sacrum; so a VerSe sacrum is the union of the two (the owner's choice of 2026-10-30 22:46 UTC,
-# DEVIATIONS.md item 2). A TotalSegmentator subject keeps its release's own classes, S1 apart, and
-# MOOSE's sacrum (28) holds S1 already.
-SACRUM_WITH_S1 = {"verse": ("sacrum", "vertebrae_S1")}
+# TotalSegmentator's sacrum leaves out S1, a class of its own. The owner trusts no segmenter's S1
+# class and wants the sacrum as one full mask for every gold tier member (2026-10-30 22:58 UTC,
+# DEVIATIONS.md item 2): so wherever TotalSegmentator draws, the sacrum is the union of its sacrum and
+# its S1, and a TotalSegmentator release's own S1 is read as part of its sacrum. MOOSE draws no S1
+# class; its sacrum (28) is whole already.
+SACRUM_PARTS = ("sacrum", "vertebrae_S1")
 # TotalSegmentator 2.18.0 asks for all five parts of the total task (Dataset291 to 295) before it
 # applies roi_subset, and downloads any it lacks; the job holds only 292 (the vertebrae, where both
 # targets lie) and 298 (the 6 mm crop). These four are never computed for this roi_subset
@@ -436,20 +437,26 @@ def sha256_of(path):
 
 def release_levels(release):
     """[(name, boolean array)] of the release's drawn levels on its grid, with the grid's affine:
-    one file per level in a TotalSegmentator folder, one label per level in a VerSe or ENHANCE.PET
-    file (the label ids read as names, since their maps differ by member and only the voxels count here)."""
+    one file per level in a TotalSegmentator folder, its S1 folded into its sacrum as one level, one
+    label per level in a VerSe or ENHANCE.PET file (the label ids read as names, since their maps
+    differ by member and only the voxels count here)."""
     import nibabel as nib
     import numpy as np
     levels = []
     if os.path.isdir(release):
         affine = None
+        sacrum = None
         for name in sorted(os.listdir(release)):
             if name.startswith("vertebrae_") or name == "sacrum.nii.gz":
                 img = nib.load(os.path.join(release, name))
                 affine = img.affine if affine is None else affine
                 data = np.asanyarray(img.dataobj) > 0
-                if data.any():
+                if name[:-7] in SACRUM_PARTS:
+                    sacrum = data if sacrum is None else (sacrum | data)
+                elif data.any():
                     levels.append((name[:-7], data))
+        if sacrum is not None and sacrum.any():
+            levels.append(("sacrum", sacrum))
         return levels, affine
     img = nib.load(release)
     data = np.asanyarray(img.dataobj)
@@ -498,10 +505,10 @@ def read_union(mask_paths):
 
 
 def target_files(folder, target, member, segmenter):
-    """The files whose union is the target: its own file, and S1 beside the sacrum where the release's
-    sacrum holds S1 and TotalSegmentator draws it apart."""
-    if target == "sacrum" and segmenter == SEGMENTER and member in SACRUM_WITH_S1:
-        return [os.path.join(folder, name + ".nii.gz") for name in SACRUM_WITH_S1[member]]
+    """The files whose union is the target: its own file, and S1 beside the sacrum wherever
+    TotalSegmentator draws it apart."""
+    if target == "sacrum" and segmenter == SEGMENTER:
+        return [os.path.join(folder, name + ".nii.gz") for name in SACRUM_PARTS]
     return [os.path.join(folder, TS_NAMES[target] + ".nii.gz")]
 
 

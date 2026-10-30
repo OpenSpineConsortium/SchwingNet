@@ -78,4 +78,4 @@ again, and check_target's geometry follows PREREG section 3.
 - Item 5: check_target and check name the segmenter that drew the study in every reason.
 - Item 6: word_totalseg keeps its .sent mark until the gate's list names the job it queued, as
   morphometry covariates does. Tested in tests/test_gate.py.
-- Item 3: greg chose sacrum plus S1 at 22:46 UTC; a VerSe sacrum is now the union of TotalSegmentator's sacrum and vertebrae_S1 (DEVIATIONS.md item 2). Items 7 and 8 and the low items are left for later.
+- Item 3: greg chose sacrum plus S1 at 22:46 UTC and at 22:58 UTC made it every member's rule: the sacrum is one full mask, the union of TotalSegmentator's sacrum and vertebrae_S1, and a TotalSegmentator release's S1 is read as part of its sacrum (DEVIATIONS.md items 2 and 3). Items 7 and 8 and the low items are left for later.

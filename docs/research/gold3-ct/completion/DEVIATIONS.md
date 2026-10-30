@@ -18,3 +18,11 @@ The review of the rerun path (RERUN-REVIEW.md, item 3) found that TotalSegmentat
 - For a VerSe series the sacrum target is the union of TotalSegmentator's sacrum and vertebrae_S1, checked by section 3 and written at id 26 as one arm file; the record lists the parts.
 - A TotalSegmentator subject's sacrum stays TotalSegmentator's sacrum alone, since that release keeps S1 as a class of its own and its file per structure is read the same way. MOOSE's sacrum (28) holds S1 already, so ENHANCE.PET is unchanged.
 - The arm takes three jobs, not two: `fetch totalseg_weights`, the first `totalseg complete` (job 40882547, failed on an import clash), and the one rerun the owner allowed at 16:49 UTC (TOTALSEG_RERUNS in grid/gate.sh).
+
+## 3. 2026-10-30 22:58 UTC: the sacrum is one full mask for every member, with no S1 class anywhere
+
+The owner, on the same thread at 22:58 UTC, narrowing item 2: "No I don't want s1 I don't trust anyone's s1 class I just want unions sacrum full mask for all gold tier". Item 2's split, where a TotalSegmentator subject kept S1 apart, is withdrawn. Before the rerun is sent:
+
+- Wherever TotalSegmentator draws, VerSe series and TotalSegmentator subjects alike, the sacrum target is the union of its sacrum and vertebrae_S1, checked by section 3 and written as one arm file at the release's sacrum id (VerSe 26, TotalSegmentator's value 1). No arm file carries S1 on its own.
+- A TotalSegmentator release's own vertebrae_S1 is read as part of its sacrum when the drawn target is set against the release's levels, so S1 is never a level of its own on either side of the check.
+- MOOSE has no S1 class, and its sacrum (28) is whole, so ENHANCE.PET is unchanged. The roi_subset and the three jobs stand as item 2 gives them.

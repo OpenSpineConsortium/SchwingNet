@@ -460,8 +460,8 @@ class Check(unittest.TestCase):
         self.assertIn("not the release masks' grid", shifted["reason"])
 
 
-    def test_a_verse_sacrum_is_totalsegmentators_sacrum_and_s1_together(self):
-        # VerSe's 26 is the whole sacrum; TotalSegmentator draws S1 apart (DEVIATIONS.md item 2)
+    def test_a_sacrum_is_totalsegmentators_sacrum_and_s1_together(self):
+        # one full sacrum mask, never a separate S1 class (the owner, 22:58 UTC; DEVIATIONS.md item 2)
         flipped = np.diag([1.0, 1.0, -1.0, 1.0])
         levels, _ = tool.release_levels("release")
         sacrum, s1 = self.mask("sac", 48, 55, affine=flipped), self.mask("s1", 40, 47, affine=flipped)
@@ -475,12 +475,22 @@ class Check(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "not on"):
             tool.read_union([sacrum, "s1_off"])
 
-    def test_only_a_verse_sacrum_drawn_by_totalsegmentator_takes_s1(self):
+    def test_every_sacrum_totalsegmentator_draws_takes_its_s1(self):
         names = lambda *a: [os.path.basename(p) for p in tool.target_files("f", *a)]  # noqa: E731
         self.assertEqual(names("sacrum", "verse", "TotalSegmentator"), ["sacrum.nii.gz", "vertebrae_S1.nii.gz"])
-        self.assertEqual(names("sacrum", "totalsegmentator", "TotalSegmentator"), ["sacrum.nii.gz"])
+        self.assertEqual(names("sacrum", "totalsegmentator", "TotalSegmentator"), ["sacrum.nii.gz", "vertebrae_S1.nii.gz"])
         self.assertEqual(names("sacrum", "enhance_pet", "MOOSE"), ["sacrum.nii.gz"])
         self.assertEqual(names("C2", "verse", "TotalSegmentator"), ["vertebrae_C2.nii.gz"])
+
+    def test_a_totalsegmentator_releases_s1_is_read_as_part_of_its_sacrum(self):
+        with tempfile.TemporaryDirectory() as folder:
+            for name, lo, hi in (("vertebrae_L5", 20, 30), ("vertebrae_S1", 10, 20), ("sacrum", 0, 10), ("vertebrae_L4", 0, 0)):
+                Path(folder, name + ".nii.gz").write_bytes(b"")
+                self.mask(os.path.join(folder, name + ".nii.gz"), lo, hi)
+            levels, _ = tool.release_levels(folder)
+        names = dict(levels)
+        self.assertEqual(sorted(names), ["sacrum", "vertebrae_L5"])
+        self.assertEqual(int(names["sacrum"].sum()), 16 * 20)
 
     def test_a_refusal_names_the_segmenter_that_drew_the_target(self):
         levels, affine = tool.release_levels("release")
