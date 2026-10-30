@@ -1,0 +1,57 @@
+graph TD
+    age_effect[("age_effect ~ Data")]
+    beta_height(["beta_height ~ Normal"])
+    covariate_known[("covariate_known ~ Data")]
+    covariates[("covariates ~ Data")]
+    field_levels[("field_levels ~ Data")]
+    log_s(["log_s ~ Normal"])
+    measure_error[("measure_error ~ Data")]
+    offset(["offset ~ Normal"])
+    sex_effect[("sex_effect ~ Data")]
+    size_power[("size_power ~ Data")]
+    table_mean[("table_mean ~ Data")]
+    table_sd[("table_sd ~ Data")]
+    weight_effect[("weight_effect ~ Data")]
+    x(["x ~ Normal"])
+    style x fill:#d9d9d9,color:#000000
+    beta_height --> log_s
+    covariate_known --> log_s
+    covariates --> log_s
+    sex_effect --> log_s
+    age_effect --> x
+    covariate_known --> x
+    covariates --> x
+    field_levels --> x
+    log_s --> x
+    measure_error --> x
+    offset --> x
+    size_power --> x
+    table_mean --> x
+    table_sd --> x
+    weight_effect --> x
+    subgraph plate1 ["field"]
+        log_s
+    end
+    subgraph plate2 ["field x body"]
+        field_levels
+    end
+    subgraph plate3 ["field x covariate"]
+        covariate_known
+        covariates
+    end
+    subgraph plate4 ["field x measure"]
+        offset
+    end
+    subgraph plate5 ["measure"]
+        age_effect
+        measure_error
+        size_power
+        weight_effect
+    end
+    subgraph plate6 ["measure x level"]
+        table_mean
+        table_sd
+    end
+    subgraph plate7 ["reading"]
+        x
+    end

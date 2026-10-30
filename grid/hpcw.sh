@@ -96,8 +96,11 @@ hpcw_submit() {  # hpcw_submit NAME CLASS [K=V...] [job submit options...] -- SC
   bin=$(hpcw_bin) || return 1
   call=(job submit --project "$HPCW_PROJECT" --name "$name" --class "$class" --dir "$REPO/grid")
   # An array is not asked first: whether Slurm's --test-only takes --array is not measured on the
-  # grid, and a refusal there would stop every array word; its submission answers the same way.
-  if ! hpcw_is_array "$@"; then
+  # grid, and a refusal there would stop every array word; its submission answers the same way. Nor
+  # is a job whose word asked its shape with hpcw_check before marking the submission (HPCW_CHECKED=1),
+  # so the call after the mark holds nothing that refuses without queueing, and every failure left is
+  # one whose answer may have been lost, as the mark says.
+  if ! hpcw_is_array "$@" && [ -z "${HPCW_CHECKED:-}" ]; then
     out=$(env ${envs[@]+"${envs[@]}"} bash "$bin" "${call[@]}" --check "$@" 2>&1) \
       || { echo "hpcworker refused $name: $(printf '%s' "$out" | tail -n 3 | tr '\n' ' ')" >&2; return 1; }
   fi

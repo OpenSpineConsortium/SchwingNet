@@ -30,7 +30,8 @@ is a sweep's state folder, tools/block_sweep.py's with the rows it starts; `swee
 flows/, named by the launcher's key (schwingnet.pipeline.run_key), `v1` the version 1 run of
 tools/flow.py as a launched flow, `experiment` one requested combination of it, `latency` one job
 of the latency word on a run's checkpoint, the last two the DRR domain-gap study's parts and its
-MOOSE masks.
+MOOSE masks; `realism` and `autoanatomist` are flows of flows/ too, the FluXray reproduction's
+stages and the auto-anatomist screen's trials and join.
 
 A copy of the code that `git archive` made, as the DRR domain-gap study's prepare makes one so that
 no later step reads the checkout while the gate moves it, holds no .git; it holds COPY_RECORD
@@ -104,6 +105,14 @@ KINDS = {
     # reaches the DRR study's files, so those count too.
     "totalseg": (*(f for f in DRR_STUDY if f not in ("tools/domain_gap.py", "tools/domain_gap_stats.py")), "flows/totalseg.py", "flows/stage.py", "flows/stage_registry.py", "grid/totalseg-complete.sbatch",
                  "tools/gold3_totalseg_grid.py", "data/gold3-ct/admission.json", "grid/enhance-pet-labels.json"),
+    # The auto-anatomist screen (docs/research/autoanatomist-screen/PREREG.md): the flow, the two tools
+    # its parts run, the rules they import, which carry the trial's pinned packages, the vendored
+    # package the trial trains with, and the frozen split and test list the flow holds each plan to.
+    "autoanatomist": (*ENVIRONMENT, *CONTRACTS, "src/schwingnet/__init__.py", "src/schwingnet/autoanatomist_screen.py",
+                      "src/schwingnet/autoanatomist_search.py", "flows/autoanatomist.py", "flows/stage.py",
+                      "flows/stage_registry.py", "tools/autoanatomist_trial.py", "tools/autoanatomist_join.py",
+                      "grid/autoanatomist/", "data/splits/rule.json", "data/splits/test-persons.json",
+                      "data/splits/latent-prior-test-reserve.json", "data/splits/latent-prior-repeat-groups.json"),
 }
 
 NAMES_THE_RUN = "names the run: the files it lists are the digest, so a change to the lists changes the digest by itself"
@@ -161,6 +170,9 @@ LEFT_OUT = {
                  "grid/run-platform-fetch.sh": "names TotalSegmentator's and MOOSE's weight zips for the job's check of them before the launcher "
                  "starts; no step of the flow runs it, and the zips are read by their bytes",
                  "tools/report.py": "is named by flows/stage.py for a run's report, which this flow never makes; its report is the tool's own"},
+    "autoanatomist": {**STAGE_PAGE_LEFT_OUT,
+                      "tools/report.py": "writes and checks the screen's CLAIM 2024 and REFORMS report from the join's record "
+                      "in its end step, after every number; it computes nothing a trial or the decision comes from"},
 }
 
 

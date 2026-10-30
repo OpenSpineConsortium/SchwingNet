@@ -123,6 +123,15 @@ Metaflow's own resume rather than by anything written around it.
   so a job cut short and sent again carries on. The launcher's last line is `TOTALSEG_RC=`. What it
   keeps is a machine arm in the release's own label id, named by segmenter and sha256, never pooled
   with the release's masks or the SPINEPS arm.
+- `autoanatomist.py`, AutoanatomistFlow: one part of the auto-anatomist screen
+  (docs/research/autoanatomist-screen/PREREG.md), `--part trial` or `--part join` of a plan of
+  grid/screens/ (grid word `autoanatomist <plan>`, grid/autoanatomist.sbatch). start holds the run to
+  the PREREG and to the plan's part of it by the plan's bytes, checks the plan against the frozen
+  split and the test lists and the words against the plan; work runs tools/autoanatomist_trial.py
+  for a trial or tools/autoanatomist_join.py for the join, keeping its exit; end, for a join that
+  decided, writes SUMMARY.md and RECORD.json and checks the report (`tools/report.py --study
+  autoanatomist-screen`). Each chain works in <out>/<plan>/<chain>/, every path given absolute.
+  tests/test_autoanatomist_flow.py runs the smoke through the launcher with a stand-in trial.
 
 Every flow's end step sets an int artifact `verdict`, 0 when all went well and 1 otherwise.
 
@@ -142,8 +151,9 @@ The sweep keeps it, and so do the FluXray reproduction's `realism edit` and `rea
 the DRR domain-gap study, `bench flexray_drr_gap`, and the step that makes its MOOSE masks, `bench
 flexray_drr_seg` (both below), the gold tier 3 completion's TotalSegmentator arm, `totalseg complete`
 (TotalsegFlow, above), version 1's run, `start` and `v1` (V1Flow, above), a requested
-experiment, `experiment <issue>` (ExperimentFlow, above), and the latency word's three network
-parts, `latency` (LatencyFlow, above). These words of grid/gate.sh still submit a
+experiment, `experiment <issue>` (ExperimentFlow, above), the latency word's three network
+parts, `latency` (LatencyFlow, above), and the auto-anatomist screen, `autoanatomist <plan>`
+(AutoanatomistFlow, above). These words of grid/gate.sh still submit a
 plain job that trains or runs a network, each to be moved onto a flow listed in registry.txt, one
 pull request each, under a PREREG of its own:
 

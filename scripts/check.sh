@@ -82,6 +82,16 @@ if command -v pixi >/dev/null 2>&1 && [ -f pixi.lock ]; then
 else
   echo "data/sources/ against docs/research/datasets-inventory.md: pixi is not here, so the gate lane checks it"
 fi
+# The auto-anatomist screen's plans under grid/screens/ must hold and keep their rows inside the frozen
+# split and off every test list (tools/autoanatomist_plan.py), so a test list that grows to take a
+# planned person fails here and not on a card. It imports the package's contracts, so it runs in the
+# locked environment; where pixi is not here the gate lane's test holds the same
+# (tests/schwingnet/test_autoanatomist_screen.py).
+if command -v pixi >/dev/null 2>&1 && [ -f pixi.lock ]; then
+  pixi run --locked python tools/autoanatomist_plan.py check
+else
+  echo "grid/screens/ against the frozen split and the test lists: pixi is not here, so the gate lane checks it"
+fi
 
 # The reproduction page (docs/research/datasets-reproduce.md) is rendered from the registry,
 # data/reproduce/map.json and the copied manifest by tools/reproduce_table.py, standard library: the
