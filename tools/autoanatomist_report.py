@@ -10,8 +10,8 @@ sha256, every trial's entry.json and environment.json (or the why.txt of a trial
 entry) and the join's DECISION.json. A code answer reads only those files and the frozen design,
 never infers, and is missing where a file is absent, is no longer the bytes the record names, or
 lacks a field the answer quotes; an answer that restates the frozen PREREG.md holds only for a
-chain whose record names its sha256, DESIGN, so a second design is never reported in this one's
-words. A screen selects arms for a longer run and publishes nothing, so the items no file answers,
+chain whose record names its sha256, DESIGN (DESIGN2 for the second screen's plans, under its own
+PREREG2), so a design is never reported in another's words. A screen selects arms for a longer run and publishes nothing, so the items no file answers,
 the owner's own (the title, the abstract, the background and the rest), stay missing until the
 owner writes them in data/reporting/studies/autoanatomist-screen.json; a session never writes them.
 Standard library only, as tools/report.py is.
@@ -28,11 +28,19 @@ PREREG = ROOT / "docs" / "research" / "autoanatomist-screen" / "PREREG.md"
 # The pre-registration the design answers restate, by its sha256: PREREG.md as frozen, the digest
 # PREREG.md.sha256 beside it holds (tests/test_autoanatomist_report.py holds the two together).
 DESIGN = "29c846c25a46adc19b082a08ef350a8fbf71d810db62b043b55a5873942359a9"
+# The second screen's pre-registration (flows/autoanatomist2.py, kind autoanatomist2), which adopts
+# the first's sections 1 to 6 and adds section 8, frozen the same way and held to its digest the same
+# way; its plans' chains are restated in its words and only where their record names DESIGN2.
+PREREG2 = ROOT / "docs" / "research" / "autoanatomist-screen2" / "PREREG.md"
+DESIGN2 = "e5f4d06ca2657736bbdbdf463d7f524e1a85cb61df0a26f8e48bbb95674ea67d"
 LICENCES = ROOT / "data" / "licences.json"
 SOURCE = "scidb_enhance_pet_1_6k"
-# The plan PREREG.md section 4 reads no result from: it tests the code path on the grid and times a
-# crop, so its report says its sizes and its chance answer no hypothesis.
-SMOKE = "gold3_latent_smoke"
+# The plans PREREG.md reads no result from, each with the section that says so: each tests the code
+# path on the grid and times a crop, so its report says its sizes and its chance answer no hypothesis.
+SMOKES = {"gold3_latent_smoke": "section 4", "gold3_latent_smoke2": "section 8"}
+# The plans of the second screen, PREREG2 (its section 8), whose known limits are its section 8's
+# beside section 6's.
+SECOND = ("gold3_latent_smoke2", "gold3_latent_screen2")
 # PREREG.md section 6's known limits, one restatement each in the section's order;
 # tests/test_autoanatomist_report.py holds them to the section's bullets, so a limit added there and
 # not here fails the check.
@@ -48,6 +56,14 @@ LIMITS = (
     "a GPU's sums are not the same to the bit, so a trial run again ends within run-to-run noise of its first run",
     "the feature term runs to the last step, so once w reaches 0 it distils from a frozen teacher, and an anneal "
     "whose feature term ends with the handover is not tested",
+)
+# PREREG2's section 8 known limits of the second screen, one restatement each in its order, held to
+# its bullets the same way.
+SECOND_LIMITS = (
+    "the four new words run at their defaults, chosen on phantoms and tuned on nothing here",
+    "under objective=mask the restraint's variable is the target's volume share alone",
+    "the adaptive schedule's lambda path differs from seed to seed by design",
+    "wherever w stands at 0 the feature term distils from a mask branch that takes no gradient",
 )
 
 ITEMS = {
@@ -133,17 +149,24 @@ def needs(run, *keys):
     return "needs " + "; ".join(gaps) if gaps else ""
 
 
+def design_of(run):
+    """The pre-registration a chain of this plan runs under, its path and sha256: the second
+    screen's for its plans, else the first's."""
+    return (PREREG2, DESIGN2) if plan(run).get("screen") in SECOND else (PREREG, DESIGN)
+
+
 def design_gap(run):
-    """Why the design's words do not hold for this chain, or empty where its record names DESIGN."""
-    named = run["record"].get("prereg_sha256")
-    return "" if named == DESIGN else (f"RECORD.json names PREREG sha256 {str(named)[:16]}, not the frozen "
-                                      f"{DESIGN[:16]}: the chain ran another design, which this report does not restate")
+    """Why the design's words do not hold for this chain, or empty where its record names the
+    design of its plan."""
+    named, design = run["record"].get("prereg_sha256"), design_of(run)[1]
+    return "" if named == design else (f"RECORD.json names PREREG sha256 {str(named)[:16]}, not the frozen "
+                                      f"{design[:16]}: the chain ran another design, which this report does not restate")
 
 
 def restated(run, text):
     """An answer that restates the frozen design, for a chain that ran it."""
     gap = design_gap(run)
-    return missing(gap) if gap else met(f"{text} (PREREG.md, sha256 {DESIGN[:16]})")
+    return missing(gap) if gap else met(f"{text} (PREREG.md, sha256 {design_of(run)[1][:16]})")
 
 
 def plan(run):
@@ -257,8 +280,13 @@ def fact_uncertainty(run):
             f"every one of the null's, which an arm no different passes by chance at most one time in "
             f"{math.comb(2 * seeds, seeds)} at {seeds_said(seeds)} a side, since each seed gives the arm and the null one "
             "start and one draw of batches")
-    if plan(run).get("screen") == SMOKE:
+    screen = plan(run).get("screen")
+    if screen in SMOKES:
         said += "; the smoke answers no hypothesis, so no verdict of it is read as a result"
+        return restated(run, f"{said} (PREREG.md {SMOKES[screen]})")
+    if screen in SECOND:
+        said += "; five arms are read against one null, so a chance pass of some arm is likely"
+        return restated(run, f"{said} (PREREG.md sections 4 and 8)")
     return restated(run, f"{said} (PREREG.md section 4)")
 
 
@@ -295,12 +323,15 @@ def fact_failure_analysis(run):
 
 
 def fact_limitations(run):
+    if plan(run).get("screen") in SECOND:
+        return restated(run, "; ".join(LIMITS + SECOND_LIMITS) + " (PREREG.md sections 6 and 8)")
     return restated(run, "; ".join(LIMITS) + " (PREREG.md section 6)")
 
 
 def fact_protocol(run):
     gap = design_gap(run)
-    return missing(gap) if gap else met(f"docs/research/autoanatomist-screen/PREREG.md, frozen, sha256 {DESIGN[:16]}, its "
+    prereg, design = design_of(run)
+    return missing(gap) if gap else met(f"{prereg.relative_to(ROOT).as_posix()}, frozen, sha256 {design[:16]}, its "
                                         f"Covers line naming the plan by its bytes ({str(run['record'].get('prereg_part'))})")
 
 
@@ -357,9 +388,9 @@ def fact_sample_size(run):
     rows = p.get("rows") or {}
     sizes = (f"{rows.get('train')} training and {rows.get('validation')} validation studies at "
              f"{seeds_said(len(p.get('seeds') or []))} an arm")
-    if p.get("screen") == SMOKE:
+    if p.get("screen") in SMOKES:
         return restated(run, f"the smoke's sizes, {sizes}, try the code path on the grid and time a crop; the smoke answers "
-                             "no hypothesis (PREREG.md section 4)")
+                             f"no hypothesis (PREREG.md {SMOKES[p.get('screen')]})")
     return restated(run, f"the screen's sizes are its budget, {sizes}, chosen to select arms for a longer run, not powered "
                          "for an effect")
 

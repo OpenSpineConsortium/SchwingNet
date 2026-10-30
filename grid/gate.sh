@@ -203,7 +203,9 @@
 #                   every arm of the plan trained at every seed on gold tier 3 CTs, a trial a card, each read on the
 #                   plan's validation CTs every few epochs, then the join, which decides each arm against the null;
 #                   every part runs the Metaflow flow flows/autoanatomist.py through flows/launch.py from git's copy of
-#                   the code at the gate's commit (grid/autoanatomist.sbatch), so none holds the checkout. A plan laid
+#                   the code at the gate's commit (grid/autoanatomist.sbatch), so none holds the checkout; a plan of
+#                   the second screen (AUTOANATOMIST2_PLANS) runs the same flow as the kind autoanatomist2 under its own
+#                   PREREG, docs/research/autoanatomist-screen2/PREREG.md (grid/autoanatomist2.sbatch). A plan laid
 #                   out as a series is one GPU job, its trials one after another and then the join; one laid out as an
 #                   array is a GPU array of a task a trial and a CPU join afterany it, both queued or neither. A plan is
 #                   queued only where AUTOANATOMIST_COUNTED names it, the owner's word and count committed by pull
@@ -322,12 +324,22 @@ AUTOANATOMIST_ROOT=${AUTOANATOMIST_ROOT:-$VOLUME/go2432/autoanatomist}
 # 03:20 UTC ("2 CPU 2 GPU 2 Full run plus 1 short GPU smoke is fine"): one GPU job, its two trials in
 # series and the join. gold3_latent_screen, a GPU array of eight trials and a CPU join afterany it, is
 # the two jobs of his word of 2026-10-30 08:56 UTC ("Yes to both", to the ask that named those two jobs
-# and said they were outside the 03:20 count).
-AUTOANATOMIST_COUNTED="gold3_latent_smoke gold3_latent_screen"
+# and said they were outside the 03:20 count). The second screen's plans, gold3_latent_smoke2 (one GPU
+# job, five trials in series and the join) and gold3_latent_screen2 (a GPU array of twelve trials and a
+# CPU join afterany it), are counted since the owner lifted his hold on grid jobs at 2026-10-30 23:03 UTC
+# ("please remove all instructions to avoid grid use"), each still sent only after the plan before it
+# ends in exit 0 (AUTOANATOMIST_AFTER).
+AUTOANATOMIST_COUNTED="gold3_latent_smoke gold3_latent_screen gold3_latent_smoke2 gold3_latent_screen2"
 # The plans sent only once another plan's report ends in exit 0, <plan>:<the plan before it>
 # (word_autoanatomist): the PREREG (section 5) sends the screen only after the smoke's two trials and
-# its join end in exit 0, so the screen's eight cards wait for the smoke to show the code runs.
-AUTOANATOMIST_AFTER="gold3_latent_screen:gold3_latent_smoke"
+# its join end in exit 0, so the screen's eight cards wait for the smoke to show the code runs. The
+# second screen's PREREG (section 5) sends its smoke only once the first screen's report ends in exit
+# 0, so the first verdict stands before any trial of the second runs, and its screen after its smoke.
+AUTOANATOMIST_AFTER="gold3_latent_screen:gold3_latent_smoke gold3_latent_smoke2:gold3_latent_screen gold3_latent_screen2:gold3_latent_smoke2"
+# The plans of the second screen, which run as the kind autoanatomist2 (flows/registry.txt) under its
+# own frozen PREREG, queued with its job script grid/autoanatomist2.sbatch; every other plan runs as
+# the kind autoanatomist with grid/autoanatomist.sbatch (autoanatomist_kind).
+AUTOANATOMIST2_PLANS="gold3_latent_smoke2 gold3_latent_screen2"
 # The owner's word for one more send of a plan whose record stands, <plan>:<job that record's first line
 # names>, or <plan>:lost for a submission whose answer was lost; one word, one more send.
 AUTOANATOMIST_RERUNS=""
@@ -2647,6 +2659,9 @@ word_realism() {  # one stage of the Flux realism programme: queued once, its re
   echo "submitted the realism stage $id. Send realism $id again once it ends to read its report, logs/REALISM-$id.md."
 }
 
+autoanatomist_kind() {  # autoanatomist_kind PLAN: the kind the plan runs as, autoanatomist2 for a plan AUTOANATOMIST2_PLANS names, else autoanatomist
+  case " $AUTOANATOMIST2_PLANS " in *" $1 "*) echo autoanatomist2 ;; *) echo autoanatomist ;; esac
+}
 autoanatomist_counted() {  # autoanatomist_counted PLAN: status 0 where AUTOANATOMIST_COUNTED names the plan
   case " $AUTOANATOMIST_COUNTED " in *" $1 "*) return 0 ;; esac
   return 1
@@ -2676,7 +2691,7 @@ screen_covered() {  # screen_covered PLAN NAME: status 0 where the screen's froz
   # The launcher holds every part to the same PREREG and part (flows/stage.py); a plan it would stop
   # is refused here, before a card is spent, as sweep_covered refuses a sweep's.
   local prereg entry frozen bytes want
-  prereg=$(flow_prereg autoanatomist)
+  prereg=$(flow_prereg "$(autoanatomist_kind "$2")")
   case "$prereg" in
     ""|/*|../*|*/../*) echo "refusing: flows/registry.txt names no PREREG inside the checkout for the screen, so no plan is covered; nothing was queued"; return 90 ;;
   esac
@@ -2783,6 +2798,8 @@ autoanatomist_queued() {  # autoanatomist_queued CHAIN WHAT: the send's record w
 word_autoanatomist() {  # one plan of the auto-anatomist screen, on the owner's count: queued once, its report printed on every later send
   local plan=$REPO/grid/screens/$id.json report=$LOGS/AUTOANATOMIST-$id.md sent=$LOGS/AUTOANATOMIST-$id.sent
   local layout class trials busy record job kept again="" aside="" waits missing full setup opts screen chain join
+  local script
+  script=$(autoanatomist_kind "$id").sbatch
   [ -f "$plan" ] || { echo "refusing: no plan grid/screens/$id.json at commit $commit"; return 64; }
   autoanatomist_counted "$id" || {
     echo "refusing: the plan $id waits for the owner's word and count of its jobs, committed in AUTOANATOMIST_COUNTED in grid/gate.sh by pull request; nothing was queued"
@@ -2852,14 +2869,14 @@ word_autoanatomist() {  # one plan of the auto-anatomist screen, on the owner's 
   # for: the job script, which submit refuses for a GPU job no flow names, and each shape, an array
   # asked as one of its tasks, since job submit asks no array first (grid/hpcw.sh). The series is
   # then submitted with HPCW_CHECKED, so job submit does not ask its shape a second time after the mark.
-  launched_script autoanatomist.sbatch || {
-    echo "refusing: flows/registry.txt names grid/autoanatomist.sbatch as no flow's job script, and every GPU job starts through flows/launch.py; nothing was queued"
+  launched_script "$script" || {
+    echo "refusing: flows/registry.txt names grid/$script as no flow's job script, and every GPU job starts through flows/launch.py; nothing was queued"
     return 90
   }
   hpcw_check "autoanatomist_$id" gpu "${screen[@]}" PART="$([ "$layout" = series ] && echo series || echo trial)" \
-    --partition "$AUTOANATOMIST_PARTITION" --cpus 8 --mem 64G --time 12:00:00 --no-requeue -- autoanatomist.sbatch || return 1
+    --partition "$AUTOANATOMIST_PARTITION" --cpus 8 --mem 64G --time 12:00:00 --no-requeue -- "$script" || return 1
   if [ "$layout" = array ]; then
-    hpcw_check "autoanatomist_${id}_join" batch "${screen[@]}" PART=join TRIALS_JOB=1 --cpus 4 --mem 16G --time 02:00:00 --no-requeue -- autoanatomist.sbatch || return 1
+    hpcw_check "autoanatomist_${id}_join" batch "${screen[@]}" PART=join TRIALS_JOB=1 --cpus 4 --mem 16G --time 02:00:00 --no-requeue -- "$script" || return 1
   fi
   [ -z "$again" ] || echo "  $again: queueing the plan again at $commit"
   depend_on "$setup" || return 1
@@ -2869,7 +2886,7 @@ word_autoanatomist() {  # one plan of the auto-anatomist screen, on the owner's 
   echo "$(date -u '+%F %T') UTC at commit $commit" > "$sent"
   if [ "$layout" = series ]; then
     chain=$(HPCW_CHECKED=1 submit "autoanatomist_$id" gpu "${screen[@]}" PART=series ${opts[@]+"${opts[@]}"} \
-      --partition "$AUTOANATOMIST_PARTITION" --cpus 8 --mem 64G --time 12:00:00 --no-requeue -- autoanatomist.sbatch) || return 1
+      --partition "$AUTOANATOMIST_PARTITION" --cpus 8 --mem 64G --time 12:00:00 --no-requeue -- "$script") || return 1
     # The mark goes once the send's record stands, so a record that could not be written leaves the
     # send read as one whose answer was lost, never as no send at all.
     autoanatomist_queued "$chain" "one GPU job on $AUTOANATOMIST_PARTITION, the plan's $trials trials one after another on one card, then the join on the same node"
@@ -2878,7 +2895,7 @@ word_autoanatomist() {  # one plan of the auto-anatomist screen, on the owner's 
     return 0
   fi
   chain=$(submit "autoanatomist_$id" gpu "${screen[@]}" PART=trial ${opts[@]+"${opts[@]}"} --array "0-$((trials - 1))" \
-    --partition "$AUTOANATOMIST_PARTITION" --cpus 8 --mem 64G --time 12:00:00 --no-requeue -- autoanatomist.sbatch) || return 1
+    --partition "$AUTOANATOMIST_PARTITION" --cpus 8 --mem 64G --time 12:00:00 --no-requeue -- "$script") || return 1
   # The record names the array as soon as it is queued, before its join is asked for, so trials whose
   # join is refused and whose cancel then fails leave a record a later send reads, and are never
   # queued again on the same count; a send Slurm ended before any trial started reads as unstarted.
@@ -2888,7 +2905,7 @@ word_autoanatomist() {  # one plan of the auto-anatomist screen, on the owner's 
   # leave no decision and no report. The join waits for the setup as the trials do, so a setup that
   # fails ends both before either starts, the send then reading as one that never started.
   if ! depend_on "$(joined "$setup" "afterany:$chain")" || ! join=$(submit "autoanatomist_${id}_join" batch "${screen[@]}" PART=join TRIALS_JOB="$chain" \
-    ${opts[@]+"${opts[@]}"} --cpus 4 --mem 16G --time 02:00:00 --no-requeue -- autoanatomist.sbatch); then
+    ${opts[@]+"${opts[@]}"} --cpus 4 --mem 16G --time 02:00:00 --no-requeue -- "$script"); then
     if "$SCANCEL" "$chain"; then
       autoanatomist_note "join: refused, so the gate cancelled the trials' array $chain"
       echo "  cancelled the trials' array $chain, since its join was refused"
