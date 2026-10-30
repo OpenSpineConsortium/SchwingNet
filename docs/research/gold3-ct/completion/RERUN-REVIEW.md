@@ -64,3 +64,18 @@ The fetched zips hold the 292 and 298 folders TotalSegmentator reads from TOTALS
 Usage statistics stay off, and no licence check runs for task total. The outputs are
 vertebrae_C2.nii.gz and sacrum.nii.gz on the CT's own grid. The 37 failed run.json records are run
 again, and check_target's geometry follows PREREG section 3.
+
+## What the fix pull request changed (2026-10-30, thread "Continue Bayesian synthetic validation")
+
+- Item 1: run_totalseg puts a guard in place of python_api.download_pretrained_weights for the run:
+  a part the weights folder holds needs nothing, 291, 293, 294 and 295 are passed over, any other
+  missing part is refused, so the job downloads nothing. Tested with a stand-in python_api that asks
+  for all five parts as 2.18.0 does.
+- Item 2: moose-one hands torch cuda for gpu and cuda:N for gpu:N, and its own --device defaults to
+  cuda. Tested with a stand-in moosez whose device check refuses gpu as torch.device does.
+- Item 4: moose-one removes the vertebrae files an earlier attempt left before moosez runs, so a
+  rerun finds the file moosez writes again under the same name. Tested by running one study twice.
+- Item 5: check_target and check name the segmenter that drew the study in every reason.
+- Item 6: word_totalseg keeps its .sent mark until the gate's list names the job it queued, as
+  morphometry covariates does. Tested in tests/test_gate.py.
+- Items 7 and 8 and the low items are left for later; item 3 waits for greg's word.

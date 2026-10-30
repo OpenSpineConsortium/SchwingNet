@@ -95,6 +95,12 @@ TS_SUBJECT = re.compile(r"^s\d{4}$")
 REASON_CHARS = 160
 SEGMENTER = "TotalSegmentator"
 TASK = {"task": "total", "roi_subset": ["vertebrae_C2", "sacrum"], "fast": False}
+# TotalSegmentator 2.18.0 asks for all five parts of the total task (Dataset291 to 295) before it
+# applies roi_subset, and downloads any it lacks; the job holds only 292 (the vertebrae, where both
+# targets lie) and 298 (the 6 mm crop). These four are never computed for this roi_subset
+# (its nnunet.py, lines 582 to 592), so the guard passes over them and refuses any other missing part,
+# so the job downloads nothing (docs/research/gold3-ct/completion/RERUN-REVIEW.md, item 1).
+PARTS_NOT_COMPUTED = (291, 293, 294, 295)
 MOOSE_TASK = {"model": MOOSE_MODEL, "targets": MOOSE_NAMES}
 
 
@@ -255,10 +261,31 @@ def segmenter_version(package="TotalSegmentator"):
         return "not read"
 
 
+def has_part(weights, part):
+    """Whether the weights folder holds the unpacked Dataset folder of this part of the task."""
+    prefix = f"Dataset{int(part):03d}_"
+    return bool(weights) and os.path.isdir(weights) and any(name.startswith(prefix) for name in os.listdir(weights))
+
+
+def weights_guard(weights):
+    """What stands in for TotalSegmentator's download_pretrained_weights: a part the folder holds
+    needs nothing, a part this roi_subset never computes is passed over, and any other is refused."""
+    def guard(part, *rest, **words):
+        if has_part(weights, part) or int(part) in PARTS_NOT_COMPUTED:
+            return None
+        raise RuntimeError(f"TotalSegmentator asked for weight part {part}, which the weights folder lacks; the job downloads nothing")
+    return guard
+
+
 def run_totalseg(study, folder, args):
-    from totalsegmentator.python_api import totalsegmentator
-    totalsegmentator(study["ct"], folder, task=TASK["task"], roi_subset=list(TASK["roi_subset"]), fast=TASK["fast"],
-                     device=args.device, quiet=True, nr_thr_resamp=args.threads, nr_thr_saving=args.threads)
+    import totalsegmentator.python_api as api
+    held = api.download_pretrained_weights
+    api.download_pretrained_weights = weights_guard(args.weights or os.environ.get("TOTALSEG_WEIGHTS_PATH", ""))
+    try:
+        api.totalsegmentator(study["ct"], folder, task=TASK["task"], roi_subset=list(TASK["roi_subset"]), fast=TASK["fast"],
+                             device=args.device, quiet=True, nr_thr_resamp=args.threads, nr_thr_saving=args.threads)
+    finally:
+        api.download_pretrained_weights = held
     return {}
 
 
@@ -292,6 +319,20 @@ def run_moose(study, folder, args):
     return {"version": found.get("version"), "multilabel": os.path.basename(found["multilabel"]), "models": found.get("models")}
 
 
+def torch_device(word):
+    """TotalSegmentator's device word as torch reads it: gpu and gpu:N are cuda and cuda:N, which
+    MOOSE hands to torch.device, which refuses gpu (RERUN-REVIEW.md, item 2)."""
+    if word == "gpu" or word.startswith("gpu:"):
+        return "cuda" + word[3:]
+    return word
+
+
+def earlier_outputs(home):
+    """The vertebrae files an earlier attempt left in the study's folder, which moosez would write
+    again under the same names, so a diff of the folder before and after would see nothing new."""
+    return [p for p in home.rglob("*.nii.gz") if "vertebrae" in p.name.lower() and not p.is_symlink()]
+
+
 def moose_one(args):
     """Inside MOOSE's environment: the vertebrae model's zip unpacked where moosez looks, as
     tools/flexray_render.py segment unpacks it (its metadata and labels held equal to the tool's
@@ -320,9 +361,10 @@ def moose_one(args):
     link = home / f"CT_{home.name}.nii.gz"
     if not link.exists():
         link.symlink_to(Path(args.ct).resolve())
-    before = {p for p in home.rglob("*.nii.gz")}
-    moose(str(link), [MOOSE_MODEL], str(home), args.device)
-    written = sorted(p for p in home.rglob("*.nii.gz") if p not in before and "vertebrae" in p.name.lower())
+    for stale in earlier_outputs(home):
+        stale.unlink()
+    moose(str(link), [MOOSE_MODEL], str(home), torch_device(args.device))
+    written = sorted(earlier_outputs(home))
     if not written:
         raise SystemExit("moosez wrote no vertebrae file under the study's folder")
     print(json.dumps({"multilabel": str(written[-1]), "version": segmenter_version("moosez"), "models": {"unpacked": unpacked, "labels": labels}}))
@@ -431,7 +473,7 @@ def between(target, drawn_names, complete):
     return [n for n in listed if n in ORDER and ORDER.index(n) >= 7]
 
 
-def check_target(target, mask_path, levels, release_affine, complete):
+def check_target(target, mask_path, levels, release_affine, complete, segmenter=SEGMENTER):
     """The record of one target: its voxels, overlap share, its place against the release's levels, and
     the verdict kept or refused with the reason."""
     import nibabel as nib
@@ -440,7 +482,7 @@ def check_target(target, mask_path, levels, release_affine, complete):
     data = np.asanyarray(img.dataobj) > 0
     record = {"voxels": int(data.sum()), "grid": "ct"}
     if record["voxels"] < MIN_VOXELS:
-        record.update(kept=False, reason=f"TotalSegmentator drew {record['voxels']} voxels of it, under {MIN_VOXELS}")
+        record.update(kept=False, reason=f"{segmenter} drew {record['voxels']} voxels of it, under {MIN_VOXELS}")
         return record
     if any(level.shape != data.shape for _, level in levels) or not np.allclose(img.affine, release_affine, atol=0.01):
         record.update(kept=False, reason="the CT's grid is not the release masks' grid, so the check cannot be made")
@@ -506,7 +548,7 @@ def check(args):
             ran = json.load(fh)
         record["version"] = ran.get("version")
         if ran.get("exit") != 0:
-            record["error"] = ran.get("error") or "TotalSegmentator failed"
+            record["error"] = ran.get("error") or f"{segmenter} failed"
             records.append(record)
             continue
         try:
@@ -518,10 +560,10 @@ def check(args):
         for target in study["targets"]:
             mask_path = os.path.join(folder, TS_NAMES[target] + ".nii.gz")
             if not os.path.exists(mask_path):
-                record["targets"][target] = {"kept": False, "reason": "TotalSegmentator wrote no file for it"}
+                record["targets"][target] = {"kept": False, "reason": f"{segmenter} wrote no file for it"}
                 continue
             try:
-                found = check_target(target, mask_path, levels, release_affine, study["complete"])
+                found = check_target(target, mask_path, levels, release_affine, study["complete"], segmenter)
             except Exception as exc:                            # noqa: BLE001
                 found = {"kept": False, "reason": f"the check failed: {type(exc).__name__}: {str(exc)[:REASON_CHARS]}"}
             if found.get("kept"):
@@ -640,7 +682,7 @@ def main(argv=None):
     s.add_argument("--ct", required=True)
     s.add_argument("--folder", required=True)
     s.add_argument("--weights", required=True)
-    s.add_argument("--device", default="gpu")
+    s.add_argument("--device", default="cuda", help="torch's word; TotalSegmentator's gpu and gpu:N are read as cuda and cuda:N")
     s.set_defaults(go=moose_one)
     s = sub.add_parser("check")
     s.add_argument("--out", required=True)

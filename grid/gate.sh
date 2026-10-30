@@ -1937,7 +1937,15 @@ word_totalseg() {  # the gold tier 3 completion's TotalSegmentator arm (the owne
   hpcw_check totalseg_complete gpu ${opts[@]+"${opts[@]}"} --no-requeue --time 06:00:00 -- totalseg-complete.sbatch || return 1
   [ -z "$again" ] || echo "  the totalseg complete job $again"
   echo "$(date -u '+%F %T') UTC at commit $commit" > "$sent" || { echo "refusing: the mark $(basename "$sent") could not be written, so a lost answer could not be told from none; nothing was queued"; return 1; }
-  submit totalseg_complete gpu ${opts[@]+"${opts[@]}"} --no-requeue --time 06:00:00 -- totalseg-complete.sbatch > /dev/null || return 1
+  local queued
+  queued=$(submit totalseg_complete gpu ${opts[@]+"${opts[@]}"} --no-requeue --time 06:00:00 -- totalseg-complete.sbatch) || return 1
+  # The mark goes only once the gate's list names the job it queued, as morphometry covariates does:
+  # a list the gate could not write would otherwise leave no mark and no record, and the next send
+  # would read the job before as the last and let the word queue a second.
+  awk -v job="$queued" '$1 == job && $3 == "totalseg_complete" { found = 1 } END { exit !found }' "$STATE" 2>/dev/null || {
+    echo "  the gate's list (logs/GATE_JOBS.txt) does not name the job it queued (${queued:-no id}), so the marker logs/$(basename "$sent") stays and no second job follows without the owner's word"
+    return 1
+  }
   rm -f "$sent"
   echo "submitted the totalseg complete job: one GPU job that runs TotalSegmentator (VerSe, TotalSegmentator) or MOOSE (ENHANCE.PET) on each admitted study's own CT for the C2 or sacrum its release lacks. Send totalseg complete again once it ends to read its report, logs/TOTALSEG-complete.md."
 }
