@@ -38,9 +38,9 @@ The stages are fixed and are the prediction's grammar: source, prepare, split, a
 | model | classifier | live, resnet18 with ImageNet weights only (the grid holds no other weights file) |
 | model | level_prior_head | live: the request's block lines prior and prior_weight |
 | model | classifier_3d | planned: no trainer reads volumes yet |
-| model | annealer_unet | pending on #483, the auto-anatomist's swappable network |
+| model | annealer_unet | flow AutoanatomistFlow (merged with #483), the auto-anatomist's swappable network, the word `autoanatomist <plan>` |
 | train | train_classifier | live: the word `experiment <issue>`, ExperimentFlow, one GPU job a request |
-| train | train_annealer | pending on #483 |
+| train | train_annealer | flow AutoanatomistFlow, the word `autoanatomist <plan>`, one GPU array of trials and a CPU join |
 | calibrate | calibrate_temperature | planned |
 | select | select_on_validation | planned (today `tools/block_sweep.py ledger` ranks recorded runs on validation, by hand) |
 | evaluate | evaluate_heldout | live, inside the request's GPU job |
@@ -50,7 +50,7 @@ The stages are fixed and are the prediction's grammar: source, prepare, split, a
 | analyse | bordercall_naming | word `bordercall pilot` (then `full`; `complete` for gold tier 3) |
 | report | report_claim, model_card, wandb_log | live: every run writes them |
 
-Of the 32 blocks, 14 are live, 3 run by a word, 8 inside a flow, 2 are pending and 5 are planned.
+Of the 32 blocks, 14 are live, 3 run by a word, 10 inside a flow and 5 are planned; none is pending since #483 merged.
 
 "live" is a block an experiment request carries now; "word" a gate word runs it with a fixed id; "flow" a launched flow runs it inside a fixed plan; "pending" it is built on an unmerged pull request; "planned" nothing runs it yet. A pipeline made only of live blocks runs today; one with any other block is a plan until section 8 is built.
 

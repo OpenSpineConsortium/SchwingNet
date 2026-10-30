@@ -5,7 +5,7 @@
  "title": "Auto-anatomist network",
  "stage": "model",
  "summary": "The auto-anatomist's 3-D network: a residual U-Net, a plain U-Net or a probe, with its widths and groups.",
- "does": "The model spot of the auto-anatomist (vendored from bordercall on the unmerged pull request #483, grid/autoanatomist/autoanatomist/blocks.py there): residual-unet, plain-unet or probe, the encoders' channels at three scales (the key widths, default 16:32:64) and group norm's groups (default 8). It reads CT crops around each vertebra with the privileged mask channels its trainer anneals away. Nothing on main runs it.",
+ "does": "The model spot of the auto-anatomist (vendored from bordercall under grid/autoanatomist/, merged with #483; its keys are grid/autoanatomist/autoanatomist/blocks.py): residual-unet, plain-unet or probe, the encoders' channels at three scales (the key widths, default 16:32:64) and group norm's groups (default 8). It reads CT crops around each vertebra with the privileged mask channels its trainer anneals away. AutoanatomistFlow runs it inside the fixed plans under grid/screens/.",
  "glyph": "unet",
  "inputs": [
   {
@@ -123,14 +123,18 @@
   "python",
   "jax"
  ],
- "code": "planned",
- "implemented_by": [],
+ "code": "existing",
+ "implemented_by": [
+  "grid/autoanatomist/autoanatomist/blocks.py",
+  "grid/autoanatomist/autoanatomist/model.py",
+  "flows/autoanatomist.py"
+ ],
  "today": {
-  "status": "pending",
+  "status": "flow",
   "route": "",
   "word": "",
-  "flow": "",
-  "note": "Built on the unmerged pull request #483 (grid/autoanatomist/ on its branch); nothing on main runs it until that pull request merges."
+  "flow": "AutoanatomistFlow",
+  "note": "Merged with #483: the gate word `autoanatomist <plan>` runs AutoanatomistFlow over a fixed plan under grid/screens/ (gold3_latent_smoke, gold3_latent_screen), under docs/research/autoanatomist-screen/PREREG.md. A plan of the sandbox's own waits on the pipeline route (README section 8)."
  },
  "experiment": null,
  "card": null

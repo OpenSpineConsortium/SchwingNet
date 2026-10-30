@@ -5,7 +5,7 @@
  "title": "Train the annealer",
  "stage": "train",
  "summary": "One auto-anatomist trial: trains while the mask input is annealed away, one array task a trial.",
- "does": "One trial of the auto-anatomist screen (#483): the anneal schedule (lambda-then-w, joint, w-first, or fixed, the null), the objective (the oracle's landmarks, or the mask channels themselves), the naming term, the calibration of the spreads, the epochs, whole phantoms a batch and the seed. Each trial is one task of a GPU array (grid/autoanatomist.sbatch there: 8 CPUs, 64 GB, 12 h). A plan's epochs are at most 1000 and its batch at most 64; objective=mask needs naming off and calibrate none.",
+ "does": "One trial of the auto-anatomist screen (#483): the anneal schedule (lambda-then-w, joint, w-first, or fixed, the null), the objective (the oracle's landmarks, or the mask channels themselves), the naming term, the calibration of the spreads, the epochs, whole phantoms a batch and the seed. Each trial is one task of a GPU array (grid/autoanatomist.sbatch: 8 CPUs, 64 GB, 12 h, on galhp's L40S cards). A plan's epochs are at most 1000 and its batch at most 64; objective=mask needs naming off and calibrate none.",
  "glyph": "train",
  "inputs": [
   {
@@ -189,14 +189,19 @@
   "jax",
   "metaflow"
  ],
- "code": "planned",
- "implemented_by": [],
+ "code": "existing",
+ "implemented_by": [
+  "flows/autoanatomist.py",
+  "grid/autoanatomist.sbatch",
+  "grid/autoanatomist/autoanatomist/session.py",
+  "grid/autoanatomist/autoanatomist/train.py"
+ ],
  "today": {
-  "status": "pending",
+  "status": "flow",
   "route": "",
   "word": "",
-  "flow": "",
-  "note": "Built on the unmerged pull request #483 (flows/autoanatomist.py and grid/screens/ on its branch); nothing on main runs it until that pull request merges."
+  "flow": "AutoanatomistFlow",
+  "note": "Merged with #483: the gate word `autoanatomist <plan>` sends one plan under grid/screens/ as a GPU array of trials and a CPU join, each part AutoanatomistFlow through flows/launch.py, under docs/research/autoanatomist-screen/PREREG.md."
  },
  "experiment": null,
  "card": null
