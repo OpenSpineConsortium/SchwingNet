@@ -31,7 +31,8 @@ a tier, as the completion rule says (data/gold3-ct/members.json, completion). Th
    int16 copies, the subject's segmentations/ folder, the Vertebrae file under aws_enhance_pet_labels),
    into OUT/jobs.json; a study with no CT or no release on the grid is listed with its reason.
 2. run: TotalSegmentator's Python entry on each VerSe or TotalSegmentator CT with roi_subset
-   vertebrae_C2 and sacrum, which crops with the 6 mm model and runs the vertebrae part alone, the
+   vertebrae_C2, sacrum and vertebrae_S1 (the sacrum is always the union of the last two, one full
+   mask, since the owner trusts no segmenter's S1 class; DEVIATIONS.md item 2), which crops with the 6 mm model and runs the vertebrae part alone, the
    weights read from the folder TOTALSEG_WEIGHTS_PATH names, never downloaded; on each ENHANCE.PET
    CT the subcommand moose-one in MOOSE's own environment (--moose-python), which unpacks the
    vertebrae model's fetched zip where moosez looks, as tools/flexray_render.py segment does, runs
@@ -94,7 +95,19 @@ VERSE_IN_PATH = re.compile(r"scan-([A-Za-z0-9]+)_ct\b")
 TS_SUBJECT = re.compile(r"^s\d{4}$")
 REASON_CHARS = 160
 SEGMENTER = "TotalSegmentator"
-TASK = {"task": "total", "roi_subset": ["vertebrae_C2", "sacrum"], "fast": False}
+TASK = {"task": "total", "roi_subset": ["vertebrae_C2", "sacrum", "vertebrae_S1"], "fast": False}
+# TotalSegmentator's sacrum leaves out S1, a class of its own. The owner trusts no segmenter's S1
+# class and wants the sacrum as one full mask for every gold tier member (2026-10-30 22:58 UTC,
+# DEVIATIONS.md item 2): so wherever TotalSegmentator draws, the sacrum is the union of its sacrum and
+# its S1, and a TotalSegmentator release's own S1 is read as part of its sacrum. MOOSE draws no S1
+# class; its sacrum (28) is whole already.
+SACRUM_PARTS = ("sacrum", "vertebrae_S1")
+# TotalSegmentator 2.18.0 asks for all five parts of the total task (Dataset291 to 295) before it
+# applies roi_subset, and downloads any it lacks; the job holds only 292 (the vertebrae, where both
+# targets lie) and 298 (the 6 mm crop). These four are never computed for this roi_subset
+# (its nnunet.py, lines 582 to 592), so the guard passes over them and refuses any other missing part,
+# so the job downloads nothing (docs/research/gold3-ct/completion/RERUN-REVIEW.md, item 1).
+PARTS_NOT_COMPUTED = (291, 293, 294, 295)
 MOOSE_TASK = {"model": MOOSE_MODEL, "targets": MOOSE_NAMES}
 
 
@@ -255,10 +268,32 @@ def segmenter_version(package="TotalSegmentator"):
         return "not read"
 
 
+def has_part(weights, part):
+    """Whether the weights folder holds the unpacked Dataset folder of this part of the task."""
+    prefix = f"Dataset{int(part):03d}_"
+    return bool(weights) and os.path.isdir(weights) and any(name.startswith(prefix) for name in os.listdir(weights))
+
+
+def weights_guard(weights):
+    """What stands in for TotalSegmentator's download_pretrained_weights: a part the folder holds
+    needs nothing, a part this roi_subset never computes is passed over, and any other is refused."""
+    def guard(*given, **words):
+        part = given[0] if given else words.get("task_id")
+        if has_part(weights, part) or int(part) in PARTS_NOT_COMPUTED:
+            return None
+        raise RuntimeError(f"TotalSegmentator asked for weight part {part}, which the weights folder lacks; the job downloads nothing")
+    return guard
+
+
 def run_totalseg(study, folder, args):
-    from totalsegmentator.python_api import totalsegmentator
-    totalsegmentator(study["ct"], folder, task=TASK["task"], roi_subset=list(TASK["roi_subset"]), fast=TASK["fast"],
-                     device=args.device, quiet=True, nr_thr_resamp=args.threads, nr_thr_saving=args.threads)
+    import totalsegmentator.python_api as api
+    held = api.download_pretrained_weights
+    api.download_pretrained_weights = weights_guard(args.weights or os.environ.get("TOTALSEG_WEIGHTS_PATH", ""))
+    try:
+        api.totalsegmentator(study["ct"], folder, task=TASK["task"], roi_subset=list(TASK["roi_subset"]), fast=TASK["fast"],
+                             device=args.device, quiet=True, nr_thr_resamp=args.threads, nr_thr_saving=args.threads)
+    finally:
+        api.download_pretrained_weights = held
     return {}
 
 
@@ -292,6 +327,20 @@ def run_moose(study, folder, args):
     return {"version": found.get("version"), "multilabel": os.path.basename(found["multilabel"]), "models": found.get("models")}
 
 
+def torch_device(word):
+    """TotalSegmentator's device word as torch reads it: gpu and gpu:N are cuda and cuda:N, which
+    MOOSE hands to torch.device, which refuses gpu (RERUN-REVIEW.md, item 2)."""
+    if word == "gpu" or word.startswith("gpu:"):
+        return "cuda" + word[3:]
+    return word
+
+
+def earlier_outputs(home):
+    """The vertebrae files an earlier attempt left in the study's folder, which moosez would write
+    again under the same names, so a diff of the folder before and after would see nothing new."""
+    return [p for p in home.rglob("*.nii.gz") if "vertebrae" in p.name.lower() and not p.is_symlink()]
+
+
 def moose_one(args):
     """Inside MOOSE's environment: the vertebrae model's zip unpacked where moosez looks, as
     tools/flexray_render.py segment unpacks it (its metadata and labels held equal to the tool's
@@ -320,9 +369,10 @@ def moose_one(args):
     link = home / f"CT_{home.name}.nii.gz"
     if not link.exists():
         link.symlink_to(Path(args.ct).resolve())
-    before = {p for p in home.rglob("*.nii.gz")}
-    moose(str(link), [MOOSE_MODEL], str(home), args.device)
-    written = sorted(p for p in home.rglob("*.nii.gz") if p not in before and "vertebrae" in p.name.lower())
+    for stale in earlier_outputs(home):
+        stale.unlink()
+    moose(str(link), [MOOSE_MODEL], str(home), torch_device(args.device))
+    written = sorted(earlier_outputs(home))
     if not written:
         raise SystemExit("moosez wrote no vertebrae file under the study's folder")
     print(json.dumps({"multilabel": str(written[-1]), "version": segmenter_version("moosez"), "models": {"unpacked": unpacked, "labels": labels}}))
@@ -387,20 +437,26 @@ def sha256_of(path):
 
 def release_levels(release):
     """[(name, boolean array)] of the release's drawn levels on its grid, with the grid's affine:
-    one file per level in a TotalSegmentator folder, one label per level in a VerSe or ENHANCE.PET
-    file (the label ids read as names, since their maps differ by member and only the voxels count here)."""
+    one file per level in a TotalSegmentator folder, its S1 folded into its sacrum as one level, one
+    label per level in a VerSe or ENHANCE.PET file (the label ids read as names, since their maps
+    differ by member and only the voxels count here)."""
     import nibabel as nib
     import numpy as np
     levels = []
     if os.path.isdir(release):
         affine = None
+        sacrum = None
         for name in sorted(os.listdir(release)):
             if name.startswith("vertebrae_") or name == "sacrum.nii.gz":
                 img = nib.load(os.path.join(release, name))
                 affine = img.affine if affine is None else affine
                 data = np.asanyarray(img.dataobj) > 0
-                if data.any():
+                if name[:-7] in SACRUM_PARTS:
+                    sacrum = data if sacrum is None else (sacrum | data)
+                elif data.any():
                     levels.append((name[:-7], data))
+        if sacrum is not None and sacrum.any():
+            levels.append(("sacrum", sacrum))
         return levels, affine
     img = nib.load(release)
     data = np.asanyarray(img.dataobj)
@@ -431,16 +487,39 @@ def between(target, drawn_names, complete):
     return [n for n in listed if n in ORDER and ORDER.index(n) >= 7]
 
 
-def check_target(target, mask_path, levels, release_affine, complete):
-    """The record of one target: its voxels, overlap share, its place against the release's levels, and
-    the verdict kept or refused with the reason."""
+def read_union(mask_paths):
+    """The voxels drawn in any of the files, one target's parts, with the first file's image; the
+    parts must lie on one grid."""
     import nibabel as nib
     import numpy as np
-    img = nib.load(mask_path)
+    paths = [mask_paths] if isinstance(mask_paths, (str, os.PathLike)) else list(mask_paths)
+    img = nib.load(paths[0])
     data = np.asanyarray(img.dataobj) > 0
+    for path in paths[1:]:
+        part = nib.load(path)
+        drawn = np.asanyarray(part.dataobj) > 0
+        if drawn.shape != data.shape or not np.allclose(part.affine, img.affine, atol=0.01):
+            raise ValueError(f"{os.path.basename(str(path))} is not on {os.path.basename(str(paths[0]))}'s grid")
+        data = data | drawn
+    return data, img
+
+
+def target_files(folder, target, member, segmenter):
+    """The files whose union is the target: its own file, and S1 beside the sacrum wherever
+    TotalSegmentator draws it apart."""
+    if target == "sacrum" and segmenter == SEGMENTER:
+        return [os.path.join(folder, name + ".nii.gz") for name in SACRUM_PARTS]
+    return [os.path.join(folder, TS_NAMES[target] + ".nii.gz")]
+
+
+def check_target(target, mask_path, levels, release_affine, complete, segmenter=SEGMENTER):
+    """The record of one target: its voxels, overlap share, its place against the release's levels, and
+    the verdict kept or refused with the reason. mask_path may be a list of parts, read as their union."""
+    import numpy as np
+    data, img = read_union(mask_path)
     record = {"voxels": int(data.sum()), "grid": "ct"}
     if record["voxels"] < MIN_VOXELS:
-        record.update(kept=False, reason=f"TotalSegmentator drew {record['voxels']} voxels of it, under {MIN_VOXELS}")
+        record.update(kept=False, reason=f"{segmenter} drew {record['voxels']} voxels of it, under {MIN_VOXELS}")
         return record
     if any(level.shape != data.shape for _, level in levels) or not np.allclose(img.affine, release_affine, atol=0.01):
         record.update(kept=False, reason="the CT's grid is not the release masks' grid, so the check cannot be made")
@@ -479,8 +558,8 @@ def write_arm(mask_path, out_path, value):
     release files are, on the mask's grid."""
     import nibabel as nib
     import numpy as np
-    img = nib.load(mask_path)
-    data = (np.asanyarray(img.dataobj) > 0).astype(np.int16) * np.int16(value)
+    drawn, img = read_union(mask_path)
+    data = drawn.astype(np.int16) * np.int16(value)
     out = nib.Nifti1Image(data, img.affine, img.header)
     out.set_data_dtype(np.int16)
     nib.save(out, out_path)
@@ -506,7 +585,7 @@ def check(args):
             ran = json.load(fh)
         record["version"] = ran.get("version")
         if ran.get("exit") != 0:
-            record["error"] = ran.get("error") or "TotalSegmentator failed"
+            record["error"] = ran.get("error") or f"{segmenter} failed"
             records.append(record)
             continue
         try:
@@ -516,12 +595,13 @@ def check(args):
             records.append(record)
             continue
         for target in study["targets"]:
-            mask_path = os.path.join(folder, TS_NAMES[target] + ".nii.gz")
-            if not os.path.exists(mask_path):
-                record["targets"][target] = {"kept": False, "reason": "TotalSegmentator wrote no file for it"}
+            mask_path = target_files(folder, target, study["member"], segmenter)
+            missing = [os.path.basename(p) for p in mask_path if not os.path.exists(p)]
+            if missing:
+                record["targets"][target] = {"kept": False, "reason": f"{segmenter} wrote no file for it ({', '.join(missing)})"}
                 continue
             try:
-                found = check_target(target, mask_path, levels, release_affine, study["complete"])
+                found = check_target(target, mask_path, levels, release_affine, study["complete"], segmenter)
             except Exception as exc:                            # noqa: BLE001
                 found = {"kept": False, "reason": f"the check failed: {type(exc).__name__}: {str(exc)[:REASON_CHARS]}"}
             if found.get("kept"):
@@ -531,7 +611,7 @@ def check(args):
                 digest = sha256_of(staged)
                 name = f"{study['id']}_{segmenter.lower()}_{target}_{digest[:12]}.nii.gz"
                 os.replace(staged, os.path.join(arm, name))
-                found.update(file=name, sha256=digest, label_value=value)
+                found.update(file=name, sha256=digest, label_value=value, parts=[os.path.basename(p)[:-7] for p in mask_path])
             record["targets"][target] = found
         records.append(record)
     with open(os.path.join(args.out, "records.jsonl"), "w", encoding="utf-8") as fh:
@@ -640,7 +720,7 @@ def main(argv=None):
     s.add_argument("--ct", required=True)
     s.add_argument("--folder", required=True)
     s.add_argument("--weights", required=True)
-    s.add_argument("--device", default="gpu")
+    s.add_argument("--device", default="cuda", help="torch's word; TotalSegmentator's gpu and gpu:N are read as cuda and cuda:N")
     s.set_defaults(go=moose_one)
     s = sub.add_parser("check")
     s.add_argument("--out", required=True)
