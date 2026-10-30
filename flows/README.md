@@ -132,6 +132,11 @@ Metaflow's own resume rather than by anything written around it.
   decided, writes SUMMARY.md and RECORD.json and checks the report (`tools/report.py --study
   autoanatomist-screen`). Each chain works in <out>/<plan>/<chain>/, every path given absolute.
   tests/test_autoanatomist_flow.py runs the smoke through the launcher with a stand-in trial.
+- `autoanatomist2.py`, Autoanatomist2Flow: the auto-anatomist's second screen
+  (docs/research/autoanatomist-screen2/PREREG.md), AutoanatomistFlow under the kind autoanatomist2,
+  so its runs are held to a PREREG of their own while the first screen's stays frozen; the same parts,
+  words, folders and report (grid word `autoanatomist <plan>` for a plan AUTOANATOMIST2_PLANS names,
+  grid/autoanatomist2.sbatch). tests/test_autoanatomist_flow.py runs its smoke through the launcher.
 
 Every flow's end step sets an int artifact `verdict`, 0 when all went well and 1 otherwise.
 

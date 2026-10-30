@@ -30,8 +30,11 @@ MISSING = [name for name in NEEDED if importlib.util.find_spec(name) is None]
 TIMEOUT = 600
 PREREG = "docs/research/autoanatomist-screen/PREREG.md"
 PLAN = "grid/screens/gold3_latent_smoke.json"
+# The second screen: the same flow under the kind autoanatomist2, held to a PREREG of its own.
+PREREG2 = "docs/research/autoanatomist-screen2/PREREG.md"
+PLAN2 = "grid/screens/gold3_latent_smoke2.json"
 # What the scratch repository copies whole: the flow and what it runs, and the report with what it reads.
-COPIED = ("flows/autoanatomist.py", "flows/stage.py", "flows/stage_progress.py", "flows/stage_registry.py",
+COPIED = ("flows/autoanatomist.py", "flows/autoanatomist2.py", "flows/stage.py", "flows/stage_progress.py", "flows/stage_registry.py",
           "flows/registry.txt", "src/schwingnet/__init__.py", "src/schwingnet/autoanatomist_screen.py",
           "src/schwingnet/autoanatomist_search.py",
           "tools/autoanatomist_join.py", "tools/run_code.py", "tools/report.py", "tools/realism_report.py",
@@ -40,7 +43,8 @@ COPIED = ("flows/autoanatomist.py", "flows/stage.py", "flows/stage_progress.py",
           "data/reporting/studies/autoanatomist-screen.json", "data/licences.json", "data/splits/rule.json",
           "data/splits/test-persons.json", "data/splits/latent-prior-test-reserve.json",
           "data/splits/latent-prior-repeat-groups.json", "grid/autoanatomist.sbatch", "grid/screens/gold3_latent_smoke.json",
-          "grid/screens/gold3_latent_screen.json", PREREG, PREREG + ".sha256")
+          "grid/screens/gold3_latent_screen.json", PREREG, PREREG + ".sha256", "grid/screens/gold3_latent_smoke2.json",
+          "grid/screens/gold3_latent_screen2.json", PREREG2, PREREG2 + ".sha256")
 
 # A stand-in for tools/autoanatomist_trial.py: the trial the words name, its entry written as the
 # real one writes it and checked by the package's own entry_problems, so the real join reads it; the
@@ -134,7 +138,7 @@ class AutoanatomistFlowTest(unittest.TestCase):
         spec = importlib.util.spec_from_file_location("run_code_for_autoanatomist_test", self.repo / "tools" / "run_code.py")
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
-        for name in module.KINDS["autoanatomist"]:
+        for name in module.KINDS["autoanatomist"] + module.KINDS["autoanatomist2"]:
             path = self.repo / name / "stand-in.txt" if name.endswith("/") else self.repo / name
             if not (self.repo / name).exists():
                 path.parent.mkdir(parents=True, exist_ok=True)
@@ -148,14 +152,14 @@ class AutoanatomistFlowTest(unittest.TestCase):
         for words in (["add", "-A"], ["commit", "-q", "-m", message]):
             subprocess.run(self.git(*words), check=True, capture_output=True, timeout=60)
 
-    def run_part(self, part, *words, **extra):
+    def run_part(self, part, *words, kind="autoanatomist", plan=PLAN, **extra):
         """One launch of a part of the smoke, as the job script's series makes it: exit code, JSON
         lines, output and the stand-in's calls."""
         calls = self.tmp / f"calls-{part}-{len(list(self.tmp.glob('calls-*')))}"
         calls.write_text("", encoding="utf-8")
-        given = ["--part", part, "--plan", str(self.repo / PLAN), "--chain", "none", "--out", str(self.out), *words]
+        given = ["--part", part, "--plan", str(self.repo / plan), "--chain", "none", "--out", str(self.out), *words]
         env = base_env(SCHWINGNET=str(self.repo), FLOW_TEST_CALLS=str(calls), **extra)
-        code, said, out = launch(["autoanatomist", "--max-workers", "1", "--", *given], self.work, env, self.root)
+        code, said, out = launch([kind, "--max-workers", "1", "--", *given], self.work, env, self.root)
         return code, said, out, calls.read_text(encoding="utf-8").splitlines()
 
     def run_trial(self, task, **extra):
@@ -206,6 +210,35 @@ class AutoanatomistFlowTest(unittest.TestCase):
         check = subprocess.run([sys.executable, str(self.repo / "tools" / "report.py"), "check", "--study",
                                 "autoanatomist-screen", "--run", str(self.folder())], capture_output=True, text=True, timeout=120)
         self.assertEqual(check.returncode, 0, check.stdout + check.stderr)
+
+    def test_the_second_smoke_runs_as_its_own_kind_held_to_its_own_prereg(self):
+        ran = []
+        for task in range(5):
+            code, said, out, calls = self.run_part("trial", "--data", str(self.data), "--task", str(task), "--tasks", "5",
+                                                   kind="autoanatomist2", plan=PLAN2)
+            self.assertEqual(code, 0, out)
+            ran += calls
+        self.assertEqual(sorted(ran), [f"trial {arm}_s1 5 5" for arm in ("adaptive", "cyclic", "lambda_then_w", "overlapping", "restraint")])
+        code, said, out, _ = self.run_part("join", "--tasks", "5", kind="autoanatomist2", plan=PLAN2)
+        self.assertEqual((code, said[-1]["verdict"]), (0, 0), out)
+        folder = self.out / "gold3_latent_smoke2" / "none"
+        record = json.loads((folder / "RECORD.json").read_text(encoding="utf-8"))
+        self.assertEqual((record["study"], record["prereg"], record["prereg_part"]),
+                         ("autoanatomist-screen", PREREG2, "gold3_latent_smoke2"))
+        self.assertEqual(record["prereg_sha256"], (ROOT / (PREREG2 + ".sha256")).read_text(encoding="utf-8").split()[0])
+        self.assertTrue(record["run"].startswith("Autoanatomist2Flow/"), record["run"])
+        check = subprocess.run([sys.executable, str(self.repo / "tools" / "report.py"), "check", "--study",
+                                "autoanatomist-screen", "--run", str(folder)], capture_output=True, text=True, timeout=120)
+        self.assertEqual(check.returncode, 0, check.stdout + check.stderr)
+        self.assertIn(PREREG2, (folder / "REPORT.md").read_text(encoding="utf-8"))
+
+    def test_neither_screens_kind_runs_the_others_plans(self):
+        for kind, plan in (("autoanatomist", PLAN2), ("autoanatomist2", PLAN)):
+            with self.subTest(kind=kind):
+                code, said, out, calls = self.run_part("trial", "--data", str(self.data), "--task", "0", "--tasks", "2",
+                                                       kind=kind, plan=plan)
+                self.assertEqual(code, 90, out)
+                self.assertEqual((said, calls), ([], []), out)
 
     def test_a_trial_that_fails_fails_its_run_and_the_join_reports_it_with_its_arm_undecided(self):
         code, said, out, _ = self.run_trial(0)

@@ -40,6 +40,15 @@ REPO=${SCHWINGNET:-$HOME/SchwingNet}
 DATA=${DATA_ROOT:-/rs/rs_grp_oschome/go2432/data}
 LAB=${LAB_VOLUME:-/rs/rs_grp_oschome}
 ROOT=${AUTOANATOMIST_ROOT:-$LAB/go2432/autoanatomist}
+# The kind the parts run as, with its frozen PREREG's folder and its flow's class: autoanatomist, the
+# first screen, unless grid/autoanatomist2.sbatch, the second screen's job script, names autoanatomist2,
+# whose runs are held to a PREREG of their own (flows/registry.txt, flows/autoanatomist2.py).
+KIND=${AUTOANATOMIST_KIND:-autoanatomist}
+case "$KIND" in
+  autoanatomist) STUDY_DIR=docs/research/autoanatomist-screen FLOW_CLASS=AutoanatomistFlow ;;
+  autoanatomist2) STUDY_DIR=docs/research/autoanatomist-screen2 FLOW_CLASS=Autoanatomist2Flow ;;
+  *) echo "autoanatomist: AUTOANATOMIST_KIND is autoanatomist or autoanatomist2, not $KIND; nothing ran"; echo "SN_AUTOANATOMIST_RC=64"; exit 64 ;;
+esac
 AUTOANATOMIST_PIN="jax[cuda12]==0.10.2 flax==0.12.8 optax==0.2.8 orbax-checkpoint==0.12.8 numpy==2.4.6 scipy==1.17.1 nibabel==5.3.2"
 # What every part runs, copied at the gate's commit: the tools and the packages they import, the
 # vendored auto-anatomist package the trial trains with, the flows and the launcher with their
@@ -48,7 +57,7 @@ AUTOANATOMIST_PIN="jax[cuda12]==0.10.2 flax==0.12.8 optax==0.2.8 orbax-checkpoin
 # script, the masking filter, and the pre-registration with its hash.
 CODE_PATHS=(tools src vendor flows data/splits data/reporting data/licences.json pixi.toml pixi.lock
   grid/box.sh grid/venv.sh grid/redact.sed grid/autoanatomist.sbatch grid/autoanatomist grid/screens
-  docs/research/autoanatomist-screen/PREREG.md docs/research/autoanatomist-screen/PREREG.md.sha256)
+  "$STUDY_DIR/PREREG.md" "$STUDY_DIR/PREREG.md.sha256")
 # The copy's record of its commit and files (tools/run_code.py and flows/launch.py, COPY_RECORD).
 COPY_RECORD=COPY.txt
 PART=${PART:-}
@@ -110,7 +119,7 @@ gpu_line() {  # the first GPU nvidia-smi names, with its memory and driver, or n
   nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv,noheader 2>/dev/null | head -n 1
 }
 prereg_frozen() {  # the copy's PREREG.md is the one frozen with its hash (Lab Recipe, "Pre-register and freeze")
-  ( cd "$CODE/docs/research/autoanatomist-screen" 2>/dev/null && sha256sum -c --status PREREG.md.sha256 )
+  ( cd "$CODE/$STUDY_DIR" 2>/dev/null && sha256sum -c --status PREREG.md.sha256 )
 }
 copy_code() {  # the chain's copy of the code at the gate's commit, into CODE, made once whichever part comes first
   # The tasks of an array start together: each extracts under a name of its own and renames it into
@@ -154,7 +163,7 @@ node_ready() {  # node_ready gpu|cpu: the copy, the freeze, the plan, the card a
   copy_code || { report "FAILED: the code at ${COMMIT:0:7} could not be copied under $OUT"; part_end 2; }
   report "code: commit $COMMIT copied to $CODE, which every part of the chain runs"
   prereg_frozen || { report "STOP: PREREG.md changed since the freeze"; part_end 90; }
-  report "PREREG.md: as frozen, sha256 $(cut -c1-16 "$CODE/docs/research/autoanatomist-screen/PREREG.md.sha256")"
+  report "PREREG.md: $STUDY_DIR's, as frozen, sha256 $(cut -c1-16 "$CODE/$STUDY_DIR/PREREG.md.sha256")"
   [ -f "$CODE/grid/screens/$PLAN.json" ] || { report "FAILED: no grid/screens/$PLAN.json at ${COMMIT:0:7}"; part_end 2; }
   if [ "$1" = gpu ]; then
     # The card is read here, on the node, and not inside the container, whose nvidia-smi only --nv brings in.
@@ -186,7 +195,7 @@ launch_run() {  # launch_run NAME WORDS...: one run of the flow from the copy, i
   : > "$LAUNCH_LOG"
   # Every path is absolute: the flow reads a relative one from the folder the launcher started in,
   # the checkout here, which may move under the screen, and the plan is the copy's.
-  env SCHWINGNET="$CODE" bash "$CODE/grid/box.sh" "$venv/bin/python" "$CODE/flows/launch.py" autoanatomist --max-workers 1 -- \
+  env SCHWINGNET="$CODE" bash "$CODE/grid/box.sh" "$venv/bin/python" "$CODE/flows/launch.py" "$KIND" --max-workers 1 -- \
     --plan "$CODE/grid/screens/$PLAN.json" --chain "$CHAIN" --out "$ROOT" "$@" >> "$LAUNCH_LOG" 2>&1 &
   LAUNCHER=$!
   tail -n +1 --pid="$LAUNCHER" -f "$LAUNCH_LOG" 2>/dev/null &
@@ -212,8 +221,8 @@ flow_said() {  # flow_said LOG: the launcher's decision, then the flow's own lin
 page_of() {  # page_of LOG: where the run's progress page lies, from the datastore the decision names and the run the last line names
   local root id
   root=$(grep -m 1 '"decision":' "$1" 2>/dev/null | sed -n 's/.*"root": *"\([^"]*\)".*/\1/p')
-  id=$(grep '"successful":' "$1" 2>/dev/null | tail -n 1 | sed -n 's/.*"run": *"AutoanatomistFlow\/\([0-9A-Za-z_-]*\)".*/\1/p')
-  echo "${root:-(the datastore the launcher names)}/progress/AutoanatomistFlow/${id:-<run>}/index.html"
+  id=$(grep '"successful":' "$1" 2>/dev/null | tail -n 1 | sed -n "s/.*\"run\": *\"$FLOW_CLASS\\/\\([0-9A-Za-z_-]*\\)\".*/\\1/p")
+  echo "${root:-(the datastore the launcher names)}/progress/$FLOW_CLASS/${id:-<run>}/index.html"
 }
 trial_line() {  # trial_line T: how trial T of this chain ended, from its step file
   local file=$STEPS/trial-$1.md last

@@ -114,6 +114,9 @@ KINDS = {
                       "grid/autoanatomist/", "data/splits/rule.json", "data/splits/test-persons.json",
                       "data/splits/latent-prior-test-reserve.json", "data/splits/latent-prior-repeat-groups.json"),
 }
+# The second screen (docs/research/autoanatomist-screen2/PREREG.md) runs the first screen's flow under
+# a kind of its own, so it reaches every file the first does and its own flow file.
+KINDS["autoanatomist2"] = (*KINDS["autoanatomist"], "flows/autoanatomist2.py")
 
 NAMES_THE_RUN = "names the run: the files it lists are the digest, so a change to the lists changes the digest by itself"
 LAUNCHES = "starts or carries on the flow's run, which it names by this digest, and computes nothing the run keeps"
@@ -174,6 +177,7 @@ LEFT_OUT = {
                       "tools/report.py": "writes and checks the screen's CLAIM 2024 and REFORMS report from the join's record "
                       "in its end step, after every number; it computes nothing a trial or the decision comes from"},
 }
+LEFT_OUT["autoanatomist2"] = LEFT_OUT["autoanatomist"]
 
 
 class RunCodeError(Exception):
