@@ -100,7 +100,7 @@
     ],
     "canonical": "the data root's VerSeFusion copy, by the definition of held; the grid home's copy is another copy",
     "held": "checked 2026-10-29, census job 40870542",
-    "held_note": "the census job compared the 473 recorded mask files (453 names) with the data root's VerSeFusion copy by name and sha256: 436 match, 17 are not found and none is on the grid unrecorded, so the series those 17 files belong to are not held; the names stay in the report on the grid. 364 of 374 series are on the grid by the source records; the 10 VerSe'20 series never downloaded (grid/README.md) are not held",
+    "held_note": "the census job compared the 473 recorded mask files (453 names) with the data root's VerSeFusion copy by name and sha256: 436 match, 17 are not found and none is on the grid unrecorded, so the series those 17 files belong to are not held: verse020, verse060, verse078, verse124, verse133, verse500, verse564, verse604, verse606, verse613 and verse640, verse202 (verse402's), verse235 and verse290 (verse412's), each its only mask file, and verse055, verse093 and verse227 their verse19 copy beside a verse20 file that is there, named by the census word's detail on 2026-10-30 at 00:19 UTC; every one of the 17 series is out by the field test, so all 21 gold 3 series are held and nothing is fetched. 364 of 374 series are on the grid by the source records; the 10 VerSe'20 series never downloaded (grid/README.md) are not held",
     "pattern": "/rs/rs_grp_oschome/go2432/data/versefusion/raw/VerSeFusion_data/raw/**/*{id}*.nii.gz"
    },
    "persons_by_records": [21, 21],
@@ -209,7 +209,7 @@
    "against_the_release": "ENHANCE.PET's SPINEPS masks against its release masks' verdicts (release, SPINEPS): admitted admitted 820, not_admitted look 1, not_admitted not_admitted 32; VerSe's: admitted admitted 20, look look 4, look not_admitted 2, not_admitted admitted 1, not_admitted look 4, not_admitted not_admitted 330"
   },
   "extent": "every TotalSegmentator CT (1,939 of 1,939) read whole on the canonical copy: 62 have constant planes at the grid's last slices, 0 at its first; re-judged with the CT's own planes, 14 verdicts or ends change: to admitted s0102, s0931, s1310, s1762 and s1778; to look s0437, s0621, s1329 and s1344; s0213, s0580, s0651, s1750 and s1882 stay not admitted with an end moved. Applied on 2026-10-30 by the owner's rule of 2026-10-29 23:46 UTC: the 62 padded CTs' planes, printed by the census word's detail (#492), are data/gold3-ct/totalsegmentator/planes.json, and admission.json reads them (README section 8, decision 21)",
-  "left_for_the_owner": "the 1 ENHANCE.PET CT off its masks' grid; the count for one more bordercall complete job, for the levels of s0102, s0931, s1762 and s1778; VerSe's 17 recorded mask files not found are named by the census word's detail once SchwingNet #493 is on main and repaired where they belong to gold 3 series"
+  "left_for_the_owner": "the 1 ENHANCE.PET CT off its masks' grid; the count for one more bordercall complete job, for the levels of s0102, s0931, s1762 and s1778; VerSe's 17 recorded mask files not found all belong to series the field test leaves out, so no repair is needed"
  },
  "auto_anatomist": {
   "spines": "VerSe, TotalSegmentator and ENHANCE.PET (the owner, 2026-10-28 23:03 UTC: \"i meant verse+totalsegmentator+PET\")",
