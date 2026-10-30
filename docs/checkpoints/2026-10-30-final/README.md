@@ -19,7 +19,7 @@ Source: the thread "Restart the auto-anatomist probe", claude.ai project symphon
 | thread | state | pull requests | handoff |
 |---|---|---|---|
 | Restart the auto-anatomist probe | gold tier 3 screen merged; second smoke job 40885678 on galhp, not read since 19:12 UTC; demo and second screen's arms on a draft | SchwingNet #483 and #500 merged; bordercall #40 merged, #48 draft (branch claude/project-thread-5hj0q5) | [autoanatomist/HANDOFF.md](autoanatomist/HANDOFF.md) |
-| Continue Bayesian synthetic validation | rule chosen (plain rule, T = 2); covariates first pass from the papers; covariates per person moved to the next account | bordercall #38 draft (branch claude/project-thread-o3ng22-all-measures) | bordercall research_notes/synthetic-validation/HANDOFF.md on that branch; pointer and figures 18 to 20 in [project-files/synthetic-validation/](project-files/synthetic-validation/HANDOFF.md) |
+| Continue Bayesian synthetic validation | rule chosen (plain rule, T = 2); covariates first pass from the papers; totalseg complete job 40882547 failed on an import clash, the fix merged as SchwingNet #499 (b49583b), and the one rerun allowed was not sent: TotalSegmentator 2.18.0 would download four weight parts the job lacks, MOOSE refuses the device word gpu, and an S1-in-sacrum question waits for the owner; bordercall #38 waits on bordercall #44 for a gold tier 3 rescore | bordercall #38 draft (head 7817492); SchwingNet #499 merged, #503 ready with auto-merge; symphony-template #510 and hpcworker #53 merged | SchwingNet #503's docs/checkpoints/2026-10-30-totalseg-rerun/README.md, with the findings that block the rerun in docs/research/gold3-ct/completion/RERUN-REVIEW.md; the earlier pointer and figures 18 to 20 in [project-files/synthetic-validation/](project-files/synthetic-validation/HANDOFF.md) |
 | Plan evaluating latent shape priors against explainable metrics (latent-prior planning; the pipeline sandbox) | test reserve, repeat groups and parts drawn at SchwingNet 3abc2fa; planning note finished as a draft | bordercall #45 draft (research_notes/latent-shape-prior-evaluation/) | that note's folder on PR 45's branch; the reserve's files in [project-files/latent-prior/](project-files/latent-prior/README.md); the sandbox in memory/pipeline-sandbox-2026-10-30.md |
 | Continue the Tan 2004 stratum split | resolved: merged at 9024b05; the full naming run and the covariate work moved to the next account | bordercall #43 merged | [project-files/tan-split/HANDOFF.md](project-files/tan-split/HANDOFF.md) |
 
@@ -28,7 +28,7 @@ The two threads still open at 20:35 UTC were asked to push and send their handof
 ## 3. What is on the grid
 
 - autoanatomist gold3_latent_smoke, job 40885678 (galhp), sent 19:12 UTC at SchwingNet 432489a: state not read. The first send, job 40884715, failed on a V100's compile. What to do next is section 2 of [autoanatomist/HANDOFF.md](autoanatomist/HANDOFF.md).
-- The gold tier 3 completion's TotalSegmentator arm and the morphometry join are described in memory/totalseg-complete-sent.md and memory/gold3-on-bounds-card.md, as their threads last wrote them.
+- totalseg complete, job 40882547: failed on an import clash; the fix is merged (#499); the one rerun the owner allowed was not sent, for the findings in SchwingNet #503 (section 2). The morphometry join on the bounds card is memory/gold3-on-bounds-card.md.
 
 ## 4. What else is here
 
