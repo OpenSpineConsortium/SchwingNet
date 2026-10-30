@@ -271,7 +271,13 @@ def wall_slope(z: np.ndarray, y: np.ndarray) -> float:
     median of the slopes between pairs of slabs at least WALL_PAIR_MM apart (Theil and Sen), so
     that one slab's misread wall does not tilt it; nought where the slabs span too little, or
     where the slope is steeper than WALL_SLOPE_MAX, a wall leaning 30 degrees off the column's
-    line, which no vertebra's wall does and a misread set of slabs can."""
+    line, which no vertebra's wall does and a misread set of slabs can. Two causes lean it. Each
+    slab's wall is read on the lattice's staircase, as the body's posterior wall was before
+    body.posterior_wall, which put the line up to 3.7 degrees off the clean walls of that
+    function's cache on 1 mm slices and 7.7 on 2.5 mm; and the slabs through a notch in the wall
+    read its floor as the canal's front, which leaned the line 18.7 degrees through a
+    basivertebral notch 5 mm wide, 6 tall and 4 deep at mid-height. It is the next to be read on
+    the lattice."""
     if len(z) < 3 or z.max() - z.min() < WALL_SPAN_MM:
         return 0.0
     i, j = np.triu_indices(len(z), 1)
