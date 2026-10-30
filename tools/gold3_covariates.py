@@ -42,27 +42,45 @@ Where each person and their sex and age come from:
 Left out before any person is made: every study the admission (data/gold3-ct/admission.json) does not admit;
 ENHANCE.PET 1134, 1283 and 1347, admitted on their repaired masks but measured on the published ones; and every
 ENHANCE.PET study whose CT on the data root is not on its mask's grid (the census found one, named only on the
-grid, so it is found again here as the census's held part found it). An age above AGE_CEILING is no age (three
-TotalSegmentator subjects, s1774, s1776 and s1839, read 115 to 118). Every admitted person with sex read enters
-the sex tables, a child among them, since the dataset carries its children and never leaves one out
-(docs/research/gold3-ct/README.md, decision 13), and the fill rates count how many are under ADULT_AGE; the age
-slope is over the adults of known age alone, since growth and not ageing moves a child's measures, so a child
-and a person of unknown age enter no slope.
+grid, so it is found again here as the census's held part found it). A person's age is their chosen study's,
+and an age above AGE_CEILING is unknown (three TotalSegmentator subjects, s1774, s1776 and s1839, read 115 to
+118). The tables are of adults: a person whose known age is under ADULT_AGE enters none of them, no mean, g, r
+or slope, as docs/research/morphometry-beyond-the-42-papers.md recommends until the owner sets the age range,
+though the dataset itself carries its children and never leaves one out (docs/research/gold3-ct/README.md,
+decision 13); a person of unknown age enters the sex tables, g and r but no slope, which is over adults of known
+age alone; the fill rates count the children and the persons of unknown age apart.
 
 The aggregates, over the measures the bordercall vocabulary names (VERTEBRA_KEYS at T10 to L5, DISC_KEYS at the
 discs T10-T11 to L4-L5) and a whole-column summary, T10-L5, each person's mean over every level of the range,
 taken only where the person has all of them, so that a person missing the largest or the smallest body never
 moves the mean:
 - fill rates of sex and age per member and part (ENHANCE.PET's sites);
-- for each member (autopet, verse, totalseg, and all, every person of the three with sex read), measure, level
-  and sex: n, mean and SD where n is at least MIN_CELL; Hedges' g, men minus women, with its variance, where both
-  sexes have MIN_CELL; the within-person Pearson correlation of the level with the one above it (T10-T11 to L4-L5,
-  and the discs' pairs likewise), within sex, where at least MIN_PAIR persons of that sex have both; and the least
-  squares slope of the measure on age per decade within sex with its standard error, over the adults of known
-  age, where there are at least MIN_SLOPE (two parameters rest on them, as a correlation's co-variation does).
+- for each member (autopet, verse, totalseg), measure, level and sex: n, mean and SD where n is at least
+  MIN_CELL; Hedges' g, men minus women, with its variance, where both sexes' means are shown; the within-person
+  Pearson correlation of the level with the one above it (T10-T11 to L4-L5, and the discs' pairs likewise),
+  within sex, where at least MIN_PAIR persons of that sex have both; and the least squares slope of the measure
+  on age per decade within sex with its standard error, over the adults of known age, where there are at least
+  MIN_SLOPE (two parameters rest on them, as a correlation's co-variation does).
 
-One line per (member, measure, level), both sexes on it, so the whole aggregate is one report the gate prints a
-page a send:
+No printed means can be differenced against one another into a sum over fewer than MIN_CELL persons. Each line
+is one member's and each of its blocks one sex's; the members' persons are distinct and no line pools members or
+sexes (the pooling across members is done later from the member lines, by inverse variance, off the grid), so the
+only means that can be set against one another are one member's and one sex's, of one measure or of measures one
+of which is made from others, and two such relations are left. The column's persons, those with every level,
+are among each level's, and the level means times their n, summed, less the column's mean times its n and the
+number of levels, give the sum over the persons with some of the levels but not all: so a sex's column mean and
+SD are shown only where those persons number none or MIN_CELL at least, which is the one relation one measure's
+lines hold. And a measure that is the mean of others printed beside it (DERIVED: bordercall's disc_h_mean, the
+mean of the three disc heights, grid/bordercall/morphometry/column.py) would with them give the sum over the
+persons who have some of them but not all, and with the columns could carve that down to one person: so it is
+shown, at a level or at the column, only where its persons are each part's there and each part's mean is shown,
+its sum then the mean of theirs, adding nothing to what they show. g is shown only where both sexes' means are;
+r and the slope are printed with their n and never with a mean of their own persons, so they give no sum to
+difference; n and the fill rates are counts, printed whatever their size.
+
+One line per (member, measure, level), both sexes on it, at most MAX_CELL_LINES, 822: each member's 26 vertebra
+keys at 8 levels and the column (234 lines) and 5 disc keys at 7 disc levels and the column (40); with the fill
+rates, the counts and the rules about 25 more, three of the gate's pages, one a send:
 
     <member> <measure> <level> M <n> <mean> <sd> F <n> <mean> <sd> g <g> <var> r <r M> <n M> <r F> <n F>
         a <slope M> <se M> <n M> <slope F> <se F> <n F>
@@ -76,9 +94,10 @@ one person's value: no single age is printed, and a mean rests on MIN_CELL perso
 
 Everything but the grid check is the standard library, so the join and the arithmetic run where numpy is not;
 the grid check reads the CTs' headers with tools/gold3_census.py's reader, which needs numpy, in threads,
-since zlib lets go of the interpreter's lock while it inflates and a thread needs nothing pickled. A failure
-the report says is worded with no slash, quote, file name or long number, since the gate withholds any
-reason after FAILED: that could quote a value (grid/report-shapes.awk).
+since zlib lets go of the interpreter's lock while it inflates and a thread needs nothing pickled. Every failure
+the report says is one of FAILURES, beside at most the kind of error that caused it as a plain word, worded with
+no quote, slash, dotted name (ENHANCE.PET reads as a file's) or long number, since the gate withholds any reason
+after FAILED: that could quote a value (grid/shape-words.awk, grid/report-shapes.awk).
 """
 
 import argparse
@@ -118,12 +137,43 @@ ADULT_AGE, AGE_CEILING = 18.0, 110.0
 MEASURED_ON_UNREPAIRED = ("1134", "1283", "1347")
 SEXES = ("M", "F")
 MEMBERS = ("autopet", "verse", "totalseg")
+# A measure that is the mean of others the report prints (bordercall's morphometry/column.py: disc_h_mean is
+# the mean of the three disc heights, and none where one is missing).
+DERIVED = {"disc_h_mean": ("disc_h_ant", "disc_h_mid", "disc_h_post")}
+MAX_CELL_LINES = len(MEMBERS) * (len(VERTEBRA_KEYS) * (len(VERTEBRA_LEVELS) + 1) + len(DISC_KEYS) * (len(DISC_LEVELS) + 1))
 TOTALSEG_META = "Totalsegmentator_dataset_v300/meta.csv"
 PETCT = re.compile(r"PETCT_([0-9a-f]+)", re.IGNORECASE)
 VERSE_SERIES = re.compile(r"(verse\d+|gl\d+)", re.IGNORECASE)
 TOTALSEG_SUBJECT = re.compile(r"s\d{4}")
 MALE = {"m", "male", "man", "men", "mann", "maennlich"}
 FEMALE = {"f", "w", "female", "woman", "women", "frau", "weiblich"}
+# Every failure the report can say, each with at most the kind of error that caused it: plain words the gate
+# shows whole, with no quote, slash, dotted name or long number (tests/test_gold3_covariates.py runs each
+# through grid/shape-words.awk and grid/report-shapes.awk).
+FAILURES = {
+    "index_unnamed": "no sample index was named, so autoPET has no sex or age",
+    "index_unreadable": "the sample index could not be read ({kind}), so autoPET has no sex or age",
+    "autopet_map_unnamed": "no census map of autoPET was named, so autoPET has no person",
+    "autopet_map_unreadable": "the census map of autoPET could not be read ({kind}), so autoPET has no person",
+    "enhance_rows_missing": "no rows of ENHANCE PET where the morphometry job writes them, so ENHANCE PET has no person",
+    "enhance_cts_missing": "no ENHANCE PET CTs on the data root, so the CT off the grid of its mask could not be found "
+                           "and left out",
+    "verse_rows_missing": "no rows of VerSe where the morphometry job writes them, so VerSe has no person",
+    "verse_table_unreadable": "the VerSe demographics table could not be read ({kind}), so VerSe has no sex",
+    "verse_table_not_recorded": "the VerSe demographics table is not the one the VerSe series record names by its "
+                                "sha256, so VerSe has no sex",
+    "verse_table_no_sex_column": "the VerSe demographics table has no one column named sex or gender, so VerSe has no sex",
+    "totalseg_rows_missing": "no rows of TotalSegmentator where the morphometry job writes them, so TotalSegmentator "
+                             "has no person",
+    "totalseg_meta_missing": "no meta table of the TotalSegmentator release under the data root, extracted or zipped, "
+                             "so it has no sex or age",
+    "totalseg_meta_not_recorded": "the TotalSegmentator meta table is not the one its subjects record names by its "
+                                  "sha256, so it has no sex or age",
+    "totalseg_meta_columns": "the TotalSegmentator meta table lacks one of its image id, age and gender columns, so it "
+                             "has no sex or age",
+}
+PLAIN_KIND = re.compile(r"[A-Za-z_][A-Za-z0-9_]{0,39}")
+UNPLAIN_RUN = re.compile(r"[0-9]{5}|[0-9a-fA-F]{8}")
 
 
 def sibling(name):
@@ -179,8 +229,8 @@ class Person:
 
     @property
     def tabled(self):
-        """Whether the person enters the sex tables: sex read, a child among them."""
-        return self.sex in SEXES
+        """Whether the person enters the tables: sex read and no child, a person of unknown age among them."""
+        return self.sex in SEXES and not self.child
 
     @property
     def sloped(self):
@@ -197,12 +247,21 @@ class Report:
     def say(self, text):
         self.lines.extend(textwrap.wrap(text, width=LINE_CHARS - 2, subsequent_indent="  ") or [""])
 
-    def fail(self, text):
-        """A failure in plain words, which the gate shows: no quote, slash, file name or long number."""
+    def fail(self, failure, error=None):
+        """One of FAILURES, with the kind of the error where it names one: plain words, which the gate shows."""
+        text = FAILURES[failure].format(kind=plain_kind(error))
         self.failures.extend(textwrap.wrap("FAILED: " + text, width=LINE_CHARS - 2, subsequent_indent="  "))
 
     def all_lines(self):
         return self.failures + self.lines
+
+
+def plain_kind(error):
+    """An error's class name where it is a plain word the gate shows whole, else words that stand in for it."""
+    name = type(error).__name__ if error is not None else ""
+    if PLAIN_KIND.fullmatch(name) and not UNPLAIN_RUN.search(name):
+        return name
+    return "an error of no plain name"
 
 
 # ---------------------------------------------------------------- the records and the rows
@@ -389,7 +448,7 @@ def autopet_persons(studies, matches, index, report, tally):
         try:
             series = index_series(index, set(by_key))
         except sqlite3.Error as error:
-            report.fail(f"the sample index could not be read ({type(error).__name__}), so autoPET has no sex or age")
+            report.fail("index_unreadable", error)
     tally["persons with no series in the index"] = sum(1 for key in by_key if not series.get(key))
     tally["series in the index"] = sum(len(series.get(key, [])) for key in by_key)
     return [autopet_person(key, by_key[key], series.get(key, []), studies, tally) for key in sorted(by_key)]
@@ -438,15 +497,15 @@ def verse_sexes(path, records, report):
     try:
         data = Path(path).read_bytes()
     except OSError as error:
-        report.fail(f"the VerSe demographics table could not be read ({type(error).__name__}), so VerSe has no sex")
+        report.fail("verse_table_unreadable", error)
         return {}
     if sha256_of(data) != recorded:
-        report.fail("the VerSe demographics table is not the one the VerSe series record names by its sha256, so VerSe has no sex")
+        report.fail("verse_table_not_recorded")
         return {}
     header, rows = table_rows(data)
     column = sex_column(header)
     if column is None:
-        report.fail("the VerSe demographics table has no one column named sex or gender, so VerSe has no sex")
+        report.fail("verse_table_no_sex_column")
         return {}
     found = defaultdict(set)
     for row in rows:
@@ -484,15 +543,15 @@ def totalseg_meta(data, records, report):
     root = Path(data) / "totalsegmentator_v300"
     found = meta_bytes(root)
     if found is None:
-        report.fail("no meta table of the TotalSegmentator release under the data root, extracted or zipped, so it has no sex or age")
+        report.fail("totalseg_meta_missing")
         return {}
     if sha256_of(found) != recorded:
-        report.fail("the TotalSegmentator meta table is not the one its subjects record names by its sha256, so it has no sex or age")
+        report.fail("totalseg_meta_not_recorded")
         return {}
     header, rows = table_rows(found, ";")
     names = [h.lower() for h in header]
     if not {"image_id", "age", "gender"} <= set(names):
-        report.fail("the TotalSegmentator meta table lacks one of its image id, age and gender columns")
+        report.fail("totalseg_meta_columns")
         return {}
     at = {name: names.index(name) for name in ("image_id", "age", "gender")}
     return {row[at["image_id"]].strip(): (sex_of(row[at["gender"]]), number(row[at["age"]]))
@@ -587,17 +646,33 @@ def age_slope(points):
 # ---------------------------------------------------------------- the cells and the lines
 
 
+def levels_of(key):
+    return VERTEBRA_LEVELS if key in VERTEBRA_KEYS else DISC_LEVELS
+
+
 def value_at(person, key, level):
     """A person's value of a measure at a level, or at COLUMN the mean over every level of the range they all have."""
     if level != COLUMN:
         return person.values.get((level, key))
-    levels = VERTEBRA_LEVELS if key in VERTEBRA_KEYS else DISC_LEVELS
-    values = [person.values.get((lv, key)) for lv in levels]
+    values = [person.values.get((lv, key)) for lv in levels_of(key)]
     return sum(values) / len(values) if all(v is not None for v in values) else None
 
 
+def partial_persons(persons, key):
+    """How many of the persons have the measure at some of its levels but not at all of them."""
+    counts = (sum((lv, key) in p.values for lv in levels_of(key)) for p in persons)
+    return sum(1 for have in counts if 0 < have < len(levels_of(key)))
+
+
+def mean_shown(n, level, partial):
+    """Whether a sex's mean and SD are printed: MIN_CELL persons at least, and at COLUMN only where the persons
+    with some levels but not all, whose sum the level lines less the column's would give, number none or
+    MIN_CELL at least."""
+    return n >= MIN_CELL and (level != COLUMN or partial == 0 or partial >= MIN_CELL)
+
+
 def level_above(key, level):
-    levels = VERTEBRA_LEVELS if key in VERTEBRA_KEYS else DISC_LEVELS
+    levels = levels_of(key)
     return levels[levels.index(level) - 1] if level in levels and levels.index(level) > 0 else None
 
 
@@ -610,9 +685,33 @@ def cell(persons, key, level):
         pairs = [(p.values[(above, key)], p.values[(level, key)]) for p in own
                  if above and (above, key) in p.values and (level, key) in p.values]
         points = [(p.age, value_at(p, key, level)) for p in own if p.sloped and value_at(p, key, level) is not None]
-        out[sex] = {"summary": mean_sd(values), "r": pearson(pairs) if above else None, "slope": age_slope(points)}
-    out["g"] = hedges_g(out["M"]["summary"], out["F"]["summary"])
+        partial = partial_persons(own, key) if level == COLUMN else 0
+        summary = mean_sd(values)
+        out[sex] = {"summary": summary, "shown": mean_shown(summary[0], level, partial), "partial": partial,
+                    "persons": frozenset(p.key for p in own if value_at(p, key, level) is not None),
+                    "r": pearson(pairs) if above else None, "slope": age_slope(points)}
+    out["g"] = g_of(out)
     return out
+
+
+def g_of(numbers):
+    """Hedges' g of a cell where both sexes' means are shown, else none."""
+    if not (numbers["M"]["shown"] and numbers["F"]["shown"]):
+        return None, None
+    return hedges_g(numbers["M"]["summary"], numbers["F"]["summary"])
+
+
+def withhold_derived(cells, whole, parts, level):
+    """A measure that is the mean of others printed beside it is shown, by sex, only where its persons are each
+    part's at the same place and each part's mean is shown, so that its sum is the mean of theirs and the four
+    lines difference into nothing."""
+    numbers = cells[(whole, level)]
+    for sex in SEXES:
+        own = numbers[sex]
+        if not all(cells[(part, level)][sex]["shown"] and cells[(part, level)][sex]["persons"] == own["persons"]
+                   for part in parts):
+            own["shown"] = False
+    numbers["g"] = g_of(numbers)
 
 
 def figure(value, digits=4):
@@ -632,7 +731,7 @@ def cell_line(member, key, level, numbers):
     parts = [member, key, level]
     for sex in SEXES:
         n, mean, sd = numbers[sex]["summary"]
-        shown = n >= MIN_CELL
+        shown = numbers[sex]["shown"]
         parts += [sex, str(n), figure(mean if shown else None), figure(sd if shown else None)]
     g, var = numbers["g"]
     parts += ["g", "-" if g is None else f"{g:.3f}", figure(var, 3)]
@@ -648,19 +747,24 @@ def cell_line(member, key, level, numbers):
 
 
 def cells_of(persons):
-    """[(key, level, numbers)] over every measure of the vocabulary, its levels and its column."""
-    out = []
+    """[(key, level, numbers)] over every measure of the vocabulary, its levels and its column, a derived
+    measure's means withheld where its lines and its parts' could be differenced."""
+    cells = {}
     for keys, levels in ((VERTEBRA_KEYS, VERTEBRA_LEVELS), (DISC_KEYS, DISC_LEVELS)):
         for key in keys:
             for level in (*levels, COLUMN):
-                out.append((key, level, cell(persons, key, level)))
-    return out
+                cells[(key, level)] = cell(persons, key, level)
+    for whole, parts in DERIVED.items():
+        for level in (*levels_of(whole), COLUMN):
+            withhold_derived(cells, whole, parts, level)
+    return [(key, level, numbers) for (key, level), numbers in cells.items()]
 
 
 def table_members(persons):
-    """[(member, persons in its tables)]: each member, then all of them with sex read."""
+    """[(member, persons in its tables)], each member apart: no table pools them, so that no member's mean can be
+    taken from a pooled one to leave another's few persons (the pooling is done later, from the member lines)."""
     tabled = [p for p in persons if p.member in MEMBERS and p.tabled]
-    return [(member, [p for p in tabled if p.member == member]) for member in MEMBERS] + [("all", tabled)]
+    return [(member, [p for p in tabled if p.member == member]) for member in MEMBERS]
 
 
 # ---------------------------------------------------------------- the fill rates
@@ -671,15 +775,17 @@ def share(part, whole):
 
 
 def fill_line(label, persons, studies):
-    """How many of a part's persons carry sex and age, and how many of those are adults, children or too old."""
+    """How many of a part's persons carry sex and age, how many of those are adults, children or too old, and
+    how many enter the tables, those of unknown age counted apart."""
     total = len(persons)
     sexed = Counter(p.sex for p in persons if p.sex in SEXES)
     aged = [p for p in persons if p.age is not None]
+    tabled = [p for p in persons if p.tabled and p.member in MEMBERS]
     return (f"fill {label}: persons {total} of {studies} studies; sex {share(sum(sexed.values()), total)}, "
             f"M {sexed['M']}, F {sexed['F']}; age {share(len(aged), total)}, adults {sum(1 for p in aged if not p.child)}, "
-            f"under {ADULT_AGE:.0f} {sum(1 for p in aged if p.child)}, above {AGE_CEILING:.0f} dropped from age "
-            f"{sum(1 for p in persons if p.age_read is not None and p.age is None)}; in the sex tables "
-            f"{sum(1 for p in persons if p.tabled and p.member in MEMBERS)}")
+            f"under {ADULT_AGE:.0f} {sum(1 for p in aged if p.child)} in no table, above {AGE_CEILING:.0f} read as unknown "
+            f"{sum(1 for p in persons if p.age_read is not None and p.age is None)}; in the tables {len(tabled)}, "
+            f"of unknown age {sum(1 for p in tabled if p.age is None)}")
 
 
 def autopet_lines(persons, tally):
@@ -726,8 +832,8 @@ def summary_of(member, key, level, numbers):
     out = {"member": member, "key": key, "level": level, "g": list(numbers["g"])}
     for sex in SEXES:
         n, mean, sd = numbers[sex]["summary"]
-        shown = n >= MIN_CELL
-        out[sex] = {"n": n, "mean": mean if shown else None, "sd": sd if shown else None,
+        shown = numbers[sex]["shown"]
+        out[sex] = {"n": n, "mean": mean if shown else None, "sd": sd if shown else None, "partial": numbers[sex]["partial"],
                     "r": list(numbers[sex]["r"]) if numbers[sex]["r"] else None, "slope": list(numbers[sex]["slope"])}
     return out
 
@@ -735,11 +841,11 @@ def summary_of(member, key, level, numbers):
 # ---------------------------------------------------------------- the run
 
 
-def member_studies(path, study_id, allowed, report, label, tally):
-    """The admitted studies of one rows file with their values, and the counts of what it held and left."""
+def member_studies(path, study_id, allowed, report, label, tally, missing):
+    """The admitted studies of one rows file with their values, and the counts of what it held and left;
+    missing names the failure said where the file is not there."""
     if not Path(path).is_file():
-        plain = label.replace(".", " ")
-        report.fail(f"no rows of {plain} where the morphometry job writes them, so {plain} has no person")
+        report.fail(missing)
         return {}
     values, seen = read_rows(path, study_id)
     kept = {sid: values.get(sid, {}) for sid in seen if sid in allowed}
@@ -751,11 +857,12 @@ def member_studies(path, study_id, allowed, report, label, tally):
 def enhance_studies(args, report, tally, off_grid):
     """ENHANCE.PET's admitted studies with rows, less those measured on unrepaired masks and those off their grid."""
     allowed = admitted(args.records, "enhance_pet")
-    studies = member_studies(Path(args.morphometry) / "enhance/rows.csv", enhance_id, allowed, report, "ENHANCE.PET", tally)
+    studies = member_studies(Path(args.morphometry) / "enhance/rows.csv", enhance_id, allowed, report, "ENHANCE.PET", tally,
+                             "enhance_rows_missing")
     facts = enhance_facts(args.records)
     off, grid = off_grid(args.data, facts, args.workers)
     if off is None:
-        report.fail("no ENHANCE.PET CTs on the data root, so the CT off its mask's grid could not be found and left out")
+        report.fail("enhance_cts_missing")
         off = set()
     report.say(f"ENHANCE.PET grid check: CTs read {grid['read']}, not found {grid['missing']}, off their mask's grid "
                f"or unreadable {grid['off']}")
@@ -767,12 +874,12 @@ def enhance_studies(args, report, tally, off_grid):
 def autopet_matches(path, report):
     """{ENHANCE.PET study: the census's match} from its autopet.json, or {} with the failure said."""
     if not path:
-        report.fail("no census map of autoPET was named, so autoPET has no person")
+        report.fail("autopet_map_unnamed")
         return {}
     try:
         return read_json(path).get("matches", {})
     except (OSError, ValueError, AttributeError) as error:
-        report.fail(f"the census map of autoPET could not be read ({type(error).__name__}), so autoPET has no person")
+        report.fail("autopet_map_unreadable", error)
         return {}
 
 
@@ -783,14 +890,15 @@ def gather(args, report, off_grid):
     autopet = {sid: v for sid, v in enhance.items() if sites.get(sid) == "autoPET"}
     matches = autopet_matches(args.autopet, report)
     if not args.index:
-        report.fail("no sample index was named, so autoPET has no sex or age")
+        report.fail("index_unnamed")
     persons = autopet_persons(autopet, matches, args.index, report, auto)
     persons += site_persons(enhance, sites, "Leipzig") + site_persons(enhance, sites, "Careggi")
     verse = member_studies(Path(args.morphometry) / "verse/rows.csv", verse_id, admitted(args.records, "verse"),
-                           report, "VerSe", tally)
+                           report, "VerSe", tally, "verse_rows_missing")
     persons += verse_persons(verse, args.records, verse_sexes(args.verse_demographics, args.records, report), tally)
     totalseg = member_studies(Path(args.morphometry) / "verse/totalseg/rows.csv", totalseg_id,
-                              admitted(args.records, "totalsegmentator"), report, "TotalSegmentator", tally)
+                              admitted(args.records, "totalsegmentator"), report, "TotalSegmentator", tally,
+                              "totalseg_rows_missing")
     persons += totalseg_persons(totalseg, totalseg_meta(args.data, args.records, report))
     counts = {"autoPET": len(autopet), "Leipzig": sum(1 for s in enhance if sites.get(s) == "Leipzig"),
               "Careggi": sum(1 for s in enhance if sites.get(s) == "Careggi"), "verse": len(verse), "totalseg": len(totalseg)}
@@ -810,11 +918,15 @@ def run(args, off_grid=off_grid_studies):
         report.say(fill_line(label, [p for p in persons if p.part == part], counts[part]))
     for line in autopet_lines([p for p in persons if p.part == "autoPET"], auto):
         report.say(line)
-    report.say(f"rule: a person enters the tables with sex read, those under {ADULT_AGE:.0f} among them; mean and SD where "
-               f"a sex has {MIN_CELL} or more; g where both have; r with the level above where {MIN_PAIR} or more of a sex "
-               f"have both; a, the slope per decade of age within sex, over adults of known age alone where {MIN_SLOPE} or more; "
-               f"{COLUMN} is each person's mean over every level of the range, where the person has all of them; "
-               "TotalSegmentator's ages carry the release's jitter of up to four years")
+    report.say(f"rule: the tables are of adults, a person under {ADULT_AGE:.0f} in none and one of unknown age in all but the "
+               f"slope; each line one member and each block one sex, none pooled; mean and SD where a sex has {MIN_CELL} or "
+               f"more; g where both means are shown; r with the level above where {MIN_PAIR} or more of a sex have both; "
+               f"a, the slope per decade of age within sex, over adults of known age alone where {MIN_SLOPE} or more; "
+               f"{COLUMN} is each person's mean over every level of the range, where the person has all of them, its mean "
+               f"and SD shown only where the persons of that sex with some levels but not all number none or {MIN_CELL} "
+               f"or more; {', '.join(DERIVED)}, the mean of {', '.join(p for parts in DERIVED.values() for p in parts)}, "
+               "shown only where its persons are each of theirs and their means are shown; TotalSegmentator's ages "
+               "carry the release's jitter of up to four years")
     report.say("line: member measure level M n mean sd F n mean sd g g var r rM nM rF nF a slopeM seM nM slopeF seF nF; "
                "- where not shown")
     cells = []

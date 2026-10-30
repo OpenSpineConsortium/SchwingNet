@@ -20,10 +20,15 @@
 # report.lines alone, and no path: the interpreter by its name, the code by its commit.
 #
 # The job runs from its own copy of the tool, the census's NIfTI reader beside it and data/gold3-ct/,
-# taken from git's objects at the commit the gate sent it from (COVARIATES_COMMIT), so it reads no
-# working tree, takes no hold on the checkout and runs the code the owner's count covered however the
-# checkout moves while it waits. The interpreter is the first of train-cpu's, the SPINEPS environments'
-# and the system's that imports numpy and sqlite3.
+# taken from git's objects at the commit the gate sent it from (COVARIATES_COMMIT), so it takes no hold
+# on the checkout and runs the code the owner's count covered however the checkout moves while it waits.
+# Its interpreter is the first of the SPINEPS environment's in the owner's home, the lab's spineps212 and
+# the system's python3 that imports numpy and sqlite3 on Python 3.8 or later, as morphometry.sbatch
+# looks for its own; those read nothing of the working tree. Only where none of them does is it the
+# checkout's train-cpu environment, grid/bin/train-cpu-python running the checkout's .pixi copy in the
+# container, the one case in which the job reads the working tree while it runs; the report's
+# interpreter line names which it took (COVARIATES_PYTHON, which the gate never sets, comes first for
+# a test).
 #
 # The batch class is the requeue QoS, so the job is requeueable: started again under the same job id,
 # it keeps its copy of the code and runs the join again from the start, which writes every file anew,
@@ -56,6 +61,13 @@ finish() {
   echo "SN_COVARIATES_RC=$1"
   exit "$1"
 }
+error_kind() {  # error_kind FILE: the class of the error a traceback's last line names, a plain word, or nothing
+  local kind
+  kind=$(tail -n 1 "$1" 2>/dev/null | sed -r -n 's/^([A-Za-z_][A-Za-z0-9_.]*)(: .*)?$/\1/p' | sed 's/.*\.//')
+  [[ $kind =~ ^[A-Za-z_][A-Za-z0-9_]{0,39}$ ]] || return 0
+  [[ $kind =~ [0-9]{5}|[0-9A-Fa-f]{8} ]] && return 0
+  echo "$kind"
+}
 child=""
 interrupted() {
   if [ -n "$child" ]; then
@@ -84,14 +96,18 @@ if [ ! -f "$OUT/code/tools/gold3_covariates.py" ]; then
     || { report "FAILED: the commit the gate named holds no join tool, census reader or gold 3 records"; finish 2; }
 fi
 
-PY=""
-for cand in "${PYDRV:-$REPO/grid/bin/train-cpu-python}" "$HOME/mambaforge/envs/spineps/bin/python" \
-            "$RS/envs/spineps212/bin/python" "$(command -v python3)"; do
-  [ -n "$cand" ] && [ -x "$cand" ] || continue
-  if "$cand" -c "import numpy, sqlite3" >/dev/null 2>&1; then PY=$cand; break; fi
-done
-[ -n "$PY" ] || { report "FAILED: no interpreter that imports numpy and sqlite3 among train-cpu, the SPINEPS environments and the system"; finish 2; }
-report "interpreter: $(basename "$PY"), Python $("$PY" -c 'import sys; print(sys.version.split()[0])'), numpy $("$PY" -c 'import numpy; print(numpy.__version__)')"
+PY="" PY_NAME=""
+take() {  # take NAME PATH: PATH becomes the interpreter, unless one is taken, where it imports numpy and sqlite3 on 3.8 or later
+  [ -z "$PY" ] && [ -n "$2" ] && [ -x "$2" ] || return 0
+  if "$2" -c "import sys, numpy, sqlite3; sys.exit(sys.version_info < (3, 8))" >/dev/null 2>&1; then PY=$2 PY_NAME=$1; fi
+}
+take "the one COVARIATES_PYTHON names" "${COVARIATES_PYTHON:-}"
+take "the SPINEPS environment in the home" "$HOME/mambaforge/envs/spineps/bin/python"
+take "the lab spineps212 environment" "$RS/envs/spineps212/bin/python"
+take "the system python3" "$(command -v python3)"
+take "the checkout train-cpu environment, read from the working tree" "$REPO/grid/bin/train-cpu-python"
+[ -n "$PY" ] || { report "FAILED: no interpreter that imports numpy and sqlite3 on Python 3.8 or later among the SPINEPS environments, the system and train-cpu"; finish 2; }
+report "interpreter: $PY_NAME, Python $("$PY" -c 'import sys; print(sys.version.split()[0])'), numpy $("$PY" -c 'import numpy; print(numpy.__version__)')"
 report "code: the join tool, the census reader and the gold 3 records from commit ${COMMIT:0:7}; reads only, the per-person tables stay in the job folder"
 
 began=$(date -u +%s)
@@ -110,6 +126,12 @@ if { [ "$rc" -eq 0 ] || [ "$rc" -eq 3 ]; } && [ -f "$OUT/report.lines" ]; then
   [ "$rc" -eq 0 ] && finish 0
   finish 1
 fi
-# the error's kind alone, since its message may name a path; the whole output stays in the job folder
-report "FAILED: the join ended after $minutes min with exit $rc, $(tail -n 1 "$OUT/join.out" 2>/dev/null | cut -d: -f1 | tr -cd 'A-Za-z0-9_ ' | cut -c1-80)"
+# The error's kind alone, as one plain word or none, since its message, or a last line that is no
+# error's, may name a path, a person or a number; the whole output stays in the job folder.
+kind=$(error_kind "$OUT/join.out")
+if [ -n "$kind" ]; then
+  report "FAILED: the join ended after $minutes min with exit $rc, an error of the kind $kind"
+else
+  report "FAILED: the join ended after $minutes min with exit $rc, its output naming no error kind"
+fi
 finish 1

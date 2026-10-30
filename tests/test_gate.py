@@ -2645,8 +2645,32 @@ esac
         table = self.tmp / "home" / "VerSeFusion" / "configs" / "verse_demographics.csv"
         table.parent.mkdir(parents=True, exist_ok=True)
         table.write_text("patient,series,sex,age\n", encoding="utf-8")
-        (self.repo / "tools" / "gold3_covariates.py").write_text("", encoding="utf-8")
+        self.covariates_commit()
         return {"VERSE_DEMOGRAPHICS": str(table)}
+
+    def covariates_commit(self, leave_out=()):
+        """The checkout as a git repository whose commit holds what the job copies, less LEAVE_OUT, so the
+        gate can name it; the commit's id. Its own gc and maintenance are off, as the other git tests set them."""
+        for name in ("tools/gold3_covariates.py", "tools/gold3_census.py", "tools/gold3_field.py",
+                     "data/gold3-ct/admission.json"):
+            path = self.repo / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            if not path.exists():
+                path.write_text("{}\n" if name.endswith(".json") else "", encoding="utf-8")
+        quiet = {"GIT_CONFIG_COUNT": "2", "GIT_CONFIG_KEY_0": "gc.auto", "GIT_CONFIG_VALUE_0": "0",
+                 "GIT_CONFIG_KEY_1": "maintenance.auto", "GIT_CONFIG_VALUE_1": "false"}
+        git = ["git", "-C", str(self.repo), "-c", "user.name=t", "-c", "user.email=t@example.org"]
+        env = dict(os.environ, **quiet, GIT_CEILING_DIRECTORIES=str(self.tmp))
+        if not (self.repo / ".git").exists():
+            subprocess.run(["git", "init", "-q", str(self.repo)], env=env, check=True)
+            for key, value in (("gc.auto", "0"), ("gc.autoDetach", "false"), ("maintenance.auto", "false"),
+                               ("maintenance.autoDetach", "false"), ("receive.autogc", "false")):
+                subprocess.run([*git, "config", key, value], env=env, check=True)
+        subprocess.run([*git, "add", "-A", "--", "tools", "data/gold3-ct"], env=env, check=True)
+        for name in leave_out:
+            subprocess.run([*git, "rm", "-q", "--cached", "-r", "--", name], env=env, check=True)
+        subprocess.run([*git, "commit", "-q", "--allow-empty", "-m", "the join"], env=env, check=True)
+        return subprocess.run([*git, "rev-parse", "HEAD"], env=env, capture_output=True, text=True, check=True).stdout.strip()
 
     def allow_covariates_rerun(self, word):
         """The owner's word for one more join, as a pull request commits it in grid/gate.sh."""
@@ -2711,7 +2735,10 @@ esac
         self.assertIn("morphometry-covariates.sbatch", lines[0])
         self.assertIn(f" INDEX={self.data}/_samples/run1/samples.sqlite ", lines[0])
         self.assertIn(f" DATA_ROOT={self.data} ", lines[0])
-        self.assertIn(f" COVARIATES_COMMIT= AUTOPET={self.tmp}/go2432/gold3_census/7/autopet.json "
+        head = subprocess.run(["git", "-C", str(self.repo), "rev-parse", "HEAD"], capture_output=True, text=True,
+                              check=True).stdout.strip()
+        self.assertRegex(head, r"^[0-9a-f]{40}$")
+        self.assertIn(f" COVARIATES_COMMIT={head} AUTOPET={self.tmp}/go2432/gold3_census/7/autopet.json "
                       f"MORPHOMETRY_ROOT={self.tmp}/go2432/morphometry VERSE_DEMOGRAPHICS={env['VERSE_DEMOGRAPHICS']}", lines[0])
         self.assertFalse((self.repo / "grid" / "logs" / "MORPHOMETRY-covariates.sent").exists())
         job = self.recorded()["morphometry_covariates"]
@@ -2805,6 +2832,93 @@ esac
         self.assertIn("follows a submission whose answer was lost", done.stdout)
         self.assertEqual(len(self.submitted()), 2)
         self.assertFalse((self.repo / "grid" / "logs" / "MORPHOMETRY-covariates.sent").exists())
+
+    def test_morphometry_covariates_spends_nothing_where_the_gate_cannot_name_a_commit_that_holds_its_code(self):
+        env = self.covariates_inputs()
+        logs = self.repo / "grid" / "logs"
+        # no commit: the checkout is no git repository the gate can read (git looks no higher than the test's folder)
+        shutil.rmtree(self.repo / ".git")
+        refused = self.gate("morphometry", "covariates", GIT_CEILING_DIRECTORIES=str(self.tmp), **env)
+        self.assertEqual(refused.returncode, 2, refused.stdout)
+        self.assertIn("refusing: the gate cannot read the checkout's commit, which the job copies its code from; "
+                      "nothing was queued", refused.stdout)
+        self.assertEqual(self.submitted(), [])
+        self.assertFalse((logs / "MORPHOMETRY-covariates.sent").exists())
+        # a git repository with no commit yet names none either
+        subprocess.run(["git", "init", "-q", str(self.repo)], check=True, env=dict(os.environ, GIT_CEILING_DIRECTORIES=str(self.tmp)))
+        refused = self.gate("morphometry", "covariates", GIT_CEILING_DIRECTORIES=str(self.tmp), **env)
+        self.assertEqual(refused.returncode, 2, refused.stdout)
+        self.assertIn("cannot read the checkout's commit", refused.stdout)
+        # a commit that does not hold what the job copies would fail the job: refused too
+        self.covariates_commit(leave_out=("tools/gold3_field.py",))
+        refused = self.gate("morphometry", "covariates", GIT_CEILING_DIRECTORIES=str(self.tmp), **env)
+        self.assertEqual(refused.returncode, 2, refused.stdout)
+        self.assertIn("holds no tools/gold3_field.py, which the job copies; nothing was queued", refused.stdout)
+        self.assertEqual(self.submitted(), [])
+        self.assertFalse((logs / "MORPHOMETRY-covariates.sent").exists())
+        # a report a rerun would replace stays where it is while the gate refuses
+        report = logs / "MORPHOMETRY-covariates.md"
+        report.write_text("# morphometry covariates: job 77 on node, commit abc1234, 2026-10-30 10:00:00 UTC\n"
+                          "- exit 1 at 2026-10-30 10:20:00 UTC\n", encoding="utf-8")
+        self.allow_covariates_rerun("covariates:77")
+        refused = self.gate("morphometry", "covariates", GIT_CEILING_DIRECTORIES=str(self.tmp), **env)
+        self.assertEqual(refused.returncode, 2, refused.stdout)
+        self.assertTrue(report.exists())
+        self.assertFalse((logs / "MORPHOMETRY-covariates-77.md").exists())
+        self.covariates_commit()
+        done = self.gate("morphometry", "covariates", GIT_CEILING_DIRECTORIES=str(self.tmp), **env)
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertEqual(len(self.submitted()), 1)
+        self.assertTrue((logs / "MORPHOMETRY-covariates-77.md").exists())
+
+    def test_morphometry_covariates_one_word_queues_one_job_when_its_answer_is_lost(self):
+        # A rerun the word allows whose answer is lost leaves its marker and no record: the job the word
+        # named is still the last recorded, so the marker, not the word, decides, and another job waits
+        # for a word for the lost one; and each lost answer takes a word of its own.
+        env = self.covariates_inputs()
+        logs = self.repo / "grid" / "logs"
+        lossy = self.fake / "lossy"
+        self.assertEqual(self.gate("morphometry", "covariates", **env).returncode, 0)
+        job = self.recorded()["morphometry_covariates"]
+        self.allow_covariates_rerun(f"covariates:{job}")
+        lossy.write_text("morphometry_covariates", encoding="utf-8")
+        lost = self.gate("morphometry", "covariates", HPCW_LOSSY=str(lossy), **env)
+        self.assertNotEqual(lost.returncode, 0, lost.stdout)
+        self.assertEqual(len(self.submitted()), 2)
+        self.assertEqual(self.recorded()["morphometry_covariates"], job, "the lost one left no record")
+        self.assertTrue((logs / "MORPHOMETRY-covariates.sent").exists())
+        lossy.write_text("", encoding="utf-8")
+        for _ in range(2):
+            refused = self.gate("morphometry", "covariates", **env)
+            self.assertEqual(refused.returncode, 64, refused.stdout)
+            self.assertIn("no job id came back", refused.stdout)
+            self.assertIn("COVARIATES_RERUNS=covariates:lost in grid/gate.sh", refused.stdout)
+        self.assertEqual(len(self.submitted()), 2, "the word for the job before the lost one queues nothing more")
+        # the word for the lost one queues one more, and its answer lost too, it queues nothing more
+        self.allow_covariates_rerun(f"covariates:{job} covariates:lost")
+        lossy.write_text("morphometry_covariates", encoding="utf-8")
+        self.assertNotEqual(self.gate("morphometry", "covariates", HPCW_LOSSY=str(lossy), **env).returncode, 0)
+        lossy.write_text("", encoding="utf-8")
+        self.assertEqual(len(self.submitted()), 3)
+        spent = (logs / "MORPHOMETRY-covariates.lost").read_text(encoding="utf-8").splitlines()
+        self.assertEqual(len(spent), 1)
+        self.assertTrue(spent[0].startswith("covariates:lost spent at "), spent)
+        refused = self.gate("morphometry", "covariates", **env)
+        self.assertEqual(refused.returncode, 64, refused.stdout)
+        self.assertIn("COVARIATES_RERUNS=covariates:lost2 in grid/gate.sh", refused.stdout)
+        self.assertEqual(len(self.submitted()), 3)
+        self.allow_covariates_rerun(f"covariates:{job} covariates:lost covariates:lost2")
+        done = self.gate("morphometry", "covariates", **env)
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("follows a submission whose answer was lost", done.stdout)
+        self.assertEqual(len(self.submitted()), 4)
+        self.assertFalse((logs / "MORPHOMETRY-covariates.sent").exists())
+        # that job recorded, every word before it is spent: it leaves no report and nothing queues
+        (self.fake / "queue").write_text("", encoding="utf-8")
+        again = self.gate("morphometry", "covariates", **env)
+        self.assertEqual(again.returncode, 64, again.stdout)
+        self.assertIn("left no report", again.stdout)
+        self.assertEqual(len(self.submitted()), 4)
 
     def test_morphometry_covariates_prints_an_unfinished_part_and_reruns_only_for_the_job_the_word_names(self):
         env = self.covariates_inputs()
