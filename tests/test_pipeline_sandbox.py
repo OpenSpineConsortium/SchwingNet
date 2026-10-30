@@ -421,6 +421,19 @@ class Templates(unittest.TestCase):
                     return node, p["name"], next(c for c in p["choices"] if c != params[p["name"]])
         raise AssertionError(f"{spec['id']} has no node with a param to change")
 
+    def test_a_spec_holding_a_mention_is_refused(self):
+        """The pipeline's issue carries the name and the spec, and an issue the owner opens with @claude in it
+        starts claude.yml, so a name or a node holding @ is an error and the page offers no link."""
+        for name, change in (("ask @claude", lambda s: None),
+                             ("plain", lambda s: s["nodes"][0].setdefault("params", {}).__setitem__("@claude", 1))):
+            with self.subTest(name):
+                spec = copy.deepcopy(template(self.data, "latent_prior"))
+                spec["name"] = name
+                change(spec)
+                problems = sandbox.compile_spec(spec, self.data)["problems"]
+                self.assertTrue(any(p["code"] == "text" and p["level"] == "error" and "@" in p["text"]
+                                    for p in problems), problems)
+
     def test_split_data_is_not_split_again_and_morphometry_needs_masks(self):
         """The splits take data not split yet: the catalog arrives split by the frozen rule, which a second
         split could only contradict. Morphometry refuses volumes that carry no masks."""
@@ -570,6 +583,8 @@ def edge_specs(data):
     variant("an input left open", lambda s: s["edges"].pop(3))
     variant("two edges into one input", lambda s: s["edges"].append(dict(s["edges"][2])))
     variant("caf\u00e9", lambda s: None)
+    variant("ask @claude", lambda s: None)
+    variant("a mention in a param", lambda s: node_of(s, "classifier")["params"].__setitem__("@someone", 1))
     variant("a block twice", lambda s: (s["nodes"].append({"id": "n9", "block": "augment", "version": 1, "params": {}}),
                                         s["edges"].append({"from": "n3", "out": "data", "to": "n9", "in": "data"})))
     variant("a block of the tests, varied", lambda s: (

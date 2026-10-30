@@ -550,6 +550,10 @@ svg.g text { font-family: var(--mono); font-size: 11px; fill: currentColor; }
   var PATTERN_KEYS = ["kind", "rank", "time", "has_axes", "dtype", "targets", "parts", "needs_parts", "modality",
     "trained"];
   var PARAM_KINDS = ["choice", "int", "float", "bool", "set", "names"];
+  // The pipeline's issue carries its name and spec, and an issue the owner opens holding "@claude" starts
+  // claude.yml on the subscription, while any other @ notifies whoever it names; so a spec holds no @.
+  var MENTION = "@";
+  var MENTION_TEXT = "holds @, which the pipeline's issue would carry as a mention (and @claude would start a Claude run)";
   var CONDITION_KEYS = ["in", "not_in", "min", "max", "above", "below", "empty", "nonempty"];
   var EXPERIMENT_KEYS = ["recipe", "epochs", "seed", "hours", "blocks", "only"];
   var CARD_FIELDS = ["origin", "where", "count", "persons", "split", "held_out", "licence"];
@@ -1759,10 +1763,12 @@ svg.g text { font-family: var(--mono); font-size: 11px; fill: currentColor; }
     });
     if (!isStr(canon.name) || !printable(canon.name)) {
       report("text", null, null, "name", "error", "the pipeline's name holds a character outside printable ASCII");
+    } else if (canon.name.indexOf(MENTION) >= 0) {
+      report("text", null, null, "name", "error", "the pipeline's name " + MENTION_TEXT);
     }
     graph.byId.forEach(function (n, id) {
       try {
-        canonical(n);
+        if (canonical(n).indexOf(MENTION) >= 0) report("text", id, null, null, "error", "the node " + MENTION_TEXT);
       } catch (e) {
         report("text", id, null, null, "error", "the node holds a value canonical JSON cannot write (" + e.message + ")");
       }

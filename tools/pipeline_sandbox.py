@@ -107,6 +107,10 @@ SET_FIELDS = ("dtype", "targets", "classes", "modality", "family", "trained", "p
 OP_ARITY = {"kind": 2, "set": 3, "size": 3, "axes": 2, "drop_axis": 2, "add_axis": 4, "parts": 2, "licence": 2, "cut": 2}
 PATTERN_KEYS = ("kind", "rank", "time", "has_axes", "dtype", "targets", "parts", "needs_parts", "modality", "trained")
 PARAM_KINDS = ("choice", "int", "float", "bool", "set", "names")
+# The pipeline's issue carries its name and spec, and an issue the owner opens holding "@claude" starts
+# claude.yml on the subscription, while any other @ notifies whoever it names; so a spec holds no @.
+MENTION = "@"
+MENTION_TEXT = "holds @, which the pipeline's issue would carry as a mention (and @claude would start a Claude run)"
 CONDITION_KEYS = ("in", "not_in", "min", "max", "above", "below", "empty", "nonempty")
 EXPERIMENT_KEYS = ("recipe", "epochs", "seed", "hours", "blocks", "only")
 CARD_FIELDS = ("origin", "where", "count", "persons", "split", "held_out", "licence")
@@ -1471,9 +1475,12 @@ class Propagation:
                         else f"the node id {show(node_id)} is not n1 to n9999")
         if not printable(self.canon["name"]):
             self.report("text", None, None, "name", "error", "the pipeline's name holds a character outside printable ASCII")
+        elif MENTION in self.canon["name"]:
+            self.report("text", None, None, "name", "error", "the pipeline's name " + MENTION_TEXT)
         for node_id, n in self.graph.by_id.items():
             try:
-                canonical(n)
+                if MENTION in canonical(n):
+                    self.report("text", node_id, None, None, "error", "the node " + MENTION_TEXT)
             except CanonicalError as error:
                 self.report("text", node_id, None, None, "error",
                             f"the node holds a value canonical JSON cannot write ({error})")
