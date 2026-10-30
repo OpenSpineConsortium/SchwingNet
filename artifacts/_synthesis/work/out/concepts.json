@@ -1,6 +1,6 @@
 {
- "date": "2026-10-29",
- "texts": 335,
+ "date": "2026-10-30",
+ "texts": 354,
  "datasets": [
   {
    "id": "dataset:aariz_cephalograms:films",
@@ -2012,8 +2012,8 @@
     "fold",
     "armlspine",
     "lateral",
-    "frame",
-    "cases"
+    "cases",
+    "frame"
    ],
    "values": [
     {
@@ -2157,8 +2157,8 @@
     "detector",
     "cts",
     "trained",
-    "sacrum",
-    "renders"
+    "renders",
+    "sacrum"
    ],
    "values": [
     {
@@ -3620,8 +3620,8 @@
    "anchors": [
     "labelling",
     "cadaver",
-    "accuracy",
     "long",
+    "accuracy",
     "free"
    ],
    "values": [
@@ -4130,8 +4130,8 @@
    ],
    "anchors": [
     "captioned",
-    "term",
     "panels",
+    "term",
     "transitional"
    ],
    "values": [
@@ -4471,10 +4471,10 @@
    "anchors": [
     "survives",
     "instead",
-    "boxes",
     "detector",
-    "chain",
+    "boxes",
     "films",
+    "chain",
     "sweep"
    ],
    "values": [
@@ -7036,7 +7036,7 @@
    "concept": "dataset:carmlspine_sweeps:sweeps",
    "kind": "dataset",
    "source": "notes:docs/research/latency-and-sweep/README.md",
-   "line": 40,
+   "line": 42,
    "outcome": "agrees",
    "value": "1.5",
    "text": "Resource estimate for one model version with the case134 sweep: 2 GPU jobs and 1 CPU job, at most 3 GPU-hours requested (1.5 more for each further sweep); expected use well under 1 GPU-hour (the export and parity take seconds, 330 timed frames take under a minute on a CPU here, and a sweep of 301 fr"
@@ -13582,6 +13582,16 @@
    "text": "about 110,000 dual-plane fluoroscopic images of knee implant phantoms with registered poses, 200 with manual registration (ETH Research Collection doi:10.3929/ethz-b-000701146)"
   },
   {
+   "key": "5cdfbd408433ac75",
+   "concept": "dataset:verse:series",
+   "kind": "dataset",
+   "source": "notes:docs/research/autoanatomist-search/prior-art.md",
+   "line": 18,
+   "outcome": "agrees",
+   "value": "374",
+   "text": "What it does: Reports the MICCAI 2019 and 2020 challenges (374 scans, 25 algorithms). VerSe'19 was won by Payer C. and VerSe'20 by Chen D. (hidden set: 96.58% id rate, 1.38 mm, 91.23% Dice), whose pipeline downsamples the CT to a coarse resolution for a shallow 3D U-Net spine localiser, then segment"
+  },
+  {
    "key": "51eb229991fad20b",
    "concept": "dataset:verse:series",
    "kind": "dataset",
@@ -13602,14 +13612,14 @@
    "text": "| VerSe 19 and 20 | 374 series of 355 subjects with vertebra labels | yes | HAVE | renders in the v9 base; 10 series never downloaded | series 374, subjects 355 | CC BY-SA 4.0 | not recorded |"
   },
   {
-   "key": "facd66783c31eb98",
+   "key": "c79aff0736250437",
    "concept": "dataset:verse:series",
    "kind": "dataset",
    "source": "notes:docs/research/gold3-ct/README.md",
    "line": 20,
    "outcome": "agrees",
    "value": "374",
-   "text": "| VerSe 19 and 20 | verse | 374 series | 21 series, provisional while a segmenter adds the sacrum | 21 | the release's expert masks, by the field test (rule 3) |"
+   "text": "| VerSe 19 and 20 | verse | 374 series | 21 series, provisional while a segmenter adds the sacrum (six got a cervical level from the grid arm, none the sacrum) | 21 | the release's expert masks, by the field test (rule 3) |"
   },
   {
    "key": "ea6832ee9d356615",
@@ -14422,6 +14432,16 @@
    "text": "- acquired: Zenodo zip into HOME/data/TotalSegmentator_v3, then unzip (unzip.log, UNZIP_DONE) (2026-09-19)"
   },
   {
+   "key": "7ce9710f7974b92c",
+   "concept": "dataset:zenodo_ts_task_hip_implant:size_gb",
+   "kind": "dataset",
+   "source": "notes:docs/research/gold3-ct/README.md",
+   "line": 84,
+   "outcome": "agrees",
+   "value": "09",
+   "text": "The segmenter arm for C2 and the sacrum (built 2026-10-30 on the owner's word of 08:54 UTC, \"Add sacrum and c2 w total seg\", and his word of 09:33 UTC that each release's segmentations stay consistent: MOOSE for ENHANCE.PET, whose masks MOOSE made, TotalSegmentator for the VerSe series and the Total"
+  },
+  {
    "key": "ddd6fbfe268b66ff",
    "concept": "dataset:zenodo_ts_task_hip_implant:size_gb",
    "kind": "dataset",
@@ -14480,6 +14500,16 @@
    "outcome": "agrees",
    "value": "71",
    "text": "| zenodo_ts_task_hip_implant | TotalSegmentator task data 'hip_implant' (71 CT) | upstream_release | zenodo / manual | planned | [the lab volume's data root]/zenodo_ts_task_hip_implant | none recorded |"
+  },
+  {
+   "key": "6258fe7d95a4e3fe",
+   "concept": "dataset:zenodo_ts_task_hip_implant:subjects",
+   "kind": "dataset",
+   "source": "notes:docs/research/gold3-ct/README.md",
+   "line": 78,
+   "outcome": "differs",
+   "value": "69",
+   "text": "Their lists stay on the grid, since most are not public sets; only counts by collection leave it. The census job read them on 2026-10-29 (section 7): of the 17,198 masks 16,668 were read and 530 set aside for raw ids (13 VerSe, 517 TotalSegmentator), none unreadable; 1,388 studies outside the three "
   },
   {
    "key": "81dfbf308bf78476",
@@ -14542,11 +14572,11 @@
    "text": "| CT labelling with anomalies | VerSe (Sekuboyina 2021); VERIDAH (Moller 2026); TotalSegmentator (Wasserthal 2023) | 355 patients; 1,536 CTs; 1,204 CTs | 802 patients; 129 count-changing transitional persons | 2.3; 0.52; 0.67 | Comparable. 86 of the 110 L6 persons are VerSe's own, so beyond VerSe th"
   },
   {
-   "key": "760adcea7b5f146b",
+   "key": "94dbd315226f0ad1",
    "concept": "dataset:zenodo_ts_task_liver_lesions:subjects",
    "kind": "dataset",
    "source": "notes:docs/research/README.md",
-   "line": 21,
+   "line": 24,
    "outcome": "differs",
    "value": "865",
    "text": "- [gold3-ct](gold3-ct/README.md): the thread \"Finish scan import and tier counts\", the owner's ask of 27 October 2026 at 22:49 UTC for all the gold tier 3 CT data as its own dataset: since 2026-10-29 admitted by the field test of rule 3 (every CT whose field shows C2's foot and the sacrum's top, the"
@@ -14670,6 +14700,16 @@
    "outcome": "agrees",
    "value": "09",
    "text": "- acquired: Zenodo zip into HOME/data/TotalSegmentator_v3, then unzip (unzip.log, UNZIP_DONE) (2026-09-19)"
+  },
+  {
+   "key": "d97cb0c222667e54",
+   "concept": "dataset:zenodo_ts_task_pleural_effusion:size_gb",
+   "kind": "dataset",
+   "source": "notes:docs/research/gold3-ct/README.md",
+   "line": 84,
+   "outcome": "agrees",
+   "value": "09",
+   "text": "The segmenter arm for C2 and the sacrum (built 2026-10-30 on the owner's word of 08:54 UTC, \"Add sacrum and c2 w total seg\", and his word of 09:33 UTC that each release's segmentations stay consistent: MOOSE for ENHANCE.PET, whose masks MOOSE made, TotalSegmentator for the VerSe series and the Total"
   },
   {
    "key": "c7f42e24b1752739",

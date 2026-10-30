@@ -26,6 +26,7 @@
   "SchwingNet/level-verification-bench-mkjxsy": "ff57595cdc79d206a32238429cda75d8656b2a6c",
   "SchwingNet/lift-before-label-jzjq8t": "2f0ae4e9297e3b854ff090a7f07eaa0cd6ff8737",
   "SchwingNet/lstv-verification-bench-6m2qhr": "4e5a21aed5fe7fbfa8af487375ace0f0dec3ed04",
+  "SchwingNet/naming-rule-evaluation-with-all-42-papers-tables-rf7zs7": "87fc18996c559de0acfe5f67a3d6983ad9a13797",
   "SchwingNet/naming-vertebrae-without-an-anchor-3dfzmh": "d9c5aac6a40bc37cd208a36e2fb92ea86cfa45f5",
   "SchwingNet/naming-vertebrae-without-ct-hjy4vc": "2e77583bef851111c6f6d6d6c329b43aef0ebb4d",
   "SchwingNet/ninety-three-pixels": "7deea9824bb0f37ad4e364cf03f3c2b03e411f4b",
@@ -999,7 +1000,7 @@
   "SchwingNet": "8dc1d8c81c92a2e5ad20f4e0c410f29f41f6e7bf",
   "symphony-template": "1355772ec849e8d7e72468410fcefeb55f78afe6"
  },
- "stamped": "2026-10-29",
+ "stamped": "2026-10-30",
  "verdict_places": {
   "Detectors, architecture and the training plan|74": [
    "own",
