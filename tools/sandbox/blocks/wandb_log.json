@@ -1,0 +1,75 @@
+{
+ "block": 1,
+ "id": "wandb_log",
+ "version": 1,
+ "title": "Log to Weights and Biases",
+ "stage": "report",
+ "summary": "Pushes a run's numbers and witness frames to W&B: online where the grid's key is found, else offline.",
+ "does": "The run logs to W&B online where the grid's key is found (WANDB_API_KEY, ~/.wandb/token.env or ~/.netrc), and offline otherwise; the flow then pushes the offline run after each step and says so loudly when it is not pushed (docs/memory/evaluation-and-wandb.md). The block holds no key.",
+ "glyph": "wandb",
+ "inputs": [
+  {
+   "name": "results",
+   "accepts": {
+    "kind": [
+     "metrics",
+     "checkpoint"
+    ]
+   },
+   "optional": false,
+   "what": "A run's checkpoint or metrics."
+  }
+ ],
+ "outputs": [
+  {
+   "name": "log",
+   "from": "results",
+   "ops": [
+    [
+     "kind",
+     "report"
+    ],
+    [
+     "axes",
+     []
+    ]
+   ],
+   "what": "The W&B run."
+  }
+ ],
+ "params": [],
+ "rules": [],
+ "reads": {
+  "parts": []
+ },
+ "job": {
+  "class": "none",
+  "hours": 0,
+  "with_upstream": false,
+  "array": false,
+  "cpus": 0,
+  "memory_gb": 0
+ },
+ "deterministic": "exact",
+ "seed_param": "",
+ "nondeterminism": "",
+ "generic": null,
+ "resolve": null,
+ "needs": [
+  "python",
+  "wandb"
+ ],
+ "code": "existing",
+ "implemented_by": [
+  "tools/wandb_log.py"
+ ],
+ "today": {
+  "status": "live",
+  "route": "experiment",
+  "word": "",
+  "flow": "",
+  "note": "every flow run logs"
+ },
+ "experiment": {},
+ "card": null
+}

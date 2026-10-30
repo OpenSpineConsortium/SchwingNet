@@ -1,0 +1,27 @@
+// A tiny static server for the test page, so localStorage has a real origin.
+const http = require("http");
+const fs = require("fs");
+const path = require("path");
+
+function serve(dir) {
+  return new Promise(function (resolve) {
+    const server = http.createServer(function (req, res) {
+      const name = decodeURIComponent((req.url || "/").split("?")[0].split("#")[0]).replace(/^\/+/, "") || "page.html";
+      const file = path.join(dir, path.basename(name));
+      fs.readFile(file, function (err, body) {
+        if (err) {
+          res.writeHead(404);
+          res.end("not found");
+          return;
+        }
+        res.writeHead(200, {"Content-Type": "text/html; charset=utf-8"});
+        res.end(body);
+      });
+    });
+    server.listen(0, "127.0.0.1", function () {
+      resolve({server: server, url: "http://127.0.0.1:" + server.address().port + "/"});
+    });
+  });
+}
+
+module.exports = {serve};

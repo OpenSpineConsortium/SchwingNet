@@ -1,0 +1,59 @@
+// A real hold on a 30-node board: grow a tree by the hooks, clear the cards right of one leaf that
+// still has suggestions, hold there 750 ms, and read the commit's timings.
+const {chromium} = require("playwright");
+const {serve} = require("./serve.js");
+const PAGE = process.env.PAGE || "final.html";
+(async function () {
+  const {server, url} = await serve(__dirname);
+  const browser = await chromium.launch();
+  const page = await (await browser.newContext({viewport: {width: 1400, height: 900}})).newPage();
+  const errors = [];
+  page.on("console", function (m) { if (m.type() === "error") errors.push(m.text()); });
+  page.on("pageerror", function (e) { errors.push(e.message); });
+  await page.goto(url + PAGE);
+  await page.waitForTimeout(300);
+  await page.click("#sb-new");
+  await page.fill("#sb-search", "The frame catalog (version 1)");
+  await page.click('.bchip:has-text("The frame catalog (version 1)")');
+  await page.fill("#sb-search", "");
+  await page.evaluate(function () {
+    const ids = ["n1"];
+    for (let i = 0; i < ids.length && window.sandbox.graph().nodes.length < 31; i++) {
+      for (let j = 0; j < 2 && window.sandbox.graph().nodes.length < 31; j++) {
+        const grown = window.sandbox.grow(ids[i]);
+        if (grown) ids.push(grown);
+      }
+    }
+  });
+  // The last leaf with a suggestion; delete the cards in its grow zone.
+  const leaf = await page.evaluate(function () {
+    const g = window.sandbox.graph(), L = g.layout;
+    const has = g.nodes.filter(function (n) { return window.sandbox.suggestions(n.id).length; });
+    has.sort(function (a, b) { return (L[a.id][0] - L[b.id][0]) || (L[a.id][1] - L[b.id][1]); });
+    const n = has[has.length - 1];
+    const at = L[n.id];
+    const blocking = g.nodes.filter(function (m) { const q = L[m.id]; return m.id !== n.id && q[0] > at[0] && q[0] < at[0] + 232 + 300 && Math.abs(q[1] - at[1]) < 150; }).map(function (m) { return m.id; });
+    return {id: n.id, at: at, blocking: blocking};
+  });
+  for (const id of leaf.blocking) {
+    await page.evaluate(function (id) { window.sandbox.select(id); if (document.activeElement) document.activeElement.blur(); }, id);
+    await page.keyboard.press("Delete");
+  }
+  const before = await page.evaluate(function () { window.sandbox.select(null); return window.sandbox.graph().nodes.length; });
+  const box = await page.evaluate(function (id) {
+    const c = document.querySelector('.ncard[data-id="' + id + '"]');
+    c.scrollIntoView({block: "center", inline: "center"});
+    const r = c.getBoundingClientRect();
+    return {right: r.right, y: r.top + r.height / 2};
+  }, leaf.id);
+  await page.evaluate(function () { window.sandbox.timings(true); });
+  await page.mouse.move(box.right + 60, box.y + 50, {steps: 3});
+  await page.mouse.move(box.right + 120, box.y, {steps: 3});
+  await page.waitForTimeout(750);
+  const after = await page.evaluate(function () { return {n: window.sandbox.graph().nodes.length, t: window.sandbox.timings()}; });
+  console.log(JSON.stringify({leaf: leaf, before: before, after: after.n, timings: after.t}, null, 1).slice(0, 1500));
+  console.log((after.n === before + 1 ? "PASS" : "FAIL") + " a real hold commits on a board of " + before + " nodes");
+  console.log((errors.length ? "FAIL" : "PASS") + " no console error " + JSON.stringify(errors));
+  await browser.close();
+  server.close();
+})();

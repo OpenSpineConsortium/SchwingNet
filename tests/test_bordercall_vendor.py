@@ -33,8 +33,8 @@ GIT_ENV = dict(os.environ, GIT_CONFIG_COUNT=str(len(QUIET)),
                **{f"GIT_CONFIG_VALUE_{i}": v for i, v in enumerate(QUIET.values())})
 GIT_ENV.update(GIT_AUTHOR_NAME="t", GIT_AUTHOR_EMAIL="t@t", GIT_COMMITTER_NAME="t", GIT_COMMITTER_EMAIL="t@t")
 
-# the clone's layout since the engine replaced the old package: the archive, the engine's three
-# packages, the holdings package, whose tests ride along (they import one another, as
+# the clone's layout since the engine replaced the old package: the archive, the engine's four
+# packages (morphoview's lines among them, without its tests), the holdings package, whose tests ride along (they import one another, as
 # test_fullspine_facts imports test_count_enhance_pet), and the search's two with their pins
 CLONE_FILES = {
     "archive/bordercall/run.py": "print('run')\n",
@@ -46,6 +46,9 @@ CLONE_FILES = {
     "morphometry/__init__.py": "",
     "morphometry/a.py": "A = 1\n",
     "morphometry/tests/t.py": "assert True\n",
+    "morphoview/__init__.py": "",
+    "morphoview/lines.py": "E = 5\n",
+    "morphoview/tests/test_e.py": "assert True\n",
     "scanimport/__init__.py": "",
     "scanimport/b.py": "B = 2\n",
     "scanimport/tests/__init__.py": "",
@@ -69,6 +72,7 @@ ENGINE_COPY = ["HANDOFF.md", "README.md", "VENDORED",
                "holdings/__init__.py", "holdings/fullspine_complete.py",
                "holdings/tests/__init__.py", "holdings/tests/test_d.py",
                "morphometry/__init__.py", "morphometry/a.py",
+               "morphoview/__init__.py", "morphoview/lines.py",
                "requirements.txt",
                "scanimport/__init__.py", "scanimport/b.py",
                "screening/c.py", "screening/tables.json",

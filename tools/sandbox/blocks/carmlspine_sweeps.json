@@ -1,0 +1,123 @@
+{
+ "block": 1,
+ "id": "carmlspine_sweeps",
+ "version": 1,
+ "title": "C-ArmLSpine demo sweeps",
+ "stage": "source",
+ "summary": "Two recorded C-arm sweeps of C-ArmLSpine, case134 and case39: test persons no run trains on.",
+ "does": "The raw CBCT projections of two C-ArmLSpine cases, played as fluoroscopy sweeps: clips of grey frames with truth boxes. Both persons are frozen test persons (data/splits/test-persons.json), so a sweep is only read at the end, never trained on. The latency word's sweep part runs one through the frame path with its overlay (tools/sweep.py); today it passes case134. Frames per sweep are not recorded in the repository.",
+ "glyph": "video",
+ "inputs": [],
+ "outputs": [
+  {
+   "name": "data",
+   "from": null,
+   "ops": [
+    [
+     "axes",
+     [
+      "N",
+      "T",
+      "C",
+      "H",
+      "W"
+     ]
+    ],
+    [
+     "size",
+     "C",
+     1
+    ],
+    [
+     "set",
+     "dtype",
+     "uint8"
+    ],
+    [
+     "set",
+     "targets",
+     "level"
+    ],
+    [
+     "set",
+     "classes",
+     27
+    ],
+    [
+     "parts",
+     [
+      "test"
+     ]
+    ],
+    [
+     "set",
+     "persons",
+     true
+    ],
+    [
+     "set",
+     "modality",
+     "fluoro"
+    ],
+    [
+     "cut",
+     "commercial"
+    ]
+   ],
+   "what": "Sweeps N x T x 1 x H x W of grey frames with truth boxes; test part only."
+  }
+ ],
+ "params": [],
+ "rules": [],
+ "reads": {
+  "parts": []
+ },
+ "job": {
+  "class": "none",
+  "hours": 0,
+  "with_upstream": false,
+  "array": false,
+  "cpus": 0,
+  "memory_gb": 0
+ },
+ "deterministic": "exact",
+ "seed_param": "",
+ "nondeterminism": "",
+ "generic": null,
+ "resolve": null,
+ "needs": [
+  "python",
+  "numpy"
+ ],
+ "code": "existing",
+ "implemented_by": [
+  "tools/sweep.py",
+  "grid/run-latency-sweep.sh",
+  "flows/latency.py"
+ ],
+ "today": {
+  "status": "flow",
+  "route": "",
+  "word": "",
+  "flow": "LatencyFlow",
+  "note": "the sweep part of the word latency, over case134"
+ },
+ "experiment": null,
+ "card": {
+  "origin": "C-ArmLSpine (Zenodo 22768651): the raw CBCT projections of two cases, played as sweeps.",
+  "where": "On the grid as a bank of frames the latency word's sweep part reads (grid/run-latency-sweep.sh).",
+  "count": "2 sweeps, case134 and case39; frames per sweep not recorded in the repository.",
+  "persons": "2 persons, case134 and case39.",
+  "split": "Test only: both are frozen test persons of data/splits/test-persons.json.",
+  "held_out": "Never trained on: case134 is the demo sweep of the CNS talk and case39 the second demo sweep.",
+  "licence": "CC BY 4.0, class open in data/licences.json: it fits the commercial recipe.",
+  "from": [
+   "data/licences.json",
+   "data/splits/test-persons.json",
+   "docs/memory/latency-and-the-recorded-sweep.md",
+   "grid/run-latency-sweep.sh",
+   "tools/sweep.py",
+   "docs/project.md"
+  ]
+ }
+}

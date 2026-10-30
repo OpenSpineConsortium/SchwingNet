@@ -127,6 +127,13 @@ python3 tools/eval_page.py check
 # page edited by hand, fails here.
 python3 tools/experiments_panel.py check
 
+# The pipeline sandbox (docs/sandbox/pipeline-sandbox.html) is assembled from tools/sandbox/ by
+# tools/pipeline_sandbox.py, standard library, which holds every block and template to the rules the
+# page applies (docs/research/pipeline-sandbox/README.md): a manifest that breaks one, a template whose
+# compile is not what its expect pins, a request the experiment workflow would refuse, or a page not
+# written again after its inputs changed (python3 tools/pipeline_sandbox.py write), fails here.
+python3 tools/pipeline_sandbox.py check
+
 # Every recorded run carries its report (REPORT.md, claim.json, reforms.json), written by
 # tools/report.py from the run's files and data/reporting/study.json, standard library: a run
 # recorded without its report, or a study answer changed without the reports written again

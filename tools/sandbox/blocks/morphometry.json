@@ -1,0 +1,127 @@
+{
+ "block": 1,
+ "id": "morphometry",
+ "version": 1,
+ "title": "Vertebral morphometry",
+ "stage": "analyse",
+ "summary": "bordercall's morphometry engine measures every vertebra of a mask into rows of a table.",
+ "does": "bordercall's morphometry engine, the copy pinned under grid/bordercall/ and imported by path, measures each labelled vertebra of a CT's mask into a row: its level and its measurements. The rows stay on the grid and only aggregates leave (logs/MORPHOMETRY-<set>.md). Today the word runs it over the gold tier 3 masks as two CPU jobs, enhance and verse (grid/morphometry.sbatch: 32 CPUs, 64 GB, 24 h); morphometry covariates then joins each person's sex and age.",
+ "glyph": "morphometry",
+ "inputs": [
+  {
+   "name": "masks",
+   "accepts": {
+    "kind": [
+     "data"
+    ],
+    "rank": [
+     3
+    ],
+    "time": "no",
+    "targets": [
+     "mask"
+    ],
+    "modality": [
+     "ct"
+    ]
+   },
+   "optional": false,
+   "what": "CT volumes with vertebra masks."
+  }
+ ],
+ "outputs": [
+  {
+   "name": "table",
+   "from": "masks",
+   "ops": [
+    [
+     "axes",
+     [
+      "N",
+      "F"
+     ]
+    ],
+    [
+     "set",
+     "dtype",
+     "float32"
+    ],
+    [
+     "set",
+     "targets",
+     "level"
+    ],
+    [
+     "set",
+     "classes",
+     null
+    ],
+    [
+     "set",
+     "modality",
+     "table"
+    ]
+   ],
+   "what": "One row per vertebra: its level and its measurements."
+  }
+ ],
+ "params": [
+  {
+   "name": "collection",
+   "kind": "choice",
+   "choices": [
+    "enhance",
+    "verse"
+   ],
+   "default": "enhance",
+   "vary": true,
+   "what": "the word's set: ENHANCE.PET's label maps, or VerSe's with TotalSegmentator's"
+  }
+ ],
+ "rules": [],
+ "reads": {
+  "parts": []
+ },
+ "job": {
+  "class": "cpu",
+  "hours": 24,
+  "with_upstream": false,
+  "array": false,
+  "cpus": 32,
+  "memory_gb": 64
+ },
+ "deterministic": "exact",
+ "seed_param": "",
+ "nondeterminism": "",
+ "generic": {
+  "rank": [
+   3
+  ],
+  "time": "no",
+  "channels": "any",
+  "sizes": "any",
+  "why": "It measures labelled 3-D masks (grid/bordercall/); a frame or a clip has no vertebra to measure in 3-D. The probe test hands it unlabelled volumes too, so the pattern does not ask for masks; a volume without one gives no rows."
+ },
+ "resolve": null,
+ "needs": [
+  "python",
+  "numpy",
+  "scipy",
+  "nibabel"
+ ],
+ "code": "existing",
+ "implemented_by": [
+  "grid/morphometry.sbatch",
+  "grid/bordercall/morphometry/__init__.py",
+  "tools/bordercall_vendor.py"
+ ],
+ "today": {
+  "status": "word",
+  "route": "",
+  "word": "morphometry enhance",
+  "flow": "",
+  "note": "also morphometry verse, and morphometry covariates once both end 0"
+ },
+ "experiment": null,
+ "card": null
+}

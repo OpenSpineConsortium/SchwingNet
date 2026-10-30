@@ -1,0 +1,108 @@
+{
+ "block": 1,
+ "id": "bordercall_naming",
+ "version": 1,
+ "title": "Name levels by bordercall",
+ "stage": "analyse",
+ "summary": "Names each vertebra counting from C2 with no network: the count, the ribs and VERIDAH kept apart.",
+ "does": "bordercall's own commands over a label tree counted from C2 (tools/bordercall_corpus.py, grid/bordercall.sbatch): a column without C2 is set aside, a gap rule catches a missed body, and three namings are kept and never pooled, the count, the ribs and VERIDAH's. Only the lumbar measurements are validated. Today the word runs it over the census's existing SPINEPS masks, a pilot and then the full corpus (8 CPUs, 32 GB, 12 h). Naming from a morphometry table's rows, the features step of the latent prior evaluation, has no word yet.",
+ "glyph": "naming",
+ "inputs": [
+  {
+   "name": "data",
+   "accepts": {
+    "kind": [
+     "data"
+    ],
+    "rank": [
+     0,
+     3
+    ],
+    "time": "no",
+    "modality": [
+     "ct",
+     "table"
+    ]
+   },
+   "optional": false,
+   "what": "Masks counted from C2, or (planned) a morphometry table."
+  }
+ ],
+ "outputs": [
+  {
+   "name": "names",
+   "from": "data",
+   "ops": [
+    [
+     "kind",
+     "metrics"
+    ],
+    [
+     "axes",
+     []
+    ]
+   ],
+   "what": "Each column's naming, with counts that leave the grid."
+  }
+ ],
+ "params": [
+  {
+   "name": "stage",
+   "kind": "choice",
+   "choices": [
+    "pilot",
+    "full"
+   ],
+   "default": "pilot",
+   "vary": false,
+   "what": "the word's stage: the pilot first"
+  }
+ ],
+ "rules": [],
+ "reads": {
+  "parts": []
+ },
+ "job": {
+  "class": "cpu",
+  "hours": 12,
+  "with_upstream": false,
+  "array": false,
+  "cpus": 8,
+  "memory_gb": 32
+ },
+ "deterministic": "exact",
+ "seed_param": "",
+ "nondeterminism": "",
+ "generic": {
+  "rank": [
+   0,
+   3
+  ],
+  "time": "no",
+  "channels": "any",
+  "sizes": "any",
+  "why": "It counts vertebrae in 3-D masks, or, planned, reads a table of their measurements; a 2-D frame shows no column to count from C2."
+ },
+ "resolve": null,
+ "needs": [
+  "python",
+  "numpy",
+  "scipy",
+  "nibabel"
+ ],
+ "code": "existing",
+ "implemented_by": [
+  "tools/bordercall_corpus.py",
+  "tools/bordercall_vendor.py",
+  "grid/bordercall.sbatch"
+ ],
+ "today": {
+  "status": "word",
+  "route": "",
+  "word": "bordercall pilot",
+  "flow": "",
+  "note": "then bordercall full; bordercall complete is the gold tier 3 completion"
+ },
+ "experiment": null,
+ "card": null
+}

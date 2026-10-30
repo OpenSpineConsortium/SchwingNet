@@ -1,0 +1,51 @@
+// Runs the ENGINE writer's engine (read only) over the DATA writer's files: every manifest through
+// checkManifest, every template through propagate and compile against its expect, and writes the
+// experiment requests' bodies for a Python check_request pass.
+"use strict";
+var fs = require("fs");
+var path = require("path");
+var SB = require("/home/user/SchwingNet/tools/sandbox/engine.js");
+var here = __dirname;
+var data = JSON.parse(fs.readFileSync(path.join(here, "data.json"), "ascii"));
+var bad = 0;
+data.blocks.forEach(function (m) {
+  var found = SB.checkManifest(m, data.contract);
+  if (found.length) {
+    bad += found.length;
+    console.log("manifest " + m.id + ": " + JSON.stringify(found));
+  }
+});
+var bodies = [];
+data.templates.forEach(function (t) {
+  var prop = SB.propagate(t, data);
+  var errors = prop.problems.filter(function (p) { return p.level === "error"; });
+  var warns = prop.problems.filter(function (p) { return p.level !== "error"; });
+  if (errors.length) { bad += errors.length; console.log("template " + t.id + " errors: " + JSON.stringify(errors)); }
+  if (warns.length) console.log("template " + t.id + " warnings: " + JSON.stringify(warns));
+  var out = SB.compile(t, data);
+  var got = {route: out.route, ready: out.ready, requests: out.requests.length,
+    gpu_submissions: out.jobs.gpu.submissions, cpu_submissions: out.jobs.cpu.submissions,
+    gpu_tasks: out.jobs.gpu.tasks};
+  var same = Object.keys(got).length === Object.keys(t.expect).length &&
+    Object.keys(got).every(function (k) { return got[k] === t.expect[k]; });
+  if (!same) bad += 1;
+  console.log(t.id + ": " + (same ? "matches" : "DIFFERS") + " expect " + JSON.stringify(t.expect) + " engine " +
+    JSON.stringify(got) + " why " + JSON.stringify(out.why.map(function (w) { return w.code; })) +
+    " gpu hours " + out.jobs.gpu.hours + " cpu hours " + out.jobs.cpu.hours + " digest " + out.digest.slice(0, 12));
+  out.plan.forEach(function (r) {
+    console.log("   row " + r.node + " " + r.block + " " + r["class"] + " sub " + r.submissions + " tasks " + r.tasks +
+      " hours " + r.hours + (r.rides_with ? " rides " + r.rides_with : "") + " today " + r.today.status);
+  });
+  out.requests.forEach(function (q) {
+    console.log("   request " + q.title);
+    bodies.push({template: t.id, title: q.title, body: q.body});
+  });
+  prop.order.forEach(function (id) {
+    var n = prop.nodes[id];
+    Object.keys(n.outputs).forEach(function (port) {
+      console.log("   " + id + "." + port + " = " + SB.typeSummary(n.outputs[port]));
+    });
+  });
+});
+fs.writeFileSync(path.join(here, "bodies.json"), JSON.stringify(bodies), "ascii");
+console.log(bad + " problem(s) from the engine");

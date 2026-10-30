@@ -1,0 +1,107 @@
+{
+ "block": 1,
+ "id": "domain_gap",
+ "version": 1,
+ "title": "DRR domain gap",
+ "stage": "evaluate",
+ "summary": "Calibrated separation tests of synthetic DRRs against real images: how far apart the two sets are.",
+ "does": "tools/domain_gap.py: calibrated separation tests between a set of synthetic images and a set of real ones, with the replication test of FleXray's renderer, under the frozen docs/research/drr-domain-gap/PREREG.md. It trains no network on either set, so it reads no split part. Today it is three GPU jobs of the drr_gap flow, a prepare, a 16-task shard array and a merge (grid/gate.sh); the sandbox counts it inside the render job, with the merge's 4 hours.",
+ "glyph": "gap",
+ "inputs": [
+  {
+   "name": "synthetic",
+   "accepts": {
+    "kind": [
+     "data"
+    ],
+    "rank": [
+     2
+    ],
+    "time": "no"
+   },
+   "optional": false,
+   "what": "Synthetic 2-D images."
+  },
+  {
+   "name": "real",
+   "accepts": {
+    "kind": [
+     "data"
+    ],
+    "rank": [
+     2
+    ],
+    "time": "no"
+   },
+   "optional": false,
+   "what": "Real 2-D images."
+  }
+ ],
+ "outputs": [
+  {
+   "name": "metrics",
+   "from": "synthetic",
+   "ops": [
+    [
+     "kind",
+     "metrics"
+    ],
+    [
+     "axes",
+     []
+    ]
+   ],
+   "what": "The separation tests with their calibration."
+  }
+ ],
+ "params": [],
+ "rules": [],
+ "reads": {
+  "parts": []
+ },
+ "job": {
+  "class": "gpu",
+  "hours": 4,
+  "with_upstream": true,
+  "array": false,
+  "cpus": 4,
+  "memory_gb": 64
+ },
+ "deterministic": "declared",
+ "seed_param": "",
+ "nondeterminism": "Its draws come from the study's salt (data/domain_gap/groups.json), so a rerun repeats them; a GPU's arithmetic may differ in its last bits.",
+ "generic": {
+  "rank": [
+   2
+  ],
+  "time": "no",
+  "channels": "any",
+  "sizes": "any",
+  "why": "The tests compare 2-D images (tools/domain_gap.py); volumes would first need projecting."
+ },
+ "resolve": null,
+ "needs": [
+  "python",
+  "numpy",
+  "scipy",
+  "torch",
+  "metaflow"
+ ],
+ "code": "existing",
+ "implemented_by": [
+  "tools/domain_gap.py",
+  "tools/domain_gap_stats.py",
+  "flows/drr_gap.py",
+  "grid/drr-gap.sbatch",
+  "data/domain_gap/groups.json"
+ ],
+ "today": {
+  "status": "flow",
+  "route": "",
+  "word": "",
+  "flow": "DrrGapFlow",
+  "note": "the word bench flexray_drr_gap"
+ },
+ "experiment": null,
+ "card": null
+}

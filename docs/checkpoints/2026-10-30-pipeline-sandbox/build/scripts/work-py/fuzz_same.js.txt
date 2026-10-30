@@ -1,0 +1,17 @@
+
+"use strict";
+var fs = require("fs");
+var SB = require(process.argv[2]);
+var input = JSON.parse(fs.readFileSync(process.argv[3], "utf8"));
+function canonicalOf(spec) {
+  try { return SB.canonical(SB.specOf(spec, input.data)); } catch (e) { return null; }
+}
+var out = {
+  specs: input.specs.map(function (spec) {
+    var prop = SB.propagate(spec, input.data);
+    return {canonical: canonicalOf(spec), digest: SB.digest(spec, input.data), propagate: prop,
+      jobs: SB.jobs(spec, input.data, prop), compile: SB.compile(spec, input.data)};
+  }),
+  manifests: input.manifests.map(function (m) { return SB.checkManifest(m, input.contract); })
+};
+process.stdout.write(JSON.stringify(out));
