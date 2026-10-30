@@ -97,6 +97,13 @@ KINDS = {
     # each step runs, the rules it imports and the label names the render reads.
     "realism": (*ENVIRONMENT, *CONTRACTS, "src/schwingnet/__init__.py", "src/schwingnet/realism.py", "flows/realism.py",
                 "flows/stage.py", "flows/stage_registry.py", "tools/realism.py", "grid/enhance-pet-labels.json"),
+    # The gold tier 3 completion's TotalSegmentator arm (docs/research/gold3-ct/completion/PREREG.md):
+    # the flow, the job script whose body is the work, the tool each step runs, the admission it
+    # reads and the two wrappers the job's environment is made and entered through.
+    # moose-one unpacks and runs MOOSE through tools/flexray_render.py's segment machinery, which
+    # reaches the DRR study's files, so those count too.
+    "totalseg": (*(f for f in DRR_STUDY if f not in ("tools/domain_gap.py", "tools/domain_gap_stats.py")), "flows/totalseg.py", "flows/stage.py", "flows/stage_registry.py", "grid/totalseg-complete.sbatch",
+                 "tools/gold3_totalseg_grid.py", "data/gold3-ct/admission.json", "grid/enhance-pet-labels.json"),
 }
 
 NAMES_THE_RUN = "names the run: the files it lists are the digest, so a change to the lists changes the digest by itself"
@@ -150,6 +157,10 @@ LEFT_OUT = {
                 "study's report is its merge's"},
     "realism": {**STAGE_PAGE_LEFT_OUT,
                 "tools/report.py": "writes the run's CLAIM 2024 and REFORMS report from its files in the end step, after every number"},
+    "totalseg": {**DRR_LEFT_OUT,
+                 "grid/run-platform-fetch.sh": "names TotalSegmentator's and MOOSE's weight zips for the job's check of them before the launcher "
+                 "starts; no step of the flow runs it, and the zips are read by their bytes",
+                 "tools/report.py": "is named by flows/stage.py for a run's report, which this flow never makes; its report is the tool's own"},
 }
 
 

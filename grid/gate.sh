@@ -146,6 +146,15 @@
 #                   the next send printing logs/CENSUS-gold3.md, or the unfinished .part a job killed outright
 #                   left, and every later one printing it again and queueing nothing; a second job only where
 #                   CENSUS_RERUNS, committed by pull request, carries the owner's word for it
+#   totalseg complete  the gold tier 3 completion's TotalSegmentator arm (the owner's word of 2026-10-30 08:54 UTC,
+#                   "Add sacrum and c2 w total seg", and his count; grid/totalseg-complete.sbatch, tools/gold3_totalseg_grid.py,
+#                   the launched flow totalseg under docs/research/gold3-ct/completion/PREREG.md): TotalSegmentator 2.18.0's
+#                   total task with roi_subset vertebrae_C2 sacrum on each admitted study's own CT whose release lacks C2
+#                   or the sacrum (MOOSE's vertebrae model for ENHANCE.PET's, whose masks MOOSE made, the owner's word of
+#                   09:33 UTC), each drawn level checked against the release's own levels and kept as a machine arm
+#                   file in the release's own label id, named by its sha256; one GPU job, queued once after `fetch
+#                   totalseg_weights` has landed its two zips whole beside moose_weights' five, the next send printing logs/TOTALSEG-complete.md and every later one printing it again;
+#                   a job that left no report is not queued again without the owner's word
 #   morphometry <set>  bordercall's morphometry engine (the packages morphometry, scanimport and screening,
 #                   pinned under grid/bordercall/ beside the archived package) over one gold tier 3 set
 #                   (the thread "Extract morphometrics from gold tier 3 CT"; the owner's count of 2026-10-29
@@ -289,18 +298,18 @@ COVARIATES_RERUNS=""
 COVARIATES_PAGE_LINES=300
 LOGS=$REPO/grid/logs
 STATE=$LOGS/GATE_JOBS.txt
-WORDS="start status leaks v1 latency fetch explore dropzip unpack nodequota folders samples sweep bank experiment bench anomaly bordercall census realism morphometry literature stop cancel"
+WORDS="start status leaks v1 latency fetch explore dropzip unpack nodequota folders samples sweep bank experiment bench anomaly bordercall census totalseg realism morphometry literature stop cancel"
 ENVS="default train-cpu train-gpu telemetry"
 
 word=${1:-}
 id=${2:-}
 # Matched whole, so one argument holding two words ("v1 latency") is refused and never runs nothing.
 case "$word" in
-  start|status|leaks|v1|latency|fetch|explore|dropzip|unpack|nodequota|folders|samples|sweep|bank|experiment|bench|anomaly|bordercall|census|realism|morphometry|literature|stop|cancel) ;;
+  start|status|leaks|v1|latency|fetch|explore|dropzip|unpack|nodequota|folders|samples|sweep|bank|experiment|bench|anomaly|bordercall|census|totalseg|realism|morphometry|literature|stop|cancel) ;;
   "") echo "refusing: no word; one of: $WORDS"; exit 64 ;;
   *) echo "refusing: '$word' is not one of: $WORDS"; exit 64 ;;
 esac
-if [ "$word" = fetch ] || [ "$word" = explore ] || [ "$word" = dropzip ] || [ "$word" = unpack ] || [ "$word" = sweep ] || [ "$word" = bank ] || [ "$word" = bench ] || [ "$word" = anomaly ] || [ "$word" = bordercall ] || [ "$word" = census ] || [ "$word" = realism ] || [ "$word" = morphometry ] || [ "$word" = literature ]; then
+if [ "$word" = fetch ] || [ "$word" = explore ] || [ "$word" = dropzip ] || [ "$word" = unpack ] || [ "$word" = sweep ] || [ "$word" = bank ] || [ "$word" = bench ] || [ "$word" = anomaly ] || [ "$word" = bordercall ] || [ "$word" = census ] || [ "$word" = totalseg ] || [ "$word" = realism ] || [ "$word" = morphometry ] || [ "$word" = literature ]; then
   [ $# -eq 2 ] || { echo "refusing: $word takes exactly one id"; exit 64; }
   case "$id" in ""|*[!a-z0-9_]*) echo "refusing: an id is lower-case letters, digits and _"; exit 64 ;; esac
   [ ${#id} -le 40 ] || { echo "refusing: an id is at most 40 characters"; exit 64; }
@@ -447,7 +456,7 @@ chain() {  # chain DEPEND [run-xray-chain.sh arguments...]: the X-ray chain afte
   record "$XR_FETCH" xr_fetch; record "$(value_of bank "$after")" xr_bank; record "$XR_CATALOG" xr_catalog
 }
 checkout_holders() {  # afterany:<job> for every live job of the gate's that holds the checkout while it runs, comma-joined
-  # A version 1 run, a sweep, an experiment run, a benchmark, an anomaly, bordercall or realism stage and a morphometry set each write grid/logs/HOLD, one file
+  # A version 1 run, a sweep, an experiment run, a benchmark, an anomaly, bordercall, totalseg or realism stage and a morphometry set each write grid/logs/HOLD, one file
   # naming one job, and the first of two side by side to end would clear it while the other still
   # runs, whose end check then finds the checkout moved and throws the run away; so each waits for
   # the others, a sweep sent while a benchmark lasts up to its 12 hours among them. The DRR domain-gap
@@ -458,7 +467,7 @@ checkout_holders() {  # afterany:<job> for every live job of the gate's that hol
   # interpreter is the checkout's train-cpu environment only where no other imports numpy and sqlite3.
   local job waits=""
   [ -f "$STATE" ] || return 0
-  for job in $(awk '$3 == "v1_driver" || $3 == "sweep" || $3 ~ /^experiment_[0-9]+$/ || $3 ~ /^bench_[a-z_]+$/ || $3 ~ /^anomaly_[a-z_]+$/ || $3 ~ /^bordercall_[a-z]+$/ || $3 ~ /^realism_[a-z]+$/ || ($3 ~ /^morphometry_[a-z]+$/ && $3 != "morphometry_covariates") { print $1 }' "$STATE" | sort -u); do
+  for job in $(awk '$3 == "v1_driver" || $3 == "sweep" || $3 ~ /^experiment_[0-9]+$/ || $3 ~ /^bench_[a-z_]+$/ || $3 ~ /^anomaly_[a-z_]+$/ || $3 ~ /^bordercall_[a-z]+$/ || $3 ~ /^totalseg_[a-z]+$/ || $3 ~ /^realism_[a-z]+$/ || ($3 ~ /^morphometry_[a-z]+$/ && $3 != "morphometry_covariates") { print $1 }' "$STATE" | sort -u); do
     case "$QUEUED" in *" $job "*) waits=$(joined "$waits" "afterany:$job") ;; esac
   done
   echo "$waits"
@@ -1494,11 +1503,14 @@ bench_inputs_missing() {  # what bench $id still lacks on the data root, one lin
   esac
 }
 moose_weights_missing() {  # the first of MOOSE's model zips not whole under the data root's moose_weights/raw, by the fetch row's URLs: "<name> missing", "<name> part", or "row" where the row was not read
+  weights_zip_missing moose_weights
+}
+weights_zip_missing() {  # weights_zip_missing ROW: the first zip of a url fetch row (moose_weights, totalseg_weights) not whole under the data root's <row>/raw, by the row's URLs: "<name> missing", "<name> part", or "row" where the row was not read
   local urls url file
-  urls=$(bash "$REPO/grid/run-platform-fetch.sh" --args moose_weights 2>/dev/null)
+  urls=$(bash "$REPO/grid/run-platform-fetch.sh" --args "$1" 2>/dev/null)
   [ -n "$urls" ] || { echo row; return; }
   for url in $urls; do
-    file=$DATA_ROOT/moose_weights/raw/${url##*/}
+    file=$DATA_ROOT/$1/raw/${url##*/}
     [ -s "$file" ] || { echo "${url##*/} missing"; return; }
     zip_whole "$file" || { echo "${url##*/} part"; return; }
   done
@@ -1807,6 +1819,53 @@ word_bordercall_complete() {  # the gold tier 3 completion (the owner's count of
   depend_on "$holds" || return 1
   submit bordercall_complete batch ${opts[@]+"${opts[@]}"} --no-requeue --time 08:00:00 -- bordercall-complete.sbatch > /dev/null || return 1
   echo "submitted the bordercall complete job: one CPU job that reads the census's SPINEPS masks and segments nothing. Send bordercall complete again once it ends to read its report, logs/BORDERCALL-complete.md."
+}
+
+word_totalseg() {  # the gold tier 3 completion's TotalSegmentator arm (the owner's word of 2026-10-30 08:54 UTC, "Add sacrum and c2 w total seg", and his count: one GPU job): queued once, its report printed on every later send
+  local report=$LOGS/TOTALSEG-complete.md busy job holds zip row opts=()
+  case "$id" in
+    complete) ;;
+    *) echo "refusing: totalseg takes complete"; return 64 ;;
+  esac
+  busy=$(live_of totalseg_complete)
+  [ -z "$busy" ] || { echo "refusing: the totalseg complete job is still queued or running (job $busy); send totalseg complete again once it ends"; return 75; }
+  if [ -f "$report" ]; then
+    # Kept, so the owner's count of one job holds: a report that stands queues nothing, failed or not,
+    # since a second job is a second count and waits for his word.
+    echo "## $(basename "$report") ($(date -r "$report" '+%F %T'))"
+    head -n 200 "$report" | LC_ALL=C tr -cd '\11\12\40-\176' | masked | head -c 30000
+    return 0
+  fi
+  job=$(awk '$3 == "totalseg_complete" { job = $1 } END { print job }' "$STATE" 2>/dev/null)
+  if [ -n "$job" ]; then
+    [ ! -f "$report.part" ] || { echo "## $(basename "$report").part, unfinished: what job $job wrote before it ended"; head -n 200 "$report.part" | LC_ALL=C tr -cd '\11\12\40-\176' | masked | head -c 30000; }
+    echo "refusing: a totalseg complete job was queued before (job $job) and left no report; the owner's count was one job, so another waits for his word"
+    return 64
+  fi
+  [ -f "$REPO/grid/totalseg-complete.sbatch" ] && [ -f "$REPO/tools/gold3_totalseg_grid.py" ] && [ -f "$REPO/flows/totalseg.py" ] \
+    || { echo "refusing: no totalseg job script, tool or flow at this commit"; return 2; }
+  # The weights first: the job reads the two zips fetch totalseg_weights lands and never downloads, so
+  # it is not queued while the fetch is live or a zip is not whole.
+  busy=$(live_of dp_totalseg_weights)
+  [ -z "$busy" ] || { echo "refusing: the fetch of totalseg_weights is still queued or running (job $busy); send totalseg complete again once it ends"; return 75; }
+  # MOOSE's vertebrae model draws ENHANCE.PET's (the owner's word of 2026-10-30 09:33 UTC), so its
+  # zips, fetch moose_weights, must be whole too.
+  for row in totalseg_weights moose_weights; do
+    zip=$(weights_zip_missing "$row")
+    case "$zip" in
+      "") ;;
+      row) echo "refusing: the row $row of grid/run-platform-fetch.sh was not read, so no weight zip can be named"; return 2 ;;
+      *" part") echo "refusing: the weight zip ${zip% part} under $DATA_ROOT/$row/raw is a part, still landing or cut short, which a resend of fetch $row resumes"; return 2 ;;
+      *) echo "refusing: no ${zip% missing} under $DATA_ROOT/$row/raw (fetch $row first)"; return 2 ;;
+    esac
+  done
+  # The job makes its own environment over train-gpu (grid/venv.sh), so no setup job goes with it; it
+  # holds the checkout as a benchmark does, so it waits for the live runs that hold it.
+  holds=$(checkout_holders)
+  [ -z "$holds" ] || echo "  the checkout: after the live runs that hold it ($holds)"
+  depend_on "$holds" || return 1
+  submit totalseg_complete gpu ${opts[@]+"${opts[@]}"} --no-requeue --time 06:00:00 -- totalseg-complete.sbatch > /dev/null || return 1
+  echo "submitted the totalseg complete job: one GPU job that runs TotalSegmentator (VerSe, TotalSegmentator) or MOOSE (ENHANCE.PET) on each admitted study's own CT for the C2 or sacrum its release lacks. Send totalseg complete again once it ends to read its report, logs/TOTALSEG-complete.md."
 }
 
 word_census() {  # the gold tier census (the owner's tap of 2026-10-29 12:26 UTC, one CPU job): queued once, its report printed on every later send
@@ -2587,6 +2646,7 @@ case "$word" in
   anomaly) word_anomaly ;;
   bordercall) word_bordercall ;;
   census) word_census ;;
+  totalseg) word_totalseg ;;
   realism) word_realism ;;
   morphometry) word_morphometry ;;
   literature) word_literature ;;
