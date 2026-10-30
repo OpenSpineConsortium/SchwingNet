@@ -3,19 +3,21 @@ the word `morphometry <set>` measured with the persons they belong to, and write
 analysis starts from.
 
 Source: the thread "Extract morphometrics from gold tier 3 CT", 2026-10-30: the morphometry rows of ENHANCE.PET
-(job 40872077) and of VerSe with TotalSegmentator's admitted subjects (job 40877151) are long rows of a study,
-a level, a measure and a value, and the per-person covariate analysis needs each person's sex and age beside
-them, which no committed file holds. grid/morphometry-covariates.sbatch runs this file from git's copy of it at
-the gate's commit, and the gate's word `morphometry covariates` queues it once, on the owner's count. Confidential,
-like the rest of SchwingNet: the joined per-person table stays in the job's folder on the lab volume, mode 0700,
+and of VerSe with TotalSegmentator's admitted subjects (jobs 40872077 and 40877151 on bordercall 16f7b40, and
+once more on ee495d5 on the owner's count of 2026-10-30 14:33 UTC) are long rows of a study, a level, a measure
+and a value, and the per-person covariate analysis needs each person's sex and age beside them, which no
+committed file holds. grid/morphometry-covariates.sbatch runs this file from git's copy of it at the gate's
+commit, and the gate's word `morphometry covariates` queues it once, on the owner's count. Confidential, like
+the rest of SchwingNet: the joined per-person table stays in the job's folder on the lab volume, mode 0700,
 and only the aggregates in report.lines leave the grid, in the job's report.
 
     python3 tools/gold3_covariates.py --morphometry ROOT --verse-demographics CSV --data DATA_ROOT --out DIR
-        [--autopet AUTOPET_JSON] [--index SAMPLES_SQLITE] [--records DIR] [--workers N]
+        [--autopet AUTOPET_JSON] [--index SAMPLES_SQLITE] [--records DIR] [--workers N] [--previous DIR ...]
 
 where ROOT holds enhance/rows.csv, verse/rows.csv and verse/totalseg/rows.csv as grid/morphometry.sbatch
 writes them; an absent --autopet or --index is a failure the report says, autoPET then having no person or
-no sex and age.
+no sex and age; and each --previous names the job folder of an earlier join whose report printed cells, whose
+joined.csv the check across reports reads (below).
 
 Where each person and their sex and age come from:
 
@@ -50,6 +52,15 @@ though the dataset itself carries its children and never leaves one out (docs/re
 decision 13); a person of unknown age enters the sex tables, g and r but no slope, which is over adults of known
 age alone; the fill rates count the children and the persons of unknown age apart.
 
+Each study's rows name the code that measured them, bordercall's code stamp in its code row: a study that names
+none, and rows measured by more than one stamp, within a set or between the sets, are failures the report says,
+since one table over two engines would blend their definitions, and the stamp is printed beside the counts, so
+the report names the engine it rests on. interpedicular is left out at each vertebra the rows flag
+interpedicular_band: there no pedicle was found on both sides, and the hole's width through its middle stands in,
+flagged, for the reading on the pedicles' walls; that width read about 2 to 3 mm under the papers' interpedicular
+distances at L4 and L5 (grid/bordercall/morphometry/canal.py, the run of 2026-10-29), so a mean over both would
+blend two definitions; the report counts the stand-ins left out.
+
 The aggregates, over the measures the bordercall vocabulary names (VERTEBRA_KEYS at T10 to L5, DISC_KEYS at the
 discs T10-T11 to L4-L5) and a whole-column summary, T10-L5, each person's mean over every level of the range,
 taken only where the person has all of them, so that a person missing the largest or the smallest body never
@@ -77,6 +88,17 @@ shown, at a level or at the column, only where its persons are each part's there
 its sum then the mean of theirs, adding nothing to what they show. g is shown only where both sexes' means are;
 r and the slope are printed with their n and never with a mean of their own persons, so they give no sum to
 difference; n and the fill rates are counts, printed whatever their size.
+
+A join run once more prints its blocks beside an earlier report's, and the two would difference into the persons
+they do not share, or share with other readings: so every earlier join whose report printed cells is named with
+--previous, its joined.csv read back into the persons, sexes, ages and readings to four places that join's
+blocks were made of, and a block of this join is withheld wherever the earlier join had persons enough to print
+it and the two differ by more than none and fewer than the block's least count, a person counted where one join
+has them and the other has not, or has them with another reading: a sex's mean and SD against MIN_CELL, and at
+the column the persons with some levels but not all against it as well; r's pairs against MIN_PAIR; the slope's
+points, each an age and a reading, against MIN_SLOPE. The derived rule and g are applied again after, and the
+report counts what the check withheld. An earlier joined table that cannot be read is a failure said, and every
+mean, r and slope is then withheld, n alone printed, since nothing could be checked against it.
 
 One line per (member, measure, level), both sexes on it, at most MAX_CELL_LINES, 822: each member's 26 vertebra
 keys at 8 levels and the column (234 lines) and 5 disc keys at 7 disc levels and the column (40); with the fill
@@ -140,6 +162,12 @@ MEMBERS = ("autopet", "verse", "totalseg")
 # A measure that is the mean of others the report prints (bordercall's morphometry/column.py: disc_h_mean is
 # the mean of the three disc heights, and none where one is missing).
 DERIVED = {"disc_h_mean": ("disc_h_ant", "disc_h_mid", "disc_h_post")}
+# bordercall's stand-in for interpedicular where no pedicle was found on both sides (morphometry/canal.py),
+# flagged at that vertebra and left out of the tables, which take the reading on the pedicles' walls.
+STAND_IN_KEY, STAND_IN_FLAG = "interpedicular", "flag:interpedicular_band"
+# bordercall's code stamp, the first sixteen hex digits of the sha256 of its measuring code
+# (morphometry/__main__.py, code_stamp), which every study's code row carries.
+STAMP = re.compile(r"[0-9a-f]{16}")
 MAX_CELL_LINES = len(MEMBERS) * (len(VERTEBRA_KEYS) * (len(VERTEBRA_LEVELS) + 1) + len(DISC_KEYS) * (len(DISC_LEVELS) + 1))
 TOTALSEG_META = "Totalsegmentator_dataset_v300/meta.csv"
 PETCT = re.compile(r"PETCT_([0-9a-f]+)", re.IGNORECASE)
@@ -171,6 +199,12 @@ FAILURES = {
                                   "sha256, so it has no sex or age",
     "totalseg_meta_columns": "the TotalSegmentator meta table lacks one of its image id, age and gender columns, so it "
                              "has no sex or age",
+    "rows_code_unnamed": "a study in the morphometry rows names no measuring code of the plain form, so its rows cannot be "
+                         "tied to the engine that measured them",
+    "rows_code_mixed": "the morphometry rows were measured by more than one version of the measuring code, within a set or "
+                       "between the sets, so the tables blend two engines",
+    "previous_unreadable": "the joined table of an earlier join could not be read ({kind}), so every mean, r and slope is "
+                           "withheld, none checked against that join",
 }
 PLAIN_KIND = re.compile(r"[A-Za-z_][A-Za-z0-9_]{0,39}")
 UNPLAIN_RUN = re.compile(r"[0-9]{5}|[0-9a-fA-F]{8}")
@@ -306,18 +340,64 @@ def wanted(level, key):
     return key in DISC_KEYS and level in DISC_LEVELS
 
 
+@dataclass
+class Rows:
+    """One rows file: {study: {(level, measure): value}} over the vocabulary's measures and levels, every study
+    it names, {study: the code stamps its code rows name}, and the (study, level) whose interpedicular was the
+    flagged stand-in and is left out of values."""
+
+    values: dict
+    seen: set
+    codes: dict
+    stand_ins: set
+
+
 def read_rows(path, study_id):
-    """({study: {(level, measure): value}}, every study the file names) over the vocabulary's measures and levels."""
-    values, seen = defaultdict(dict), set()
+    """A rows file as grid/morphometry.sbatch writes it, read whole: the flag rows come after a vertebra's
+    values, so the stand-ins are taken out once every row is read."""
+    values, seen, codes, flagged = defaultdict(dict), set(), defaultdict(set), set()
     with open(path, newline="", encoding="utf-8") as handle:
         for row in csv.DictReader(handle):
             study = study_id(row.get("study") or "")
             seen.add(study)
             key, level = row.get("key") or "", row.get("level") or ""
+            if key == "code" and level == "study":
+                codes[study].add((row.get("note") or "").strip())
+            elif key == STAND_IN_FLAG:
+                flagged.add((study, level))
             value = number(row.get("value"))
             if value is not None and wanted(level, key):
                 values[study].setdefault((level, key), value)
-    return dict(values), seen
+    stand_ins = set()
+    for study, level in flagged:
+        if values.get(study, {}).pop((level, STAND_IN_KEY), None) is not None:
+            stand_ins.add((study, level))
+    return Rows(dict(values), seen, dict(codes), stand_ins)
+
+
+def code_line(codes, report):
+    """The report's line naming the code that measured the rows, from {label: {study: stamps}}: a study that
+    names no stamp of the plain form, and more than one stamp within a file or between the files, are failures
+    said, and only stamps of the plain form are printed."""
+    found, unnamed = {}, False
+    for label, studies in codes.items():
+        found[label] = set()
+        for named in studies.values():
+            plain = {stamp for stamp in named if STAMP.fullmatch(stamp)}
+            unnamed = unnamed or not plain or plain != named
+            found[label] |= plain
+    if unnamed:
+        report.fail("rows_code_unnamed")
+    every = set().union(*found.values())
+    if len(every) > 1:
+        report.fail("rows_code_mixed")
+    if len(every) == 1:
+        where = "where the rows name one" if unnamed else "for every set's rows"
+        return f"rows: measuring code {min(every)} {where}"
+    if every:
+        return "rows: measuring code by set, " + "; ".join(f"{label} {' '.join(sorted(stamps)) or 'none named'}"
+                                                         for label, stamps in found.items())
+    return "rows: no measuring code named in any rows file"
 
 
 # ---------------------------------------------------------------- the grid check: a CT off its mask's grid
@@ -714,6 +794,81 @@ def withhold_derived(cells, whole, parts, level):
     numbers["g"] = g_of(numbers)
 
 
+def texts_of(persons):
+    """{id of a person: {(level, measure): the reading to four places}}, as the joined table writes it."""
+    return {id(p): {place: f"{value:.4f}" for place, value in p.values.items()} for p in persons}
+
+
+def block_readings(persons, texts, key, level, sex):
+    """{kind: {person: reading}} behind one sex's block: the persons of its mean, at the column those with some
+    levels but not all (partial), r's pairs and the slope's points, each reading as the joined table writes it and
+    a point's age too, so that two joins' blocks are set side by side as their tables hold them."""
+    out = {"mean": {}, "partial": {}, "r": {}, "slope": {}}
+    above = level_above(key, level)
+    for p in persons:
+        if p.sex != sex:
+            continue
+        text = texts[id(p)]
+        if level == COLUMN:
+            have = tuple(text.get((lv, key)) for lv in levels_of(key))
+            reading = have if all(have) else None
+            if reading is None and any(have):
+                out["partial"][p.key] = have
+        else:
+            reading = text.get((level, key))
+        if reading is not None:
+            out["mean"][p.key] = reading
+            if p.sloped:
+                out["slope"][p.key] = (blank(p.age), reading)
+        if above and (above, key) in text and (level, key) in text:
+            out["r"][p.key] = (text[(above, key)], text[(level, key)])
+    return out
+
+
+def differing(ours, theirs):
+    """How many persons one block's readings have that the other's have not, or have with another reading."""
+    return len(ours.keys() ^ theirs.keys()) + sum(1 for k in ours.keys() & theirs.keys() if ours[k] != theirs[k])
+
+
+def few(ours, theirs, least):
+    """Whether two blocks differ by more than none and fewer than least persons, so their sums difference into
+    those few persons' readings."""
+    return 0 < differing(ours, theirs) < least
+
+
+def withhold_across(cells, persons, before, withheld):
+    """This join's blocks withheld where an earlier join's persons, before, had persons enough to print the same
+    block and the two differ by 1 to its least count less one; a block the earlier join had fewer for was never
+    printed, so it differences into nothing. withheld counts, by kind, what is taken."""
+    ours, theirs = texts_of(persons), texts_of(before)
+    for (key, level), numbers in cells.items():
+        for sex in SEXES:
+            now = block_readings(persons, ours, key, level, sex)
+            then = block_readings(before, theirs, key, level, sex)
+            own = numbers[sex]
+            if own["shown"] and len(then["mean"]) >= MIN_CELL and (
+                    few(now["mean"], then["mean"], MIN_CELL) or few(now["partial"], then["partial"], MIN_CELL)):
+                own["shown"] = False
+                withheld["means"] += 1
+            if own["r"] and own["r"][0] is not None and len(then["r"]) >= MIN_PAIR and few(now["r"], then["r"], MIN_PAIR):
+                own["r"] = (None, own["r"][1])
+                withheld["r"] += 1
+            if own["slope"][0] is not None and len(then["slope"]) >= MIN_SLOPE and few(now["slope"], then["slope"], MIN_SLOPE):
+                own["slope"] = (None, None, own["slope"][2])
+                withheld["slopes"] += 1
+
+
+def blind(numbers):
+    """A block with every mean, r and slope withheld, its n alone printed: what is left where an earlier join's
+    table could not be read, so nothing of this join could be checked against it."""
+    for sex in SEXES:
+        own = numbers[sex]
+        own["shown"] = False
+        own["r"] = (None, own["r"][1]) if own["r"] else None
+        own["slope"] = (None, None, own["slope"][2])
+    numbers["g"] = (None, None)
+
+
 def figure(value, digits=4):
     """A number in about digits significant figures, never in exponent form; "-" for none."""
     if value is None:
@@ -746,17 +901,23 @@ def cell_line(member, key, level, numbers):
     return " ".join(parts)
 
 
-def cells_of(persons):
-    """[(key, level, numbers)] over every measure of the vocabulary, its levels and its column, a derived
-    measure's means withheld where its lines and its parts' could be differenced."""
+def cells_of(persons, earlier=(), withheld=None):
+    """[(key, level, numbers)] over every measure of the vocabulary, its levels and its column: a block withheld
+    where it and an earlier join's could be differenced (earlier, each earlier join's persons of the same
+    member; withheld counts what that takes), then a derived measure's means where its lines and its parts'
+    could be, and g wherever a sex's mean is no longer shown."""
     cells = {}
     for keys, levels in ((VERTEBRA_KEYS, VERTEBRA_LEVELS), (DISC_KEYS, DISC_LEVELS)):
         for key in keys:
             for level in (*levels, COLUMN):
                 cells[(key, level)] = cell(persons, key, level)
+    for before in earlier:
+        withhold_across(cells, persons, before, Counter() if withheld is None else withheld)
     for whole, parts in DERIVED.items():
         for level in (*levels_of(whole), COLUMN):
             withhold_derived(cells, whole, parts, level)
+    for numbers in cells.values():
+        numbers["g"] = g_of(numbers)
     return [(key, level, numbers) for (key, level), numbers in cells.items()]
 
 
@@ -841,24 +1002,27 @@ def summary_of(member, key, level, numbers):
 # ---------------------------------------------------------------- the run
 
 
-def member_studies(path, study_id, allowed, report, label, tally, missing):
+def member_studies(path, study_id, allowed, report, label, tally, missing, codes):
     """The admitted studies of one rows file with their values, and the counts of what it held and left;
-    missing names the failure said where the file is not there."""
+    missing names the failure said where the file is not there, and codes takes every study's code stamps
+    under the file's label, since the whole file is one run's."""
     if not Path(path).is_file():
         report.fail(missing)
         return {}
-    values, seen = read_rows(path, study_id)
-    kept = {sid: values.get(sid, {}) for sid in seen if sid in allowed}
-    tally[f"{label} studies in the rows"] = len(seen)
-    tally[f"{label} studies not admitted"] = len(seen - allowed)
+    rows = read_rows(path, study_id)
+    kept = {sid: rows.values.get(sid, {}) for sid in rows.seen if sid in allowed}
+    tally[f"{label} studies in the rows"] = len(rows.seen)
+    tally[f"{label} studies not admitted"] = len(rows.seen - allowed)
+    tally[f"{label} interpedicular stand-ins left out"] = sum(1 for sid, _ in rows.stand_ins if sid in allowed)
+    codes[label] = {sid: rows.codes.get(sid, set()) for sid in rows.seen}
     return kept
 
 
-def enhance_studies(args, report, tally, off_grid):
+def enhance_studies(args, report, tally, off_grid, codes):
     """ENHANCE.PET's admitted studies with rows, less those measured on unrepaired masks and those off their grid."""
     allowed = admitted(args.records, "enhance_pet")
     studies = member_studies(Path(args.morphometry) / "enhance/rows.csv", enhance_id, allowed, report, "ENHANCE.PET", tally,
-                             "enhance_rows_missing")
+                             "enhance_rows_missing", codes)
     facts = enhance_facts(args.records)
     off, grid = off_grid(args.data, facts, args.workers)
     if off is None:
@@ -884,9 +1048,10 @@ def autopet_matches(path, report):
 
 
 def gather(args, report, off_grid):
-    """Every person of the three members, the counts of how they were found, and the autoPET tally."""
-    tally, auto = Counter(), Counter()
-    enhance, sites = enhance_studies(args, report, tally, off_grid)
+    """Every person of the three members, the counts of how they were found, and the autoPET tally; the code
+    that measured the rows is said first."""
+    tally, auto, codes = Counter(), Counter(), {}
+    enhance, sites = enhance_studies(args, report, tally, off_grid, codes)
     autopet = {sid: v for sid, v in enhance.items() if sites.get(sid) == "autoPET"}
     matches = autopet_matches(args.autopet, report)
     if not args.index:
@@ -894,21 +1059,62 @@ def gather(args, report, off_grid):
     persons = autopet_persons(autopet, matches, args.index, report, auto)
     persons += site_persons(enhance, sites, "Leipzig") + site_persons(enhance, sites, "Careggi")
     verse = member_studies(Path(args.morphometry) / "verse/rows.csv", verse_id, admitted(args.records, "verse"),
-                           report, "VerSe", tally, "verse_rows_missing")
+                           report, "VerSe", tally, "verse_rows_missing", codes)
     persons += verse_persons(verse, args.records, verse_sexes(args.verse_demographics, args.records, report), tally)
     totalseg = member_studies(Path(args.morphometry) / "verse/totalseg/rows.csv", totalseg_id,
                               admitted(args.records, "totalsegmentator"), report, "TotalSegmentator", tally,
-                              "totalseg_rows_missing")
+                              "totalseg_rows_missing", codes)
     persons += totalseg_persons(totalseg, totalseg_meta(args.data, args.records, report))
+    report.say(code_line(codes, report))
     counts = {"autoPET": len(autopet), "Leipzig": sum(1 for s in enhance if sites.get(s) == "Leipzig"),
               "Careggi": sum(1 for s in enhance if sites.get(s) == "Careggi"), "verse": len(verse), "totalseg": len(totalseg)}
     return persons, tally, auto, counts
+
+
+def earlier_persons(folder):
+    """The persons an earlier join's blocks were made of, rebuilt from the joined table it kept in its job
+    folder: each with the sex, the age and the readings to four places it wrote."""
+    persons = {}
+    with open(Path(folder) / "joined.csv", newline="", encoding="utf-8") as handle:
+        for row in csv.DictReader(handle):
+            person = persons.get(row["person"])
+            if person is None:
+                person = persons[row["person"]] = Person(key=row["person"], member=row["member"], part=row["part"],
+                                                         study=row["study"], sex=row["sex"], age_read=number(row["age"]))
+            value = number(row["value"])
+            if value is not None:
+                person.values[(row["level"], row["key"])] = value
+    return list(persons.values())
+
+
+def earlier_joins(folders, report):
+    """Each earlier join's persons, and whether the joined table of any could not be read, a failure said."""
+    joins, unread = [], False
+    for folder in folders:
+        try:
+            joins.append(earlier_persons(folder))
+        except (OSError, KeyError, ValueError, csv.Error) as error:
+            report.fail("previous_unreadable", error)
+            unread = True
+    return joins, unread
+
+
+def across_line(joins, withheld, unread):
+    """What the check across reports read and, by member, what it withheld."""
+    counts = "; ".join(f"{member} means {taken['means']}, r {taken['r']}, slopes {taken['slopes']}"
+                       for member, taken in withheld.items())
+    blinded = ", and a joined table not read, so every mean, r and slope withheld" if unread else ""
+    return (f"across reports: {joins} earlier joins read{blinded}; a block withheld where an earlier join had persons "
+            f"enough to print it and the two differ by 1 to {MIN_CELL - 1} persons or readings for a mean and SD, "
+            f"1 to {MIN_PAIR - 1} for r and 1 to {MIN_SLOPE - 1} for a slope; withheld {counts}")
 
 
 def run(args, off_grid=off_grid_studies):
     """The join, the per-person table under args.out and the report's lines; 0, or 3 where a failure was said."""
     report = Report()
     persons, tally, auto, counts = gather(args, report, off_grid)
+    previous = getattr(args, "previous", None) or []
+    joins, unread = earlier_joins(previous, report)
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     write_persons(out, persons)
@@ -926,13 +1132,23 @@ def run(args, off_grid=off_grid_studies):
                f"and SD shown only where the persons of that sex with some levels but not all number none or {MIN_CELL} "
                f"or more; {', '.join(DERIVED)}, the mean of {', '.join(p for parts in DERIVED.values() for p in parts)}, "
                "shown only where its persons are each of theirs and their means are shown; TotalSegmentator's ages "
-               "carry the release's jitter of up to four years")
+               "carry the release's jitter of up to four years; interpedicular is left out where the rows flag the "
+               "hole's width standing in for the reading on the pedicles' walls")
     report.say("line: member measure level M n mean sd F n mean sd g g var r rM nM rF nF a slopeM seM nM slopeF seF nF; "
                "- where not shown")
-    cells = []
+    tables, withheld = [], {}
     for member, tabled in table_members(persons):
+        withheld[member] = Counter()
+        before = [dict(table_members(join))[member] for join in joins]
+        tables.append((member, tabled, cells_of(tabled, before, withheld[member])))
+    if previous:
+        report.say(across_line(len(joins), withheld, unread))
+    cells = []
+    for member, tabled, listed in tables:
         written = left = 0
-        for key, level, numbers in cells_of(tabled):
+        for key, level, numbers in listed:
+            if unread:
+                blind(numbers)
             line = cell_line(member, key, level, numbers)
             cells.append(summary_of(member, key, level, numbers))
             if line is None:
@@ -958,6 +1174,8 @@ def parse(argv):
     parser.add_argument("--out", required=True, help="the job's folder, mode 0700")
     parser.add_argument("--records", default=str(RECORDS), help="the gold 3 records, data/gold3-ct")
     parser.add_argument("--workers", type=int, default=os.cpu_count() or 1)
+    parser.add_argument("--previous", action="append", default=[],
+                        help="an earlier join's job folder, whose joined.csv this join's blocks are checked against; once for each")
     return parser.parse_args(argv)
 
 

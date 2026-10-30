@@ -3,7 +3,8 @@
 #SBATCH --mem=64G
 #SBATCH --time=24:00:00
 # bordercall's morphometry engine over the gold tier 3 masks (the thread "Extract morphometrics
-# from gold tier 3 CT"; the owner's count of 2026-10-29 15:19 UTC: two CPU jobs, one a set).
+# from gold tier 3 CT"; the owner's count of 2026-10-29 15:19 UTC: two CPU jobs, one a set, and of
+# 2026-10-30 14:33 UTC: one more a set on the merged engine, MORPHOMETRY_RERUNS in grid/gate.sh).
 # grid/gate.sh's word `morphometry <set>` queues it as the batch class with SET, enhance or
 # verse, in the environment:
 #   enhance  every ENHANCE.PET vertebra label map under the data root's aws_enhance_pet_labels
@@ -16,13 +17,19 @@
 # The engine is the pinned copy under grid/bordercall/ (tools/bordercall_vendor.py): PYTHONPATH
 # points there, so `python -m morphometry`, `-m scanimport` and `-m screening` import the copy
 # grid/bordercall/VENDORED records, and the code stamp morphometry prints names the run. Each set
-# writes under $MORPHOMETRY_ROOT/<set> on the lab volume: masks/, a folder of symlinks named
-# <id>.nii.gz, since the engine reads one folder of masks; rows/<id>.csv and rows.csv from the
-# measuring run; facts.jsonl and verdicts.csv from the generalised screening, whose failure is
-# reported and not fatal, since the measuring is the count's purpose; totalseg/ the same for
-# TotalSegmentator's subjects. The report, grid/logs/MORPHOMETRY-<set>.md, carries aggregates
-# alone, counts, medians, paths, bytes and digests, and never a row of a study, since the rows
-# stay on the grid (docs/research/gold3-ct/README.md).
+# writes under $MORPHOMETRY_ROOT/<set> on the lab volume, the root the gate hands it, whose kept/<job>/
+# holds a whole earlier run's rows the gate set aside before a rerun and is read by no step here:
+# masks/, a folder of symlinks named <id>.nii.gz, since the engine reads one folder of masks;
+# rows/<id>.csv and rows.csv from the measuring run; facts.jsonl and verdicts.csv from the
+# generalised screening, whose failure is reported and not fatal, since the measuring is the
+# count's purpose; totalseg/ the same for TotalSegmentator's subjects. The report,
+# grid/logs/MORPHOMETRY-<set>.md, carries aggregates alone, counts, medians, paths, bytes and
+# digests, and never a row of a study, since the rows stay on the grid
+# (docs/research/gold3-ct/README.md); a level's median is shown only over five studies or more.
+# It names the interpreter's Python, numpy, scipy and nibabel and the engine's code stamp, and holds
+# each run's joined rows to that stamp and to the run's own count of the studies it chose: a run whose
+# worker died ends 0 with the files it found, an earlier engine's among them where they were not set
+# aside, so rows that are not the run's whole fail the set and no join reads them.
 #
 # The interpreter is the first with numpy, scipy and nibabel. screening also needs icontract and
 # beartype, which no grid environment holds, so where the interpreter lacks them a throwaway venv
@@ -80,10 +87,33 @@ for cand in "${MORPHOMETRY_PYTHON:-}" "$HOME/mambaforge/envs/spineps/bin/python"
   if "$cand" -c "import numpy, scipy, nibabel" >/dev/null 2>&1; then PY=$cand; break; fi
 done
 [ -n "$PY" ] || { report "FAILED: no interpreter with numpy, scipy and nibabel (tried the SPINEPS environments and train-cpu)"; finish 2; }
-report "interpreter: $PY ($("$PY" -c 'import sys; print(sys.version.split()[0])')) for the measuring"
+versions() {  # the versions of Python and of the three packages the engine measures with, each "not read" where its import fails
+  "$PY" - <<'PYEOF' 2>/dev/null || echo "versions not read"
+import importlib, sys
+parts = ["Python " + sys.version.split()[0]]
+for name in ("numpy", "scipy", "nibabel"):
+    try:
+        parts.append("%s %s" % (name, importlib.import_module(name).__version__))
+    except Exception:
+        parts.append("%s not read" % name)
+print(", ".join(parts))
+PYEOF
+}
+# The engine's walls and pedicles are read through scipy's linear programs, whose answers at tolerance can
+# move with its version, so the report names the versions beside the code stamp.
+report "interpreter: $PY ($(versions)) for the measuring"
 [ -f "$ENGINE/morphometry/__main__.py" ] || { report "FAILED: no vendored morphometry at $ENGINE (tools/bordercall_vendor.py)"; finish 2; }
+# The run draws each measure's line and each vertebra's frame beside the rows (--lines, bordercall PR 47,
+# for PR 45's stage 1), which imports morphoview.lines before it measures a study.
+[ -f "$ENGINE/morphoview/lines.py" ] || { report "FAILED: no vendored morphoview/lines.py at $ENGINE, which the run's lines need (tools/bordercall_vendor.py)"; finish 2; }
 report "bordercall copy: $(head -n 1 "$ENGINE/VENDORED" 2>/dev/null | cut -c1-120)"
-report "code stamp: $("$PY" -c 'from morphometry.__main__ import code_stamp; print(code_stamp())' 2>&1 | tail -n 1)"
+# The stamp the engine gives its own code, which every row it writes carries: the report names it and
+# measure holds the rows to it, so a report never names an engine its rows were not measured by. A run
+# with the lines has a stamp of its own, over morphoview/lines.py too (code_stamp(True)), and that is
+# the one its rows carry.
+STAMP=$("$PY" -c 'from morphometry.__main__ import code_stamp; print(code_stamp(True))' 2>/dev/null | tail -n 1)
+[[ $STAMP =~ ^[0-9a-f]{16}$ ]] || { report "FAILED: the engine gave no code stamp of the plain form, so no row could be tied to the code that measured it"; finish 2; }
+report "code stamp: $STAMP"
 
 # The screening interpreter: the same one where it has the contracts' packages, else a throwaway
 # venv beside the set's outputs with exactly those two pins, else none and the screening is skipped.
@@ -128,11 +158,14 @@ link_masks() {  # link_masks DIR < paths: DIR/<id>.nii.gz -> each path, the id i
     ln -sfn "$f" "$1/$id.nii.gz"
   done
 }
-level_table() {  # level_table ROWS.csv: per level, the rows with h_post_inset and the medians of three keys, as a table
+level_table() {  # level_table ROWS.csv: per level, the rows with h_post_inset and the medians of three keys over five studies or more, as a table
   "$PY" - "$1" <<'PYEOF'
 import csv, math, sys
 from collections import defaultdict
 KEYS = ("h_ant", "h_post_inset", "body_index_ant_post")
+# A median of fewer studies than the join's least cell would print a value one or two studies set, in a
+# report that leaves the grid, so such a level shows its count alone.
+LEAST = 5
 ORDER = [*("C%d" % i for i in range(1, 8)), *("T%d" % i for i in range(1, 14)), *("L%d" % i for i in range(1, 7)), "S1", "sacrum"]
 values = defaultdict(lambda: defaultdict(list))
 with open(sys.argv[1], newline="", encoding="utf-8") as fh:
@@ -149,29 +182,110 @@ def median(xs):
     xs = sorted(xs)
     n = len(xs)
     return (xs[n // 2] if n % 2 else (xs[n // 2 - 1] + xs[n // 2]) / 2) if n else float("nan")
+def shown(xs, form):
+    return form % median(xs) if len(xs) >= LEAST else "-"
 levels = sorted(values, key=lambda l: (ORDER.index(l) if l in ORDER else len(ORDER), l))
 print("    | level | n (h_post_inset) | median h_ant | median h_post_inset | median body_index_ant_post |")
 print("    |---|---|---|---|---|")
 for level in levels:
     n = len(values[level]["h_post_inset"])
-    print("    | %s | %d | %.2f | %.2f | %.3f |" % (level, n, median(values[level]["h_ant"]), median(values[level]["h_post_inset"]), median(values[level]["body_index_ant_post"])))
+    print("    | %s | %d | %s | %s | %s |" % (level, n, shown(values[level]["h_ant"], "%.2f"), shown(values[level]["h_post_inset"], "%.2f"), shown(values[level]["body_index_ant_post"], "%.3f")))
+PYEOF
+}
+rows_whole() {  # rows_whole ROWS.csv RUN.log: "whole N" where the rows are the run's whole, N studies each once under the report's code stamp, else "not whole: " and why
+  "$PY" - "$1" "$2" "$STAMP" <<'PYEOF'
+import csv, re, sys
+from collections import defaultdict
+rows_path, log_path, stamp = sys.argv[1:4]
+problems = []
+try:
+    log = open(log_path, encoding="utf-8", errors="replace").read()
+except OSError:
+    log = ""
+count = re.search(r"^(\d+) studies chosen, \d+ to measure, code ([0-9a-f]{16})$", log, re.M)
+if not count:
+    problems.append("the run printed no count of the studies it chose under a code stamp")
+elif count.group(2) != stamp:
+    problems.append("the run measured under another code stamp than the report names")
+if re.search(r"^a worker died", log, re.M):
+    problems.append("a worker died during the run, so some studies it chose were not measured by it")
+codes = defaultdict(set)
+try:
+    with open(rows_path, newline="", encoding="utf-8") as handle:
+        for row in csv.DictReader(handle):
+            notes = codes[row["study"]]
+            if row["key"] == "code" and row["level"] == "study":
+                notes.add(row["note"])
+except (OSError, KeyError, csv.Error):
+    problems.append("the joined rows could not be read")
+foreign = sum(1 for notes in codes.values() if notes != {stamp})
+if foreign:
+    problems.append("%d studies of the joined rows carry no code stamp or another" % foreign)
+if count and len(codes) != int(count.group(1)):
+    problems.append("the joined rows hold %d studies where the run chose %s" % (len(codes), count.group(1)))
+print("not whole: " + "; ".join(problems) if problems else "whole %d" % len(codes))
+PYEOF
+}
+lines_table() {  # lines_table LINES.csv ROWS.csv: per level, the line rows by status and the flag:lines rows, counts alone
+  "$PY" - "$1" "$2" <<'PYEOF'
+import csv, sys
+from collections import Counter, defaultdict
+lines, flags = defaultdict(Counter), Counter()
+with open(sys.argv[1], newline="", encoding="utf-8") as handle:
+    for row in csv.DictReader(handle):
+        if not row.get("part"):
+            # a withheld line's status carries its study's values after the colon, which stay on the grid
+            lines[row.get("level", "")][(row.get("status", "").split(":")[0].strip() or "(blank)")] += 1
+try:
+    with open(sys.argv[2], newline="", encoding="utf-8") as handle:
+        for row in csv.DictReader(handle):
+            if row.get("key") == "flag:lines":
+                flags[row.get("level", "")] += 1
+except OSError:
+    pass
+statuses = sorted({s for c in lines.values() for s in c})
+print("    | level | " + " | ".join(statuses) + " | flag:lines |")
+print("    " + "|---" * (len(statuses) + 2) + "|")
+for level in sorted(set(lines) | set(flags)):
+    print("    | %s | %s | %d |" % (level, " | ".join(str(lines[level][s]) for s in statuses), flags[level]))
 PYEOF
 }
 measure() {  # measure NAME MASKS SCHEME OUTDIR: morphometry run over MASKS into OUTDIR, its aggregates into the report; 1 where it failed
-  local name=$1 masks=$2 scheme=$3 out=$4 began rc first errors
+  local name=$1 masks=$2 scheme=$3 out=$4 began rc first errors whole
   mkdir -p "$out"
   STEPS=$out
   began=$(date +%s)
-  step run "$PY" -m morphometry run --masks "$masks" --scheme "$scheme" --out "$out" --workers "$CPUS"
+  step run "$PY" -m morphometry run --masks "$masks" --scheme "$scheme" --out "$out" --workers "$CPUS" --lines
   rc=$?
   STEPS=$OUT
   first=$(grep -m1 'studies chosen' "$out/run.log" 2>/dev/null)
   errors=$(grep -c 'flag:error' "$out/rows.csv" 2>/dev/null || true)
   report "$name: $(ls "$masks" 2>/dev/null | wc -l) masks linked; ${first:-the run printed no count}; ${errors:-0} studies flagged error; $(( $(date +%s) - began )) s wall; its lines in $out/run.log"
   report "$name rows: $(digest_line "$out/rows.csv")"
+  report "$name lines: $(digest_line "$out/lines.csv")"
+  report "$name frames: $(digest_line "$out/frames.csv")"
+  # The engine's own line when a worker of its pool was killed; rows_whole below fails the set on it.
+  grep -m1 '^a worker died' "$out/run.log" 2>/dev/null | cut -c1-200 | while read -r died; do report "$name: the run said: $died"; done
+  # A run whose worker died still joins every chosen study's file it finds and ends 0, an earlier
+  # engine's files among them where they were not set aside, so the rows are held to the run's own
+  # count and to the report's code stamp before they are reported as measured; rows that are not the
+  # run's whole fail the set, and its level table is not drawn from them.
+  whole=$(rows_whole "$out/rows.csv" "$out/run.log" 2>/dev/null)
+  [ -n "$whole" ] || whole="not whole: the check of the rows gave no answer"
+  case "$whole" in
+    "whole "*)
+      report "$name rows: ${whole#whole } studies, every one under the code stamp the report names, as many as the run chose" ;;
+    *)
+      report "$name rows FAILED: not a whole run (${whole#not whole: }), so they are not used"
+      return 1 ;;
+  esac
   if [ -f "$out/rows.csv" ]; then
-    report "$name per level (rows with h_post_inset, medians over values that parse as finite):"
+    report "$name per level (rows with h_post_inset, medians over values that parse as finite, each where 5 or more studies give one, - otherwise):"
     level_table "$out/rows.csv" >> "$REPORT.part" 2>&1 || report "  the level table could not be read"
+  fi
+  if [ -f "$out/lines.csv" ]; then
+    report "$name lines per level by status (counts of line rows, and the vertebrae whose rows flag lines):"
+    lines_table "$out/lines.csv" "$out/rows.csv" >> "$REPORT.part" 2>&1 || report "  the lines table could not be read"
   fi
   return "$rc"
 }
@@ -228,7 +342,9 @@ stack_one() {  # stack_one ID: the subject's structure masks stacked into one in
     extract_segmentations "$zip" "$id" "$TS/raw" || { echo "$id: no segmentations in the zip" > "$log"; echo missing > "$TS/stacked/$id.verdict"; return 0; }
   fi
   [ -d "$subjects/$id/segmentations" ] || { echo "$id: no segmentations folder" > "$log"; echo missing > "$TS/stacked/$id.verdict"; return 0; }
-  if [ -f "$TS/masks/$id.nii.gz" ] && [ -f "$TS/manifests/$id.json" ]; then echo stacked > "$TS/stacked/$id.verdict"; return 0; fi
+  # A stack an earlier job made is kept as it is and counted as that job's, whose lines are its own
+  # log's, so this job writes no log for it.
+  if [ -f "$TS/masks/$id.nii.gz" ] && [ -f "$TS/manifests/$id.json" ]; then echo reused > "$TS/stacked/$id.verdict"; return 0; fi
   if "$PYS" -m screening int16 --labels "$subjects/$id" --scheme totalseg --out "$TS/masks/$id.nii.gz" --manifest "$TS/manifests/$id.json" > "$log" 2>&1; then
     echo stacked > "$TS/stacked/$id.verdict"
   else
@@ -268,15 +384,19 @@ case "$SET" in
       # Each subject's stack reads its hundred-odd structure files from the release, so the subjects
       # are stacked CPUS at a time (the owner's word of 2026-10-30 13:37 UTC, after the serial loop
       # had held the verse job for hours): one verdict file a subject under $TS/stacked/, read back
-      # into the counts, and a subject stacked by an earlier job is kept as it is.
+      # into the counts, and a subject stacked by an earlier job is kept as it is and counted apart,
+      # its lines in that job's log: $TS/int16.log for the serial loop's (job 40877151's among them),
+      # $TS/int16/<id>.log for a parallel job's. The verdicts are this job's own, so an earlier job's go first.
       mkdir -p "$TS/stacked"
+      rm -f "$TS"/stacked/*.verdict
       export PYS TS subjects zip extracted
       export -f stack_one extract_segmentations
       grep -v '^$' "$TS/ids.txt" | xargs -P "$CPUS" -I{} bash -c 'stack_one "$1"' _ {}
       stacked=$(cat "$TS"/stacked/*.verdict 2>/dev/null | grep -c '^stacked$' || true)
+      reused=$(cat "$TS"/stacked/*.verdict 2>/dev/null | grep -c '^reused$' || true)
       failed=$(cat "$TS"/stacked/*.verdict 2>/dev/null | grep -c '^failed$' || true)
       missing=$(cat "$TS"/stacked/*.verdict 2>/dev/null | grep -c '^missing$' || true)
-      report "TotalSegmentator: $count admitted subjects; $stacked stacked into int16 volumes in VerSe's ids (screening int16, manifests under $TS/manifests, $CPUS subjects at a time), $failed failed, $missing with no segmentations in the release; the lines in $TS/int16/<id>.log"
+      report "TotalSegmentator: $count admitted subjects; $stacked stacked into int16 volumes in VerSe's ids by this job (screening int16, manifests under $TS/manifests, $CPUS subjects at a time, the lines in $TS/int16/<id>.log), $reused kept as an earlier job stacked them (its lines in $TS/int16.log or $TS/int16/<id>.log), $failed failed, $missing with no segmentations in the release"
       measure "TotalSegmentator" "$TS/masks" verse "$TS" || rc=1
       screen "TotalSegmentator" "$TS" --masks "$subjects" --scheme totalseg --member totalsegmentator --ids "$TS/ids.txt"
     else

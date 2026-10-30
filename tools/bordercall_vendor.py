@@ -52,8 +52,9 @@ HERE = Path(__file__).resolve().parent.parent
 # what grid/bordercall.sbatch needs: the old package, its reference tables and the selftest's
 # fixture, under the clone's archive/ (or at its root, before the move)
 KEEP = ("bordercall", "testdata", "README.md", "HANDOFF.md", "requirements.txt")
-# what grid/morphometry.sbatch needs: the measuring engine's packages at the clone's root
-ENGINE = ("morphometry", "scanimport", "screening")
+# what grid/morphometry.sbatch needs: the measuring engine's packages at the clone's root, and
+# morphoview, whose lines.py `morphometry run --lines` imports before it measures a study
+ENGINE = ("morphometry", "morphoview", "scanimport", "screening")
 # what grid/bordercall-complete.sbatch needs: the gold tier 3 holdings at the clone's root, whose
 # tests the job runs before the matcher (holdings.tests.test_fullspine_complete and
 # test_fullspine_facts, which import the package's other tests), so its tests/ folder comes too
