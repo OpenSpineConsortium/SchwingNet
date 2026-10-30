@@ -6,16 +6,17 @@ thickness and angle, and the articular processes' orientation, spacing and tropi
   craniocaudal height of the outer quarter of each process's reach, where Castellvi's type I
   (a dysplastic process at least 19 mm high) is read.
 - spinous_angle is the inclination of the spinous process below the transverse plane square to
-  the body's posterior wall (as the end-plates' inclinations are taken), along the line its
-  middle follows from base to tip in the midline: the bone in the midline strip more than 6 mm
-  behind the canal's posterior wall is cut into slabs 1 mm deep front to back, and the line is
-  fitted to the middle of each slab's height over the middle half of the strip's depth; nearer
-  in, the laminae's lower edges join it, and at the back the tip's blunt end. Two other lines
-  were set aside: the principal direction of the bone, since a lumbar or cervical process is
-  nearly as tall as it is long and that direction turns toward the vertical whatever its line
-  from base to tip; and the line from the centroid of its front 3 mm to that of its back 3 mm,
-  since the tip's end holds its upper corner furthest back, and on the phantom the line read 11
-  and 22 degrees where the processes fall 20 and 32.
+  the body's posterior wall (as the end-plates' inclinations are taken, body.posterior_wall; not
+  read, and flagged, where the wall is not), along the line its middle follows from base to tip
+  in the midline: the bone in the midline strip more than 6 mm behind the canal's posterior wall
+  is cut into slabs 1 mm deep front to back, and the line is fitted to the middle of each slab's
+  height over the middle half of the strip's depth; nearer in, the laminae's lower edges join
+  it, and at the back the tip's blunt end. Two other lines were set aside: the principal
+  direction of the bone, since a lumbar or cervical process is nearly as tall as it is long and
+  that direction turns toward the vertical whatever its line from base to tip; and the line from
+  the centroid of its front 3 mm to that of its back 3 mm, since the tip's end holds its upper
+  corner furthest back, and on the phantom the line read 11 and 22 degrees where the processes
+  fall 20 and 32.
 - lamina_thickness: each lamina, between the spinous process's base and the canal's lateral
   edge, is a plate. Its medial sheet is the voxels whose distance to the outside of the vertebra
   is a local maximum (the distance transform's ridge), and the sheet's direction of least spread
@@ -47,7 +48,7 @@ from scipy import ndimage
 from scanimport import geometry as G
 
 from .anatomy import NAN, Vertebra
-from .pedicle import wall_slope
+from .pedicle import wall_reading, wall_slope
 
 SPINOUS_BEHIND_MM = 6.0
 SPINOUS_HALF_MM = 3.0
@@ -70,6 +71,10 @@ def measures(v: Vertebra) -> Tuple[Dict[str, float], Dict[str, str]]:
     flags: Dict[str, str] = {}
     out.update(transverse(v))
     out["spinous_angle"] = spinous_angle(v)
+    wall, why = wall_reading(v)
+    if not math.isfinite(wall):
+        flags["spinous"] = ("the body's posterior wall is not read (%s): the spinous process's inclination, taken "
+                            "against it, is not" % why)
     out.update(laminae(v))
     got, note = facets(v)
     out.update(got)

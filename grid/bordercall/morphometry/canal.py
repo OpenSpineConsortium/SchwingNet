@@ -10,10 +10,17 @@ Panjabi's mid-height chord (scanimport's canal_ap, the median over the
 middle half of the body). His canal width is "the greatest interpedicular distance", a maximum,
 where the interpedicular distance of the radiological literature (Hinck) and of the paper-tables
 vocabulary is the least distance between the pedicles' medial walls; both are written here,
-interpedicular_max and interpedicular, each read in the slabs that cut the pedicles (the
-central half, or the central nine tenths, of the pedicle's height at its isthmus,
-pedicle.py), since above and below the pedicles the facets or the laminae bound the canal and
-read narrower.
+interpedicular_max and interpedicular, and both are read by pedicle.canal_between on the
+pedicles' own medial walls, in the layers that cut the pedicles (the central nine tenths of
+their height for the least, the central half for the greatest), since above and below the
+pedicles the facets or the laminae bound the canal and read narrower, and over the rows from
+the body's wall back to the isthmus for the greatest, where at L4 and L5 the walls flare into
+the lateral recesses and a caliper between the pedicles opens widest. Neither is read across
+the hole's middle, where scanimport reads a slab's width: a lumbar canal is widest between the
+pedicles, and at its middle, behind them, the laminae's junction bounds it, so the width
+through the middle read 2 to 3 mm under the papers' at L4 and L5 and in the neck (the run of
+2026-10-29, canal-shape.csv). Where a pedicle is not found on both sides the width through the
+middle over the middle half of the body stands in for both, flagged (hole_widths).
 
 Every slab is one of anatomy.build's: a slab across the column one voxel's shadow thick, the
 canal the hole the arch closes round, the walls read on the solid round it. Only full rings
@@ -50,19 +57,25 @@ NEAR_EXTREME_MM = 1.0         # an apex is the mean of the points within this of
 EISENSTEIN_LEVELS = ("L1", "L2", "L3", "L4")
 
 
-def measures(v: Vertebra, pedicle_band: Optional[Tuple[float, float]] = None) -> Tuple[Dict[str, float], Dict[str, str]]:
+def measures(v: Vertebra, pedicle: Optional[dict] = None) -> Tuple[Dict[str, float], Dict[str, str]]:
+    """The canal's measures; `pedicle` is pedicle.band's, the band between the pedicles with
+    the interpedicular distances read on their walls, or None where a pedicle was not found on
+    both sides."""
     rings = v.full_rings()
     out: Dict[str, float] = {}
     flags: Dict[str, str] = {}
-    if not rings:
-        return out, {"canal": "no full ring"}
     zb = body_span(v)
+    if pedicle is not None and np.isfinite(pedicle.get("interpedicular", NAN)):
+        out["interpedicular"] = pedicle["interpedicular"]
+        out["interpedicular_max"] = pedicle["interpedicular_max"]
+    else:
+        flags["interpedicular_band"] = ("no pedicle found on both sides: read across the hole's middle over the middle "
+                                        "half of the body")
+        out.update(hole_widths(rings, zb))
+    if not rings:
+        flags["canal"] = "no full ring"
+        return out, flags
     out.update(least_depth(rings, zb))
-    near, central = pedicle_slabs(rings, pedicle_band, zb)
-    if pedicle_band is None:
-        flags["interpedicular_band"] = "no pedicle found: read over the middle half of the body"
-    out["interpedicular"] = float(smoothed(near, "width").min()) if near else NAN
-    out["interpedicular_max"] = float(smoothed(central, "width").max()) if central else NAN
     areas = np.array([counted_area(v, s) for s in rings])
     out["canal_area_min"] = float(np.nanmin(ndimage.median_filter(areas, size=3, mode="nearest")))
     mid = [a for a, s in zip(areas, rings) if zb[0] + 0.25 * (zb[1] - zb[0]) <= s.z <= zb[1] - 0.25 * (zb[1] - zb[0])]
@@ -94,25 +107,43 @@ def smoothed(rings: List[CanalSlab], field: str) -> np.ndarray:
     return ndimage.median_filter(vals, size=3, mode="nearest") if len(vals) >= 3 else vals
 
 
+def smoothed_values(vals: np.ndarray) -> np.ndarray:
+    """A profile smoothed as `smoothed` smooths a field, leaving out of each median the
+    values not read, so one slab the pedicles' place misses does not take its neighbours with it."""
+    n = len(vals)
+    if n < 3:
+        return np.asarray(vals, float)
+    out = np.full(n, NAN)
+    for i in range(n):
+        window = vals[[max(i - 1, 0), i, min(i + 1, n - 1)]]
+        fin = window[np.isfinite(window)]
+        if len(fin):
+            out[i] = float(np.median(fin))
+    return out
+
+
+def middle_rings(rings: List[CanalSlab], zb: Tuple[float, float]) -> List[CanalSlab]:
+    """The full rings over the middle half of the body's height."""
+    q = 0.25 * (zb[1] - zb[0])
+    return [s for s in rings if zb[0] + q <= s.z <= zb[1] - q]
+
+
+def hole_widths(rings: List[CanalSlab], zb: Tuple[float, float]) -> Dict[str, float]:
+    """The stand-in for the interpedicular distances where no pedicle was found on both sides:
+    the least and the greatest of the hole's width through its middle over the middle rings,
+    each smoothed over three."""
+    sel = middle_rings(rings, zb)
+    if not sel:
+        return {"interpedicular": NAN, "interpedicular_max": NAN}
+    w = smoothed(sel, "width")
+    return {"interpedicular": float(np.min(w)), "interpedicular_max": float(np.max(w))}
+
+
 def least_depth(rings: List[CanalSlab], zb: Tuple[float, float]) -> Dict[str, float]:
     ap = smoothed(rings, "ap")
     k = int(np.argmin(ap))
     height = max(zb[1] - zb[0], 1e-6)
     return {"canal_ap_min": float(ap[k]), "canal_ap_min_share": (rings[k].z - zb[0]) / height}
-
-
-def pedicle_slabs(rings: List[CanalSlab], band: Optional[Tuple[float, float]], zb: Tuple[float, float]):
-    """The full rings that cut the pedicles: within nine tenths of the pedicle's half-height of
-    its centre for the least width, within half of it for the greatest. With no pedicle found,
-    the middle half of the body for both."""
-    if band is None:
-        q = 0.25 * (zb[1] - zb[0])
-        sel = [s for s in rings if zb[0] + q <= s.z <= zb[1] - q]
-        return sel, sel
-    zc, h = band
-    near = [s for s in rings if abs(s.z - zc) <= 0.45 * h]
-    central = [s for s in rings if abs(s.z - zc) <= 0.25 * h]
-    return near, central
 
 
 def lateral_depth(v: Vertebra, s: CanalSlab) -> float:
