@@ -28,6 +28,15 @@ and the same draws from the same generator. The intensity blocks draw a gain, an
 on the host with the session's generator and put the augmented CT under the batch's key "input",
 which the encoder reads while the ladder thresholds the HU as they are (train.losses).
 
+The second screen's arms ride on the same session. Under schedule=adaptive the session checks the
+anneal every adapt_every steps from lam_span's start, on the batch it has just trained: E and
+dE/dlambda at the lambda in force and E at the last check's lambda (train.make_error_slope,
+compiled once), from which ladder.adapt sets lambda for the steps to the next check, never behind
+the anneal's floor (position_at). Under restraint=abf each step takes the restraint's bias from
+the session's estimate (train.Forces), which the step's collective variables then update. Both
+are saved with the session (the controller in session.json, the estimate in state.npz under
+restraint/) and restored to the bit.
+
 Under objective=mask (blocks.py) the session trains the fully latent objective: evaluate reports
 train.evaluate_masks's Dice, surface distance, centroid error and names right, calibrate is
 refused, since nothing has a spread, and latents(ex) gives each crop's bottleneck vector on the
@@ -78,7 +87,7 @@ def anneal_of(b: Blocks, steps: Optional[int] = None) -> Optional[ladder.Anneal]
     if not n:
         return None
     return ladder.Anneal(kind=b.schedule, steps=int(n), lam_span=b.lam_span, w_span=b.w_span,
-                         lam_fixed=b.lam_fixed, w_fixed=b.w_fixed)
+                         lam_fixed=b.lam_fixed, w_fixed=b.w_fixed, cycle_lam=b.cycle_lam, cycle_w=b.cycle_w)
 
 
 def augmented(hu: np.ndarray, kind: str, rng: np.random.Generator) -> np.ndarray:
@@ -147,6 +156,8 @@ class Session:
     n_bodies: int = 0
     record: List[dict] = field(default_factory=list)
     written: int = 0
+    adapt: Optional[ladder.Adapt] = None
+    forces: Optional[train.Forces] = None
 
     @classmethod
     def new(cls, b: Blocks, keys: Sequence[str] = tuple(SEVEN), shape: Sequence[int] = crops.SHAPE,
@@ -161,7 +172,23 @@ class Session:
 
     def position(self) -> Tuple[float, float]:
         """(w, lambda) at the current step, or where training starts when no anneal is set yet."""
-        return self.anneal.at(self.step) if self.anneal is not None else (1.0, 0.0)
+        return self.position_at(self.step) if self.anneal is not None else (1.0, 0.0)
+
+    def position_at(self, step: int) -> Tuple[float, float]:
+        """(w, lambda) in force at a step: the anneal's, lambda no lower than where the adaptive
+        schedule's checks have taken it while they steer it."""
+        w, lam = self.anneal.at(step)
+        if self.adapt is not None and self.anneal.adapting(step):
+            lam = max(lam, self.adapt.lam)
+        return w, lam
+
+    def check(self, slope_fn, batch, w: float, lam: float) -> None:
+        """One check of the adaptive schedule on the batch just trained (ladder.adapt)."""
+        error, slope = slope_fn(self.model, batch, jnp.float32(w), jnp.float32(lam))
+        before = error if self.adapt.checks == 0 else slope_fn(self.model, batch, jnp.float32(w),
+                                                                 jnp.float32(self.adapt.last))[0]
+        nominal = self.anneal.nominal(self.step, lam, self.blocks.adapt_every)
+        self.adapt = ladder.adapt(self.adapt, lam, float(error) - float(before), float(slope), nominal)
 
     def train(self, ex: train.Examples, steps: int, log_every: int = 0,
               on_step: Optional[Callable[[dict], None]] = None) -> List[dict]:
@@ -182,7 +209,15 @@ class Session:
         if self.anneal is None:
             self.anneal = anneal_of(b, steps)
         nm = naming.prepare(self.cfg.keys, n_bodies=self.n_bodies) if b.naming else None
-        step_fn = train.make_step(nm, b.batch if b.naming else 0, b.weights(), b.knee, b.spread_floor, b.rungs())
+        restrained = b.restraint == "abf"
+        step_fn = train.make_step(nm, b.batch if b.naming else 0, b.weights(), b.knee, b.spread_floor, b.rungs(),
+                                  restraint=b.abf_weight if restrained else None)
+        if restrained and self.forces is None:
+            self.forces = train.Forces.empty(self.cfg.objective, 1 if self.cfg.objective == "mask" else len(self.cfg.keys))
+        slope_fn = None
+        if self.anneal.kind == "adaptive":
+            slope_fn = train.make_error_slope(b.rungs())
+            self.adapt = self.adapt or ladder.Adapt()
         rows = []
         for _ in range(steps):
             pick = self.rng.choice(len(groups), size=b.batch, replace=len(groups) < b.batch)
@@ -190,11 +225,21 @@ class Session:
             batch = train.batch_of(ex, idx)
             if b.intensity != "off":
                 batch["input"] = jnp.asarray(augmented(ex.hu[idx], b.intensity, self.rng))
-            w, lam = self.anneal.at(self.step)
+            w, lam = self.position_at(self.step)
             t0 = time.time()
-            total, terms = step_fn(self.model, self.opt, batch, jnp.float32(w), jnp.float32(lam))
+            if restrained:
+                total, terms = step_fn(self.model, self.opt, batch, jnp.float32(w), jnp.float32(lam),
+                                       jnp.asarray(self.forces.bias()))
+                cv = [terms.pop(k) for k in ("cv", "cv_ref", "cv_ok")]
+            else:
+                total, terms = step_fn(self.model, self.opt, batch, jnp.float32(w), jnp.float32(lam))
             row = {"step": self.step, "w": w, "lam": lam, "total": float(total), "seconds": time.time() - t0}
             row.update({k: float(v) for k, v in terms.items()})
+            if restrained:
+                self.forces.update(*(np.asarray(v) for v in cv))
+            if slope_fn is not None and self.anneal.adapting(self.step) and lam < ladder.LAMBDA_END \
+                    and (self.step + 1) % b.adapt_every == 0:
+                self.check(slope_fn, batch, w, lam)
             rows.append(row)
             self.record.append(row)
             self.step += 1
@@ -257,6 +302,8 @@ class Session:
         """state.npz, session.json and record.jsonl (appended) in the folder; returns session.json's record."""
         os.makedirs(folder, exist_ok=True)
         arrays = dict(flat_arrays(self.model, "model"), **flat_arrays(self.opt, "optimizer"))
+        if self.forces is not None:
+            arrays.update({"restraint/mean": self.forces.mean, "restraint/count": self.forces.count})
         tmp = os.path.join(folder, STATE + ".tmp-%d" % os.getpid())
         with open(tmp, "wb") as f:
             np.savez(f, **arrays)
@@ -267,6 +314,7 @@ class Session:
                 "spacing": self.cfg.spacing, "step": self.step,
                 "anneal": None if self.anneal is None else self.anneal.as_record(),
                 "rng": self.rng.bit_generator.state, "calibration": self.calibration, "n_bodies": self.n_bodies,
+                "adapt": None if self.adapt is None else self.adapt.as_record(),
                 "arrays": len(arrays), "versions": versions()}
         with open(os.path.join(folder, META), "w") as f:
             json.dump(meta, f, indent=1)
@@ -292,4 +340,7 @@ class Session:
         s.rng.bit_generator.state = meta["rng"]
         s.calibration = meta["calibration"]
         s.n_bodies = int(meta["n_bodies"])
+        s.adapt = None if meta.get("adapt") is None else ladder.Adapt.from_record(meta["adapt"])
+        if "restraint/mean" in arrays:
+            s.forces = train.Forces(s.cfg.objective, arrays["restraint/mean"], arrays["restraint/count"])
         return s

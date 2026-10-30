@@ -25,6 +25,8 @@ TRIALS = (("lambda_then_w_s1", "lambda_then_w", 1), ("null_s1", "null", 1))
 # restatement (tools/autoanatomist_report.py, LIMITS).
 LIMIT_WORDS = ("centroid", "a person is a study", "one population", "normal spines", "mean over",
                "64 mm along z", "same to the bit", "frozen teacher")
+# The same for the second screen's PREREG's section 8 known limits (SECOND_LIMITS).
+SECOND_LIMIT_WORDS = ("defaults", "volume share", "seed to seed", "takes no gradient")
 
 
 def load_module():
@@ -159,12 +161,56 @@ class ReportTest(unittest.TestCase):
         self.assertIn("at most one time in 6 at 2 seeds a side", chance)
         self.assertNotIn("no hypothesis", sizes + chance)
 
+    def test_the_second_smoke_answers_no_hypothesis_and_the_second_screen_says_its_own_limits(self):
+        smoke = {"record": {"prereg_sha256": self.module.DESIGN2,
+                            "plan": {"screen": "gold3_latent_smoke2", "rows": {"train": 3, "validation": 1}, "seeds": [1]}}}
+        sizes = self.module.fact_sample_size(smoke)[1]
+        self.assertIn("the smoke answers no hypothesis (PREREG.md section 8)", sizes)
+        self.assertIn("no verdict of it is read as a result (PREREG.md section 8)", self.module.fact_uncertainty(smoke)[1])
+        screen = {"record": {"prereg_sha256": self.module.DESIGN2,
+                             "plan": {"screen": "gold3_latent_screen2", "rows": {"train": 96, "validation": 24}, "seeds": [1, 2]}}}
+        chance = self.module.fact_uncertainty(screen)[1]
+        self.assertIn("five arms are read against one null, so a chance pass of some arm is likely", chance)
+        self.assertNotIn("no hypothesis", chance + self.module.fact_sample_size(screen)[1])
+        limits = self.module.fact_limitations(screen)[1]
+        self.assertIn("(PREREG.md sections 6 and 8)", limits)
+        for restated in self.module.LIMITS + self.module.SECOND_LIMITS:
+            self.assertIn(restated, limits)
+        self.assertNotIn(self.module.SECOND_LIMITS[0], self.module.fact_limitations(
+            {"record": {"prereg_sha256": self.module.DESIGN, "plan": {"screen": "gold3_latent_screen"}}})[1])
+
     def test_every_known_limit_of_the_prereg_is_restated_in_its_order(self):
         section = self.module.PREREG.read_text(encoding="utf-8").split("## 6.", 1)[1].split("## 7.", 1)[0]
         limits = [line for line in section.split("Known limits", 1)[1].splitlines() if line.startswith("- ")]
         self.assertEqual(len(limits), len(self.module.LIMITS))
         self.assertEqual(len(limits), len(LIMIT_WORDS))
         for word, limit, restated in zip(LIMIT_WORDS, limits, self.module.LIMITS, strict=True):
+            with self.subTest(word=word):
+                self.assertIn(word, limit.lower())
+                self.assertIn(word, restated.lower())
+
+    def test_a_chain_is_restated_only_in_the_words_of_its_own_plans_design(self):
+        frozen = (ROOT / "docs" / "research" / "autoanatomist-screen2" / "PREREG.md.sha256").read_text(encoding="utf-8").split()[0]
+        self.assertEqual(self.module.DESIGN2, frozen)
+        self.assertEqual(self.module.DESIGN2, sha256_of(self.module.PREREG2))
+        for screen, own, other in (("gold3_latent_screen", self.module.DESIGN, self.module.DESIGN2),
+                                   ("gold3_latent_screen2", self.module.DESIGN2, self.module.DESIGN)):
+            with self.subTest(screen=screen):
+                run = {"record": {"prereg_sha256": own, "plan": {"screen": screen}}}
+                self.assertEqual(self.module.fact_limitations(run)[0], "met")
+                self.assertIn(own[:16], self.module.fact_protocol(run)[1])
+                run["record"]["prereg_sha256"] = other
+                self.assertEqual(self.module.fact_limitations(run)[0], "missing")
+                self.assertIn("another design", self.module.fact_protocol(run)[1])
+        run = {"record": {"prereg_sha256": self.module.DESIGN2, "plan": {"screen": "gold3_latent_smoke2"}}}
+        self.assertIn("docs/research/autoanatomist-screen2/PREREG.md", self.module.fact_protocol(run)[1])
+
+    def test_every_known_limit_of_the_second_screen_is_restated_in_its_order(self):
+        section = self.module.PREREG2.read_text(encoding="utf-8").split("## 8.", 1)[1]
+        limits = [line for line in section.split("Known limits", 1)[1].splitlines() if line.startswith("- ")]
+        self.assertEqual(len(limits), len(self.module.SECOND_LIMITS))
+        self.assertEqual(len(limits), len(SECOND_LIMIT_WORDS))
+        for word, limit, restated in zip(SECOND_LIMIT_WORDS, limits, self.module.SECOND_LIMITS, strict=True):
             with self.subTest(word=word):
                 self.assertIn(word, limit.lower())
                 self.assertIn(word, restated.lower())

@@ -236,6 +236,10 @@ def words_problems(flow, plan):
 
 
 class AutoanatomistFlow(FlowSpec):
+    # The kind the run is held to and the study its report is written as; the second screen's flow
+    # (flows/autoanatomist2.py) is this flow under its own kind and frozen PREREG.
+    KIND = KIND
+    STUDY = STUDY
     part = Parameter("part", required=True, help="trial or join")
     plan = Parameter("plan", required=True, help="the plan, grid/screens/<plan>.json")
     chain = Parameter("chain", required=True, help="the send's Slurm job, the trials' array or the series job, or none")
@@ -251,7 +255,7 @@ class AutoanatomistFlow(FlowSpec):
         frozen split, the words against the plan, and the chain's folder made."""
         with stage.Beat(self, f"{self.part}: the PREREG and the plan") as beat:
             self.plan_file = from_launcher(self.plan)
-            stage.hold_to_prereg(self, KIND, plan_part(self.plan_file), file_sha256(self.plan_file))
+            stage.hold_to_prereg(self, self.KIND, plan_part(self.plan_file), file_sha256(self.plan_file))
             plan = plan_in_force(self.plan_file)
             self.splits = split_files()
             fault = words_problems(self, plan)
@@ -304,7 +308,7 @@ class AutoanatomistFlow(FlowSpec):
         names = [p for p in sorted(folder.glob("trials/*/*")) if p.name in ("entry.json", "environment.json", "why.txt")]
         names += [folder / "join" / name for name in ("DECISION.json", "SUMMARY.md") if (folder / "join" / name).is_file()]
         plan = screen.plan_of(read_json(self.plan_file))
-        return {"study": STUDY, "part": "join", "run": self.where["run"], "key": self.key, "commit": self.commit,
+        return {"study": self.STUDY, "part": "join", "run": self.where["run"], "key": self.key, "commit": self.commit,
                 "prereg": self.prereg_path, "prereg_sha256": self.prereg_sha256, "prereg_part": self.prereg_part,
                 "prereg_part_sha256": self.prereg_part_sha256, "chain": self.chain, "started": self.started,
                 "ended": ended["ended"], "where": self.where, "ended_in": ended,
@@ -330,7 +334,7 @@ class AutoanatomistFlow(FlowSpec):
         ended = {"run": f"{current.flow_name}/{current.run_id}", "host": socket.gethostname(),
                  "slurm_job": os.environ.get("SLURM_JOB_ID") or "none", "ended": utc_now(), **code_state()}
         write_json(folder / "RECORD.json", self.record(ended))
-        ok, line = stage.claim_report(folder, study=STUDY, began=stage.run_began())
+        ok, line = stage.claim_report(folder, study=self.STUDY, began=stage.run_began())
         beat.say(f"report {line}")
         return lines, [(ok, line)]
 
@@ -340,7 +344,7 @@ class AutoanatomistFlow(FlowSpec):
         """The run held again to the PREREG start kept; for the join, the record and the report
         when it decided, and the verdict: 0 only where the part's tool ended 0 and the report holds."""
         with stage.Beat(self, "the record and the report" if self.part == "join" else self.label) as beat:
-            stage.still_held(self, KIND)
+            stage.still_held(self, self.KIND)
             lines, reports = [self.said], []
             if self.part == "join" and self.code in JOIN_DECIDED:
                 lines, reports = self.join_end(beat)
