@@ -32,13 +32,26 @@ The questions, each a gate with its bars in the plan (grid/qaloop/<plan>.json):
 
 The landmarks are named as the oracle names its points (autoanatomist/specs.py, landmarks), so the
 exact phantom landmarks and the oracle's on a real mask are the same eighteen.
+
+The kind qaloop_gold (docs/research/qa-loop-gold/PREREG.md) asks three more of the gold tiers' CTs
+(tools/gold_xray.py), each tier its own arm and never pooled with another:
+
+- gold naming: the fingerprint, measured on held-out persons' CTs and projected through drawn C-arm
+  poses, names their lumbar levels, each tier's views fitted on that tier's training persons;
+- gold span: the phantoms' own model, fitted on the phantoms alone, names the same held-out columns,
+  which asks whether the phantoms span what real spines look like in 2-D;
+- gold presence: on radiographs cast through the held-out CTs, the fingerprint's landmarks sit on
+  stronger edges than points drawn inside the same bodies, as presence asks of real frames.
 """
 
 import hashlib
 import math
 import time
+from pathlib import Path
 
 import numpy as np
+
+ROOT = Path(__file__).resolve().parent.parent
 
 LANDMARKS = (
     "endplate.right", "endplate.left", "endplate_depth.posterior", "endplate_depth.anterior",
@@ -414,8 +427,11 @@ def cells(rows):
 
 
 def arm_of(view):
-    """The arm a view belongs to: the real pairs' views end in _real, the phantoms' do not."""
-    return "real" if str(view).endswith("_real") else "phantom"
+    """The arm a view belongs to: a phantom's view is the view alone (ap, lat), and every other
+    arm's carries its arm after the view: the real pairs' _real, the gold tiers' _gold3 and _gold4,
+    the span test's _span_gold3 and _span_gold4."""
+    view = str(view)
+    return view.split("_", 1)[1] if "_" in view else "phantom"
 
 
 def objective(table, arms=()):
@@ -911,13 +927,24 @@ def round_measures(record):
         worst.append(min(x if number(x) else 0.0 for x in lows))
     if worst:
         out["anomaly"] = float(np.mean(worst))
-    for arm in ("phantom", "real"):
+    for arm in ("phantom", "real") + GOLD_TIERS:
         lows = [c["low"] for key, c in (record.get("cells") or {}).items() if arm_of(key.split("/")[0]) == arm]
         if lows:
             out[f"cells_{arm}"] = float(np.mean(lows))
+    for tier in GOLD_TIERS:
+        lows = [c["low"] for key, c in (record.get("span_cells") or {}).items()
+                if arm_of(key.split("/")[0]) == f"span_{tier}"]
+        if lows:
+            out[f"span_{tier}"] = float(np.mean(lows))
+        dice = ((record.get("gold_held") or {}).get(tier) or {}).get("dice")
+        if number(dice):
+            out[f"{tier}_dice"] = float(dice)
     presence = gates.get("presence") or {}
     if number(presence.get("low")):
         out["presence"] = float(presence["low"])
+    gold_presence = gates.get("gold_presence") or {}
+    if number(gold_presence.get("low")):
+        out["gold_presence"] = float(gold_presence["low"])
     latency = gates.get("latency") or {}
     if number(latency.get("p95_ms")) and latency["p95_ms"] > 0:
         out["latency"] = -math.log(latency["p95_ms"])
@@ -928,8 +955,11 @@ def round_measures(record):
 # the same from round to round, so a change in it is the network's or the controller's doing. The
 # phantom cells and the latency are recorded but judge nothing: the gate's phantom persons are drawn
 # anew every round and the latency is a timing, so their noise alone would read as a gain and keep a
-# loop that has stopped improving going.
-PROGRESS_MEASURES = ("held_dice", "held_distance", "objective", "anomaly", "cells_real", "presence")
+# loop that has stopped improving going. The gold tiers' measures are read off the same held-out
+# CTs and the same drawn poses every round (each person's poses drawn from the person alone).
+PROGRESS_MEASURES = ("held_dice", "held_distance", "objective", "anomaly", "cells_real", "presence",
+                     "cells_gold3", "cells_gold4", "span_gold3", "span_gold4", "gold_presence", "gold3_dice",
+                     "gold4_dice")
 
 
 def loop_progress(progress, measures, watch):
@@ -966,7 +996,17 @@ def watch_problems(plan):
     return out
 
 
-GATES = ("convergence", "anomaly", "fingerprint", "presence", "real_naming", "latency")
+GATES = ("convergence", "anomaly", "fingerprint", "presence", "real_naming", "latency", "gold_naming", "gold_span",
+         "gold_presence")
+GOLD_GATES = ("gold_naming", "gold_span", "gold_presence")
+GOLD_TIERS = ("gold3", "gold4")
+# A typical column's levels from T12 down, as tools/qaloop_samples.py's TYPE_LEVELS lays it out: the
+# levels a gold tier's ids must name, with its sacrum.
+TYPICAL_LEVELS = ("T12", "L1", "L2", "L3", "L4", "L5")
+GOLD_SETTINGS = ("size", "fields_mm", "frames_per_view", "drr_per_view", "k_max", "noise_px")
+GOLD_OPTIONAL = ("pose", "stand_ins")
+GOLD_NEEDS = {"gold3": ("rows_of", "ct", "labels", "labels_folder", "ids"), "gold4": ("records", "kinds", "ids")}
+GOLD_TIER_OPTIONAL = ("max_persons",)
 CLASSES = ("typical", "lumbar_rib", "no_rib_t12", "six_lumbar", "four_lumbar", "t13")
 PLAN_KEYS = ("plan", "purpose", "class", "rounds", "gates", "words", "steps_per_round", "classes", "phantom_rows",
              "fingerprint", "pairs", "presence", "bars", "start", "limits", "latency_runs", "watch")
@@ -999,11 +1039,104 @@ def plan_problems(plan):
             out.append(f"bars has no {gate}")
     if plan["class"] == "loop" and plan["pairs"].get("stand_ins"):
         out.append("a loop plan never names stand-ins: its real gates are asked of real frames or not at all")
+    asks_gold = [g for g in plan["gates"] if g in GOLD_GATES]
+    if asks_gold and "gold" not in plan:
+        out.append(f"the plan asks {', '.join(asks_gold)} and has no gold block to read")
+    elif "gold" in plan and not asks_gold:
+        out.append(f"the plan's gold block is read by no gate; it asks one of {', '.join(GOLD_GATES)} or has none")
+    elif "gold" in plan:
+        out += gold_problems(plan["gold"], plan["class"])
     if not isinstance(plan["steps_per_round"], int) or plan["steps_per_round"] < 1:
         out.append("steps_per_round is a whole number of at least 1")
     out += watch_problems(plan)
     if not missing:
         out += limits_problems(plan)
+    return out
+
+
+def gold_problems(spec, plan_class):
+    """What keeps a plan's gold block (the tiers tools/gold_xray.py reads) from holding, in words."""
+    if not isinstance(spec, dict):
+        return ["gold is a JSON object"]
+    out = [f"gold has no {k}" for k in GOLD_SETTINGS if k not in spec]
+    tiers = [t for t in GOLD_TIERS if t in spec]
+    if not tiers:
+        out.append(f"gold names no tier of {', '.join(GOLD_TIERS)}")
+    unknown = sorted(set(spec) - set(GOLD_TIERS) - set(GOLD_SETTINGS) - set(GOLD_OPTIONAL))
+    if unknown:
+        out.append(f"gold has no setting {', '.join(unknown)}")
+    if out:
+        return out
+    fields = spec["fields_mm"]
+    if not isinstance(fields, list) or not fields or not all(
+            isinstance(f, (int, float)) and not isinstance(f, bool) and f > 0 for f in fields):
+        out.append("gold fields_mm is a list of fields in mm, each above 0")
+    for key in ("size", "frames_per_view", "drr_per_view", "k_max"):
+        least = 2 if key == "k_max" else 1
+        if not isinstance(spec[key], int) or isinstance(spec[key], bool) or spec[key] < least:
+            out.append(f"gold {key} is a whole number of at least {least}")
+    if not isinstance(spec["noise_px"], (int, float)) or isinstance(spec["noise_px"], bool) or spec["noise_px"] < 0:
+        out.append("gold noise_px is pixels, at least 0")
+    stand_ins = spec.get("stand_ins", 0)
+    if not isinstance(stand_ins, int) or isinstance(stand_ins, bool) or stand_ins < 0:
+        out.append("gold stand_ins is a whole number of at least 0")
+    elif stand_ins and plan_class == "loop":
+        out.append("a loop plan's gold never names stand-ins: its gold gates are asked of the tiers' CTs or not at all")
+    for tier in tiers:
+        out += [f"gold {tier}: {p}" for p in gold_tier_problems(tier, spec[tier])]
+    return out
+
+
+def gold_tier_problems(tier, t):
+    if not isinstance(t, dict):
+        return ["is a JSON object"]
+    out = [f"has no {k}" for k in GOLD_NEEDS[tier] if k not in t]
+    unknown = sorted(set(t) - set(GOLD_NEEDS[tier]) - set(GOLD_TIER_OPTIONAL))
+    if unknown:
+        out.append(f"has no setting {', '.join(unknown)}")
+    if out:
+        return out
+    ids = t["ids"]
+    if not isinstance(ids, dict) or not all(isinstance(v, int) and not isinstance(v, bool) and v > 0 for v in ids.values()):
+        return ["ids maps level names to label values, whole numbers above 0"]
+    if "sacrum" not in ids or not all(lv in ids for lv in TYPICAL_LEVELS):
+        out.append(f"ids name the sacrum and every level of {', '.join(TYPICAL_LEVELS)}")
+    if len(set(ids.values())) != len(ids):
+        out.append("ids give no two names one label value")
+    if tier == "gold3" and not (isinstance(t["rows_of"], str) and (ROOT / t["rows_of"]).is_file()):
+        out.append(f"rows_of names no file of the repository: {t['rows_of']!r}")
+    if tier == "gold4" and not (isinstance(t["kinds"], list) and t["kinds"] and all(isinstance(k, str) for k in t["kinds"])):
+        out.append("kinds is a list of the records' kinds to read")
+    caps = t.get("max_persons")
+    if caps is not None and not (isinstance(caps, dict) and all(
+            k in ("training", "validation") and isinstance(v, int) and not isinstance(v, bool) and v >= 1
+            for k, v in caps.items())):
+        out.append("max_persons maps training or validation to a whole number of at least 1")
+    return out
+
+
+def tiered(results, presence=False):
+    """One gate over the gold tiers, each tier's result under tiers: it passes where every tier
+    passes, and lacks its data where any tier lacks it, as an arm the fingerprint's gate asks with no
+    cell does, so a tier that could not be read stops the loop with its reason and never drops out of
+    a gate unseen; a failing tier's cells are carried up for the controller, and for presence the
+    lowest tier's share."""
+    lacking = {t: r for t, r in results.items() if not r or r.get("missing")}
+    if lacking or not results:
+        why = "; ".join(f"{t}: {(r or {}).get('missing') or 'not run'}" for t, r in lacking.items())
+        return {"pass": False, "missing": why or "no gold tier was read", "tiers": results}
+    asked = results
+    out = {"pass": all(r.get("pass") for r in asked.values()), "tiers": results,
+           "failing": [f"{t}: {f}" for t, r in asked.items() for f in r.get("failing", [])]}
+    if presence:
+        lows = [r["low"] for r in asked.values() if isinstance(r.get("low"), (int, float))]
+        out["low"] = min(lows) if lows else float("nan")
+        out["why"] = "; ".join(f"{t}: {r.get('why', '')}" for t, r in asked.items())
+        return out
+    out.update(cells=sum(int(r.get("cells", 0)) for r in asked.values()),
+               failing_cells=[c for r in asked.values() for c in r.get("failing_cells", [])],
+               beyond_ceiling=[c for r in asked.values() for c in r.get("beyond_ceiling", [])],
+               ceiling_known=all(r.get("ceiling_known") for r in asked.values()))
     return out
 
 
@@ -1099,13 +1232,7 @@ def controller(record, state, plan):
         fingerprint_change(nxt, limits, results["fingerprint"], (record.get("space") or {}).get("persons_fit"), changes,
                            stuck, chosen)
     if "presence" in failing:
-        floor = round(min(nxt["presence_floor"] + 0.1, limits.get("presence_floor", 0.5)), 3)
-        if floor > nxt["presence_floor"]:
-            nxt["presence_floor"] = floor
-            changes.append(f"presence: landmarks whose mean edge percentile on the selection's frames is below "
-                           f"{floor:.2f} leave the pool")
-        else:
-            stuck.append(f"presence: the floor is at its limit {nxt['presence_floor']}")
+        presence_change("presence", nxt, limits, changes, stuck)
     if "real_naming" in failing:
         real = results["real_naming"]
         if not within_reach(real):
@@ -1118,12 +1245,64 @@ def controller(record, state, plan):
         else:
             stuck.append(f"real naming: landmarks at {nxt['max_landmarks']}, as many as the plan, the latency and "
                          f"the search allow")
+    if "gold_naming" in failing:
+        naming_change("gold naming", results["gold_naming"], nxt, limits, chosen, changes, stuck)
+    if "gold_span" in failing:
+        span_change(nxt, limits, results["gold_span"], (record.get("space") or {}).get("persons_fit"), changes, stuck,
+                    chosen)
+    if "gold_presence" in failing:
+        if any(c.startswith("presence:") for c in changes):
+            changes.append("gold presence: the presence floor's rise serves it too")
+        else:
+            presence_change("gold presence", nxt, limits, changes, stuck)
     common = {**common, "stuck": stuck}
     if not changes:
         return {**common, "branch": "done", "verdict": "not met",
                 "why": "no change left in the plan's ranges or the measured memory: " + "; ".join(stuck)}
     return {**common, "branch": "again", "verdict": "running", "why": "; ".join(changes), "changes": changes,
             "config": nxt}
+
+
+def presence_change(label, nxt, limits, changes, stuck):
+    """A presence gate's change: the floor a landmark's mean edge percentile must reach to stay in the
+    pool, a tenth higher, up to the plan's limit."""
+    floor = round(min(nxt["presence_floor"] + 0.1, limits.get("presence_floor", 0.5)), 3)
+    if floor > nxt["presence_floor"]:
+        nxt["presence_floor"] = floor
+        changes.append(f"{label}: landmarks whose mean edge percentile on the selection's frames is below "
+                       f"{floor:.2f} leave the pool")
+    else:
+        stuck.append(f"{label}: the floor is at its limit {nxt['presence_floor']}")
+
+
+def landmarks_added(changes):
+    """Whether a change this round already raised the landmarks the search may take."""
+    return any(": up to " in c and c.endswith(" landmarks") for c in changes)
+
+
+def naming_change(label, result, nxt, limits, chosen, changes, stuck):
+    """The gold naming gate's change: two more landmarks while a failing cell is within the ceiling
+    and the search took every landmark it was allowed, none where another gate's change this round
+    already added them."""
+    if not within_reach(result):
+        stuck.append(f"{label}: every failing cell is beyond the ceiling of the pool's landmarks")
+    elif landmarks_added(changes):
+        changes.append(f"{label}: the landmarks added this round serve it too")
+    elif nxt["max_landmarks"] < landmark_top(nxt, limits) and (chosen is None or chosen >= nxt["max_landmarks"]):
+        nxt["max_landmarks"] = min(nxt["max_landmarks"] + 2, landmark_top(nxt, limits))
+        changes.append(f"{label}: up to {nxt['max_landmarks']} landmarks")
+    else:
+        stuck.append(f"{label}: landmarks at {nxt['max_landmarks']}, as many as the plan, the latency and the search "
+                     f"allow")
+
+
+def span_change(nxt, limits, result, persons_fit, changes, stuck, chosen):
+    """The span test's change: the phantoms name the gold columns with the fingerprint's landmarks and
+    the selection's phantom persons, so it takes the fingerprint's levers, never twice in a round."""
+    if landmarks_added(changes) or any(c.startswith("fingerprint: persons") for c in changes):
+        changes.append("gold span: the fingerprint's change this round serves it too")
+        return
+    fingerprint_change(nxt, limits, result, persons_fit, changes, stuck, chosen, label="gold span")
 
 
 def latency_change(nxt, chosen, changes, stuck):
@@ -1173,7 +1352,7 @@ def landmark_top(nxt, limits):
     return min(top, int(cap)) if cap is not None else top
 
 
-def fingerprint_change(nxt, limits, result, persons_fit, changes, stuck, chosen=None):
+def fingerprint_change(nxt, limits, result, persons_fit, changes, stuck, chosen=None, label="fingerprint"):
     """The fingerprint's change. Where a failing cell is within reach and the search took every
     landmark it was allowed (chosen, this round's count), two more landmarks, which move the choice
     toward the whole pool; then, with every landmark of the range in, where the search stopped short
@@ -1187,19 +1366,19 @@ def fingerprint_change(nxt, limits, result, persons_fit, changes, stuck, chosen=
     full = chosen is None or int(chosen) >= int(nxt["max_landmarks"])
     if reach and full and nxt["max_landmarks"] < top:
         nxt["max_landmarks"] = min(nxt["max_landmarks"] + 2, top)
-        changes.append(f"fingerprint: up to {nxt['max_landmarks']} landmarks")
+        changes.append(f"{label}: up to {nxt['max_landmarks']} landmarks")
         return
     cap = tightest(limits.get("fingerprint_persons"), int(persons_fit) if persons_fit is not None else None)
     persons = grown(int(nxt["fingerprint_persons"]), 2, cap, int) if cap is not None else nxt["fingerprint_persons"]
     if persons > nxt["fingerprint_persons"]:
         again = "" if reach else ", every failing cell beyond the ceiling at this size, so the ceiling is measured again"
-        changes.append(f"fingerprint: persons per type {nxt['fingerprint_persons']} to {persons}{again}")
+        changes.append(f"{label}: persons per type {nxt['fingerprint_persons']} to {persons}{again}")
         nxt["fingerprint_persons"] = persons
         return
     if not reach:
         beyond = ", ".join(result.get("beyond_ceiling") or [])
-        stuck.append(f"fingerprint: beyond the ceiling of the pool's landmarks in one frame at {nxt['fingerprint_persons']} "
+        stuck.append(f"{label}: beyond the ceiling of the pool's landmarks in one frame at {nxt['fingerprint_persons']} "
                      f"persons a type, as many as the plan and the memory hold ({beyond})")
         return
-    stuck.append(f"fingerprint: landmarks at {nxt['max_landmarks']}, the whole range, and persons at "
+    stuck.append(f"{label}: landmarks at {nxt['max_landmarks']}, the whole range, and persons at "
                  f"{nxt['fingerprint_persons']}, as many as the plan and the memory hold")

@@ -24,3 +24,4 @@ autoanatomist2 Autoanatomist2Flow AUTOANATOMIST_RC autoanatomist2.sbatch    docs
 gold4_totalseg Gold4TotalsegFlow GOLD4_TOTALSEG_RC totalseg-gold4.sbatch  docs/research/gold4-totalseg/PREREG.md
 qaloop      QaloopFlow      QALOOP_RC      qaloop.sbatch             docs/research/qa-loop/PREREG.md
 qaloop_tx   QaloopTxFlow    QALOOP_RC      qaloop_tx.sbatch          docs/research/qa-loop-transformer/PREREG.md
+qaloop_gold QaloopGoldFlow  QALOOP_RC      qaloop_gold.sbatch        docs/research/qa-loop-gold/PREREG.md

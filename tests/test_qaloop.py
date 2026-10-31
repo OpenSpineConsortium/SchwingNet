@@ -516,5 +516,162 @@ class PoolTest(unittest.TestCase):
         self.assertEqual(round_tool.floor_pool([0, 1, 2, 3], [nan, nan, nan, 0.1], 0.5), [0, 1, 2, 3])
 
 
+def gold_record(**gates):
+    """A gold plan's round whose gates pass but those given, with the space a round measured."""
+    record = record_of(**{g: passing() for g in ("gold_naming", "gold_span", "gold_presence")})
+    record["gates"].update(gates)
+    return record
+
+
+@unittest.skipIf(MISSING, f"needs numpy ({', '.join(MISSING)} missing)")
+class GoldTest(unittest.TestCase):
+    """The gold plans (docs/research/qa-loop-gold/PREREG.md): their gold block held in words, the
+    gold gates asked over both tiers and stopping where either lacks its data, every tier an arm of
+    its own in the objective and the measures, and the controller's change for each gold gate."""
+
+    def setUp(self):
+        self.gates = load_gates()
+        self.plan = plan_of("qa_gold")
+        self.state = {"round": 0, "config": dict(self.plan["start"]), "held": []}
+
+    def decide(self, record, state=None):
+        return self.gates.controller(record, copy.deepcopy(state or self.state), self.plan)
+
+    def test_both_gold_plans_hold_and_ask_the_three_gold_gates(self):
+        for name in ("qa_gold_smoke", "qa_gold"):
+            with self.subTest(plan=name):
+                plan = plan_of(name)
+                self.assertEqual(self.gates.plan_problems(plan), [])
+                self.assertEqual(plan["plan"], name)
+                self.assertTrue(set(self.gates.GOLD_GATES) <= set(plan["gates"]))
+                self.assertEqual(sorted(t for t in self.gates.GOLD_TIERS if t in plan["gold"]), ["gold3", "gold4"])
+        # the loop asks every gate the loop plan asks, and its phantom and real parts are the loop plan's
+        loop = plan_of("qa_loop")
+        self.assertTrue(set(loop["gates"]) <= set(self.plan["gates"]))
+        for key in ("rounds", "steps_per_round", "classes", "phantom_rows", "fingerprint", "pairs", "start", "limits",
+                    "watch", "words"):
+            self.assertEqual(self.plan[key], loop[key], key)
+
+    def test_a_gold_block_that_does_not_hold_is_refused_in_words(self):
+        def problems(change, name="qa_gold"):
+            plan = plan_of(name)
+            change(plan)
+            return self.gates.plan_problems(plan)
+
+        cases = {
+            "gold has no size": lambda p: p["gold"].pop("size"),
+            "gold has no setting colour": lambda p: p["gold"].update(colour=1),
+            "gold names no tier": lambda p: [p["gold"].pop(t) for t in ("gold3", "gold4")],
+            "gold fields_mm is a list": lambda p: p["gold"].update(fields_mm=[]),
+            "gold k_max is a whole number of at least 2": lambda p: p["gold"].update(k_max=1),
+            "gold noise_px is pixels": lambda p: p["gold"].update(noise_px=-1),
+            "gold never names stand-ins": lambda p: p["gold"].update(stand_ins=2),
+            "gold gold3: rows_of names no file": lambda p: p["gold"]["gold3"].update(rows_of="grid/screens/none.json"),
+            "gold gold3: ids name the sacrum and every level": lambda p: p["gold"]["gold3"]["ids"].pop("L3"),
+            "gold gold4: ids give no two names one label value": lambda p: p["gold"]["gold4"]["ids"].update(L5=26),
+            "gold gold4: kinds is a list": lambda p: p["gold"]["gold4"].update(kinds=[]),
+            "gold gold4: max_persons maps training or validation": lambda p: p["gold"]["gold4"].update(max_persons={"test": 3}),
+            "gold gold3: has no setting kinds": lambda p: p["gold"]["gold3"].update(kinds=["concordant"]),
+            "has no gold block to read": lambda p: p.pop("gold"),
+        }
+        for words, change in cases.items():
+            with self.subTest(words=words):
+                found = problems(change)
+                self.assertTrue(any(words in p for p in found), found)
+        found = problems(lambda p: p.update(gates=[g for g in p["gates"] if g not in self.gates.GOLD_GATES]))
+        self.assertTrue(any("is read by no gate" in p for p in found), found)
+        self.assertEqual(problems(lambda p: p["gold"].update(stand_ins=2), "qa_gold_smoke"), [])
+
+    def test_a_gold_gate_passes_where_every_tier_passes_and_stops_where_any_lacks_its_data(self):
+        tiered = self.gates.tiered
+        both = tiered({"gold3": {"pass": True, "cells": 2, "ceiling_known": True},
+                       "gold4": {"pass": True, "cells": 3, "ceiling_known": True}})
+        self.assertEqual((both["pass"], both["cells"], both["ceiling_known"]), (True, 5, True))
+        cell = {"cell": "ap_gold4/none/typical", "within_reach": False}
+        one = tiered({"gold3": {"pass": True, "cells": 2, "ceiling_known": True},
+                      "gold4": {"pass": False, "cells": 3, "failing": ["ap_gold4/none/typical: low"],
+                                "failing_cells": [cell], "beyond_ceiling": [cell["cell"]], "ceiling_known": False}})
+        self.assertFalse(one["pass"])
+        self.assertEqual(one["failing"], ["gold4: ap_gold4/none/typical: low"])
+        self.assertEqual((one["failing_cells"], one["beyond_ceiling"], one["ceiling_known"]), ([cell], [cell["cell"]], False))
+        lacking = tiered({"gold3": {"pass": True}, "gold4": {"pass": False, "missing": "no held-out case read"}})
+        self.assertEqual((lacking["pass"], lacking["missing"]), (False, "gold4: no held-out case read"))
+        self.assertEqual(tiered({"gold3": None})["missing"], "gold3: not run")
+        self.assertEqual(tiered({})["missing"], "no gold tier was read")
+        presence = tiered({"gold3": {"pass": True, "low": 0.7, "why": "a"}, "gold4": {"pass": False, "low": 0.4, "why": "b"}},
+                          presence=True)
+        self.assertEqual((presence["pass"], presence["low"], presence["why"]), (False, 0.4, "gold3: a; gold4: b"))
+
+    def test_every_tier_is_an_arm_of_its_own(self):
+        self.assertEqual([self.gates.arm_of(v) for v in ("ap", "lat_real", "ap_gold3", "lat_gold4", "ap_span_gold3")],
+                         ["phantom", "real", "gold3", "gold4", "span_gold3"])
+        table = {"ap/none/typical": {"accuracy": 1.0}, "ap_gold3/none/typical": {"accuracy": 0.5}}
+        self.assertEqual(self.gates.objective(table), 0.75)
+        self.assertEqual(self.gates.objective(table, ("phantom", "gold3", "gold4")), 0.5)
+        bars = self.plan["bars"]["gold_naming"]
+        cells = {"ap_gold3/none/typical": {"n": 40, "right": 40, "accuracy": 1.0, "low": 0.91, "median_margin": 4.0},
+                 "ap_gold4/none/typical": {"n": 40, "right": 20, "accuracy": 0.5, "low": 0.35, "median_margin": 0.1}}
+        self.assertTrue(self.gates.fingerprint_gate(cells, bars, ("none",), "gold3")["pass"])
+        self.assertFalse(self.gates.fingerprint_gate(cells, bars, ("none",), "gold4")["pass"])
+        self.assertIn("no gold3 cell", self.gates.fingerprint_gate({}, bars, ("none",), "gold3")["missing"])
+
+    def test_a_rounds_gold_measures_are_read_tier_by_tier_and_judge_the_progress(self):
+        record = {"cells": {"ap_gold3/none/typical": {"low": 0.6}, "lat_gold4/none/typical": {"low": 0.2}},
+                  "span_cells": {"ap_span_gold3/bottom/typical": {"low": 0.5}},
+                  "gold_held": {"gold3": {"dice": 0.7}, "gold4": {"missing": "no held-out case read"}},
+                  "gates": {"gold_presence": {"low": 0.45}}}
+        measures = self.gates.round_measures(record)
+        self.assertEqual(measures, {"cells_gold3": 0.6, "cells_gold4": 0.2, "span_gold3": 0.5, "gold3_dice": 0.7,
+                                    "gold_presence": 0.45})
+        self.assertTrue(set(measures) <= set(self.gates.PROGRESS_MEASURES))
+        first = self.gates.loop_progress({}, measures, self.plan["watch"])
+        self.assertEqual(sorted(first["raised"]), sorted(measures))
+
+    def test_a_gold_gate_without_its_data_stops_the_loop_with_why(self):
+        lacking = {"pass": False, "missing": "gold4: no held-out case read"}
+        decision = self.decide(gold_record(gold_naming=lacking))
+        self.assertEqual((decision["branch"], decision["verdict"]), ("done", "stopped"))
+        self.assertIn("gold_naming: gold4: no held-out case read", decision["why"])
+        self.assertEqual(self.decide(gold_record())["verdict"], "met")
+
+    def test_gold_naming_adds_landmarks_once_a_round_and_names_the_cells_beyond_the_ceiling(self):
+        start = self.plan["start"]["max_landmarks"]
+        alone = self.decide(gold_record(gold_naming=failing_cells(within_reach=True)))
+        self.assertEqual(alone["config"]["max_landmarks"], start + 2)
+        self.assertIn(f"gold naming: up to {start + 2} landmarks", alone["why"])
+        both = self.decide(gold_record(gold_naming=failing_cells(within_reach=True),
+                                       fingerprint=failing_cells(within_reach=True)))
+        self.assertEqual(both["config"]["max_landmarks"], start + 2)
+        self.assertIn("gold naming: the landmarks added this round serve it too", both["why"])
+        beyond = self.decide(gold_record(gold_naming=failing_cells(within_reach=False)))
+        self.assertEqual((beyond["branch"], beyond["verdict"]), ("done", "not met"))
+        self.assertIn("gold naming: every failing cell is beyond the ceiling", beyond["why"])
+
+    def test_gold_span_takes_the_fingerprints_levers_never_twice_in_a_round(self):
+        start = self.plan["start"]
+        alone = self.decide(gold_record(gold_span=failing_cells(within_reach=True)))
+        self.assertEqual(alone["config"]["max_landmarks"], start["max_landmarks"] + 2)
+        self.assertIn("gold span: up to", alone["why"])
+        persons = self.decide(gold_record(gold_span=failing_cells(within_reach=False)))
+        self.assertEqual(persons["config"]["fingerprint_persons"], 2 * start["fingerprint_persons"])
+        self.assertIn("gold span: persons per type", persons["why"])
+        both = self.decide(gold_record(gold_span=failing_cells(within_reach=True),
+                                       fingerprint=failing_cells(within_reach=True)))
+        self.assertEqual(both["config"]["max_landmarks"], start["max_landmarks"] + 2)
+        self.assertIn("gold span: the fingerprint's change this round serves it too", both["why"])
+
+    def test_gold_presence_raises_the_floor_once_a_round(self):
+        alone = self.decide(gold_record(gold_presence={"pass": False}))
+        self.assertEqual(alone["config"]["presence_floor"], 0.1)
+        self.assertIn("gold presence: landmarks whose mean edge percentile", alone["why"])
+        both = self.decide(gold_record(gold_presence={"pass": False}, presence={"pass": False}))
+        self.assertEqual(both["config"]["presence_floor"], 0.1)
+        self.assertIn("gold presence: the presence floor's rise serves it too", both["why"])
+        top = dict(self.state, config=dict(self.state["config"], presence_floor=self.plan["limits"]["presence_floor"]))
+        stuck = self.decide(gold_record(gold_presence={"pass": False}), top)
+        self.assertEqual((stuck["branch"], stuck["verdict"]), ("done", "not met"))
+        self.assertIn("gold presence: the floor is at its limit", stuck["why"])
+
+
 if __name__ == "__main__":
     unittest.main()

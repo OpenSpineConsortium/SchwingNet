@@ -14,6 +14,7 @@ library alone, so the tests run under the required check's plain python3.
 
 import ast
 import importlib.util
+import json
 import os
 import re
 import shutil
@@ -36,7 +37,7 @@ ENTRIES = {"row": ("tools/flow.py",), "state": ("tools/block_sweep.py",), "sweep
            "totalseg": ("flows/totalseg.py",),
            "autoanatomist": ("flows/autoanatomist.py",), "autoanatomist2": ("flows/autoanatomist2.py",),
            "gold4_totalseg": ("flows/gold4_totalseg.py",),
-           "qaloop": ("flows/qaloop.py",), "qaloop_tx": ("flows/qaloop_tx.py",)}
+           "qaloop": ("flows/qaloop.py",), "qaloop_tx": ("flows/qaloop_tx.py",), "qaloop_gold": ("flows/qaloop_gold.py",)}
 # The calls that load a neighbour of tools/ by its name: tools/domain_gap.py names its own helper tool,
 # which loads tools/<name>.py by path, as the others name load_tool and run_tool.
 LOADERS = ("load_tool", "run_tool", "tool")
@@ -307,12 +308,22 @@ class ListsTest(unittest.TestCase):
 
     def test_the_loops_copy_holds_every_file_its_kind_names(self):
         # Each link copies CODE_PATHS at the chain's commit and its launcher names the run's code from
-        # that copy, so a file the kind names outside them would refuse every link
+        # that copy, so a file a kind names outside them would refuse every link; the transformer's and
+        # the gold tiers' kinds run the loop's job script too
         paths = code_paths("qaloop.sbatch")
         self.assertIn("grid/qaloop.sbatch", paths)
-        for name in self.code.KINDS["qaloop"]:
-            with self.subTest(name=name):
-                self.assertTrue(any(name.rstrip("/") == path or name.startswith(path.rstrip("/") + "/") for path in paths), name)
+        for kind in ("qaloop", "qaloop_tx", "qaloop_gold"):
+            for name in self.code.KINDS[kind]:
+                with self.subTest(kind=kind, name=name):
+                    self.assertTrue(any(name.rstrip("/") == path or name.startswith(path.rstrip("/") + "/") for path in paths), name)
+
+    def test_the_gold_kind_names_every_file_its_plans_read_rows_from(self):
+        # a gold plan's rows_of names gold tier 3's persons and parts, so the file is part of the code
+        # that names the run, and a plan that read another would run under a digest that missed it
+        for plan in ("qa_gold_smoke", "qa_gold"):
+            spec = json.loads((ROOT / "grid" / "qaloop" / f"{plan}.json").read_text(encoding="utf-8"))["gold"]
+            with self.subTest(plan=plan):
+                self.assertIn(spec["gold3"]["rows_of"], self.code.KINDS["qaloop_gold"])
 
     def test_the_gold_tier_4_copy_holds_every_file_its_kind_names(self):
         # Each task and the merge copy CODE_PATHS at the gate's commit and the launcher names the run's

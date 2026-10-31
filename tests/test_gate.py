@@ -5757,7 +5757,62 @@ exit "${FAKE_RC:-0}"
         done = subprocess.run(["bash", str(ROOT / "grid" / "qaloop.sbatch")], capture_output=True, text=True,
                               env={**os.environ, "QALOOP_KIND": "other", "SCHWINGNET": str(self.repo)})
         self.assertEqual(done.returncode, 64, done.stdout + done.stderr)
-        self.assertIn("QALOOP_KIND is qaloop or qaloop_tx, not other", done.stdout)
+        self.assertIn("QALOOP_KIND is qaloop, qaloop_tx or qaloop_gold, not other", done.stdout)
+
+    def test_qaloop_queues_the_gold_plans_as_their_own_kind_once_both_tiers_are_on_the_volume(self):
+        full = self.qaloop_ready()
+        self.qaloop_pairs()
+        refused = self.gate("qaloop", "qa_gold")
+        self.assertEqual(refused.returncode, 90, refused.stdout)
+        self.assertIn("docs/research/qa-loop-gold/PREREG.md is not frozen", refused.stdout)
+        folder = self.repo / "docs" / "research" / "qa-loop-gold"
+        folder.mkdir(parents=True, exist_ok=True)
+        for name in ("PREREG.md", "PREREG.md.sha256"):
+            shutil.copy(ROOT / "docs" / "research" / "qa-loop-gold" / name, folder / name)
+        # a loop plan has no stand-ins, so neither tier missing is sent to end at its first round
+        refused = self.gate("qaloop", "qa_gold")
+        self.assertEqual(refused.returncode, 2, refused.stdout)
+        self.assertIn(f"reads gold tier 3's CTs and masks under {self.data} (aws_enhance_pet_ct/raw, aws_enhance_pet_labels/raw)",
+                      refused.stdout)
+        for name in ("aws_enhance_pet_ct", "aws_enhance_pet_labels"):
+            (self.data / name / "raw").mkdir(parents=True)
+        refused = self.gate("qaloop", "qa_gold")
+        self.assertEqual(refused.returncode, 2, refused.stdout)
+        self.assertIn(f"reads gold tier 4's CTs by {self.gold4_root()}/records.jsonl, which TotalSegmentator's run has not "
+                      "written yet (send totalseg gold4)", refused.stdout)
+        self.assertEqual(self.submitted(), [])
+        self.gold4_root().mkdir(parents=True)
+        (self.gold4_root() / "records.jsonl").write_text('{"id": "u0"}\n', encoding="utf-8")
+        done = self.gate("qaloop", "qa_gold")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        lines = self.submitted()
+        self.assertEqual(len(lines), 6, lines)
+        for line in lines:
+            for said in ("--class gpu --name qaloop_qa_gold ", " PLAN=qa_gold ", f" QALOOP_COMMIT={full} ",
+                         f" QALOOP_GOLD4={self.gold4_root()} ",
+                         "--partition galhp,gmsap --cpus 8 --mem 64G --time 12:00:00 --no-requeue qaloop_gold.sbatch |"):
+                self.assertIn(said, line)
+        # the smoke reads stand-ins where a tier holds no CT, so it is sent with neither tier's data asked
+        shutil.rmtree(self.gold4_root())
+        smoke = self.gate("qaloop", "qa_gold_smoke")
+        self.assertEqual(smoke.returncode, 0, smoke.stdout + smoke.stderr)
+        self.assertIn("--name qaloop_qa_gold_smoke ", self.submitted()[-1])
+        self.assertIn("--no-requeue qaloop_gold.sbatch |", self.submitted()[-1])
+        # the loop's own plans stay the kind qaloop
+        plain = self.gate("qaloop", "qa_smoke")
+        self.assertEqual(plain.returncode, 0, plain.stdout + plain.stderr)
+        self.assertIn("--no-requeue qaloop.sbatch |", self.submitted()[-1])
+
+    def test_qaloop_gold_sbatch_runs_the_loops_script_at_the_gates_commit_as_the_kind_qaloop_gold(self):
+        script = (ROOT / "grid" / "qaloop_gold.sbatch").read_text(encoding="utf-8")
+        self.assertIn('git -C "$REPO" show "$COMMIT:grid/qaloop.sbatch"', script)
+        self.assertIn("QALOOP_KIND=qaloop_gold bash", script)
+        first = (ROOT / "grid" / "qaloop.sbatch").read_text(encoding="utf-8")
+        self.assertIn("qaloop_gold) STUDY_DIR=docs/research/qa-loop-gold FLOW_CLASS=QaloopGoldFlow ;;", first)
+        self.assertIn('[ "$KIND" != qaloop_gold ] || GOLD_WORDS=(--gold4 "$GOLD4")', first)
+        registry = (ROOT / "flows" / "registry.txt").read_text(encoding="utf-8")
+        self.assertIn("qaloop_gold.sbatch", registry)
+        self.assertIn("docs/research/qa-loop-gold/PREREG.md", registry)
 
     def test_qaloop_waits_for_the_setup_job_and_still_reads_its_chain_from_the_first_link(self):
         self.qaloop_ready()

@@ -1,0 +1,28 @@
+#!/bin/bash
+#SBATCH --cpus-per-task=8
+#SBATCH --mem=64G
+#SBATCH --time=12:00:00
+# The QA loop on the gold tiers (docs/research/qa-loop-gold/PREREG.md): grid/qaloop.sbatch at the
+# gate's commit, run as the kind qaloop_gold, so every link starts flows/launch.py qaloop_gold from the
+# code's copy with gold tier 4's folder (QALOOP_GOLD4), its run is held to that PREREG, and the loop's
+# own frozen PREREG is never edited. Queued by grid/gate.sh's word `qaloop <plan>` for a plan
+# QALOOP_GOLD_PLANS names, with the same variables as grid/qaloop.sbatch; the job script is read from
+# the commit the gate sent, never from the checkout, which may move under the chain.
+set -uo pipefail
+REPO=${SCHWINGNET:-$HOME/SchwingNet}
+COMMIT=${QALOOP_COMMIT:-}
+fail() { echo "qaloop_gold: $*; nothing ran"; echo "SN_QALOOP_RC=64"; exit 64; }
+[[ $COMMIT =~ ^[0-9a-f]{40}$ ]] || fail "QALOOP_COMMIT is the full commit the gate sent"
+script=/dev/shm/${USER:-$(id -un)}_qaloop_gold_${SLURM_JOB_ID:-$$}.sbatch
+git -C "$REPO" show "$COMMIT:grid/qaloop.sbatch" > "$script" 2>/dev/null \
+  || { rm -f "$script"; fail "grid/qaloop.sbatch cannot be read at ${COMMIT:0:7}"; }
+trap ':' TERM
+QALOOP_KIND=qaloop_gold bash "$script" &
+child=$!
+while :; do
+  wait "$child"
+  rc=$?
+  kill -0 "$child" 2>/dev/null || break
+done
+rm -f "$script"
+exit "$rc"

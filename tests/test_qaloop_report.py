@@ -24,6 +24,11 @@ STUDY = "qa-loop"
 LIMIT_WORDS = ("drawn as an l5", "a single body", "no landmark detector", "no sacrum", "typical columns alone",
                "fit them imperfectly", "mirrored", "same in every round", "counts runs", "is a cue", "2 pixels of noise",
                "the watch rows", "stand-ins")
+# A word of each of the gold PREREG's section 7 limits, in its order, found in the limit and in its
+# restatement (tools/qaloop_report.py, GOLD_LIMITS).
+GOLD_LIMIT_WORDS = ("digitally reconstructed", "typical column", "not yet warped", "steer the fingerprint",
+                    "no anchor alone", "sacrum's own top", "two segmenters", "two person keys", "oracle's frame",
+                    "stand-ins")
 
 
 def load_module():
@@ -49,8 +54,42 @@ def cells_result(passing):
             "beyond_ceiling": [c["cell"] for c in failing], "ceiling_known": True}
 
 
-def gates_of(n, pairs):
+def gold_round():
+    """The gold arm's part of a round's gates.json as tools/qaloop_round.py writes it for a gold plan:
+    each tier its own arm, counts and aggregates alone, gold tier 4's held-out radiographs missing."""
+    def tier(left_out):
+        return {"cases": 4, "read": 3, "left_out": left_out, "failed": {"OSError": 1}, "stand_in": True,
+                "levels_unread": 2, "read_persons": {"training": 2, "validation": 1}}
+    return {
+        "gold": {"gold3": tier({}), "gold4": tier({"a gold tier 3 person": 1, "the segmenters disagree": 2})},
+        "gold_held": {"gold3": {"dice": 0.71, "distance_mm": 3.1, "named_right": 0.6, "cases": 1, "failed": {},
+                                "stand_in": True},
+                      "gold4": {"missing": "no held-out case could be cut: {'OSError': 1}", "failed": {"OSError": 1}}},
+        "gates": {
+            "gold_naming": {"pass": False, "tiers": {"gold3": cells_result(True), "gold4": cells_result(False)},
+                            "failing": ["gold4: ap/bottom/six_lumbar: low"], "cells": 6, "stand_in": True},
+            "gold_span": {"pass": True, "tiers": {"gold3": cells_result(True), "gold4": cells_result(True)},
+                          "failing": [], "cells": 6, "stand_in": True},
+            "gold_presence": {"pass": False, "missing": "gold4: no held-out radiograph of gold4", "stand_in": True,
+                              "tiers": {"gold3": {"pass": True, "why": "2 of 2 radiographs show the landmarks",
+                                                  "low": 0.34},
+                                        "gold4": {"pass": False, "missing": "no held-out radiograph of gold4"}}},
+        },
+    }
+
+
+def gates_of(n, pairs, gold=False):
     """A round's gates.json as tools/qaloop_round.py writes it, every value an aggregate."""
+    gates = loop_gates_of(n, pairs)
+    if gold:
+        more = gold_round()
+        gates["gates"].update(more.pop("gates"))
+        gates.update(more)
+        gates["fingerprint"]["gold_gate_runs"] = 12
+    return gates
+
+
+def loop_gates_of(n, pairs):
     stand_in = pairs["source"] == "stand-ins"
     return {
         "round": n, "plan": "qa_smoke",
@@ -81,10 +120,12 @@ def gates_of(n, pairs):
     }
 
 
-def summary_of(n, exit_code, verdict, changes):
-    return {"round": n, "exit": exit_code, "tries": 1,
-            "gates": {"convergence": "fail", "anomaly": "fail", "fingerprint": "fail", "presence": "fail",
-                      "real_naming": "pass", "latency": "pass"} if exit_code == 0 else {},
+def summary_of(n, exit_code, verdict, changes, gold=False):
+    said = {"convergence": "fail", "anomaly": "fail", "fingerprint": "fail", "presence": "fail",
+            "real_naming": "pass", "latency": "pass"}
+    if gold:
+        said.update(gold_naming="fail", gold_span="pass", gold_presence="missing")
+    return {"round": n, "exit": exit_code, "tries": 1, "gates": said if exit_code == 0 else {},
             "verdict": verdict, "why": "; ".join(changes) or verdict, "changes": changes, "stuck": [], "config": None,
             "held_distance_mm": 2.7, "held_dice": 0.78, "chosen": ["body_height"], "seconds": None, "stand_in": True}
 
@@ -93,6 +134,7 @@ def write_chain(folder, prereg_sha256, pairs=None, last_fails=False, plan_name="
     """A chain folder of two rounds, RECORD.json naming each round's files by their sha256."""
     pairs = pairs or {"source": "stand-ins", "cases": 3, "read": 3, "stand_in": True}
     plan = json.loads((ROOT / "grid" / "qaloop" / f"{plan_name}.json").read_text(encoding="utf-8"))
+    gold = "gold" in plan
     files, rounds = {}, []
     decisions = [{"branch": "again", "verdict": "running", "why": "anomaly: phantoms per class 1 to 2",
                   "changes": ["anomaly: phantoms per class 1 to 2"], "stuck": [], "passing": [], "failing": []},
@@ -104,10 +146,10 @@ def write_chain(folder, prereg_sha256, pairs=None, last_fails=False, plan_name="
         exit_code = 1 if last_fails and n == 1 else 0
         names = ["state.json", "decision.json"] + (["gates.json"] if exit_code == 0 else [])
         for name in names:
-            value = {"state.json": {"round": n}, "decision.json": decision, "gates.json": gates_of(n, pairs)}[name]
+            value = {"state.json": {"round": n}, "decision.json": decision, "gates.json": gates_of(n, pairs, gold)}[name]
             write_json(folder / "rounds" / f"{n:03d}" / name, value)
             files[f"rounds/{n:03d}/{name}"] = sha256_of(folder / "rounds" / f"{n:03d}" / name)
-        rounds.append(summary_of(n, exit_code, decision["verdict"], decision["changes"]))
+        rounds.append(summary_of(n, exit_code, decision["verdict"], decision["changes"], gold))
     record = {"study": STUDY, "run": "QaloopFlow/7", "key": "k", "commit": "a" * 40,
               "prereg": "docs/research/qa-loop/PREREG.md", "prereg_sha256": prereg_sha256, "prereg_part": plan_name,
               "prereg_part_sha256": "b" * 64, "chain": "41000001", "started": "2026-10-31 04:00:00",
@@ -150,6 +192,42 @@ class ReportTest(unittest.TestCase):
         text = "".join(p.read_text(encoding="utf-8") for p in self.folder.rglob("*.md"))
         self.assertIn("docs/research/qa-loop-transformer/PREREG.md, frozen, sha256 " + tx[:16], text)
         self.assertNotIn("the chain ran another design", text)
+        self.assertNotIn("the gold arm's", text)
+
+    def test_a_gold_chain_is_reported_under_its_own_design_tier_by_tier_with_its_limits(self):
+        gold = next(sha for sha, path in self.module.DESIGNS.items() if "qa-loop-gold" in path)
+        write_chain(self.folder, gold, plan_name="qa_gold_smoke")
+        wrote = report("write", self.folder)
+        self.assertEqual(wrote.returncode, 0, wrote.stdout + wrote.stderr)
+        checked = report("check", self.folder)
+        self.assertEqual(checked.returncode, 0, checked.stdout + checked.stderr)
+        text = "".join(p.read_text(encoding="utf-8") for p in self.folder.rglob("*.md"))
+        self.assertIn("docs/research/qa-loop-gold/PREREG.md, frozen, sha256 " + gold[:16], text)
+        self.assertNotIn("the chain ran another design", text)
+        claim = items(self.folder, "claim")
+        limits = claim["40"]["evidence"]
+        self.assertIn("; and the gold arm's: the radiographs are digitally reconstructed", limits)
+        self.assertIn("docs/research/qa-loop-gold/PREREG.md section 7", limits)
+        performance = claim["37"]["evidence"]
+        self.assertIn("gold naming fails: gold3 passes, 3 of 3 cells pass; gold4 fails, 2 of 3 cells pass", performance)
+        self.assertIn("gold span passes", performance)
+        self.assertIn("gold presence without its data: gold4: no held-out radiograph of gold4", performance)
+        self.assertIn("typical phantoms in place of a tier's CTs", performance)
+        self.assertIn("gold tier 3 (ENHANCE.PET's CTs, each bone annotated): 3 stand-ins", claim["7"]["evidence"])
+        self.assertIn("1 held-out persons, 2 levels the oracle could not place (4 found under the data root)",
+                      claim["7"]["evidence"])
+        self.assertIn("gold4: left out before reading, by reason: a gold tier 3 person 1, the segmenters disagree 2",
+                      claim["35"]["evidence"])
+        evaluation = claim["32"]["evidence"]
+        self.assertIn("the gold tiers: 12 runs of their held-out persons' radiographs", evaluation)
+        self.assertIn("gold3: Dice 0.710, distance 3.100 mm, named right 0.600 on 1 CTs", evaluation)
+        self.assertIn("gold4: no held-out case could be cut", evaluation)
+        page = (self.folder / "REPORT.md").read_text(encoding="utf-8")
+        self.assertIn("chain 41000001 of qa_gold_smoke", page)
+        self.assertIn("| gold naming | gold span | gold presence |", page)
+        for leaked in ("case134", "case39", "/rs/", ".nii"):
+            with self.subTest(leaked=leaked):
+                self.assertNotIn(leaked, text)
 
     def test_a_chain_is_written_and_checked_current_with_its_rounds_quoted(self):
         write_chain(self.folder, self.module.DESIGN)
@@ -241,6 +319,28 @@ class ReportTest(unittest.TestCase):
             with self.subTest(word=word):
                 self.assertIn(word, limit.lower())
                 self.assertIn(word, restated.lower())
+
+    def test_every_known_limit_of_the_gold_prereg_is_restated_in_its_order(self):
+        prereg = ROOT / self.module.GOLD_PREREG
+        section = prereg.read_text(encoding="utf-8").split("## 7.", 1)[1].split("## 8.", 1)[0]
+        limits = [line for line in section.splitlines() if line.startswith("- ")]
+        # Gold tier 4's bullet holds two limits, the segmenters' agreement and the scan two collections
+        # hold under two keys, each restated, so the bullets are one fewer than the words.
+        restated = "; ".join(self.module.GOLD_LIMITS).lower()
+        self.assertEqual(len(limits), len(self.module.GOLD_LIMITS))
+        position = -1
+        for word in GOLD_LIMIT_WORDS:
+            with self.subTest(word=word):
+                self.assertTrue(any(word in limit.lower() for limit in limits), word)
+                found = restated.find(word, position + 1)
+                self.assertGreater(found, position, word)
+                position = found
+        for limit, restatement in zip(limits, self.module.GOLD_LIMITS, strict=True):
+            words = [w for w in GOLD_LIMIT_WORDS if w in limit.lower()]
+            with self.subTest(limit=limit[:40]):
+                self.assertTrue(words)
+                for word in words:
+                    self.assertIn(word, restatement.lower())
 
     def test_a_report_the_files_moved_under_is_not_current(self):
         write_chain(self.folder, self.module.DESIGN)
