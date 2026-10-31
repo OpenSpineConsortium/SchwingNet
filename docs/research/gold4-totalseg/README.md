@@ -2,7 +2,7 @@
 
 Source: the thread "Train on randomized spine phantoms" of the project symphony_3, 2026-10-31, on the owner's word of 00:55 UTC, "you can start the totalsegmentator segmentation of those scans currently on the grid". Label: confidential-method.
 
-Where it stands on 2026-10-31: built and frozen, not yet sent. The design is PREREG.md beside this file (frozen, its sha256 in PREREG.md.sha256); every departure after the freeze goes into DEVIATIONS.md here.
+Where it stands on 2026-10-31: sent at 04:00 UTC at main 89bac53, the array 40902775 of 16 GPU tasks and the merge 40902777 afterany it, running; the report comes when the merge ends. The design is PREREG.md beside this file (frozen, its sha256 in PREREG.md.sha256); every departure after the freeze is in DEVIATIONS.md here, one so far, the corner check made per axis (item 1).
 
 ## What runs
 
