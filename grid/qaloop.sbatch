@@ -40,16 +40,23 @@ KIND=${QALOOP_KIND:-qaloop}
 case "$KIND" in
   qaloop) STUDY_DIR=docs/research/qa-loop FLOW_CLASS=QaloopFlow ;;
   qaloop_tx) STUDY_DIR=docs/research/qa-loop-transformer FLOW_CLASS=QaloopTxFlow ;;
-  *) echo "qaloop: QALOOP_KIND is qaloop or qaloop_tx, not $KIND; nothing ran"; echo "SN_QALOOP_RC=64"; exit 64 ;;
+  qaloop_gold) STUDY_DIR=docs/research/qa-loop-gold FLOW_CLASS=QaloopGoldFlow ;;
+  *) echo "qaloop: QALOOP_KIND is qaloop, qaloop_tx or qaloop_gold, not $KIND; nothing ran"; echo "SN_QALOOP_RC=64"; exit 64 ;;
 esac
+# The gold kind also reads gold tier 4's CTs where TotalSegmentator's run keeps their records
+# (grid/gate.sh's GOLD4_ROOT, which the gate passes as QALOOP_GOLD4); the other kinds read none.
+GOLD4=${QALOOP_GOLD4:-$LAB/go2432/gold4-totalseg}
+GOLD_WORDS=()
+[ "$KIND" != qaloop_gold ] || GOLD_WORDS=(--gold4 "$GOLD4")
 QALOOP_PIN="jax[cuda12]==0.10.2 flax==0.12.8 optax==0.2.8 orbax-checkpoint==0.12.8 numpy==2.4.6 scipy==1.17.1 nibabel==5.3.2 xarray==2025.6.1 pandas==2.3.2"
 # What every link runs, copied at the gate's commit: the tools and the packages they import, the
 # vendored auto-anatomist package and phantom, the flows and the launcher with their registry, the
 # plans, the frozen split, the report's checklists and the licence register, the locked environment
 # the run's code is named by, the container and environment scripts, this script, the masking
-# filter, and the pre-registration with its hash.
+# filter, the screens' plans, whose rows the gold kind reads gold tier 3's persons from, and the
+# pre-registration with its hash.
 CODE_PATHS=(tools src vendor flows data/splits data/reporting data/licences.json pixi.toml pixi.lock
-  grid/box.sh grid/venv.sh grid/redact.sed grid/qaloop.sbatch grid/autoanatomist grid/qaloop
+  grid/box.sh grid/venv.sh grid/redact.sed grid/qaloop.sbatch grid/autoanatomist grid/qaloop grid/screens
   docs/research/qa-loop/PREREG.md docs/research/qa-loop/PREREG.md.sha256
   "$STUDY_DIR/PREREG.md" "$STUDY_DIR/PREREG.md.sha256")
 # The copy's record of its commit and files (tools/run_code.py and flows/launch.py, COPY_RECORD).
@@ -184,7 +191,8 @@ launch_run() {  # one run of the flow from the copy, its output in logs/launch-<
   # Every path is absolute: the flow reads a relative one from the folder the launcher started in,
   # the checkout here, which may move under the loop, and the plan is the copy's.
   env SCHWINGNET="$CODE" bash "$CODE/grid/box.sh" "$venv/bin/python" "$CODE/flows/launch.py" "$KIND" --max-workers 1 -- \
-    --plan "$CODE/grid/qaloop/$PLAN.json" --chain "$CHAIN" --out "$ROOT" --data "$DATA" >> "$LAUNCH_LOG" 2>&1 &
+    --plan "$CODE/grid/qaloop/$PLAN.json" --chain "$CHAIN" --out "$ROOT" --data "$DATA" ${GOLD_WORDS[@]+"${GOLD_WORDS[@]}"} \
+    >> "$LAUNCH_LOG" 2>&1 &
   LAUNCHER=$!
   tail -n +1 --pid="$LAUNCHER" -f "$LAUNCH_LOG" 2>/dev/null &
   follower=$!

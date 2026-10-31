@@ -1,0 +1,180 @@
+{
+  "plan": "qa_gold_smoke",
+  "purpose": "The gold arm's smoke: two short rounds of every gate and the three gold gates, on four training and two held-out persons of each gold tier where the data root holds them and on three stand-ins a tier elsewhere, to show the round reads the CTs, casts their radiographs, asks the gold gates with their data and reports; its numbers answer no question.",
+  "class": "smoke",
+  "rounds": 2,
+  "gates": [
+    "convergence",
+    "anomaly",
+    "fingerprint",
+    "presence",
+    "real_naming",
+    "latency",
+    "gold_naming",
+    "gold_span",
+    "gold_presence"
+  ],
+  "words": [
+    "objective=mask",
+    "naming=off",
+    "schedule=fixed",
+    "lam_fixed=1",
+    "w_fixed=0",
+    "w_feature=0",
+    "widths=8:16:32",
+    "seed=1"
+  ],
+  "steps_per_round": 25,
+  "classes": [
+    "typical",
+    "lumbar_rib",
+    "no_rib_t12",
+    "six_lumbar",
+    "four_lumbar",
+    "t13"
+  ],
+  "phantom_rows": {
+    "gate_per_class": 1,
+    "spacing": 1.25,
+    "noise": 20.0
+  },
+  "fingerprint": {
+    "gate_persons": 4,
+    "frames_per_view": 2,
+    "k_max": 5,
+    "noise_px": 2.0,
+    "folds": 3,
+    "min_gain": 0.005,
+    "lordosis": [
+      0.3,
+      1.2
+    ],
+    "anchors": [
+      "bottom",
+      "none"
+    ]
+  },
+  "pairs": {
+    "root": "carmlspine",
+    "stand_ins": 3,
+    "size": 512
+  },
+  "gold": {
+    "size": 512,
+    "fields_mm": [
+      230,
+      300
+    ],
+    "frames_per_view": 2,
+    "drr_per_view": 1,
+    "k_max": 5,
+    "noise_px": 2.0,
+    "stand_ins": 3,
+    "gold3": {
+      "rows_of": "grid/screens/gold3_latent_screen.json",
+      "ct": "aws_enhance_pet_ct/raw",
+      "labels": "aws_enhance_pet_labels/raw",
+      "labels_folder": "Vertebrae",
+      "ids": {
+        "T12": 19,
+        "L1": 20,
+        "L2": 21,
+        "L3": 22,
+        "L4": 23,
+        "L5": 24,
+        "sacrum": 28
+      },
+      "max_persons": {
+        "training": 4,
+        "validation": 2
+      }
+    },
+    "gold4": {
+      "records": "records.jsonl",
+      "kinds": [
+        "concordant"
+      ],
+      "ids": {
+        "T12": 19,
+        "L1": 20,
+        "L2": 21,
+        "L3": 22,
+        "L4": 23,
+        "L5": 24,
+        "sacrum": 26
+      },
+      "max_persons": {
+        "training": 4,
+        "validation": 2
+      }
+    }
+  },
+  "presence": {
+    "radius": 8,
+    "sigma": 1.5,
+    "null_per_body": 200
+  },
+  "bars": {
+    "convergence": {
+      "window": 200,
+      "rel_tol": 0.02,
+      "rise_tol": 0.05
+    },
+    "anomaly": {
+      "dice": 0.8,
+      "named_right": 0.7,
+      "probe_recall": 0.6
+    },
+    "fingerprint": {
+      "accuracy_low": 0.9,
+      "margin": 2.1972
+    },
+    "presence": {
+      "frame_mean": 0.6,
+      "share_low": 0.6
+    },
+    "real_naming": {
+      "accuracy_low": 0.9,
+      "margin": 2.1972
+    },
+    "latency": {
+      "p95_ms": 97.0
+    },
+    "gold_naming": {
+      "accuracy_low": 0.9,
+      "margin": 2.1972
+    },
+    "gold_span": {
+      "accuracy_low": 0.9,
+      "margin": 2.1972
+    },
+    "gold_presence": {
+      "frame_mean": 0.6,
+      "share_low": 0.6
+    }
+  },
+  "start": {
+    "phantoms_per_class": 1,
+    "w_name": 0.1,
+    "fingerprint_persons": 4,
+    "max_landmarks": 4,
+    "presence_floor": 0.0
+  },
+  "limits": {
+    "phantoms_per_class": 2,
+    "w_name": 0.2,
+    "fingerprint_persons": 8,
+    "max_landmarks": 6,
+    "presence_floor": 0.1
+  },
+  "latency_runs": 50,
+  "watch": {
+    "every_epochs": 2,
+    "patience_epochs": 4,
+    "min_gain": 0.01,
+    "explode": 10.0,
+    "warm_epochs": 50,
+    "watch_per_class": 1,
+    "patience_rounds": 3
+  }
+}

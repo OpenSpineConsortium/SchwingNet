@@ -203,6 +203,10 @@ def words_problems(flow, plan):
         return f"--out is an absolute folder on the lab volume, not {flow.out!r}"
     if plan["class"] == "loop" and (not flow.data or not Path(flow.data).is_absolute()):
         return "a loop plan reads the real pairs under the data root, an absolute --data"
+    if plan["class"] == "loop" and "gold4" in (plan.get("gold") or {}) and not Path(flow.gold4 or "").is_absolute():
+        return "a loop plan whose gold block names gold4 reads its records under an absolute --gold4"
+    if flow.gold4 and not Path(flow.gold4).is_absolute():
+        return f"--gold4 is the gold tier 4 run's absolute folder, not {flow.gold4!r}"
     if flow.workers < 0:
         return f"--workers is 0 (as many as the space plan allows) or more, not {flow.workers}"
     return None
@@ -418,6 +422,7 @@ class QaloopFlow(FlowSpec):
     chain = Parameter("chain", required=True, help="the send's Slurm job, or none")
     out = Parameter("out", required=True, help="the loop root, under which each chain keeps <plan>/<chain>/")
     data = Parameter("data", default="", help="the data root the real pairs are read under (carmlspine/)")
+    gold4 = Parameter("gold4", default="", help="the gold tier 4 TotalSegmentator run's folder, for a plan whose gold block names gold4")
     workers = Parameter("workers", type=int, default=0, help="the round tool's processes, 0 for as many as the space plan allows")
     commit = Parameter("commit", default="", help="the commit of the code that first started the run, which the launcher passes")
 
@@ -465,6 +470,8 @@ class QaloopFlow(FlowSpec):
         command = [sys.executable, str(ROUND_TOOL), "--plan", self.plan_file, "--state", str(folder / "state.json"),
                    "--out", str(folder), "--work", str(Path(self.folder) / "work"), "--data", self.data,
                    "--workers", str(self.workers)]
+        if self.gold4:
+            command += ["--gold4", self.gold4]
         logs = Path(self.folder) / "logs"
         logs.mkdir(parents=True, exist_ok=True)
         (folder / "gates.json").unlink(missing_ok=True)

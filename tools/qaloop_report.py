@@ -30,7 +30,8 @@ DESIGN = "c588988049e1c983ee551f9d5c1177f0b8c7db8083bf2dfd73bea6a656e9da55"
 # with a transformer encoder (docs/research/qa-loop-transformer/PREREG.md, the kind qaloop_tx), which
 # adopts the loop's sections 1 to 6 word for word, so the answers restate both alike.
 DESIGNS = {DESIGN: "docs/research/qa-loop/PREREG.md",
-           "f796b662183d027080776b2c2deb33d2eec096c82df44ea56baaf1525af2b066": "docs/research/qa-loop-transformer/PREREG.md"}
+           "f796b662183d027080776b2c2deb33d2eec096c82df44ea56baaf1525af2b066": "docs/research/qa-loop-transformer/PREREG.md",
+           "c7a04e9543bcaff8d67add3128098629752052022cf96bf5773619419fd8454f": "docs/research/qa-loop-gold/PREREG.md"}
 LICENCES = ROOT / "data" / "licences.json"
 SOURCE = "carmlspine"
 # PREREG.md section 6's known limits, one restatement each in the section's order;
@@ -57,9 +58,43 @@ LIMITS = (
     "outlines a real CT",
     "the smoke runs on stand-ins where no C-ArmLSpine is at hand, which say nothing of real fluoroscopy",
 )
-# The gates in the order PREREG.md section 3 names them, with the words a page says them in.
+# The gold kind's PREREG (docs/research/qa-loop-gold/PREREG.md): it adopts the loop's sections 1 to 6
+# and adds the gold arm, whose own known limits (its section 7) a gold chain's report restates after
+# the loop's, one restatement each in the section's order; tests/test_qaloop_report.py holds them to
+# the section's bullets as LIMITS are held.
+GOLD_PREREG = "docs/research/qa-loop-gold/PREREG.md"
+# Where the gold design records its departures after the freeze, each dated with its reason.
+GOLD_DEVIATIONS = "docs/research/qa-loop-gold/DEVIATIONS.md"
+GOLD_LIMITS = (
+    "the radiographs are digitally reconstructed from CTs, with no scatter, no detector and no image "
+    "intensifier's distortion, so they are not fluoroscopy, and their presence is not the real frames'",
+    "every gold case is read as a typical column, so the gold arm says nothing of the anomalous classes",
+    "the gold persons' CTs are not yet warped onto columns drawn from the latent prior, so each tier is as many "
+    "columns as it has persons",
+    "the gold tiers' training persons steer the fingerprint's choice and the controller changes the loop on their "
+    "held-out persons' answers, so the gold gates are asked of persons the loop was steered by",
+    "gold naming reads the runs with no anchor alone, since a column that can only be typical is named by its count "
+    "from the sacrum",
+    "the span test's bottom anchor is the sacrum's own top on a gold CT and a point 15 mm below the last disc on a "
+    "phantom",
+    "gold tier 4's names are two segmenters' agreement, not a person's, and the persons whose maps disagree are "
+    "left out, which may leave out the hardest spines; and a scan two collections hold under two person keys is not "
+    "resolved to one person",
+    "the network's reading of the held-out gold CTs crops them in the oracle's frame from their own label maps, so "
+    "it measures the outline and the name, not finding the vertebra",
+    "the smoke reads stand-ins where the data root holds no CT of a tier, typical phantoms in place of its CTs, "
+    "which say nothing of a real CT",
+)
+GOLD_NAMES = {"gold3": "gold tier 3 (ENHANCE.PET's CTs, each bone annotated)",
+              "gold4": "gold tier 4 (CTs where TotalSegmentator's map agrees with SPINEPS's)"}
+# Where each tier's CTs are chosen from (tools/gold_xray.py, cases_for).
+GOLD_FROM = {"gold3": "the CTs and maps found under the data root", "gold4": "the TotalSegmentator run's records"}
+# The gates in the order PREREG.md section 3 names them, with the words a page says them in, and the
+# gold kind's three after them (docs/research/qa-loop-gold/PREREG.md), each answered tier by tier.
 GATE_WORDS = {"convergence": "convergence", "anomaly": "anomaly", "fingerprint": "fingerprint", "presence": "presence",
-              "real_naming": "real naming", "latency": "latency"}
+              "real_naming": "real naming", "latency": "latency", "gold_naming": "gold naming", "gold_span": "gold span",
+              "gold_presence": "gold presence"}
+GOLD_GATES = ("gold_naming", "gold_span", "gold_presence")
 
 ITEMS = {
     "claim": {
@@ -213,6 +248,31 @@ def stand_in_words(gates):
         if (gates or {}).get("stand_in") else ""
 
 
+def gold_stand_in_words(result):
+    """The words a gold gate's answer carries where its CTs were stand-ins."""
+    return "; asked of stand-ins, typical phantoms in place of a tier's CTs, which say nothing of a real CT" \
+        if (result or {}).get("stand_in") else ""
+
+
+def gold_of(gates):
+    """Each gold tier's reading in the round's gates.json, {} for a chain with no gold arm."""
+    return {t: r for t, r in sorted((gates.get("gold") or {}).items()) if isinstance(r, dict)}
+
+
+def gold_read_words(gates):
+    """Each gold tier's cases as the round read them, counts alone."""
+    said = []
+    for tier, r in gold_of(gates).items():
+        persons = r.get("read_persons") or {}
+        what = ("stand-ins, typical phantoms in place of its CTs, which say nothing of a real CT" if r.get("stand_in")
+                else "CTs")
+        said.append(f"{GOLD_NAMES.get(tier, tier)}: {r.get('read')} {what} read, {persons.get('training')} training and "
+                    f"{persons.get('validation')} held-out persons, {r.get('levels_unread')} levels left unread, the "
+                    f"oracle having placed them nowhere, in part or off their bone ({r.get('cases')} chosen from "
+                    f"{GOLD_FROM.get(tier, 'the plan')} under the plan's caps)")
+    return "; ".join(said)
+
+
 def fact_sources(run):
     n, gates, gap = answered(run)
     if gap:
@@ -226,9 +286,11 @@ def fact_sources(run):
                          "frames, which say nothing of real fluoroscopy",
             "none": "no real pairs and no stand-ins"}.get(pairs.get("source"), f"real pairs from {pairs.get('source')!r}")
     classes = plan(run).get("classes") or []
+    gold = gold_read_words(gates)
     return restated(run, f"phantoms of {len(classes)} column classes ({', '.join(classes)}) drawn by the vendored "
                          "phantom (grid/autoanatomist/autoanatomist/phantom.py) from schwingcheck's correlated column "
-                         f"draw; {real} ({where(n, 'pairs')})")
+                         f"draw; {real}" + (f"; {gold}, each tier its own arm" if gold else "")
+                         + f" ({where(n, 'pairs and gold' if gold else 'pairs')})")
 
 
 def fact_transforms(run):
@@ -389,9 +451,16 @@ def fact_internal_evaluation(run):
         return missing(gap)
     fp, held = gates.get("fingerprint") or {}, gates.get("held") or {}
     rows = (plan(run).get("phantom_rows") or {}).get("gate_per_class")
+    gold = ""
+    if gold_of(gates):
+        read = "; ".join(f"{t}: Dice {number(r.get('dice'))}, distance {number(r.get('distance_mm'))} mm, named right "
+                         f"{number(r.get('named_right'))} on {r.get('cases')} CTs" if not r.get("missing")
+                         else f"{t}: {r.get('missing')}" for t, r in sorted((gates.get("gold_held") or {}).items()))
+        gold = (f"; the gold tiers: {fp.get('gold_gate_runs')} runs of their held-out persons' radiographs, and the "
+                f"network's reading of their held-out CTs, recorded and gated on by nothing ({read or 'none recorded'})")
     return met(f"round {n}'s gate: {rows} phantom rows a class ({held.get('crops')} crops) and "
                f"{fp.get('gate_runs')} fingerprint runs, {fp.get('real_gate_runs')} of them from the validation persons' "
-               f"frames{stand_in_words(gates)} ({where(n, 'held and fingerprint')})")
+               f"frames{stand_in_words(gates)}{gold} ({where(n, 'held and fingerprint')})")
 
 
 def fact_exclusions(run):
@@ -400,13 +469,23 @@ def fact_exclusions(run):
         return missing(gap)
     pairs = gates.get("pairs") or {}
     if pairs.get("source") != "C-ArmLSpine":
-        return met(f"no real case was read ({pairs.get('source')}), so none was left out; no phantom is ever left out "
-                   f"({where(n, 'pairs')})")
+        return met(f"no C-ArmLSpine case was read ({pairs.get('source')}), so none of its cases was left out"
+                   f"{gold_exclusions(gates)}; no phantom is ever left out ({where(n, 'pairs')})")
     left = ", ".join(f"{k} {v}" for k, v in sorted((pairs.get("left_out") or {}).items())) or "none"
     failed = ", ".join(f"{k} {v}" for k, v in sorted((pairs.get("failed") or {}).items())) or "none"
     return met(f"C-ArmLSpine: {pairs.get('cases')} cases taken and {pairs.get('read')} read; left out before reading, "
-               f"by reason: {left}; failed while reading, by the kind of error: {failed}; no phantom is ever left out "
-               f"({where(n, 'pairs')})")
+               f"by reason: {left}; failed while reading, by the kind of error: {failed}{gold_exclusions(gates)}; no "
+               f"phantom is ever left out ({where(n, 'pairs')})")
+
+
+def gold_exclusions(gates):
+    """Each gold tier's cases left out before reading and failed while reading, by reason."""
+    said = ""
+    for tier, r in gold_of(gates).items():
+        left = ", ".join(f"{k} {v}" for k, v in sorted((r.get("left_out") or {}).items())) or "none"
+        failed = ", ".join(f"{k} {v}" for k, v in sorted((r.get("failed") or {}).items())) or "none"
+        said += f"; {tier}: left out before reading, by reason: {left}; failed while reading: {failed}"
+    return said
 
 
 def fact_covariates(run):
@@ -421,6 +500,8 @@ def gate_said(name, result):
     if result.get("missing"):
         return f"{GATE_WORDS[name]} without its data: {result['missing']}"
     word = "passes" if result.get("pass") else "fails"
+    if name in GOLD_GATES:
+        return f"{GATE_WORDS[name]} {word}: {tiers_said(name, result)}{gold_stand_in_words(result)}"
     detail = {
         "convergence": lambda r: r.get("why"),
         "anomaly": anomaly_said,
@@ -431,6 +512,20 @@ def gate_said(name, result):
                               f"{number(r.get('p50_ms'))} ms, against {r.get('budget_ms')} ms" if "p95_ms" in r else r.get("why")),
     }[name](result)
     return f"{GATE_WORDS[name]} {word}: {detail}{stand_in_words(result)}"
+
+
+def tiers_said(name, result):
+    """A gold gate's answer tier by tier: each tier its own arm, never pooled with the other."""
+    said = []
+    for tier, r in sorted((result.get("tiers") or {}).items()):
+        if not r:
+            said.append(f"{tier} not asked")
+        elif r.get("missing"):
+            said.append(f"{tier} without its data: {r['missing']}")
+        else:
+            detail = r.get("why") if name == "gold_presence" else cells_said(r)
+            said.append(f"{tier} {'passes' if r.get('pass') else 'fails'}, {detail}")
+    return "; ".join(said) or "no tier answered"
 
 
 def anomaly_said(result):
@@ -480,13 +575,19 @@ def fact_failure_analysis(run):
 
 
 def fact_limitations(run):
-    return restated(run, "; ".join(LIMITS) + " (PREREG.md section 6)")
+    gold = ("; and the gold arm's: " + "; ".join(GOLD_LIMITS) + f" ({GOLD_PREREG} section 7)"
+            if DESIGNS.get(design_of(run)) == GOLD_PREREG else "")
+    return restated(run, "; ".join(LIMITS) + " (PREREG.md section 6)" + gold)
 
 
 def fact_protocol(run):
     gap = design_gap(run)
-    return missing(gap) if gap else met(f"{DESIGNS[design_of(run)]}, frozen, sha256 {design_of(run)[:16]}, its Covers "
-                                        f"line naming the plan by its bytes ({str(run['record'].get('prereg_part'))})")
+    if gap:
+        return missing(gap)
+    after = (f"; its departures after the freeze, each dated with its reason, are {GOLD_DEVIATIONS}"
+             if DESIGNS.get(design_of(run)) == GOLD_PREREG else "")
+    return met(f"{DESIGNS[design_of(run)]}, frozen, sha256 {design_of(run)[:16]}, its Covers line naming the plan by its "
+               f"bytes ({str(run['record'].get('prereg_part'))}){after}")
 
 
 def fact_code_state(run):

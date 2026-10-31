@@ -4,7 +4,7 @@ trained further, then every gate's question asked of what the round has, the ans
 gates.json for the flow's controller (tools/qaloop_gates.py, controller) to decide the next round.
 
     python tools/qaloop_round.py --plan PLAN.json --state STATE.json --out ROUND_FOLDER \\
-        --work WORK_FOLDER [--data DATA_ROOT] [--workers K]
+        --work WORK_FOLDER [--data DATA_ROOT] [--gold4 GOLD4_ROOT] [--workers K]
 
 The plan is grid/qaloop/<plan>.json; the state is what the controller carries from round to round
 (the round's number, its configuration, every earlier round's held-out distance, the space the
@@ -29,6 +29,13 @@ What a round does, in order:
    latent); the fingerprint chosen by the greedy search over the landmarks the presence floor keeps,
    on the selection's phantoms and pairs, and judged on the gate's; presence on the gate's real
    frames; real naming on the gate's pairs; latency of the naming path.
+5. The gold tiers, where the plan has a gold block (the kind qaloop_gold,
+   docs/research/qa-loop-gold/PREREG.md): each tier's CTs read once by a pool into its cache
+   (tools/gold_xray.py: the oracle's landmarks, the sacrum, the column's axes and radiographs cast
+   through drawn poses), their presence read and their pixels dropped; the training persons' runs
+   join the selection and the held-out persons' the gate, each tier its own arm; the span test
+   names the held-out runs with the phantoms' own model; the network reads the held-out CTs, which
+   is recorded and gated on by nothing. GOLD4_ROOT is the TotalSegmentator run's folder of gold 4.
 
 Exit 0 with gates.json written; 2 for a plan or state that does not hold; 1 for a round that failed,
 with why.txt beside it.
@@ -46,6 +53,7 @@ for _folder in (ROOT / "vendor" / "beethoven-qa" / "src", ROOT / "grid" / "autoa
         sys.path.insert(1, str(_folder))
 
 import argparse  # noqa: E402
+import hashlib  # noqa: E402
 import importlib.util  # noqa: E402
 import json  # noqa: E402
 import math  # noqa: E402
@@ -55,6 +63,7 @@ import shutil  # noqa: E402
 import threading  # noqa: E402
 import time  # noqa: E402
 import traceback  # noqa: E402
+from collections import Counter  # noqa: E402
 from concurrent.futures import ProcessPoolExecutor, as_completed  # noqa: E402
 from concurrent.futures.process import BrokenProcessPool  # noqa: E402
 
@@ -74,6 +83,9 @@ def load_tool(name):
 
 S = load_tool("qaloop_samples")
 G = S.G
+# Loaded here, at the top, so a spawned pool worker, which runs this file's top again, can unpickle
+# the gold module's jobs by its name.
+X = load_tool("gold_xray")
 
 # Each anomaly class's level, the one its crops are judged on, and where its training rows start:
 # four levels from there hold that level and its neighbours.
@@ -560,6 +572,98 @@ def run_pool(fn, jobs, workers, say=None):
     return [results[i] for i in range(len(jobs))]
 
 
+def frozen_cases(spec, data, gold4, cache, say):
+    """The gold tiers' case lists as the chain's first round found them: the TotalSegmentator run's
+    records grow while a chain runs, and a round that read more persons than the round before it
+    would move the gates for a reason no change of the controller's made. The list is kept in the
+    chain's work folder under the hash of what chose it, so other words choose afresh."""
+    chose = json.dumps({"spec": spec, "data": str(data or ""), "gold4": str(gold4 or "")}, sort_keys=True)
+    path = Path(cache) / f"cases-{hashlib.sha256(chose.encode()).hexdigest()[:16]}.json"
+    try:
+        held = json.loads(path.read_text(encoding="utf-8"))
+        say(f"gold: the case list of the chain's first round, {path.name}")
+        return held["cases"], held["record"]
+    except (OSError, ValueError, KeyError, TypeError):
+        pass
+    found, record = X.cases_for(spec, data, gold4)
+    part = path.with_name(path.name + ".part")
+    part.write_text(json.dumps({"cases": found, "record": record}, sort_keys=True), encoding="utf-8")
+    os.replace(part, path)
+    return found, record
+
+
+def gold_for(plan, data, gold4, work, workers, say):
+    """The gold tiers' cases the round reads (tools/gold_xray.py): each tier's CTs on the data root,
+    else the plan's stand-ins, each read once by a pool into the cache, its presence read on its
+    radiographs and its pixels then dropped. Returns ({tier: [case]}, the record by tier)."""
+    spec = plan["gold"]
+    cache = Path(work) / "gold"
+    cache.mkdir(parents=True, exist_ok=True)
+    found, record = frozen_cases(spec, data, gold4, cache, say)
+    stand_ins = X.stand_in_cases(spec)
+    presence = plan.get("presence", {})
+    out = {}
+    for tier in X.TIERS:
+        if tier not in spec:
+            continue
+        cases = found.get(tier) or []
+        stand_in = not cases and bool(stand_ins.get(tier))
+        if stand_in:
+            cases = stand_ins[tier]
+        say(f"gold {tier}: {len(cases)} {'stand-ins' if stand_in else 'CTs'} to read with {workers} workers; "
+            f"left out {record[tier]['left_out']}")
+        results = run_pool(X.case_job, [(c, spec, str(cache)) for c in cases], workers, say)
+        read, failed = [], Counter()
+        for c, (path, why) in zip(cases, results):
+            if path is None:
+                failed[why] += 1
+                continue
+            case = X.load_case(path, c)
+            case["presence"] = X.case_presence(case, presence, int(spec["size"]))
+            read.append(X.without_images(case))
+        out[tier] = read
+        # A level the oracle could not place, placed only in part or placed off its bone stays unread and
+        # breaks the runs at it; counted, so a tier whose maps lose levels says so.
+        unread = sum(int(np.isnan(c["landmarks"]).all(axis=(1, 2)).sum()) for c in read)
+        record[tier].update(read=len(read), failed=dict(failed), stand_in=stand_in, levels_unread=unread,
+                            read_persons={p: len({c["person"] for c in read if c["part"] == p})
+                                          for p in ("training", "validation")})
+        say(f"gold {tier}: {len(read)} read" + (f", failed {dict(failed)}" if failed else ""))
+    return out, record
+
+
+def gold_held(session, gold, work, workers, say):
+    """The network's reading of each tier's held-out CTs, crops cut in the oracle's frame from each
+    CT and the spine-only copy of its label map (tools/gold_xray.py, network_row): the same measures
+    as the phantoms' held gate, recorded and gated on by nothing. A case whose crops cannot be cut
+    is counted with its reason."""
+    from autoanatomist import rows as R
+    from autoanatomist import train
+    cache = str(Path(work) / "crops")
+    os.makedirs(cache, exist_ok=True)
+    out = {}
+    for tier, cases in gold.items():
+        held = [c for c in cases if c["part"] == "validation"]
+        if not held:
+            out[tier] = {"missing": "no held-out case read"}
+            continue
+        jobs = [(c, str(Path(work) / "gold"), config_record(session.cfg), cache) for c in held]
+        results = run_pool(X.network_row_job, jobs, workers, say)
+        rows = [row for row, _ in results if row is not None]
+        failed = Counter(why for row, why in results if row is None)
+        if not rows:
+            out[tier] = {"missing": f"no held-out case could be cut: {dict(failed)}", "failed": dict(failed)}
+            continue
+        ex = R.examples_for(rows, session.cfg, cache)
+        reading = train.evaluate_masks(session.model, ex)
+        out[tier] = {k: reading[k] for k in ("dice", "dice_every", "distance_mm", "centroid_mm", "named_right",
+                                             "named_within_one", "crops")}
+        out[tier].update(cases=len(rows), failed=dict(failed), stand_in=any(c.get("stand_in") for c in held))
+        say(f"gold {tier} held: Dice {reading['dice']:.3f}, distance {reading['distance_mm']:.2f} mm, named right "
+            f"{reading['named_right']:.3f} on {len(rows)} CTs")
+    return out
+
+
 def presence_by_part(pairs, spec):
     """Every frame's evidence for every landmark, the selection's frames apart from the gate's."""
     out = {"training": [], "validation": []}
@@ -596,7 +700,7 @@ def plain(obj):
     return obj
 
 
-def run_round(plan, state, out, work, data, asked_workers):
+def run_round(plan, state, out, work, data, asked_workers, gold4=""):
     say = Progress(out).say
     config = dict(plan["start"], **state.get("config", {}))
     round_no = int(state.get("round", 0))
@@ -619,6 +723,17 @@ def run_round(plan, state, out, work, data, asked_workers):
     space.measure("pairs", "case", max(len(pairs), 1), folder_bytes(Path(work) / "pairs"), peak.peak)
     record["pairs"] = pair_record
     record["seconds"]["pairs"] = time.time() - t0
+
+    # the gold tiers
+    gold = {}
+    if plan.get("gold"):
+        t0 = time.time()
+        workers = workers_for(earlier.get("gold", {}).get("rss_bytes", 0), asked_workers, ram)
+        with PeakWatch() as peak:
+            gold, record["gold"] = gold_for(plan, data, gold4, work, workers, say)
+        space.measure("gold", "case", max(sum(len(v) for v in gold.values()), 1), folder_bytes(Path(work) / "gold"),
+                      peak.peak)
+        record["seconds"]["gold"] = time.time() - t0
 
     # the network's rows: the selection's, the gate's and the watch's, each from seeds of its own
     t0 = time.time()
@@ -680,6 +795,11 @@ def run_round(plan, state, out, work, data, asked_workers):
     space.measure("evaluate", "round", 1, 0, peak.peak)
     record["seconds"]["evaluate"] = time.time() - t0
     say(f"held: Dice {held['dice']:.3f}, distance {held['distance_mm']:.2f} mm, named right {held['named_right']:.3f}")
+    if gold:
+        t0 = time.time()
+        workers = workers_for(earlier.get("gold", {}).get("rss_bytes", 0), asked_workers, ram)
+        record["gold_held"] = gold_held(session, gold, work, workers, say)
+        record["seconds"]["gold_held"] = time.time() - t0
 
     # the fingerprint
     t0 = time.time()
@@ -687,7 +807,7 @@ def run_round(plan, state, out, work, data, asked_workers):
     persons = int(config["fingerprint_persons"])
     gate_persons = int(fp["gate_persons"])
     with PeakWatch() as peak:
-        fingerprint_part(plan, config, record, pairs, pair_record, persons, gate_persons, round_no, say)
+        fingerprint_part(plan, config, record, pairs, pair_record, persons, gate_persons, round_no, say, gold)
     # The fingerprint's memory grows with its persons, the selection's and the gate's of every type,
     # so it is measured a person, and the next round's persons a type are as many as the memory holds.
     space.measure("fingerprint", "person", (persons + gate_persons) * len(classes), 0, peak.peak)
@@ -706,7 +826,8 @@ def run_round(plan, state, out, work, data, asked_workers):
     plan_space["persons_fit"] = persons + int(room // (per_person * len(classes))) if per_person > 0 else None
     record["space"] = plan_space
     record["gates"] = {g: record["gates"].get(g) for g in plan.get("gates", G.GATES)}
-    record["stand_in"] = bool(pair_record.get("stand_in", False))
+    record["stand_in"] = bool(pair_record.get("stand_in", False)) or any(
+        r.get("stand_in") for r in (record.get("gold") or {}).values())
     record["environment"] = environment()
     for g, r in record["gates"].items():
         say(f"gate {g}: {'pass' if r and r.get('pass') else 'fail'}"
@@ -799,10 +920,11 @@ def round_telemetry(out, plan, state, round_no, config):
     return tool.Telemetry(out, record, f"round{round_no:03d}", dict(config, plan=plan["plan"], round=round_no), resume=True)
 
 
-def fingerprint_part(plan, config, record, pairs, pair_record, persons, gate_persons, round_no, say):
+def fingerprint_part(plan, config, record, pairs, pair_record, persons, gate_persons, round_no, say, gold=None):
     """The fingerprint and the gates that read it: the greedy search over the landmarks the presence
-    floor keeps, on the selection's phantoms and pairs, judged on the gate's; presence on the gate's
-    real frames; real naming on the gate's pairs; latency of the naming path."""
+    floor keeps, on the selection's phantoms and pairs (and the gold tiers' training persons), judged
+    on the gate's; presence on the gate's real frames; real naming on the gate's pairs; latency of
+    the naming path; and, with gold tiers, the gold gates (gold_gates)."""
     bars = plan["bars"]
     classes = list(plan["classes"])
     fp = plan["fingerprint"]
@@ -817,25 +939,34 @@ def fingerprint_part(plan, config, record, pairs, pair_record, persons, gate_per
     for pair in pairs:
         runs = S.pair_samples(pair, pair["person"], fp["k_max"], int(plan.get("pairs", {}).get("size", 512)))
         (real_gate if pair["part"] == "validation" else real_sel).extend(runs)
+    gold = gold or {}
+    gold_sel, gold_gate, span = gold_samples(plan, gold)
     presence = presence_by_part(pairs, plan.get("presence", {})) if pairs else None
     pool = list(range(len(G.LANDMARKS)))
     floor = float(config.get("presence_floor", 0.0))
     by_landmark = {}
-    if presence is not None and len(presence["training"]):
-        means = S.column_means(presence["training"])
+    sources = presence_sources(presence, gold)
+    if sources:
+        # A landmark stays only where it shows on every source's training frames: the real frames
+        # and each gold tier's radiographs, the least of their means; one source is its own mean.
+        means = np.fmin.reduce(np.asarray(list(sources.values())), axis=0)
         by_landmark = {G.LANDMARKS[i]: float(means[i]) for i in range(len(G.LANDMARKS))}
         pool = floor_pool(pool, means, floor)
         say(f"presence floor {floor:.2f} keeps {len(pool)} of {len(G.LANDMARKS)} landmarks")
-    sel_packs = G.pack(sel_samples + real_sel)
-    gate_packs = G.pack(gate_samples + real_gate)
+    sel_packs = G.pack(sel_samples + real_sel + gold_sel)
+    gate_packs = G.pack(gate_samples + real_gate + gold_gate)
     say(f"fingerprint: {G.count(sel_packs)} selection runs ({len(real_sel)} real), {G.count(gate_packs)} gate runs "
-        f"({len(real_gate)} real)")
+        f"({len(real_gate)} real)" + (f"; gold {len(gold_sel)} selection, {len(gold_gate)} gate" if gold else ""))
     chosen, trace = G.greedy_select(sel_packs, pool, S.TYPE_LEVELS, int(config["max_landmarks"]),
                                     float(fp.get("min_gain", 0.005)), int(fp.get("folds", 3)), log=say)
     record["fingerprint"] = {"chosen": [G.LANDMARKS[i] for i in chosen], "trace": trace, "pool": [G.LANDMARKS[i] for i in pool],
                              "presence_by_landmark": by_landmark, "selection_runs": G.count(sel_packs),
                              "gate_runs": G.count(gate_packs), "real_selection_runs": len(real_sel),
                              "real_gate_runs": len(real_gate)}
+    if gold:
+        record["fingerprint"].update(gold_selection_runs=len(gold_sel), gold_gate_runs=len(gold_gate),
+                                     presence_by_source={k: {G.LANDMARKS[i]: float(v[i]) for i in range(len(v))}
+                                                         for k, v in sources.items()})
     if trace:
         record["fingerprint"]["objective"] = trace[-1].get("objective") if isinstance(trace[-1], dict) else None
     if not chosen:
@@ -843,9 +974,11 @@ def fingerprint_part(plan, config, record, pairs, pair_record, persons, gate_per
         record["gates"]["real_naming"] = {"pass": False, "missing": "no fingerprint was chosen"}
         record["gates"]["presence"] = {"pass": False, "missing": "no fingerprint was chosen"}
         record["gates"]["latency"] = {"pass": False, "missing": "no fingerprint was chosen"}
+        for gate in G.GOLD_GATES:
+            record["gates"][gate] = {"pass": False, "missing": "no fingerprint was chosen"}
         return
     namer, table = gate_cells(sel_packs, gate_packs, chosen, S.TYPE_LEVELS)
-    _, ceiling = gate_cells(sel_packs, gate_packs, pool, S.TYPE_LEVELS)
+    pool_namer, ceiling = gate_cells(sel_packs, gate_packs, pool, S.TYPE_LEVELS)
     record["cells"] = table
     record["ceiling_cells"] = ceiling
     record["gates"]["fingerprint"] = G.fingerprint_gate(table, bars["fingerprint"], fp.get("anchors", G.ANCHORS),
@@ -868,6 +1001,92 @@ def fingerprint_part(plan, config, record, pairs, pair_record, persons, gate_per
     lat = G.latency_gate(seconds, bars["latency"])
     lat["what"] = "the 2-D naming path alone (features and every hypothesis), no landmark detector"
     record["gates"]["latency"] = lat
+    if gold:
+        gold_gates(plan, record, gold, table, ceiling, (namer, chosen), (pool_namer, pool), span)
+
+
+def gold_samples(plan, gold):
+    """Each gold tier's runs (tools/gold_xray.py, case_samples): its training persons' unanchored runs
+    for the selection, its held-out persons' unanchored runs for the gate, and their runs unanchored
+    and anchored at the sacrum alike for the span test. A tier's own views name only typical
+    columns, so an anchored run there would name itself; only the unanchored are judged in its arm."""
+    if not gold:
+        return [], [], {}
+    spec = plan["gold"]
+    sel, gate, span = [], [], {}
+    for tier, cases in gold.items():
+        for case in cases:
+            runs = X.case_samples(case, spec, ("none", "bottom"))
+            unanchored = [r for r in runs if r["anchor"] == "none"]
+            if case["part"] == "validation":
+                gate += unanchored
+                span.setdefault(tier, []).extend(runs)
+            else:
+                sel += unanchored
+    return sel, gate, span
+
+
+def presence_sources(presence, gold):
+    """Each source's mean evidence for every landmark on its training frames: the real frames' and
+    each gold tier's radiographs', the sources that have any."""
+    out = {}
+    if presence is not None and len(presence["training"]):
+        out["real"] = S.column_means(presence["training"])
+    for tier, cases in gold.items():
+        rows = [r for c in cases if c["part"] == "training" for r in c["presence"]]
+        if rows:
+            out[tier] = S.column_means(np.asarray(rows))
+    return out
+
+
+def span_cells(span, namer, chosen):
+    """The span test's cells: each tier's held-out runs named by the phantoms' own model, their views
+    read as the phantoms' (ap_gold3 as ap), each cell keyed by the tier's span arm (ap_span_gold3)."""
+    table = {}
+    for tier, samples in span.items():
+        if not samples:
+            continue
+        packs = G.pack([dict(r, view=str(r["view"]).split("_", 1)[0]) for r in samples])
+        rows = G.name_rows(namer, packs, G.features_of(packs, chosen))
+        if len(rows["view"]):
+            rows["view"] = np.char.add(rows["view"].astype(str), f"_span_{tier}")
+        table.update(G.cells(rows))
+    return table
+
+
+def gold_gates(plan, record, gold, table, ceiling, chosen_namer, pool_namer, span):
+    """The gold gates the plan asks, each over the tiers (tools/qaloop_gates.py, tiered): gold naming
+    from the held-out table's gold cells against the whole pool's; gold span from the held-out runs
+    named by the phantoms' own model, the chosen landmarks against the pool's; gold presence on the
+    held-out radiographs, the chosen landmarks' mean percentile per radiograph."""
+    bars, asked = plan["bars"], set(plan["gates"])
+    namer, chosen = chosen_namer
+    tiers = list(gold)
+    gates = record["gates"]
+    if "gold_naming" in asked:
+        gates["gold_naming"] = G.tiered({t: G.fingerprint_gate(table, bars["gold_naming"], ("none",), t, ceiling)
+                                         for t in tiers})
+    if "gold_span" in asked:
+        record["span_cells"] = span_cells(span, namer, chosen)
+        record["span_ceiling_cells"] = span_cells(span, *pool_namer)
+        anchors = plan["fingerprint"].get("anchors", G.ANCHORS)
+        gates["gold_span"] = G.tiered({t: G.fingerprint_gate(record["span_cells"], bars["gold_span"], anchors,
+                                                             f"span_{t}", record["span_ceiling_cells"])
+                                       for t in tiers})
+    if "gold_presence" in asked:
+        per = {}
+        for t in tiers:
+            rows = [r for c in gold[t] if c["part"] == "validation" for r in c["presence"]]
+            if not rows:
+                per[t] = {"pass": False, "missing": f"no held-out radiograph of {t}"}
+                continue
+            means = [float(np.nanmean(r[chosen])) if np.isfinite(r[chosen]).any() else float("nan") for r in rows]
+            per[t] = G.presence_gate(means, bars["gold_presence"])
+        gates["gold_presence"] = G.tiered(per, presence=True)
+    stand_in = any((record.get("gold") or {}).get(t, {}).get("stand_in") for t in tiers)
+    for gate in G.GOLD_GATES:
+        if gate in gates:
+            gates[gate]["stand_in"] = stand_in
 
 
 def floor_pool(pool, means, floor):
@@ -916,6 +1135,7 @@ def main(argv=None):
     ap.add_argument("--out", required=True)
     ap.add_argument("--work", required=True)
     ap.add_argument("--data", default="")
+    ap.add_argument("--gold4", default="")
     ap.add_argument("--workers", type=int, default=0)
     a = ap.parse_args(argv)
     os.makedirs(a.out, exist_ok=True)
@@ -927,7 +1147,7 @@ def main(argv=None):
         print("\n".join(problems), file=sys.stderr)
         return 2
     try:
-        record = run_round(plan, state, a.out, a.work, a.data, a.workers)
+        record = run_round(plan, state, a.out, a.work, a.data, a.workers, a.gold4)
     except InsaneAnswer as error:
         Path(a.out, "why.txt").write_text(f"insane answer: {error}\n")
         print(f"insane answer: {error}", file=sys.stderr)

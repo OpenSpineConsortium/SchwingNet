@@ -389,9 +389,12 @@ AUTOANATOMIST_PARTITION=galhp
 # The QA loop's chains, <plan>/<chain>/ (grid/qaloop.sbatch reads the same default from the lab volume),
 # where a send while a link lasts reads each round's PROGRESS.txt.
 QALOOP_ROOT=${QALOOP_ROOT:-$VOLUME/go2432/qaloop}
-# The partition every link of the loop is sent to (word_qaloop): galhp's L40S cards, for the reason
-# AUTOANATOMIST_PARTITION gives, since the loop trains the same network under the same pins.
-QALOOP_PARTITION=galhp
+# The partitions every link of the loop may be sent to (word_qaloop), Slurm starting it on whichever
+# frees first: galhp's L40S cards and gmsap's H200s, never gvohp's V100s, for the reason
+# AUTOANATOMIST_PARTITION gives, since the loop trains the same network under the same pins. galhp
+# alone left the first sends waiting on 2026-10-31 behind jobs whose next start Slurm put a day off;
+# a list needs hpcworker's framework 29, whose job submit takes several of the class's partitions.
+QALOOP_PARTITION=galhp,gmsap
 # The links a send of a loop plan queues, each a GPU job of 12 hours afterany the one before, so the
 # loop runs up to three days on one send; a smoke plan is one link.
 QALOOP_LINKS=6
@@ -399,6 +402,10 @@ QALOOP_LINKS=6
 # held to its own frozen PREREG, docs/research/qa-loop-transformer/PREREG.md, and queued with its job
 # script grid/qaloop_tx.sbatch; every other plan runs as the kind qaloop under the loop's PREREG.
 QALOOP_TX_PLANS="qa_transformer"
+# The plans that run as the kind qaloop_gold: the loop with the gold tiers' CTs rendered as C-arm
+# radiographs and asked three more gates, held to docs/research/qa-loop-gold/PREREG.md and queued with
+# grid/qaloop_gold.sbatch, which reads gold tier 4's records under GOLD4_ROOT (QALOOP_GOLD4).
+QALOOP_GOLD_PLANS="qa_gold_smoke qa_gold"
 # The Pipelines tab's cards (word_cards): the git copy on the lab volume the word builds the branch in,
 # the repository it pushes to (the checkout's own origin unless CARDS_REMOTE names another, as the
 # tests do), the branch, and how many of a kind's newest runs it carries.
@@ -3220,8 +3227,12 @@ qaloop_field() {  # qaloop_field PLAN KEY: a top-level word of the plan, else no
 qaloop_pairs_root() {  # qaloop_pairs_root PLAN: the folder under the data root the plan reads its real pairs from
   sed -n 's/^    "root": "\([a-z0-9_]*\)",\{0,1\}$/\1/p' "$1" | head -n 1
 }
-qaloop_kind() {  # qaloop_kind PLAN: the kind the plan runs as, qaloop_tx for a plan QALOOP_TX_PLANS names, else qaloop
-  case " $QALOOP_TX_PLANS " in *" $1 "*) echo qaloop_tx ;; *) echo qaloop ;; esac
+qaloop_gold_word() {  # qaloop_gold_word PLAN KEY: a word a gold tier of the plan's gold block names, as json.dumps(indent=2) lays it, else nothing
+  sed -n "s/^      \"$2\": \"\([A-Za-z0-9_./-]*\)\",\{0,1\}\$/\1/p" "$1" | head -n 1
+}
+qaloop_kind() {  # qaloop_kind PLAN: the kind the plan runs as, qaloop_tx or qaloop_gold for a plan QALOOP_TX_PLANS or QALOOP_GOLD_PLANS names, else qaloop
+  case " $QALOOP_TX_PLANS " in *" $1 "*) echo qaloop_tx; return 0 ;; esac
+  case " $QALOOP_GOLD_PLANS " in *" $1 "*) echo qaloop_gold ;; *) echo qaloop ;; esac
 }
 qaloop_covered() {  # qaloop_covered PLAN NAME: status 0 where the frozen PREREG of the plan's kind covers the plan by its name and bytes; the refusal otherwise
   local prereg entry frozen bytes want
@@ -3288,7 +3299,7 @@ qaloop_queue() {  # qaloop_queue CHAIN COMMIT FIRST LINKS: links FIRST to LINKS 
   # The chain's id is the one line on stdout, which the caller reads; every other line goes to stderr,
   # which the gate's own output carries (exec 2>&1 above).
   local chain=$1 full=$2 first=$3 links=$4 link job after setup
-  local loop=(PLAN="$id" QALOOP_COMMIT="$full" QALOOP_ROOT="$QALOOP_ROOT" DATA_ROOT="$DATA_ROOT" QALOOP_LINKS="$links")
+  local loop=(PLAN="$id" QALOOP_COMMIT="$full" QALOOP_ROOT="$QALOOP_ROOT" QALOOP_GOLD4="$GOLD4_ROOT" DATA_ROOT="$DATA_ROOT" QALOOP_LINKS="$links")
   setup=$(setup_dependency) || return 1
   [ -z "$setup" ] || echo "  the environments: after the setup job that rebuilds them (${setup#afterok:})" >&2
   after=$setup
@@ -3305,7 +3316,7 @@ qaloop_queue() {  # qaloop_queue CHAIN COMMIT FIRST LINKS: links FIRST to LINKS 
       chain=$job
       echo "$chain $full" > "$LOGS/QALOOP-$id.chain"
       { echo "# qaloop $id: chain $chain queued, commit ${full:0:7}, $(date -u '+%F %T') UTC; no link of it has started yet"
-        echo "- queued: $links link(s) on $QALOOP_PARTITION, each afterany the one before"
+        echo "- queued: $links link(s) on ${QALOOP_PARTITION//,/ or }, each afterany the one before"
         echo "- folder: $QALOOP_ROOT/$id/$chain, where every link works"; } > "$LOGS/QALOOP-$id.md.part"
     fi
     after=afterany:$job
@@ -3313,7 +3324,7 @@ qaloop_queue() {  # qaloop_queue CHAIN COMMIT FIRST LINKS: links FIRST to LINKS 
   echo "$chain"
 }
 word_qaloop() {  # one plan of the QA loop: queued as a chain of links, its report printed on every later send, an unended chain carried on
-  local plan=$REPO/grid/qaloop/$id.json report=$LOGS/QALOOP-$id.md class links busy chain chain_commit full root last ended stopped
+  local plan=$REPO/grid/qaloop/$id.json report=$LOGS/QALOOP-$id.md class links busy chain chain_commit full root last ended stopped ct masks folder records
   [ -f "$plan" ] || { echo "refusing: no plan grid/qaloop/$id.json at commit $commit"; return 64; }
   qaloop_covered "$plan" "$id" || return
   class=$(qaloop_field "$plan" class)
@@ -3335,6 +3346,26 @@ word_qaloop() {  # one plan of the QA loop: queued as a chain of links, its repo
       echo "refusing: the plan $id reads C-ArmLSpine's pairs from $DATA_ROOT/${root:-<its pairs root>}, which holds no levels.json; nothing was queued"
       return 2
     }
+    if [ "$(qaloop_kind "$id")" = qaloop_gold ]; then
+      # A loop plan has no stand-ins, so a tier with no CT would end the loop at its first round for
+      # want of data: both tiers' CTs are on the volume before a GPU link is queued.
+      ct=$(qaloop_gold_word "$plan" ct) masks=$(qaloop_gold_word "$plan" labels) records=$(qaloop_gold_word "$plan" records)
+      folder=$(qaloop_gold_word "$plan" labels_folder)
+      [ -n "$ct" ] && [ -n "$masks" ] && [ -d "$DATA_ROOT/$ct" ] && [ -d "$DATA_ROOT/$masks" ] || {
+        echo "refusing: the plan $id reads gold tier 3's CTs and masks under $DATA_ROOT (${ct:-<its CTs>}, ${masks:-<its masks>}), which are not both there; nothing was queued"
+        return 2
+      }
+      # Gold tier 3 reads a mask only from a folder of the plan's name, the bones' maps beside the
+      # release's other maps, so a masks folder of another layout would end the loop at its first round.
+      [ -n "$folder" ] && find "$DATA_ROOT/$masks" -path "*/$folder/*.nii.gz" -print -quit 2>/dev/null | grep -q . || {
+        echo "refusing: the plan $id reads gold tier 3's masks in folders named ${folder:-<its labels_folder>} under $DATA_ROOT/$masks, which holds none; nothing was queued"
+        return 2
+      }
+      [ -n "$records" ] && [ -s "$GOLD4_ROOT/$records" ] || {
+        echo "refusing: the plan $id reads gold tier 4's CTs by $GOLD4_ROOT/${records:-<its records>}, which TotalSegmentator's run has not written yet (send totalseg gold4); nothing was queued"
+        return 2
+      }
+    fi
   fi
   full=$(git -C "$REPO" rev-parse HEAD 2>/dev/null)
   [[ $full =~ ^[0-9a-f]{40}$ ]] || { echo "refusing: the checkout's commit cannot be read, and every link copies the code at it"; return 2; }
@@ -3381,7 +3412,7 @@ word_qaloop() {  # one plan of the QA loop: queued as a chain of links, its repo
     rm -f "$LOGS/QALOOP-$id.cancelled"
   fi
   chain=$(qaloop_queue "" "$full" 1 "$links") || return 1
-  echo "submitted the plan $id: chain $chain, $links GPU link(s) of 12 hours on $QALOOP_PARTITION, each afterany the one before, in $QALOOP_ROOT/$id/$chain. Send qaloop $id again once they end to read its report, logs/QALOOP-$id.md."
+  echo "submitted the plan $id: chain $chain, $links GPU link(s) of 12 hours on ${QALOOP_PARTITION//,/ or }, each afterany the one before, in $QALOOP_ROOT/$id/$chain. Send qaloop $id again once they end to read its report, logs/QALOOP-$id.md."
 }
 
 # The control panel's Pipelines tab (the owner's words of 2026-10-31 04:11 and 04:12 UTC): every card
