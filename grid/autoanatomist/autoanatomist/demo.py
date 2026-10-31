@@ -41,8 +41,9 @@ import optax
 from flax import nnx
 from scipy import ndimage
 
-from . import gates, ladder, smoke, train
+from . import blocks as blocks_of, gates, ladder, smoke, train
 from .model import Config, Model
+from .session import Session, anneal_of
 
 KEY = "endplate"                    # Panjabi's EPWu, the upper end-plate's width
 EVERY = 5                           # steps between snapshots
@@ -96,6 +97,7 @@ class Demo:
     cfg: Config
     params: dict
     train_mean: float
+    blocks: str = ""                # the session's words where a run named any (--blocks), else none
 
     @property
     def steps(self) -> int:
@@ -161,25 +163,58 @@ def anneal(ex: train.Examples, held: train.Examples, cfg: Config, steps: int, ev
     return model, snapshots, losses
 
 
+def anneal_blocks(ex: train.Examples, held: train.Examples, cfg: Config, steps: int, words: str, every: int = EVERY,
+                  log_every: int = 0) -> Tuple[Model, List[Snapshot], List[float], np.ndarray, np.ndarray]:
+    """The same demo trained as a session of the named blocks (session.Session, with the naming layer
+    off and the run's widths), so that the second screen's arms can be watched on the slider:
+    schedule=adaptive, which moves lambda by the error's own slope, and restraint=abf, the adaptive
+    biasing force (ladder.py, train.py). Snapshots fall as anneal's do; returns the model, the
+    snapshots, the losses and the w and lambda each step trained at."""
+    b = blocks_of.parse("naming=off widths=%s %s" % (":".join(str(n) for n in cfg.widths), words))
+    s = Session.new(b, keys=cfg.keys, shape=cfg.shape, spacing=cfg.spacing)
+    snapper = Snapper(held)
+    s.anneal = s.anneal or anneal_of(b, steps)
+    w0, lam0 = s.position_at(0)
+    snapshots, rows = [snapper.take(s.model, 0, w0, lam0)], []
+
+    def on_step(row: dict) -> None:
+        rows.append(row)
+        n = len(rows)
+        if n % every == 0 or n == steps:
+            snapshots.append(snapper.take(s.model, n, row["w"], row["lam"]))
+        if log_every and (n % log_every == 0 or n == steps):
+            print(progress(snapshots[-1], held, n, steps), flush=True)
+
+    s.train(ex, steps, on_step=on_step)
+    return (s.model, snapshots, [r["total"] for r in rows], np.array([r["w"] for r in rows]),
+            np.array([r["lam"] for r in rows]))
+
+
 def progress(snap: Snapshot, held: train.Examples, step: int, steps: int) -> str:
     error = float(np.nanmean(np.abs(snap.widths - held.values[:, 0])))
     return "step %d of %d: w %.2f, lambda %.2f, the width's mean error on the held-out CTs %.1f mm" % (
         step, steps, snap.w, snap.lam, error)
 
 
-def run(steps: int = smoke.STEPS, every: int = EVERY, cfg: Optional[Config] = None, log_every: int = 25) -> Demo:
-    """The demo: the phantoms, the annealed training with its snapshots, and what they are read against."""
+def run(steps: int = smoke.STEPS, every: int = EVERY, cfg: Optional[Config] = None, log_every: int = 25,
+        blocks: str = "") -> Demo:
+    """The demo: the phantoms, the annealed training with its snapshots, and what they are read
+    against; with blocks named, trained as a session of those blocks (anneal_blocks)."""
     cfg = cfg or Config(keys=(KEY,))
     t0 = time.time()
     ex, held = examples(cfg)
-    model, snapshots, losses = anneal(ex, held, cfg, steps, every, log_every)
-    schedule = ladder.Schedule(steps)
-    w, lam = np.array([schedule.at(s) for s in range(steps)]).T
+    if blocks.strip():
+        model, snapshots, losses, w, lam = anneal_blocks(ex, held, cfg, steps, blocks, every, log_every)
+    else:
+        model, snapshots, losses = anneal(ex, held, cfg, steps, every, log_every)
+        schedule = ladder.Schedule(steps)
+        w, lam = np.array([schedule.at(s) for s in range(steps)]).T
     params = jax.tree.map(np.asarray, nnx.to_pure_dict(nnx.state(model, nnx.Param)))
     return Demo(snapshots=snapshots, hu=held.hu[..., 0], masks=held.masks, levels=[r.level for r in held.readings],
                 reference_points=held.targets, reference_widths=held.values[:, 0],
                 ticks=held.frames[0].axis_ticks(), spacing=cfg.spacing, w=w, lam=lam, losses=losses,
-                seconds=time.time() - t0, cfg=cfg, params=params, train_mean=float(np.mean(ex.values[:, 0])))
+                seconds=time.time() - t0, cfg=cfg, params=params, train_mean=float(np.mean(ex.values[:, 0])),
+                blocks=" ".join(blocks.split()))
 
 
 def pooled(volume: np.ndarray) -> np.ndarray:
@@ -206,14 +241,19 @@ def mask_values(demo: Demo, vertebra: int, lam: float) -> np.ndarray:
 def surface(demo: Demo, vertebra: int):
     """The held-out crop's CT as plotly's isosurface at the ladder's bone level (gates.BONE_HU),
     lightly smoothed against the phantom's noise: a raw CT, no mask in it."""
+    return bone(demo.hu[vertebra], demo.ticks)
+
+
+def bone(hu: np.ndarray, ticks: List[np.ndarray], legend: bool = True):
+    """A CT crop in HU as plotly's isosurface at the bone level, smoothed against the noise."""
     import plotly.graph_objects as go
-    x, y, z = np.meshgrid(*demo.ticks, indexing="ij")
-    hu = ndimage.gaussian_filter(np.asarray(demo.hu[vertebra], np.float32), 1.0)
+    x, y, z = np.meshgrid(*ticks, indexing="ij")
+    hu = ndimage.gaussian_filter(np.asarray(hu, np.float32), 1.0)
     return go.Isosurface(x=x.ravel(), y=y.ravel(), z=z.ravel(), value=hu.ravel(), isomin=gates.BONE_HU,
                          isomax=gates.BONE_HU, surface_count=1, caps=dict(x_show=False, y_show=False, z_show=False),
                          colorscale=[[0.0, BONE], [1.0, BONE]], showscale=False, opacity=BONE_OPACITY,
                          lighting=dict(ambient=0.55, diffuse=0.7, specular=0.15), hoverinfo="skip",
-                         name="the CT at %d HU, no mask" % gates.BONE_HU, showlegend=True)
+                         name="the CT at %d HU, no mask" % gates.BONE_HU, showlegend=legend)
 
 
 def mask_frame(demo: Demo, vertebra: int, snap: Snapshot) -> dict:
@@ -413,6 +453,16 @@ class Tested:
     columns: np.ndarray
     reference: np.ndarray
     read: np.ndarray
+    hu: Optional[np.ndarray] = None                 # each vertebra's CT crop in HU (N, X, Y, Z)
+    reference_points: Optional[np.ndarray] = None   # the oracle's two end-plate points (N, 2, 3), crop mm
+    read_points: Optional[np.ndarray] = None        # the network's two points from the CT alone (N, 2, 3)
+    ticks: Optional[List[np.ndarray]] = None        # the crop's axis ticks in mm, the set's own spacing
+
+    def typical(self) -> int:
+        """The vertebra whose error is the median of the set's (the lower middle one for an even
+        count), the one its fit is drawn on."""
+        errors = np.abs(self.read - self.reference)
+        return int(np.argsort(errors, kind="stable")[(len(errors) - 1) // 2])
 
     def error(self, widths: Optional[np.ndarray] = None) -> float:
         """The mean absolute error of these widths (the network's unless given) against the reference."""
@@ -442,11 +492,14 @@ def tested(demo: Demo, tests: Tuple[TestSet, ...] = TESTS, columns: int = TEST_C
     """Each test set in turn, drawn as columns of smoke.COUNT vertebrae and read from the CT alone by
     the run's network, its crops placed from the oracle's frame as the training crops are."""
     model = restored(demo)
-    read = nnx.jit(lambda m, hu: m.ct_only(hu)["values"][:, 0])
+    read = nnx.jit(lambda m, hu: m.ct_only(hu))
     for test in tests:
         ex = train.make_examples(demo.cfg, columns, smoke.COUNT, seed=TEST_SEED, **phantom_settings(test))
+        out = read(model, jnp.asarray(ex.hu))
         yield Tested(test=test, levels=[r.level for r in ex.readings], columns=np.asarray(ex.spine),
-                     reference=np.asarray(ex.values[:, 0]), read=np.asarray(read(model, jnp.asarray(ex.hu))))
+                     reference=np.asarray(ex.values[:, 0]), read=np.asarray(out["values"])[:, 0],
+                     hu=np.asarray(ex.hu[..., 0]), reference_points=np.asarray(ex.targets),
+                     read_points=np.asarray(out["points"]), ticks=ex.frames[0].axis_ticks())
 
 
 def test_figure(results: List[Tested], demo: Demo):
@@ -492,6 +545,39 @@ def test_figure(results: List[Tested], demo: Demo):
     return fig
 
 
+FITS_HEIGHT_PX = 330                # the row of test vertebrae above the test figure
+
+
+def fits_figure(results: List[Tested]):
+    """One vertebra of each test set, the one whose error is the set's median, drawn as its CT's bone
+    surface with the network's end-plate width from the CT alone (orange) where it put it and the
+    oracle's (blue): the fit itself, beside the numbers of the figure below it."""
+    import plotly.graph_objects as go
+    from plotly.subplots import make_subplots
+    shown = [r.typical() for r in results]
+    fig = make_subplots(rows=1, cols=len(results), specs=[[{"type": "scene"}] * len(results)],
+                        horizontal_spacing=0.01,
+                        subplot_titles=["%s<br>%s: %.1f mm, reference %.1f" % (r.test.name, r.levels[k], r.read[k], r.reference[k])
+                                        for r, k in zip(results, shown)])
+    for col, (r, k) in enumerate(zip(results, shown), start=1):
+        first = col == 1
+        fig.add_trace(bone(r.hu[k], r.ticks, legend=first), row=1, col=col)
+        for points, colour, name in ((r.reference_points[k], BLUE, "the reference, from the mask"),
+                                     (r.read_points[k], ORANGE, "the network, from the CT alone")):
+            trace = chord(points, colour, name)
+            trace.update(showlegend=first, legendgroup=name, line=dict(color=colour, width=8), marker=dict(color=colour, size=4))
+            fig.add_trace(trace, row=1, col=col)
+    hidden = dict(visible=False)
+    fig.update_scenes(aspectmode="data", camera=dict(eye=dict(x=0.0, y=1.6, z=1.1)), xaxis=hidden, yaxis=hidden, zaxis=hidden)
+    fig.update_annotations(font=dict(size=11))
+    fig.update_layout(width=WIDTH_PX, height=FITS_HEIGHT_PX, autosize=False, margin=dict(l=10, r=10, t=80, b=10),
+                      paper_bgcolor="#FFFFFF",
+                      title=dict(text="<b>The fit on one vertebra of each test set, the median one</b>", font=dict(size=14),
+                                 x=0.01, y=0.98, yanchor="top"),
+                      legend=dict(orientation="h", x=0.0, y=-0.02, xanchor="left", yanchor="top", font=dict(size=12)))
+    return fig
+
+
 def test_table(results: List[Tested], demo: Demo) -> str:
     """The test sets' numbers under the figure, one row a set."""
     rows = "".join('<tr><td style="color:%s;font-weight:bold">%s</td><td>%s</td><td>%d</td><td>%.1f mm [%.1f, %.1f]</td>'
@@ -526,7 +612,7 @@ def record(demo: Demo, cfg: Config) -> dict:
             "held_out": [{"level": level, "reference_mm": float(ref), "read_mm": float(read),
                           "error_mm": float(abs(read - ref))}
                          for level, ref, read in zip(demo.levels, demo.reference_widths, last.widths)],
-            "shown": demo.typical(), "seconds": demo.seconds, "ran_on": versions()}
+            "shown": demo.typical(), "seconds": demo.seconds, "blocks": demo.blocks, "ran_on": versions()}
 
 
 def widths_of(text: str) -> Tuple[int, ...]:
@@ -545,8 +631,11 @@ def test(demo: Demo, path: str, plotlyjs: str) -> int:
         print("%s: %d vertebrae, the network's mean error %.1f mm [%.1f, %.1f], guessing the mean %.1f mm" % (
             (r.test.name, len(r.reference), r.error()) + r.interval() + (r.error(np.full_like(r.reference, demo.train_mean)),)),
             flush=True)
-    with open(path, "w") as f:
-        f.write(page(test_figure(results, demo), plotlyjs, after=test_table(results, demo)))
+    numbers = test_figure(results, demo).to_html(full_html=False, include_plotlyjs=False, auto_play=False,
+                                                 default_width="%dpx" % WIDTH_PX, default_height="%dpx" % TEST_HEIGHT_PX,
+                                                 config={"responsive": False, "displaylogo": False})
+    with open(path, "w") as f:   # the fits first, as the eye reads them, then the numbers behind them
+        f.write(page(fits_figure(results), plotlyjs, after=numbers + test_table(results, demo)))
     print("%s: the network after %d steps on %d test sets" % (path, demo.steps, len(results)))
     return 0
 
@@ -562,14 +651,22 @@ def main(argv: List[str]) -> int:
                                                      "whose error at the end is the median)")
     parser.add_argument("--plotlyjs", choices=("inline", "cdn"), default="inline",
                         help="plotly.js inline in the page (the default, for reading offline) or from plotly's CDN")
+    parser.add_argument("--blocks", default="",
+                        help="train as a session of these blocks, as \"schedule=adaptive restraint=abf\" (blocks.py); "
+                             "none named is the smoke run's training")
     parser.add_argument("--record", help="also write the run's numbers here as JSON")
     parser.add_argument("--save", help="also keep the run here, a pickle, to draw again with --load")
     parser.add_argument("--load", help="draw the run kept by --save, a pickle this command wrote, instead of training")
     parser.add_argument("--test", action="store_true",
                         help="with --load: read phantoms the network never saw and draw how it does, in place of the anneal")
     args = parser.parse_args(argv[1:])
-    if args.load and (args.record or args.save):
-        parser.error("--record and --save go with a run that trains, not with --load")
+    if args.load and (args.record or args.save or args.blocks):
+        parser.error("--record, --save and --blocks go with a run that trains, not with --load")
+    if args.blocks:
+        try:
+            blocks_of.parse("naming=off " + args.blocks)
+        except ValueError as error:
+            parser.error("--blocks: %s" % error)
     if args.test and not args.load:
         parser.error("--test reads the network a run kept: give --load")
     held = smoke.HELD_SPINES * smoke.COUNT
@@ -585,7 +682,7 @@ def main(argv: List[str]) -> int:
             parser.error("--vertebra takes 0 to %d, the run's held-out vertebrae" % (len(demo.levels) - 1))
     else:
         cfg = Config(keys=(KEY,), widths=args.widths)
-        demo = run(args.steps, EVERY, cfg)
+        demo = run(args.steps, EVERY, cfg, blocks=args.blocks)
         if args.save:
             with open(args.save, "wb") as f:
                 pickle.dump(demo, f, protocol=pickle.HIGHEST_PROTOCOL)

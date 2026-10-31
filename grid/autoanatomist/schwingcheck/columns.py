@@ -35,6 +35,7 @@ from typing import Dict, List, Optional, Sequence, Tuple
 import numpy as np
 
 from . import LEVELS
+from . import correlation as CORR
 
 PHENOTYPES = ["typical", "four_lumbar", "six_lumbar", "t13", "lumbar_rib", "no_rib_t12"]
 DRAW_LEVELS = LEVELS + ["L6", "T13"]           # the level draws are keyed by name, 24 per measure
@@ -149,7 +150,7 @@ def draw_columns(ref: Dict[str, Dict[str, tuple]], phenotypes: Sequence[str], se
                  measures: Sequence[str], r_between: float = 0.0, rho: float = SYNTH["rho"],
                  noise_mm=SYNTH["noise_mm"], scale_sd: float = SYNTH["scale_sd"],
                  blend: float = SYNTH["blend"], power=None, scale: Optional[np.ndarray] = None,
-                 floor: bool = True) -> Columns:
+                 floor: bool = True, correlation: Optional[CORR.Prior] = None) -> Columns:
     """n columns, the phenotypes cycled in turn, from one seeded stream in the archive's order.
     noise_mm is one error for every measure, as the archive's, or each measure's own; the stream
     is the same either way, and the same error for every measure gives the archive's columns.
@@ -158,7 +159,11 @@ def draw_columns(ref: Dict[str, Dict[str, tuple]], phenotypes: Sequence[str], se
     stream. Every column is padded with NaN to the widest phenotype listed, drawn or not, so the
     layout depends on the phenotypes and not on how many columns are drawn. floor False leaves
     out the floor at 0.5, as for the build-up study's specimens, which carry no error and estimate
-    the table itself; the stream is the same either way."""
+    the table itself; the stream is the same either way. correlation, a prior fitted from real
+    spines (correlation.py), replaces the assumed structure, the shared offset at rho and
+    r_between, with its own correlation between levels and between measures; the size is drawn as
+    before, then one standard normal per measure and level, then the noise, so a draw with a
+    prior is a stream of its own, and without one the stream is the archive's to the bit."""
     measures = list(measures)
     M = len(measures)
     noise = np.broadcast_to(np.asarray(noise_mm, float), (M,))
@@ -181,23 +186,29 @@ def draw_columns(ref: Dict[str, Dict[str, tuple]], phenotypes: Sequence[str], se
         lv, transitional_at, mu, sd = prof[p]
         s = float(np.exp(rng.normal(0.0, scale_sd))) if given is None else float(given[c])
         g = np.where(powers == 1.0, s, np.where(powers == 2.0, s * s, np.where(powers == 0.0, 1.0, s ** powers)))
-        z = rng.normal(size=M)
-        if abs(r_between) >= 1e-12:
-            z = factor @ z
-        e = rng.normal(size=(M, len(DRAW_LEVELS)))
-        nz = rng.normal(size=(M, len(DRAW_LEVELS)))
-        at = np.array([draw_index[l] for l in lv])
-        v = g[:, None] * (mu + sd * (rho * z[:, None] + math.sqrt(1 - rho * rho) * e[:, at])) + noise[:, None] * nz[:, at]
+        if correlation is None:
+            z = rng.normal(size=M)
+            if abs(r_between) >= 1e-12:
+                z = factor @ z
+            e = rng.normal(size=(M, len(DRAW_LEVELS)))
+            nz = rng.normal(size=(M, len(DRAW_LEVELS)))
+            at = np.array([draw_index[l] for l in lv])
+            v = g[:, None] * (mu + sd * (rho * z[:, None] + math.sqrt(1 - rho * rho) * e[:, at])) + noise[:, None] * nz[:, at]
+        else:
+            field_ = CORR.draw_field(rng, correlation, lv, measures)
+            nz = rng.normal(size=(M, len(lv)))
+            v = g[:, None] * (mu + sd * field_) + noise[:, None] * nz
         values[c, :len(lv), :] = np.where(floored[:, None], np.maximum(v, FLOOR), v).T
         levels.append(list(lv))
         phen.append(p)
         scale[c] = s
         trans.append(transitional_at)
+    meta = dict(r_between=r_between, rho=rho, noise_mm=noise_mm if np.ndim(noise_mm) == 0 else noise.tolist(),
+                scale_sd=scale_sd, n=n, power=powers.tolist(), scale_given=given is not None, floor=bool(floor))
+    if correlation is not None:
+        meta["correlation"] = dict(n=correlation.n, shrink=correlation.shrink, note=correlation.note)
     return Columns(values=values, levels=levels, measures=measures, phenotype=phen, scale=scale,
-                   transitional_at=trans, blend=blend, seed=seed,
-                   meta=dict(r_between=r_between, rho=rho, noise_mm=noise_mm if np.ndim(noise_mm) == 0 else noise.tolist(),
-                             scale_sd=scale_sd, n=n, power=powers.tolist(), scale_given=given is not None,
-                             floor=bool(floor)))
+                   transitional_at=trans, blend=blend, seed=seed, meta=meta)
 
 
 def floor_hits(cols: Columns) -> dict:
