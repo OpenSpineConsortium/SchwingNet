@@ -45,7 +45,7 @@ NEW_SCRIPTS = ("gate.sh", "hpcw.sh", "box.sh", "bin/pixi", "bin/train-cpu-python
                "00-carmlspine.sbatch", "v1-driver.sbatch", "experiment-driver.sbatch", "run-xray-chain.sh",
                "run-platform-fetch.sh", "sweep-driver.sbatch", "v1-version.sh", "realism.sbatch", "venv.sh",
                "drr-gap.sbatch", "drr-seg.sbatch", "morphometry.sbatch", "gold3-census.sbatch", "bordercall-complete.sbatch",
-               "autoanatomist.sbatch", "morphometry-covariates.sbatch")
+               "autoanatomist.sbatch", "autoanatomist2.sbatch", "morphometry-covariates.sbatch")
 ENVS = ("default", "train-cpu", "train-gpu", "telemetry")
 # The morphometry engine's code stamps: the merged bordercall ee495d5's, and 16f7b40's, which the sets'
 # first reports name (grid/gate.sh, MORPHOMETRY_RERUNS).
@@ -4675,15 +4675,18 @@ exit "${FAKE_RC:-0}"
         return report
 
     def test_autoanatomist_refuses_a_plan_without_the_owners_count_a_frozen_cover_or_its_inputs(self):
-        # the committed count is the owner's: the smoke of 03:20 UTC and the screen's two jobs of 08:56 UTC,
-        # and no plan is sent again on his word yet
+        # the committed count is the owner's: the smoke of 03:20 UTC and the screen's two jobs of 08:56 UTC;
+        # the second screen's two plans on his lifting of the grid hold at 23:03 UTC, and no plan is sent again on his word yet
         gate = (ROOT / "grid" / "gate.sh").read_text(encoding="utf-8")
-        self.assertIn('\nAUTOANATOMIST_COUNTED="gold3_latent_smoke gold3_latent_screen"\n', gate)
+        self.assertIn('\nAUTOANATOMIST_COUNTED="gold3_latent_smoke gold3_latent_screen gold3_latent_smoke2 gold3_latent_screen2"\n', gate)
         self.assertIn('\nAUTOANATOMIST_RERUNS=""\n', gate)
         # every GPU part goes to galhp's L40S cards: the smoke's first send stopped at its compile on a V100
         self.assertIn('\nAUTOANATOMIST_PARTITION=galhp\n', gate)
-        # and the screen waits for the smoke, as its PREREG says (section 5)
-        self.assertIn('\nAUTOANATOMIST_AFTER="gold3_latent_screen:gold3_latent_smoke"\n', gate)
+        # and the screen waits for the smoke, as its PREREG says (section 5); the second smoke for the first
+        # screen's verdict and the second screen for the second smoke, as the second's PREREG says (section 5)
+        self.assertIn('\nAUTOANATOMIST_AFTER="gold3_latent_screen:gold3_latent_smoke gold3_latent_smoke2:gold3_latent_screen '
+                      'gold3_latent_screen2:gold3_latent_smoke2"\n', gate)
+        self.assertIn('\nAUTOANATOMIST2_PLANS="gold3_latent_smoke2 gold3_latent_screen2"\n', gate)
         self.assertEqual(self.gate("autoanatomist").returncode, 64)
         refused = self.gate("autoanatomist", "gold3_latent_nope")
         self.assertEqual(refused.returncode, 64, refused.stdout)
@@ -4720,6 +4723,64 @@ exit "${FAKE_RC:-0}"
         self.assertEqual(refused.returncode, 2, refused.stdout)
         self.assertIn("(fetch aws_enhance_pet_ct first)", refused.stdout)
         self.assertEqual(self.submitted(), [])
+
+    def screen2_prereg(self):
+        """The second screen's frozen PREREG and its hash in the checkout, where flows/registry.txt names them."""
+        folder = self.repo / "docs" / "research" / "autoanatomist-screen2"
+        folder.mkdir(parents=True, exist_ok=True)
+        for name in ("PREREG.md", "PREREG.md.sha256"):
+            shutil.copy(ROOT / "docs" / "research" / "autoanatomist-screen2" / name, folder / name)
+        return folder / "PREREG.md"
+
+    def test_autoanatomist_sends_the_second_screens_plans_as_their_own_kind_after_the_first_screens_verdict(self):
+        commit = self.screen_ready()
+        logs = self.repo / "grid" / "logs"
+        # uncounted, the second screen's plans would wait for the owner's word and count
+        self.set_gate_line("AUTOANATOMIST_COUNTED", "gold3_latent_smoke gold3_latent_screen")
+        refused = self.gate("autoanatomist", "gold3_latent_smoke2")
+        self.assertEqual(refused.returncode, 64, refused.stdout)
+        self.assertIn("AUTOANATOMIST_COUNTED", refused.stdout)
+        self.set_gate_line("AUTOANATOMIST_COUNTED", "gold3_latent_smoke gold3_latent_screen gold3_latent_smoke2 gold3_latent_screen2")
+        # its plan is held to the second screen's PREREG, which the first screen's does not stand in for
+        refused = self.gate("autoanatomist", "gold3_latent_smoke2")
+        self.assertEqual(refused.returncode, 90, refused.stdout)
+        self.assertIn("docs/research/autoanatomist-screen2/PREREG.md is not frozen", refused.stdout)
+        prereg = self.screen2_prereg()
+        frozen = prereg.read_text(encoding="utf-8")
+        prereg.write_text(frozen + "\nA line after the freeze.\n", encoding="utf-8")
+        self.assertEqual(self.gate("autoanatomist", "gold3_latent_smoke2").returncode, 90)
+        prereg.write_text(frozen, encoding="utf-8")
+        # the second smoke waits for the first screen's report, so the first verdict stands before it runs
+        refused = self.gate("autoanatomist", "gold3_latent_smoke2")
+        self.assertEqual(refused.returncode, 2, refused.stdout)
+        self.assertIn("is sent only once the report of gold3_latent_screen", refused.stdout)
+        (logs / "AUTOANATOMIST-gold3_latent_screen.md").write_text(
+            f"# autoanatomist gold3_latent_screen: job 4141 on node, commit {commit}, 2026-10-30 22:00:00 UTC\n"
+            "- exit 0 at 2026-10-30 23:00:00 UTC\n", encoding="utf-8")
+        done = self.gate("autoanatomist", "gold3_latent_smoke2")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        lines = self.submitted()
+        self.assertEqual(len(lines), 1, lines)
+        for said in ("--class gpu --name autoanatomist_gold3_latent_smoke2 --partition galhp --cpus 8 --mem 64G --time 12:00:00 "
+                     "--no-requeue autoanatomist2.sbatch |", " PART=series ", " PLAN=gold3_latent_smoke2 ", " TRIAL_TASKS=5 "):
+            self.assertIn(said, lines[0])
+        # the second screen waits for the second smoke in turn, and is an array of twelve trials and its join
+        refused = self.gate("autoanatomist", "gold3_latent_screen2")
+        self.assertEqual(refused.returncode, 2, refused.stdout)
+        self.assertIn("is sent only once the report of gold3_latent_smoke2", refused.stdout)
+
+    def test_the_second_screens_job_script_runs_the_first_screens_at_the_sent_commit_as_its_own_kind(self):
+        script = (ROOT / "grid" / "autoanatomist2.sbatch").read_text(encoding="utf-8")
+        self.assertIn('git -C "$REPO" show "$COMMIT:grid/autoanatomist.sbatch"', script)
+        self.assertIn("AUTOANATOMIST_KIND=autoanatomist2 bash", script)
+        first = (ROOT / "grid" / "autoanatomist.sbatch").read_text(encoding="utf-8")
+        self.assertIn('"$CODE/flows/launch.py" "$KIND" --max-workers 1', first)
+        self.assertIn("autoanatomist2) STUDY_DIR=docs/research/autoanatomist-screen2 FLOW_CLASS=Autoanatomist2Flow ;;", first)
+        # a kind the first screen's script does not know runs nothing
+        done = subprocess.run(["bash", str(ROOT / "grid" / "autoanatomist.sbatch")], env=dict(os.environ, AUTOANATOMIST_KIND="other"),
+                              capture_output=True, text=True, timeout=60)
+        self.assertEqual(done.returncode, 64, done.stdout)
+        self.assertIn("AUTOANATOMIST_KIND is autoanatomist or autoanatomist2, not other", done.stdout)
 
     def test_autoanatomist_queues_the_smoke_once_as_one_gpu_job_and_then_prints_its_report(self):
         commit = self.screen_ready()

@@ -48,6 +48,22 @@ back on the crop's grid and gives the hard Dice, the mean symmetric surface dist
 mask in millimetres (distance_mm, an empty prediction or truth counting as the crop's longest side)
 and the feature gap, and error_curve gives one minus the target's soft Dice as E(lambda).
 
+The restraint (blocks.py's restraint=abf, the fourth arm of the second screen, from the owner's
+question of 30 October 2026 whether an adaptive biasing force can act on what the network learns):
+ABF's estimator of the mean force on a collective variable, a running mean per bin of the
+variable's value, applied mid-anneal with the weight (1 - cos 2 pi lambda) / 2, so it is zero at
+both ends and the network the run ends with is trained as before at lambda 1. The variable is the
+target vertebra's volume, as a share of the crop on the logits' grid, under the mask objective,
+and each measure's value under the landmarks objective (the width first among them); the force on
+it is that of a squared loss on its error in units of ABF_SCALE, (reference - value) / scale^2,
+whose mean in a bin is the calibration gap there. ABF in free energy work applies minus the mean
+force, to flatten the path; here it is applied with its own sign, a restraint that pushes each bin
+of the variable towards its reference's mean, mid-path, while the mask is taken away. A bin's mean
+is a running mean of its first ABF_FULL samples and then a moving mean with that weight, since
+the network moves under it, and acts in proportion to its samples until it has ABF_FULL
+(Forces). The term's value, logged as restraint, is minus the weight times the mean of the force
+times the variable, its gradient the force alone; it is not an error and may be negative.
+
 The weights of the terms (LOSS_WEIGHTS), the knee and the floor are this module's choices and the
 defaults; losses, landmark_terms and make_step take others as arguments (blocks.py's w_*, knee and
 spread_floor, which session.py passes), with the ladder's settings (rungs, ladder.degrade's keyword
@@ -77,6 +93,12 @@ HUBER_KNEE_MM = 2.0
 SPREAD_FLOOR_MM = 0.5
 MASK_THRESHOLD = 0.5                # a pooled or resampled channel at or above it is the mask, for the hard Dice and the surfaces
 DICE_EPS = 1.0                      # keeps the soft Dice defined, and 1, where a channel is empty in both
+# The restraint's collective variable by objective: its scale (the error one unit of the squared
+# loss's force stands for: 5 per cent of a crop's volume, the landmark term's knee in a measure's
+# own units) and its bins (low, high, count): fifty of a crop's volume, four hundred a measure.
+ABF_SCALE = {"mask": 0.05, "landmarks": HUBER_KNEE_MM}
+ABF_BINS = {"mask": (0.0, 1.0, 50), "landmarks": (-200.0, 200.0, 400)}
+ABF_FULL = 100                      # samples a bin needs before its mean force acts in full (ABF's full_samples)
 
 
 @dataclass
@@ -286,11 +308,75 @@ def naming_term(nm: naming.Naming, out, batch, fields: int):
     return naming.body_loss(nm, X, batch["names"].reshape(fields, B), noise)
 
 
+def collective(out, batch, objective: str):
+    """The restraint's collective variables of a batch, (B, K), with their references and which of
+    those the batch gives: under the mask objective the target channel's volume as a share of the
+    logits' grid, against the clean mask pooled onto it (K 1); under landmarks the measures' values."""
+    if objective == "mask":
+        logits = out["logits"]
+        axes = tuple(range(1, logits.ndim - 1))
+        cv = jnp.mean(jax.nn.sigmoid(logits[..., 0]), axes)[:, None]
+        ref = jnp.mean(pooled(batch["masks"], logits.shape[1:4])[..., 0], axes)[:, None]
+        return cv, ref, jnp.ones_like(cv, dtype=bool)
+    ok = jnp.isfinite(batch["values"])
+    return out["values"], jnp.where(ok, batch["values"], 0.0), ok
+
+
+def restraint_weight(lam):
+    """The restraint's weight along the anneal, (1 - cos 2 pi lambda) / 2: 0 at both ends, 1 at lambda 1/2."""
+    return 0.5 * (1.0 - jnp.cos(2.0 * jnp.pi * lam))
+
+
+def bin_of(cv, objective: str):
+    """Each variable's bin, clipped into the objective's bins."""
+    lo, hi, n = ABF_BINS[objective]
+    return jnp.clip(jnp.floor((cv - lo) / (hi - lo) * n), 0, n - 1).astype(jnp.int32)
+
+
+def restraint_term(cv, bias, lam, objective: str):
+    """Minus the restraint's weight at lambda times the mean over the batch of each variable's bin's
+    mean force (bias, (K, bins), held fixed) times the variable: its gradient on a variable is the
+    weight times its bin's mean force over the batch's count, a push towards the bin's reference."""
+    force = jax.lax.stop_gradient(bias)[jnp.arange(cv.shape[1])[None, :], bin_of(cv, objective)]
+    return -restraint_weight(lam) * jnp.mean(force * cv)
+
+
+@dataclass
+class Forces:
+    """The restraint's estimate, ABF's: for each variable and bin the mean force (reference - value)
+    / scale^2 of the samples whose value fell in it, a running mean of the first ABF_FULL and a
+    moving mean of weight 1 / ABF_FULL after, and the count of samples; bias is the mean scaled by
+    the share of ABF_FULL samples a bin holds, at most 1."""
+    objective: str
+    mean: np.ndarray
+    count: np.ndarray
+
+    @classmethod
+    def empty(cls, objective: str, k: int) -> "Forces":
+        n = ABF_BINS[objective][2]
+        return cls(objective, np.zeros((k, n), np.float64), np.zeros((k, n), np.int64))
+
+    def update(self, cv: np.ndarray, ref: np.ndarray, ok: np.ndarray) -> None:
+        """The batch's samples added in order, each to its variable's bin."""
+        scale = ABF_SCALE[self.objective]
+        bins = np.asarray(bin_of(jnp.asarray(cv), self.objective))
+        for i, j in zip(*np.nonzero(np.asarray(ok))):
+            b = bins[i, j]
+            self.count[j, b] += 1
+            force = (float(ref[i, j]) - float(cv[i, j])) / scale ** 2
+            self.mean[j, b] += (force - self.mean[j, b]) / min(self.count[j, b], ABF_FULL)
+
+    def bias(self) -> np.ndarray:
+        return (self.mean * np.minimum(self.count / ABF_FULL, 1.0)).astype(np.float32)
+
+
 def losses(model: Model, batch, w, lam, nm: Optional[naming.Naming] = None, fields: int = 0,
            weights: Dict[str, float] = LOSS_WEIGHTS, knee: float = HUBER_KNEE_MM, floor: float = SPREAD_FLOOR_MM,
-           rungs: Optional[Dict[str, float]] = None):
+           rungs: Optional[Dict[str, float]] = None, bias=None, restraint: float = 0.0):
     """The total loss and its terms for one batch at fusion weight w and ladder rung lam; the
-    encoder reads batch["input"] where the batch carries one, the ladder always batch["hu"]."""
+    encoder reads batch["input"] where the batch carries one, the ladder always batch["hu"]. With a
+    bias (Forces.bias) the restraint at weight `restraint` joins the total, and the record carries
+    the batch's collective variables (cv, cv_ref, cv_ok) for the estimate."""
     masks = ladder.degrade(batch["masks"], batch["hu"], lam, spacing_mm=model.cfg.spacing, **(rungs or {}))
     out = model(batch.get("input", batch["hu"]), masks, w)
     if model.cfg.objective == "mask":
@@ -298,7 +384,8 @@ def losses(model: Model, batch, w, lam, nm: Optional[naming.Naming] = None, fiel
         name_loss, named = name_terms(out["name_logits"], batch["names"])
         terms = {"mask": mask_loss, "feature": feature_term(out), "name": name_loss}
         total = sum(weights[k] * v for k, v in terms.items())
-        return total, dict(terms, dice=dice, dice_every=dice_every, named_right=named)
+        total, extra = restrained(total, out, batch, lam, bias, restraint, "mask")
+        return total, dict(terms, dice=dice, dice_every=dice_every, named_right=named, **extra)
     lm, spread, dist = landmark_terms(out, batch["targets"], knee, floor)
     ok = jnp.isfinite(batch["values"])
     value = masked_mean(jnp.abs(out["values"] - jnp.where(ok, batch["values"], 0.0)), ok)
@@ -306,13 +393,35 @@ def losses(model: Model, batch, w, lam, nm: Optional[naming.Naming] = None, fiel
     if nm is not None and fields > 0:
         terms["naming"] = naming_term(nm, out, batch, fields)
     total = sum(weights[k] * v for k, v in terms.items())
-    return total, dict(terms, distance_mm=dist)
+    total, extra = restrained(total, out, batch, lam, bias, restraint, "landmarks")
+    return total, dict(terms, distance_mm=dist, **extra)
+
+
+def restrained(total, out, batch, lam, bias, restraint: float, objective: str):
+    """The total with the restraint added where a bias is given, and what the record carries of it."""
+    if bias is None:
+        return total, {}
+    cv, ref, ok = collective(out, batch, objective)
+    term = restraint_term(cv, bias, lam, objective)
+    return total + restraint * term, {"restraint": term, "cv": cv, "cv_ref": ref, "cv_ok": ok}
 
 
 def make_step(nm: Optional[naming.Naming], fields: int, weights: Dict[str, float] = LOSS_WEIGHTS,
-              knee: float = HUBER_KNEE_MM, floor: float = SPREAD_FLOOR_MM, rungs: Optional[Dict[str, float]] = None):
+              knee: float = HUBER_KNEE_MM, floor: float = SPREAD_FLOOR_MM, rungs: Optional[Dict[str, float]] = None,
+              restraint: Optional[float] = None):
     """One jitted step of the optimizer it is given on the total loss, w and lambda traced so that
-    changing them does not compile again."""
+    changing them does not compile again. With a restraint's weight the step takes the bias too,
+    step(model, opt, batch, w, lam, bias), traced as well."""
+    if restraint is not None:
+        @nnx.jit
+        def restrained_step(model, opt, batch, w, lam, bias):
+            (total, terms), grads = nnx.value_and_grad(
+                lambda m: losses(m, batch, w, lam, nm, fields, weights, knee, floor, rungs, bias, restraint),
+                has_aux=True)(model)
+            opt.update(model, grads)
+            return total, terms
+        return restrained_step
+
     @nnx.jit
     def step(model, opt, batch, w, lam):
         (total, terms), grads = nnx.value_and_grad(
@@ -320,6 +429,20 @@ def make_step(nm: Optional[naming.Naming], fields: int, weights: Dict[str, float
         opt.update(model, grads)
         return total, terms
     return step
+
+
+def make_error_slope(rungs: Optional[Dict[str, float]] = None):
+    """One jitted function, (model, batch, w, lam) -> (E, dE/dlambda), error_curve's E on a batch at
+    the ladder's settings given, compiled once for schedule=adaptive's checks; the encoder reads
+    batch["input"] where the batch carries one, as in training."""
+    def error(m, batch, w, lam):
+        masks = ladder.degrade(batch["masks"], batch["hu"], lam, spacing_mm=m.cfg.spacing, **(rungs or {}))
+        out = m(batch.get("input", batch["hu"]), masks, w)
+        if m.cfg.objective == "mask":
+            return mask_error(out["logits"], batch["masks"])
+        return landmark_terms(out, batch["targets"])[2]
+
+    return nnx.jit(lambda m, batch, w, lam: jax.value_and_grad(lambda l: error(m, batch, w, l))(lam))
 
 
 @dataclass
