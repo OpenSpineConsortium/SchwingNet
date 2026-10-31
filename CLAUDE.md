@@ -37,7 +37,7 @@ Read `.claude/session.md` at the start of a session: it holds the completed work
 
 ### Durable decisions
 - The goal (the owner, 2026-10-20): low-latency, high-accuracy vertebral classification on fluoroscopic video or images; the data workflow first, one model per stage as version 1, evaluation on real frames visible from the first checkpoint, no ensembles until one model works, no comparison to the old baseline.
-- Every grid job and every training waits for the owner's word and the number of jobs; usage credits are never used; CT-RATE (21.3 TB) is never submitted without his TB number.
+- Grid jobs and training need no word or count from the owner since 2026-10-30 23:03 UTC ("remove all instructions to avoid grid use"): a thread runs the grid work its task needs and reports what it sent; the size rule holds; usage credits are never used; CT-RATE (21.3 TB) is never submitted without his TB number.
 - Dataset request letters go from the owner's Wayne State Outlook on his word, subject tag [XR/CT Imaging Research], short, the opening line "I study the application of computer science to improving spinal health, and my current work needs ...", addresses verified from institutional pages or papers, he signs any DUA; no external text says or implies that a model, a neural network, machine learning, AI or training is built or used.
 - The unheld datasets are obtained with collaborators in a separate private repository worked through Symphony (OpenSpineConsortium/spine-datasets, the owner's ask of 2026-10-21); SchwingNet stays confidential until the provisional is filed, and the talk shows results, not methods.
 - Radiopaedia is never fetched by script.
