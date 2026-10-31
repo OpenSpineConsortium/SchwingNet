@@ -7228,6 +7228,55 @@ exit "${FAKE_RC:-0}"
         self.assertEqual(done.returncode, 75, done.stdout)
         self.assertEqual(len(self.submitted()), 2)
 
+    def test_prune_plans_shows_the_plan_then_deletes_then_prints_what_went(self):
+        prune = self.repo / "grid" / "prune"
+        prune.mkdir(parents=True, exist_ok=True)
+        (prune / "round_t.txt").write_text("a_set\n", encoding="utf-8")
+        # a list that is not there, a malformed send and one before the environments are ready queue nothing
+        self.assertEqual(self.gate("prune", "no_such_list").returncode, 64)
+        self.assertEqual(self.gate("prune", "a", "b").returncode, 64)
+        self.assertEqual(self.gate("prune", "Bad-List").returncode, 64)
+        self.assertEqual(self.gate("prune", "round_t").returncode, 75)
+        self.environments_ready()
+        done = self.gate("prune", "round_t")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("deletes nothing", done.stdout)
+        lines = self.submitted()
+        self.assertEqual(len(lines), 1, lines)
+        self.assertIn("--class batch --name prune", lines[0])
+        self.assertIn("PRUNE_MODE=plan", lines[0])
+        self.assertIn(f"PRUNE_DATA={self.data}", lines[0])
+        job = self.recorded()["prune"]
+        # while a step is live a second send is refused
+        self.live(job)
+        self.assertEqual(self.gate("prune", "round_t").returncode, 75)
+        (self.fake / "queue").write_text("", encoding="utf-8")
+        # the plan is printed once, and nothing is queued with it
+        logs = self.repo / "grid" / "logs"
+        (logs / "PRUNE-round_t.plan.md").write_text("# prune round_t: the plan\n- a_set: 1 files, 0.0 GB\n", encoding="utf-8")
+        (logs / "PRUNE-round_t.plan.json").write_text("{}\n", encoding="utf-8")
+        done = self.gate("prune", "round_t")
+        self.assertEqual(done.returncode, 0, done.stdout)
+        self.assertIn("- a_set: 1 files, 0.0 GB", done.stdout)
+        self.assertEqual(len(self.submitted()), 1)
+        # the next send queues the deletion
+        done = self.gate("prune", "round_t")
+        self.assertEqual(done.returncode, 0, done.stdout)
+        self.assertEqual(len(self.submitted()), 2)
+        self.assertIn("PRUNE_MODE=delete", self.submitted()[1])
+        # its report is printed once and every file of the list is cleared, so a later send plans again
+        (logs / "PRUNE-round_t.done.md").write_text("# prune round_t: the deletion\nFreed: 0.0 GB.\n", encoding="utf-8")
+        done = self.gate("prune", "round_t")
+        self.assertIn("Freed: 0.0 GB.", done.stdout)
+        self.assertEqual(sorted(p.name for p in logs.glob("PRUNE-round_t*")), [])
+        self.assertEqual(len(self.submitted()), 2)
+        # never while a fetch of a set the list names is live
+        self.state_line("4244", "fetch:a_set", "dp_a_set")
+        self.live("4244")
+        done = self.gate("prune", "round_t")
+        self.assertEqual(done.returncode, 75, done.stdout)
+        self.assertEqual(len(self.submitted()), 2)
+
     def test_unpack_queues_once_then_prints_what_it_wrote(self):
         shutil.copy(GRID / "fetch-xray.json", self.repo / "grid" / "fetch-xray.json")
         # an id of no list, one with no raw folder yet, and a malformed send are refused and queue nothing
