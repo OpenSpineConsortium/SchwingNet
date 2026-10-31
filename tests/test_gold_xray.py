@@ -272,6 +272,22 @@ class OnBoneTest(unittest.TestCase):
         self.assertFalse(self.on([15, 15, 15], [15, 15, 80.0]))
         self.assertFalse(self.on([-30, 15, 15.0]))
 
+    def test_a_level_is_placed_only_with_its_ten_body_points_placed_and_every_point_on_its_bone(self):
+        # DEVIATIONS.md, item 3: on two of six real CTs the oracle placed every point of L5 but the two
+        # of its body's back wall, and such a level can never show its ten body points in a frame.
+        level = np.full((len(self.X.G.LANDMARKS), 3), 15.0)
+        self.assertTrue(self.X.placed(self.labels, np.eye(4), 3, level))
+        back = level.copy()
+        back[self.X.G.INDEX["h_post.superior"]] = np.nan
+        self.assertFalse(self.X.placed(self.labels, np.eye(4), 3, back))
+        canal = level.copy()
+        canal[self.X.G.INDEX["canal_w.right"]] = np.nan
+        self.assertTrue(self.X.placed(self.labels, np.eye(4), 3, canal))
+        self.assertFalse(self.X.placed(self.labels, np.eye(4), 3, np.full_like(level, np.nan)))
+        off = level.copy()
+        off[self.X.G.INDEX["spinous_length.tip"]] = [15, 15, 27.1]
+        self.assertFalse(self.X.placed(self.labels, np.eye(4), 3, off))
+
     def test_the_search_near_the_points_answers_as_the_whole_map_would(self):
         rng = np.random.default_rng(7)
         bone = np.argwhere(self.labels == 3).astype(float)
@@ -584,6 +600,27 @@ class GoldCtTest(unittest.TestCase):
         marks, frames = X.read_column(self.labels, self.affine, IDS3, LEVELS)
         self.assertTrue(np.isfinite(marks).all())
         self.assertEqual(len(frames), len(LEVELS))
+
+    def test_a_level_whose_body_was_placed_in_part_is_read_as_one_the_oracle_could_not_place(self):
+        # The oracle taking every measure of L5 but the height of its body's back wall, whose two
+        # points are body points, as it did on two of six real CTs (DEVIATIONS.md, item 3).
+        from autoanatomist import oracle
+        X, at, read = self.X, LEVELS.index("L5"), oracle.ChordOracle.read
+
+        def without_l5_back_wall(chord, *args, **kwargs):
+            readings = list(read(chord, *args, **kwargs))
+            for r in readings:
+                if r.level == "L5":
+                    del r.measurements["h_post"]
+            return readings
+
+        with mock.patch.object(oracle.ChordOracle, "read", autospec=True, side_effect=without_l5_back_wall):
+            marks, frames = X.read_column(self.labels, self.affine, IDS3, LEVELS)
+        self.assertTrue(np.isnan(marks[at]).all())
+        self.assertTrue(np.isfinite(marks[:at]).all())
+        self.assertEqual(len(frames), len(LEVELS) - 1)
+        # Its sacrum's top is then taken under the line through L4, the lowest level read.
+        np.testing.assert_allclose(X.lowest_centre(marks), X.level_centres(marks)[at - 1])
 
     def test_a_map_that_draws_no_sacrum_is_refused_in_words(self):
         with tempfile.TemporaryDirectory() as cache, mock.patch.dict(os.environ):

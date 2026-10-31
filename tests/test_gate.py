@@ -5778,6 +5778,17 @@ exit "${FAKE_RC:-0}"
             (self.data / name / "raw").mkdir(parents=True)
         refused = self.gate("qaloop", "qa_gold")
         self.assertEqual(refused.returncode, 2, refused.stdout)
+        self.assertIn(f"reads gold tier 3's masks in folders named Vertebrae under {self.data}/aws_enhance_pet_labels/raw, "
+                      "which holds none", refused.stdout)
+        masks = self.data / "aws_enhance_pet_labels" / "raw" / "0001"
+        masks.mkdir()
+        (masks / "0001.nii.gz").write_bytes(b"")
+        refused = self.gate("qaloop", "qa_gold")
+        self.assertIn("in folders named Vertebrae", refused.stdout)
+        (masks / "Vertebrae").mkdir()
+        (masks / "Vertebrae" / "0001.nii.gz").write_bytes(b"")
+        refused = self.gate("qaloop", "qa_gold")
+        self.assertEqual(refused.returncode, 2, refused.stdout)
         self.assertIn(f"reads gold tier 4's CTs by {self.gold4_root()}/records.jsonl, which TotalSegmentator's run has not "
                       "written yet (send totalseg gold4)", refused.stdout)
         self.assertEqual(self.submitted(), [])

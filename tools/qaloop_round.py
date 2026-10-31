@@ -622,8 +622,8 @@ def gold_for(plan, data, gold4, work, workers, say):
             case["presence"] = X.case_presence(case, presence, int(spec["size"]))
             read.append(X.without_images(case))
         out[tier] = read
-        # A level the oracle could not place, or placed off its bone, stays unread and breaks the runs at
-        # it; counted, so a tier whose maps lose levels says so.
+        # A level the oracle could not place, placed only in part or placed off its bone stays unread and
+        # breaks the runs at it; counted, so a tier whose maps lose levels says so.
         unread = sum(int(np.isnan(c["landmarks"]).all(axis=(1, 2)).sum()) for c in read)
         record[tier].update(read=len(read), failed=dict(failed), stand_in=stand_in, levels_unread=unread,
                             read_persons={p: len({c["person"] for c in read if c["part"] == p})

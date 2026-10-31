@@ -254,9 +254,10 @@ def column_levels(kind):
 
 def read_column(labels, affine, ids, levels):
     """The oracle's landmarks of each level, (levels, 18, 3) in world mm, NaN for a level it did not
-    read or read off its own bone, and the frames of the levels it read on their bones. On a twisted
-    column the oracle can take a level's frame askew and place its landmarks well off the bone, a
-    misreading no less than a level it could not place (DEVIATIONS.md, item 2)."""
+    place, and the frames of the levels it placed. A level whose body it placed only in part can
+    never show its ten body points in a frame, so it breaks every run at it as an unplaced level does
+    and is counted with them (DEVIATIONS.md, item 3); on a twisted column the oracle can take a
+    level's frame askew and place its landmarks well off the bone, a misreading no less (item 2)."""
     from autoanatomist.oracle import ChordOracle
     keys = oracle_keys()
     names = {int(ids[lv]): lv for lv in levels if lv in ids}
@@ -264,12 +265,19 @@ def read_column(labels, affine, ids, levels):
     marks, frames = [], []
     for lv in levels:
         got = readings[lv].landmarks(keys) if lv in readings else None
-        if got is not None and not on_bone(labels, affine, ids[lv], got):
+        if got is not None and not placed(labels, affine, ids[lv], got):
             got = None
         marks.append(np.full((len(G.LANDMARKS), 3), np.nan) if got is None else got)
         if got is not None:
             frames.append(readings[lv].frame)
     return np.array(marks), frames
+
+
+def placed(labels, affine, label, points):
+    """Whether the oracle placed a level: its ten body points all placed, and every point it placed
+    on the level's own bone."""
+    points = np.asarray(points, float)
+    return bool(np.isfinite(points[:S.BODY_POINTS]).all()) and on_bone(labels, affine, label, points)
 
 
 def on_bone(labels, affine, label, points, within_mm=OFF_BONE_MM):

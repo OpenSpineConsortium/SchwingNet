@@ -218,8 +218,10 @@ class ReportTest(unittest.TestCase):
         self.assertIn("gold presence without its data: gold4: no held-out radiograph of gold4", performance)
         self.assertIn("typical phantoms in place of a tier's CTs", performance)
         self.assertIn("gold tier 3 (ENHANCE.PET's CTs, each bone annotated): 3 stand-ins", claim["7"]["evidence"])
-        self.assertIn("1 held-out persons, 2 levels left unread, the oracle having placed them nowhere or off their "
-                      "bone (4 found under the data root)", claim["7"]["evidence"])
+        self.assertIn("1 held-out persons, 2 levels left unread, the oracle having placed them nowhere, in part or off "
+                      "their bone (4 chosen from the CTs and maps found under the data root under the plan's caps)",
+                      claim["7"]["evidence"])
+        self.assertIn("(4 chosen from the TotalSegmentator run's records under the plan's caps)", claim["7"]["evidence"])
         self.assertIn("gold4: left out before reading, by reason: a gold tier 3 person 1, the segmenters disagree 2",
                       claim["35"]["evidence"])
         evaluation = claim["32"]["evidence"]

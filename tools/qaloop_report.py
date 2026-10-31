@@ -87,6 +87,8 @@ GOLD_LIMITS = (
 )
 GOLD_NAMES = {"gold3": "gold tier 3 (ENHANCE.PET's CTs, each bone annotated)",
               "gold4": "gold tier 4 (CTs where TotalSegmentator's map agrees with SPINEPS's)"}
+# Where each tier's CTs are chosen from (tools/gold_xray.py, cases_for).
+GOLD_FROM = {"gold3": "the CTs and maps found under the data root", "gold4": "the TotalSegmentator run's records"}
 # The gates in the order PREREG.md section 3 names them, with the words a page says them in, and the
 # gold kind's three after them (docs/research/qa-loop-gold/PREREG.md), each answered tier by tier.
 GATE_WORDS = {"convergence": "convergence", "anomaly": "anomaly", "fingerprint": "fingerprint", "presence": "presence",
@@ -266,7 +268,8 @@ def gold_read_words(gates):
                 else "CTs")
         said.append(f"{GOLD_NAMES.get(tier, tier)}: {r.get('read')} {what} read, {persons.get('training')} training and "
                     f"{persons.get('validation')} held-out persons, {r.get('levels_unread')} levels left unread, the "
-                    f"oracle having placed them nowhere or off their bone ({r.get('cases')} found under the data root)")
+                    f"oracle having placed them nowhere, in part or off their bone ({r.get('cases')} chosen from "
+                    f"{GOLD_FROM.get(tier, 'the plan')} under the plan's caps)")
     return "; ".join(said)
 
 

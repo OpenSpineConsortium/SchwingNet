@@ -3324,7 +3324,7 @@ qaloop_queue() {  # qaloop_queue CHAIN COMMIT FIRST LINKS: links FIRST to LINKS 
   echo "$chain"
 }
 word_qaloop() {  # one plan of the QA loop: queued as a chain of links, its report printed on every later send, an unended chain carried on
-  local plan=$REPO/grid/qaloop/$id.json report=$LOGS/QALOOP-$id.md class links busy chain chain_commit full root last ended stopped ct masks records
+  local plan=$REPO/grid/qaloop/$id.json report=$LOGS/QALOOP-$id.md class links busy chain chain_commit full root last ended stopped ct masks folder records
   [ -f "$plan" ] || { echo "refusing: no plan grid/qaloop/$id.json at commit $commit"; return 64; }
   qaloop_covered "$plan" "$id" || return
   class=$(qaloop_field "$plan" class)
@@ -3350,8 +3350,15 @@ word_qaloop() {  # one plan of the QA loop: queued as a chain of links, its repo
       # A loop plan has no stand-ins, so a tier with no CT would end the loop at its first round for
       # want of data: both tiers' CTs are on the volume before a GPU link is queued.
       ct=$(qaloop_gold_word "$plan" ct) masks=$(qaloop_gold_word "$plan" labels) records=$(qaloop_gold_word "$plan" records)
+      folder=$(qaloop_gold_word "$plan" labels_folder)
       [ -n "$ct" ] && [ -n "$masks" ] && [ -d "$DATA_ROOT/$ct" ] && [ -d "$DATA_ROOT/$masks" ] || {
         echo "refusing: the plan $id reads gold tier 3's CTs and masks under $DATA_ROOT (${ct:-<its CTs>}, ${masks:-<its masks>}), which are not both there; nothing was queued"
+        return 2
+      }
+      # Gold tier 3 reads a mask only from a folder of the plan's name, the bones' maps beside the
+      # release's other maps, so a masks folder of another layout would end the loop at its first round.
+      [ -n "$folder" ] && find "$DATA_ROOT/$masks" -path "*/$folder/*.nii.gz" -print -quit 2>/dev/null | grep -q . || {
+        echo "refusing: the plan $id reads gold tier 3's masks in folders named ${folder:-<its labels_folder>} under $DATA_ROOT/$masks, which holds none; nothing was queued"
         return 2
       }
       [ -n "$records" ] && [ -s "$GOLD4_ROOT/$records" ] || {
