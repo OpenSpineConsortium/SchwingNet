@@ -32,6 +32,7 @@ import numpy as np
 from scanimport import schemes
 from scanimport.tests.phantom import ARCH, AIR, CORTEX, CORTEX_MM, CSF, DISC, SOFT, TRABECULAR, rotation, grid_about
 from schwingcheck import columns as C
+from schwingcheck import correlation as CORR
 from schwingcheck import measures as SM
 
 SHAPE_MEASURES = ["endplate", "endplate_depth", "endplate_lower", "endplate_lower_depth", "h_post", "canal_w",
@@ -57,6 +58,7 @@ class Level:
     TP: float = 78.0
     LS: float = 26.0
     T: float = ARCH_MM
+    shape: Optional[object] = field(default=None, compare=False, repr=False)   # template.Warp, or the frustum
 
     @classmethod
     def from_values(cls, name: str, v: Dict[str, float]) -> "Level":
@@ -72,16 +74,32 @@ class Level:
 
     @property
     def reach(self) -> float:
-        return math.sqrt((self.TP / 2) ** 2 + max(self.D_top, self.D_bot, self.CD + self.T + self.LS) ** 2
-                         + (self.H / 2) ** 2)
+        own = math.sqrt((self.TP / 2) ** 2 + max(self.D_top, self.D_bot, self.CD + self.T + self.LS) ** 2
+                        + (self.H / 2) ** 2)
+        return own if self.shape is None else max(own, self.shape.reach)
 
 
-def draw_levels(phenotype: str = "typical", seed: int = 0, start: str = "L1", count: int = 4) -> List[Level]:
+def with_shape(lv: Level, shape) -> Level:
+    """lv drawn by another shape (template.Warp) in place of the frustum, its values unchanged."""
+    import dataclasses
+    return dataclasses.replace(lv, shape=shape)
+
+
+def draw_levels(phenotype: str = "typical", seed: int = 0, start: str = "L1", count: int = 4,
+                correlation: Optional[CORR.Prior] = None, scale_sd: Optional[float] = None) -> List[Level]:
     """`count` consecutive levels from `start` down one column of the generator's, with no
-    measurement error: the anatomy of one synthetic patient."""
+    measurement error: the anatomy of one synthetic patient. correlation, a prior fitted from real
+    spines (schwingcheck/correlation.py), draws every level and measure of the column jointly from
+    it, never one at a time (greg, 2026-10-30 23:30 UTC); the shape measures it was not fitted on
+    are added by CORR.widen. It must name every level of the column, so a cervical phantom needs a
+    prior fitted from C3. scale_sd, when given, replaces the generator's spread of the patient's
+    size, 0 drawing every column at size 1."""
     ms = SM.select(SHAPE_MEASURES)
     ref = SM.reference(ms)
-    cols = C.draw_columns(ref, [phenotype], seed, 1, SHAPE_MEASURES, noise_mm=0.0, power=SM.powers(ms))
+    extra = {} if scale_sd is None else {"scale_sd": float(scale_sd)}
+    if correlation is not None:
+        extra["correlation"] = CORR.widen(correlation, SHAPE_MEASURES)
+    cols = C.draw_columns(ref, [phenotype], seed, 1, SHAPE_MEASURES, noise_mm=0.0, power=SM.powers(ms), **extra)
     names = cols.levels[0]
     if start not in names:
         raise ValueError("a %s column has no %s; its levels are %s" % (phenotype, start, ", ".join(names)))
@@ -146,15 +164,24 @@ def parts(q: np.ndarray, lv: Level) -> Dict[str, np.ndarray]:
     return {"body": body, "canal": canal, "arch": arch, "tp": tp, "spinous": spin}
 
 
-def tissue(q: np.ndarray, lv: Level, half_gaps: Tuple[float, float]) -> np.ndarray:
-    """Hounsfield units at local points of one vertebra's segment: soft tissue, the disc inside the
-    nearer end-plate's outline out to the segment's edge, CSF in the canal, the processes, the body
-    a cortical shell round a trabecular core."""
+def tissue_outside(q: np.ndarray, lv: Level, half_gaps: Tuple[float, float]) -> np.ndarray:
+    """Hounsfield units round a vertebra: soft tissue, and the disc inside the nearer end-plate's
+    outline out to the segment's edge."""
     out = np.full(len(q), SOFT)
     z = q[:, 2]
     up, down = half_gaps
     disc = plate_ellipse(q, lv) & (z <= lv.H / 2 + up) & (z >= -lv.H / 2 - down) & (np.abs(z) > lv.H / 2)
     out[disc] = DISC
+    return out
+
+
+def tissue(q: np.ndarray, lv: Level, half_gaps: Tuple[float, float]) -> np.ndarray:
+    """Hounsfield units at local points of one vertebra's segment: soft tissue, the disc inside the
+    nearer end-plate's outline out to the segment's edge, CSF in the canal, the processes, the body
+    a cortical shell round a trabecular core; a level with a shape takes the shape's own."""
+    if lv.shape is not None:
+        return lv.shape.tissue(q, lv, half_gaps)
+    out = tissue_outside(q, lv, half_gaps)
     p = parts(q, lv)
     out[p["canal"]] = CSF
     out[p["arch"] | p["tp"] | p["spinous"]] = ARCH
@@ -164,6 +191,8 @@ def tissue(q: np.ndarray, lv: Level, half_gaps: Tuple[float, float]) -> np.ndarr
 
 
 def solid(q: np.ndarray, lv: Level) -> np.ndarray:
+    if lv.shape is not None:
+        return lv.shape.solid(q)
     p = parts(q, lv)
     return p["body"] | p["arch"] | p["tp"] | p["spinous"]
 
@@ -194,11 +223,17 @@ def layout(levels: Sequence[Level], tilt, bends: Optional[Sequence[Tuple[Sequenc
 def render(levels: Sequence[Level], spacing=(1.0, 1.0, 1.0), tilt=((1.0, 0.3, 0.0), 12.0),
            bends: Optional[Sequence[Tuple[Sequence[float], float]]] = None,
            grid_turn=((0.0, 0.0, 1.0), 9.0), margin: float = 10.0, sub: int = 2, blur_mm: float = 0.6,
-           noise_hu: float = 0.0, seed: int = 7, with_ct: bool = True) -> Phantom:
+           noise_hu: float = 0.0, seed: int = 7, with_ct: bool = True,
+           offset: Sequence[float] = (0.0, 0.0, 0.0)) -> Phantom:
     """The column's mask and, unless with_ct is False, its CT, on one grid (the module's
-    docstring); bends tilt each level about an axis across the column, (axis, degrees)."""
+    docstring); bends tilt each level about an axis across the column, (axis, degrees). The grid's
+    origin sits on its own lattice, so offset, a shift of the whole column in millimetres, is what
+    moves the anatomy against the voxels (template.py reads a template at several such phases)."""
     levels = list(levels)
     ez, centres, rots, cuts, half = layout(levels, tilt, bends)
+    shift = np.asarray(offset, float)
+    centres = centres + shift[None, :]
+    cuts = cuts + float(shift @ ez)
     reach = max(lv.reach for lv in levels) + 2.0
     radius = reach + 0.5 * margin
     top = centres[0] + ez * (levels[0].H / 2 + half[0, 0])

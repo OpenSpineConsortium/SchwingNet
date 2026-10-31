@@ -71,6 +71,14 @@ reads the fused three and gives one heatmap logit per landmark at the half scale
   (trabecular 230 HU, cortex 800) from its disc (90) and soft tissue (40), between the two; and
   every term of the loss, the calibration, the naming layer, the session and the search run over
   it as over any network. tests/test_autoanatomist_probe.py holds these.
+- transunet: TransUNet (Chen et al., arXiv 2102.04306, 2021) in 3-D: the residual-unet's three
+  strided blocks, then TRANSUNET_DEPTH transformer layers over the eighth scale's voxels as tokens,
+  added to them, so the bottleneck, which the name head and the latent read, sees the whole crop at
+  once; the residual-unet's decoder.
+- unetr: UNETR (Hatamizadeh et al., WACV 2022) at this crop's size: the crop cut into 8-voxel
+  patches, each a token, through UNETR_DEPTH transformer layers with no convolution between; the
+  half and the quarter scales are read off the layers a third and two thirds up, resized and refined
+  by one residual block each; the residual-unet's decoder. Of the five it leans least on locality.
 """
 from __future__ import annotations
 
@@ -365,6 +373,143 @@ class ProbeDecoder(nnx.Module):
         return f1 * (PROBE_GATE + PROBE_TILT_PER_MM * jnp.asarray(tilt, f1.dtype)[None])
 
 
+# --- the transformers --------------------------------------------------------------------------------
+
+# The transformers' sizes, this module's choices: the encoder's tokens are the eighth scale's voxels,
+# one token each, of width widths[2]; a layer is pre-norm self-attention over every token and a
+# two-layer perceptron TRANSFORMER_MLP times as wide; the heads are the most of TRANSFORMER_HEADS
+# that divide the width. TransUNet puts TRANSUNET_DEPTH layers after two convolutional blocks;
+# UNETR is attention from the patches up, UNETR_DEPTH layers, the half and the quarter scales read
+# off its earlier layers.
+TRANSFORMER_HEADS = 4
+TRANSFORMER_MLP = 2
+TRANSUNET_DEPTH = 4
+UNETR_DEPTH = 6
+UNETR_PATCH = 8
+POSITION_INIT_SD = 0.02
+
+
+def eighth_of(shape: Sequence[int]) -> Tuple[int, int, int]:
+    """The eighth scale's voxels of a crop, as three strided SAME convolutions give them."""
+    return tuple(-(-int(n) // 8) for n in shape)
+
+
+def scale_of(shape: Sequence[int], factor: int) -> Tuple[int, ...]:
+    """A crop's voxels at 1/factor, rounded up as strided SAME convolutions round."""
+    return tuple(-(-int(n) // factor) for n in shape)
+
+
+def heads_for(width: int) -> int:
+    """The most heads, up to TRANSFORMER_HEADS, that divide the width evenly."""
+    return next(h for h in range(min(TRANSFORMER_HEADS, width), 0, -1) if width % h == 0)
+
+
+class Attention(nnx.Module):
+    """Multi-head self-attention over a sequence (batch, N, D): every token reads every other, so a
+    feature at one vertebra's voxel can depend on the whole crop at once, which a convolution's
+    receptive field reaches only through depth."""
+
+    def __init__(self, width: int, rngs: nnx.Rngs):
+        self.heads = heads_for(width)
+        self.qkv = nnx.Linear(width, 3 * width, rngs=rngs)
+        self.out = nnx.Linear(width, width, rngs=rngs)
+
+    def __call__(self, x):
+        b, n, d = x.shape
+        h = self.heads
+        q, k, v = jnp.split(self.qkv(x).reshape(b, n, 3, h, d // h), 3, axis=2)
+        q, k, v = (t[:, :, 0].transpose(0, 2, 1, 3) for t in (q, k, v))          # (batch, heads, N, d / heads)
+        weights = jax.nn.softmax(jnp.einsum("bhnc,bhmc->bhnm", q, k) / jnp.sqrt(d // h), axis=-1)
+        mixed = jnp.einsum("bhnm,bhmc->bhnc", weights, v).transpose(0, 2, 1, 3).reshape(b, n, d)
+        return self.out(mixed)
+
+
+class TransformerLayer(nnx.Module):
+    """One pre-norm transformer layer: self-attention and a perceptron, each with a residual."""
+
+    def __init__(self, width: int, rngs: nnx.Rngs):
+        self.norm1 = nnx.LayerNorm(width, rngs=rngs)
+        self.attention = Attention(width, rngs)
+        self.norm2 = nnx.LayerNorm(width, rngs=rngs)
+        self.fc1 = nnx.Linear(width, TRANSFORMER_MLP * width, rngs=rngs)
+        self.fc2 = nnx.Linear(TRANSFORMER_MLP * width, width, rngs=rngs)
+
+    def __call__(self, x):
+        x = x + self.attention(self.norm1(x))
+        return x + self.fc2(nnx.gelu(self.fc1(self.norm2(x))))
+
+
+class Tokens(nnx.Module):
+    """A volume (batch, X, Y, Z, D) as tokens with a learnt position each, through a stack of
+    layers; gives every layer's output back as a volume of the same shape."""
+
+    def __init__(self, grid: Sequence[int], width: int, depth: int, rngs: nnx.Rngs):
+        self.grid = tuple(int(n) for n in grid)
+        n = int(np.prod(self.grid))
+        self.position = nnx.Param(POSITION_INIT_SD * jax.random.normal(rngs.params(), (1, n, width)))
+        self.layers = nnx.List([TransformerLayer(width, rngs) for _ in range(depth)])
+        self.norm = nnx.LayerNorm(width, rngs=rngs)
+
+    def __call__(self, x) -> List[jnp.ndarray]:
+        b, d = x.shape[0], x.shape[-1]
+        t = x.reshape(b, -1, d) + self.position.value
+        outs = []
+        for layer in self.layers:
+            t = layer(t)
+            outs.append(t)
+        outs[-1] = self.norm(outs[-1])
+        return [o.reshape((b,) + self.grid + (d,)) for o in outs]
+
+
+class TransUNetEncoder(nnx.Module):
+    """TransUNet's encoder (Chen et al., 2021, in 3-D): two strided residual blocks give the half and
+    the quarter scales, a third the eighth, and TRANSUNET_DEPTH transformer layers over the eighth's
+    voxels as tokens add the whole crop's context to it, the residual kept so the convolutional
+    features pass through."""
+
+    def __init__(self, cfg: Config, branch: str, rngs: nnx.Rngs):
+        w0, w1, w2 = cfg.widths
+        self.b1 = Block(1 if branch == "ct" else 2, w0, cfg.groups, 2, rngs)
+        self.b2 = Block(w0, w1, cfg.groups, 2, rngs)
+        self.b3 = Block(w1, w2, cfg.groups, 2, rngs)
+        self.tokens = Tokens(eighth_of(cfg.shape), w2, TRANSUNET_DEPTH, rngs)
+
+    def __call__(self, x) -> List[jnp.ndarray]:
+        f1 = self.b1(x)
+        f2 = self.b2(f1)
+        f3 = self.b3(f2)
+        return [f1, f2, f3 + self.tokens(f3)[-1]]
+
+
+class UNETREncoder(nnx.Module):
+    """UNETR's encoder (Hatamizadeh et al., WACV 2022, at this crop's size): the crop cut into
+    UNETR_PATCH-voxel cubes, each a token of width widths[2] by one strided convolution, then
+    UNETR_DEPTH transformer layers and nothing convolutional between; the eighth scale is the last
+    layer, the quarter the one two thirds up and the half the one a third up, each resized to its scale
+    and refined by one residual block, so attention alone carries the crop to the bottleneck."""
+
+    def __init__(self, cfg: Config, branch: str, rngs: nnx.Rngs):
+        w0, w1, w2 = cfg.widths
+        self.shape = tuple(cfg.shape)
+        self.embed = nnx.Conv(1 if branch == "ct" else 2, w2, (UNETR_PATCH,) * 3, strides=UNETR_PATCH,
+                              padding="SAME", rngs=rngs)
+        self.tokens = Tokens(scale_of(cfg.shape, UNETR_PATCH), w2, UNETR_DEPTH, rngs)
+        self.to_half = Block(w2, w0, cfg.groups, 1, rngs)
+        self.to_quarter = Block(w2, w1, cfg.groups, 1, rngs)
+
+    def __call__(self, x) -> List[jnp.ndarray]:
+        layers = self.tokens(self.embed(x))
+        b, d = x.shape[0], layers[0].shape[-1]
+        early, middle, last = layers[len(layers) // 3 - 1], layers[2 * len(layers) // 3 - 1], layers[-1]
+        half = jax.image.resize(early, (b,) + scale_of(self.shape, 2) + (d,), "trilinear")
+        quarter = jax.image.resize(middle, (b,) + scale_of(self.shape, 4) + (d,), "trilinear")
+        return [self.to_half(half), self.to_quarter(quarter), last]
+
+
+def unet_decoder(cfg: Config, rngs: nnx.Rngs) -> nnx.Module:
+    return Decoder(cfg.widths, cfg.n_outputs, cfg.groups, rngs, block=Block)
+
+
 # --- the architectures -------------------------------------------------------------------------------
 
 
@@ -396,6 +541,12 @@ ARCHITECTURES: Dict[str, Architecture] = {
     "probe": Architecture("probe", "the framework's probe: a windowed blob of the mask or of a learnt soft threshold "
                           "of the CT, read at the body's extremes; its answer is known before it trains",
                           ProbeEncoder, ProbeDecoder),
+    "transunet": Architecture("transunet", "TransUNet: two strided residual blocks, a third to the eighth and four "
+                              "transformer layers over its voxels as tokens; the residual-unet's decoder",
+                              TransUNetEncoder, unet_decoder),
+    "unetr": Architecture("unetr", "UNETR: the crop in 8-voxel patches as tokens through six transformer layers, the "
+                          "half and the quarter read off the earlier layers; the residual-unet's decoder",
+                          UNETREncoder, unet_decoder),
 }
 
 
