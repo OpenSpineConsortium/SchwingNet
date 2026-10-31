@@ -1346,9 +1346,10 @@ class Workflow(unittest.TestCase):
 
 class OwnerGate(unittest.TestCase):
     """owner-ok.yml's first job, which the synthesis's pull requests meet: an admin's own pull
-    request passes at once, and every other, one a bot opened and one whose author's role GitHub
-    does not give among them, asks for the owner's tap; the job itself never fails, since a job
-    skipped because its need failed reports as skipped, which a required check takes as passing."""
+    request and one a bot opened pass at once (the owner, 2026-10-31), and a person's who does not
+    administer, or whose role GitHub does not give, asks for the owner's tap; the job itself never
+    fails, since a job skipped because its need failed reports as skipped, which a required check
+    takes as passing."""
 
     WORKFLOW = ROOT / ".github" / "workflows" / "owner-ok.yml"
 
@@ -1361,9 +1362,9 @@ class OwnerGate(unittest.TestCase):
             body.append(line[10:])
         return "\n".join(body) + "\n"
 
-    def test_only_an_admin_s_own_pull_request_passes_at_once(self):
+    def test_an_admin_s_and_a_bot_s_pull_requests_pass_at_once(self):
         cases = [("User", fake_gh.answer(body="admin"), "owner-self"), ("User", fake_gh.answer(body="write"), "owner-ok"),
-                 ("Bot", fake_gh.answer(body="admin"), "owner-ok"), ("User", fake_gh.answer(status=502), "owner-ok")]
+                 ("Bot", fake_gh.answer(body="admin"), "owner-self"), ("User", fake_gh.answer(status=502), "owner-ok")]
         for kind, answer, environment in cases:
             with tempfile.TemporaryDirectory() as folder:
                 output = Path(folder, "output")

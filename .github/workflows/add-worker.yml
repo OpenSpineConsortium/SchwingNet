@@ -4,7 +4,7 @@ name: Add a worker
 # (.github/ISSUE_TEMPLATE/worker.yml) into a worker's file under
 # .github/symphony/workers/ (docs/agents/WORKERS.md), and offers it by pull
 # request: a worker spends a Claude account's plan, so it joins the
-# registry only when the owner merges. tools/workers.py from-form checks
+# registry only when that pull request merges. tools/workers.py from-form checks
 # the answers and writes the file on a checkout of the default branch;
 # tools/add_worker.py words everything said. The run pushes the file on
 # its own branch, symphony/worker-<name>, rebuilt from the default branch
