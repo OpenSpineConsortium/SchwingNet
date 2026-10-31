@@ -593,7 +593,7 @@ class GateTest(unittest.TestCase):
         self.assertEqual(self.submitted(), [])
 
     def test_ct_rate_and_an_open_chain_source_are_never_a_fetch_word(self):
-        for name in ("hf_ct_rate", "aws_stoic2021"):
+        for name in ("hf_ct_rate", "idc_spine_mets_ct_seg"):
             self.assertEqual(self.gate_at_home("fetch", name).returncode, 64, name)
         self.assertEqual(self.submitted(), [])
 
