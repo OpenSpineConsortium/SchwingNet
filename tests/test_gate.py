@@ -5721,6 +5721,43 @@ exit "${FAKE_RC:-0}"
         self.assertEqual(busy.returncode, 75, busy.stdout)
         self.assertEqual(len(self.submitted()), 6)
 
+    def test_qaloop_queues_the_transformer_plan_as_its_own_kind_under_its_own_prereg(self):
+        full = self.qaloop_ready()
+        self.qaloop_pairs()
+        refused = self.gate("qaloop", "qa_transformer")
+        self.assertEqual(refused.returncode, 90, refused.stdout)
+        self.assertIn("docs/research/qa-loop-transformer/PREREG.md is not frozen", refused.stdout)
+        self.assertEqual(self.submitted(), [])
+        folder = self.repo / "docs" / "research" / "qa-loop-transformer"
+        folder.mkdir(parents=True, exist_ok=True)
+        for name in ("PREREG.md", "PREREG.md.sha256"):
+            shutil.copy(ROOT / "docs" / "research" / "qa-loop-transformer" / name, folder / name)
+        done = self.gate("qaloop", "qa_transformer")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        lines = self.submitted()
+        self.assertEqual(len(lines), 6, lines)
+        for line in lines:
+            for said in ("--class gpu --name qaloop_qa_transformer ", " PLAN=qa_transformer ", f" QALOOP_COMMIT={full} ",
+                         "--partition galhp --cpus 8 --mem 64G --time 12:00:00 --no-requeue qaloop_tx.sbatch |"):
+                self.assertIn(said, line)
+        # the loop's own plans stay the kind qaloop, under the loop's PREREG, which the transformer's never edits
+        self.assertIn("qaloop_tx.sbatch", (ROOT / "flows" / "registry.txt").read_text(encoding="utf-8"))
+        smoke = self.gate("qaloop", "qa_smoke")
+        self.assertEqual(smoke.returncode, 0, smoke.stdout + smoke.stderr)
+        self.assertIn("--no-requeue qaloop.sbatch |", self.submitted()[-1])
+
+    def test_qaloop_tx_sbatch_runs_the_loops_script_at_the_gates_commit_as_the_kind_qaloop_tx(self):
+        script = (ROOT / "grid" / "qaloop_tx.sbatch").read_text(encoding="utf-8")
+        self.assertIn('git -C "$REPO" show "$COMMIT:grid/qaloop.sbatch"', script)
+        self.assertIn("QALOOP_KIND=qaloop_tx bash", script)
+        first = (ROOT / "grid" / "qaloop.sbatch").read_text(encoding="utf-8")
+        self.assertIn("qaloop) STUDY_DIR=docs/research/qa-loop FLOW_CLASS=QaloopFlow ;;", first)
+        self.assertIn("qaloop_tx) STUDY_DIR=docs/research/qa-loop-transformer FLOW_CLASS=QaloopTxFlow ;;", first)
+        done = subprocess.run(["bash", str(ROOT / "grid" / "qaloop.sbatch")], capture_output=True, text=True,
+                              env={**os.environ, "QALOOP_KIND": "other", "SCHWINGNET": str(self.repo)})
+        self.assertEqual(done.returncode, 64, done.stdout + done.stderr)
+        self.assertIn("QALOOP_KIND is qaloop or qaloop_tx, not other", done.stdout)
+
     def test_qaloop_waits_for_the_setup_job_and_still_reads_its_chain_from_the_first_link(self):
         self.qaloop_ready()
         shutil.rmtree(self.repo / ".pixi")
