@@ -248,7 +248,7 @@ class ReportTest(unittest.TestCase):
         self.assertIn("asked of stand-ins", performance)
         self.assertIn("probe recall nan", performance)
         self.assertIn("ap/bottom/six_lumbar accuracy 0.000", claim["39"]["evidence"])
-        self.assertIn("no real case was read (stand-ins)", claim["35"]["evidence"])
+        self.assertIn("no C-ArmLSpine case was read (stand-ins), so none of its cases was left out", claim["35"]["evidence"])
         self.assertIn("jax 0.10.2", claim["23"]["evidence"])
         self.assertIn("nibabel absent", claim["23"]["evidence"])
         self.assertIn("seed 1, the plan's word", claim["24"]["evidence"])

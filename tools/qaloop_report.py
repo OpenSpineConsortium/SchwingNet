@@ -466,8 +466,8 @@ def fact_exclusions(run):
         return missing(gap)
     pairs = gates.get("pairs") or {}
     if pairs.get("source") != "C-ArmLSpine":
-        return met(f"no real case was read ({pairs.get('source')}), so none was left out{gold_exclusions(gates)}; no "
-                   f"phantom is ever left out ({where(n, 'pairs')})")
+        return met(f"no C-ArmLSpine case was read ({pairs.get('source')}), so none of its cases was left out"
+                   f"{gold_exclusions(gates)}; no phantom is ever left out ({where(n, 'pairs')})")
     left = ", ".join(f"{k} {v}" for k, v in sorted((pairs.get("left_out") or {}).items())) or "none"
     failed = ", ".join(f"{k} {v}" for k, v in sorted((pairs.get("failed") or {}).items())) or "none"
     return met(f"C-ArmLSpine: {pairs.get('cases')} cases taken and {pairs.get('read')} read; left out before reading, "
