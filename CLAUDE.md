@@ -30,6 +30,16 @@ A fact worth keeping is one file under docs/memory/ with one index line in MEMOR
 
 Run `bash scripts/check.sh` before opening or updating a pull request. CI runs the same script as the check named "check", and the default branch takes only pull requests that pass it. The same check fails a pull request marked ready whose body has no section `## Adversarial review` (tools/review_record.py, CONTRIBUTING.md), so write the review into the body before marking it ready.
 
+## Continuing locally
+
+Since 2026-10-31 the owner runs this project from a local Claude Code session instead of claude.ai project threads. Start every local session the same way:
+
+1. Clone the four private repositories side by side and keep them current: `git clone git@github.com:OpenSpineConsortium/<name>.git` for SchwingNet, bordercall, symphony-template and spine-program, then `git fetch origin` before any work.
+2. Read SchwingNet's docs/checkpoints/2026-10-31-final/README.md (the latest handoff: every thread's state, open pull requests, grid jobs and next steps) and the project memory beside it in memory/MEMORY.md.
+3. Work one piece at a time on its own branch, open a pull request, and merge it yourself once CI is green: no merge waits for the owner (his word of 2026-10-31 03:45 UTC). Test what you change before pushing.
+4. Grid work: ssh to the grid and run `cd ~/SchwingNet && git pull && bash grid/gate.sh <word>`, or dispatch symphony-template's grid-accounts.yml (action=job, job=schwingnet-<word>); the size rule holds; the login node only submits jobs.
+5. Never public, sign nothing about the provisional, no usage credits, never run archived code, and be frugal with tokens.
+
 <!-- cswap:checkpoint:begin -->
 ## Session checkpoint (kept by cswap)
 
