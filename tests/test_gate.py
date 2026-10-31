@@ -5576,8 +5576,9 @@ exit "${FAKE_RC:-0}"
 
     def test_qaloop_refuses_a_plan_without_its_file_its_frozen_cover_its_class_its_flow_or_a_loops_pairs(self):
         gate = (ROOT / "grid" / "gate.sh").read_text(encoding="utf-8")
-        # every link on galhp's L40S cards, as the auto-anatomist's trials, and six links of 12 hours a loop
-        self.assertIn("\nQALOOP_PARTITION=galhp\n", gate)
+        # every link on galhp's L40S cards or gmsap's H200s, whichever frees first, never a V100 as the
+        # auto-anatomist's trials, and six links of 12 hours a loop
+        self.assertIn("\nQALOOP_PARTITION=galhp,gmsap\n", gate)
         self.assertIn("\nQALOOP_LINKS=6\n", gate)
         self.assertEqual(self.gate("qaloop").returncode, 64)
         refused = self.gate("qaloop", "qa_nope")
@@ -5642,14 +5643,14 @@ exit "${FAKE_RC:-0}"
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
         lines = self.submitted()
         self.assertEqual(len(lines), 1, lines)
-        for said in ("--class gpu --name qaloop_qa_smoke --partition galhp --cpus 8 --mem 64G --time 12:00:00 --no-requeue qaloop.sbatch |",
+        for said in ("--class gpu --name qaloop_qa_smoke --partition galhp,gmsap --cpus 8 --mem 64G --time 12:00:00 --no-requeue qaloop.sbatch |",
                      " PLAN=qa_smoke ", f" DATA_ROOT={self.data} ", f" QALOOP_COMMIT={full} ", f" QALOOP_ROOT={root} ",
                      " QALOOP_LINKS=1 ", " QALOOP_LINK=1 "):
             self.assertIn(said, lines[0])
         # the first link names no chain: its own job id is the chain's
         self.assertTrue(lines[0].endswith(" QALOOP_CHAIN="), lines[0])
         chain = self.recorded()["qaloop_qa_smoke"]
-        self.assertIn(f"submitted the plan qa_smoke: chain {chain}, 1 GPU link(s) of 12 hours on galhp, each afterany the one before, "
+        self.assertIn(f"submitted the plan qa_smoke: chain {chain}, 1 GPU link(s) of 12 hours on galhp or gmsap, each afterany the one before, "
                       f"in {root}/qa_smoke/{chain}.", done.stdout)
         logs = self.repo / "grid" / "logs"
         self.assertEqual((logs / "QALOOP-qa_smoke.chain").read_text(encoding="utf-8"), f"{chain} {full}\n")
@@ -5706,7 +5707,7 @@ exit "${FAKE_RC:-0}"
         self.assertEqual(len(lines), 6, lines)
         for link, line in enumerate(lines, start=1):
             for said in ("--class gpu --name qaloop_qa_loop ", " PLAN=qa_loop ", f" QALOOP_COMMIT={full} ", " QALOOP_LINKS=6 ",
-                         f" QALOOP_LINK={link} ", "--partition galhp --cpus 8 --mem 64G --time 12:00:00 --no-requeue qaloop.sbatch |"):
+                         f" QALOOP_LINK={link} ", "--partition galhp,gmsap --cpus 8 --mem 64G --time 12:00:00 --no-requeue qaloop.sbatch |"):
                 self.assertIn(said, line)
             if link == 1:
                 self.assertNotIn("--dependency", line)
@@ -5714,7 +5715,7 @@ exit "${FAKE_RC:-0}"
             else:
                 self.assertIn(f"--dependency=afterany:{99 + link} --kill-on-invalid-dep=yes", line)
                 self.assertTrue(line.endswith(" QALOOP_CHAIN=101"), line)
-        self.assertIn("submitted the plan qa_loop: chain 101, 6 GPU link(s) of 12 hours on galhp", done.stdout)
+        self.assertIn("submitted the plan qa_loop: chain 101, 6 GPU link(s) of 12 hours on galhp or gmsap", done.stdout)
         self.assertEqual((self.repo / "grid" / "logs" / "QALOOP-qa_loop.chain").read_text(encoding="utf-8"), f"101 {full}\n")
         self.live(*range(101, 107))
         busy = self.gate("qaloop", "qa_loop")

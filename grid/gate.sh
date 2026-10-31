@@ -389,9 +389,12 @@ AUTOANATOMIST_PARTITION=galhp
 # The QA loop's chains, <plan>/<chain>/ (grid/qaloop.sbatch reads the same default from the lab volume),
 # where a send while a link lasts reads each round's PROGRESS.txt.
 QALOOP_ROOT=${QALOOP_ROOT:-$VOLUME/go2432/qaloop}
-# The partition every link of the loop is sent to (word_qaloop): galhp's L40S cards, for the reason
-# AUTOANATOMIST_PARTITION gives, since the loop trains the same network under the same pins.
-QALOOP_PARTITION=galhp
+# The partitions every link of the loop may be sent to (word_qaloop), Slurm starting it on whichever
+# frees first: galhp's L40S cards and gmsap's H200s, never gvohp's V100s, for the reason
+# AUTOANATOMIST_PARTITION gives, since the loop trains the same network under the same pins. galhp
+# alone left the first sends waiting on 2026-10-31 behind jobs whose next start Slurm put a day off;
+# a list needs hpcworker's framework 29, whose job submit takes several of the class's partitions.
+QALOOP_PARTITION=galhp,gmsap
 # The links a send of a loop plan queues, each a GPU job of 12 hours afterany the one before, so the
 # loop runs up to three days on one send; a smoke plan is one link.
 QALOOP_LINKS=6
@@ -3298,7 +3301,7 @@ qaloop_queue() {  # qaloop_queue CHAIN COMMIT FIRST LINKS: links FIRST to LINKS 
       chain=$job
       echo "$chain $full" > "$LOGS/QALOOP-$id.chain"
       { echo "# qaloop $id: chain $chain queued, commit ${full:0:7}, $(date -u '+%F %T') UTC; no link of it has started yet"
-        echo "- queued: $links link(s) on $QALOOP_PARTITION, each afterany the one before"
+        echo "- queued: $links link(s) on ${QALOOP_PARTITION//,/ or }, each afterany the one before"
         echo "- folder: $QALOOP_ROOT/$id/$chain, where every link works"; } > "$LOGS/QALOOP-$id.md.part"
     fi
     after=afterany:$job
@@ -3374,7 +3377,7 @@ word_qaloop() {  # one plan of the QA loop: queued as a chain of links, its repo
     rm -f "$LOGS/QALOOP-$id.cancelled"
   fi
   chain=$(qaloop_queue "" "$full" 1 "$links") || return 1
-  echo "submitted the plan $id: chain $chain, $links GPU link(s) of 12 hours on $QALOOP_PARTITION, each afterany the one before, in $QALOOP_ROOT/$id/$chain. Send qaloop $id again once they end to read its report, logs/QALOOP-$id.md."
+  echo "submitted the plan $id: chain $chain, $links GPU link(s) of 12 hours on ${QALOOP_PARTITION//,/ or }, each afterany the one before, in $QALOOP_ROOT/$id/$chain. Send qaloop $id again once they end to read its report, logs/QALOOP-$id.md."
 }
 
 # The control panel's Pipelines tab (the owner's words of 2026-10-31 04:11 and 04:12 UTC): every card
