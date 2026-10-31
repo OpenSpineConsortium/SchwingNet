@@ -137,6 +137,16 @@ Metaflow's own resume rather than by anything written around it.
   so its runs are held to a PREREG of their own while the first screen's stays frozen; the same parts,
   words, folders and report (grid word `autoanatomist <plan>` for a plan AUTOANATOMIST2_PLANS names,
   grid/autoanatomist2.sbatch). tests/test_autoanatomist_flow.py runs its smoke through the launcher.
+- `gold4_totalseg.py`, Gold4TotalsegFlow: one part of TotalSegmentator's segmentation of the gold
+  tier 4 CTs (docs/research/gold4-totalseg/PREREG.md), on the owner's word of 2026-10-31 00:55 UTC
+  (grid word `totalseg gold4`, grid/totalseg-gold4.sbatch): `--part run`, one task of a GPU array
+  whose tasks share the CTs by claiming each, or `--part merge`, afterany the array on a CPU node.
+  start checks the words and holds the run to the frozen PREREG; work runs
+  tools/gold4_totalseg_grid.py run or merge, watched so the progress page moves with the task's
+  lines, and keeps its exit; end holds the run again and sets the verdict. Each send is its own
+  chain under <out>/chains/<array job>/, while each CT's record and label map outlive it, so a send
+  again carries on where the last one stopped. The comparison with the census's SPINEPS masks and
+  the PREREG's three bars are the tool's (tests/test_gold4_totalseg_grid.py).
 
 Every flow's end step sets an int artifact `verdict`, 0 when all went well and 1 otherwise.
 
@@ -157,8 +167,9 @@ the DRR domain-gap study, `bench flexray_drr_gap`, and the step that makes its M
 flexray_drr_seg` (both below), the gold tier 3 completion's TotalSegmentator arm, `totalseg complete`
 (TotalsegFlow, above), version 1's run, `start` and `v1` (V1Flow, above), a requested
 experiment, `experiment <issue>` (ExperimentFlow, above), the latency word's three network
-parts, `latency` (LatencyFlow, above), and the auto-anatomist screen, `autoanatomist <plan>`
-(AutoanatomistFlow, above). These words of grid/gate.sh still submit a
+parts, `latency` (LatencyFlow, above), the auto-anatomist screen, `autoanatomist <plan>`
+(AutoanatomistFlow, above), and TotalSegmentator on the gold tier 4 CTs, `totalseg gold4`
+(Gold4TotalsegFlow, above). These words of grid/gate.sh still submit a
 plain job that trains or runs a network, each to be moved onto a flow listed in registry.txt, one
 pull request each, under a PREREG of its own:
 
