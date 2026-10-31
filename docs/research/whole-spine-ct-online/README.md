@@ -1,6 +1,6 @@
 # Whole-spine CT online: what the public sites hold against what the grid holds
 
-Source: the thread "Catalogue online whole-spine CT data" of the symphony project, 2026-10-31, the owner's ask of 00:55 UTC ("start catalagoing what is available on the internet at thsoe sites"), scoped by the coordinator to CT and PET/CT whose field shows C2 to the sacrum, with counts, sizes, licences, access and per-person covariates, set against the grid's holdings. Cataloguing only: nothing was downloaded but IDC's public index files (a few hundred MB of parquet into the thread's container). Confidential, like the rest of SchwingNet.
+Source: the thread "Catalogue online whole-spine CT data" of the symphony project, 2026-10-31, the owner's ask of 00:55 UTC ("start catalagoing what is available on the internet at thsoe sites"), scoped by the coordinator to CT and PET/CT whose field shows C2 to the sacrum, with counts, sizes, licences, access and per-person covariates, set against the grid's holdings. Cataloguing only: nothing was downloaded but IDC's public index files (a few hundred MB of parquet into the thread's container) and, in the recheck of 01:15 UTC, TCIA's and NBIA's public listings and NMDID's public documentation PDFs. Confidential, like the rest of SchwingNet.
 
 ## 1. Answer
 
@@ -44,11 +44,11 @@ IDC also carries TotalSegmentator's segmentations of NLST (26,194 persons, CC BY
 
 ## 4. Other sites
 
-Checked 2026-10-31 through each site's page where the container reached it; TCIA's own site and API, NMDID's site and PMC refused this container, so their lines come from search results and the records, and TCIA's limited-access collections, which IDC does not mirror, are not counted here.
+Checked 2026-10-31 through each site's page where the container reached it. The first pass could not reach TCIA, NMDID or PMC; the recheck of 01:15 UTC, with the container's full internet access, read TCIA and NMDID directly (sections 4a and 4b), and the NMDID line below is corrected from its own pages.
 
 | Source | What | Whole spine | Size | Access | Licence | Covariates | On the grid |
 |---|---|---|---|---|---|---|---|
-| NMDID (nmdid.unm.edu) | about 15,000 post-mortem whole-body CTs, 1 mm, with scouts | yes, whole body | over 50 TB, DICOM | registration with an institutional e-mail, then a research request a committee reviews | custom DUA (excluded_nmdid says it forbids derivative works) | about 60 fields: age, sex, ancestry, living height and weight, cadaver weight and length, cause of death, implants, bone density, scan settings | no |
+| NMDID (nmdid.unm.edu) | over 15,000 post-mortem whole-body CTs, deaths 2010 to 2017, about 10,000 images each, 1 mm at 0.5 mm | yes, but for adults over two acquisitions (section 4b) | over 50 TB, 150 million DICOM images | registration with an institutional e-mail, then a research request a committee reviews | custom DUA (excluded_nmdid says it forbids derivative works) | about 60 fields: age, sex, ancestry, living height and weight, cadaver weight and length, cause of death, implants, bone density, scan settings | no |
 | autoPET longitudinal CT (fdat, doi:10.57754/FDAT.qwsry-7t837) | 300 melanoma patients, baseline and follow-up CT | skull base to mid-femur | 54 GB, NIfTI | open | not stated on the challenge page | not stated | no |
 | CADS gated parts (Hugging Face) | CT-TRI 586 trauma CTs; VISCERAL 167 | trauma CT often whole-body; VISCERAL whole-body by design | 83.4 GB and 39.9 GB | registration | per component | not recorded | no (gated) |
 | AbdomenAtlas 2.0 Mini (hf_abdomenatlas2_0_mini) | 10,135 CTs | mostly abdomen; the 3.0 Mini held gave 641 of 5,771 | not recorded | open | CC BY-NC-SA 4.0 | not recorded | planned |
@@ -64,15 +64,48 @@ Checked 2026-10-31 through each site's page where the container reached it; TCIA
 
 Not whole spine, so left out: CT-RATE, INSPECT, LIDC and NLST (chest), Merlin, AMOS, RSNA abdominal trauma, KiTS, FLARE and the other abdomen sets (no C2), RSNA cervical (no sacrum), HECKTOR and the head-and-neck PET/CT sets.
 
+## 4a. TCIA collections IDC does not mirror
+
+Read 2026-10-31 from TCIA's own collection and download API (www.cancerimagingarchive.net/api/v1/collections and /downloads, 240 collections and 888 download records) and, for the collections NBIA serves, from NBIA's v2 getSeries under the public guest account (nbia_guest, no log-in of the owner's), set against IDC v25's 179 collections. 150 of TCIA's 240 are in IDC; of the other 90, 34 hold CT or PET radiology. tcia-not-in-idc.csv beside this file lists all 34 with persons, image size, licence, access route, a judgement of whether the field reaches C2 to the sacrum and the evidence for it, and the covariates the page names. None of them is in the grid's records.
+
+The field could not be measured as section 2 measured IDC: TCIA serves the series list of a restricted collection to nobody without its agreement, and for the eleven NCTN/NCORP trial collections the guest account sees only the public RTSTRUCT annotations, not the images. So the judgement comes from the collection pages and, for the trials, from the body parts the annotations name. Worth a request, in order of what the evidence shows:
+
+| Collection | Persons (whole-spine field) | GB | Access | Covariates |
+|---|---|---|---|---|
+| Healthy-Total-Body-CTs | 30 (30), healthy adults, uEXPLORER total-body CT at 3 or 6 timepoints | 59.0 | TCIA Restricted | age, sex, height, weight, BMI (public) |
+| ACRIN-HNSCC-FDG-PET-CT | 260 (about 188 had a whole-body scan, by the page's counts) | 147.8 | TCIA Restricted | age, sex, BMI, public clinical files |
+| HNSCC (MD Anderson) | 627 (up to 215, the Head-Neck-CT-Atlas cohort with whole-body PET-CT or abdominal CT) | 309.8 | TCIA Restricted | age, sex; body composition before and after radiotherapy |
+| AHOD0831 (pediatric Hodgkin) | 165 (FDG-PET staging, likely most) | 450.2 | NCTN/NCORP Data Archive | age, sex; children, mean age 14 |
+| CALGB50303 (DLBCL) | 155 (CT chest, abdomen, pelvis for all, plus PET) | 138.8 | NCTN/NCORP Data Archive | age, sex |
+| Anti-PD-1_MELANOMA | 47 (melanoma PET/CT, field not stated) | 98.4 | TCIA Restricted | not stated |
+| Head-Neck-PET-CT, Head-Neck Cetuximab | 298 and 111 (FDG-PET/CT, field not stated) | 72.5 and 52.4 | TCIA Restricted | age, sex (Head-Neck-PET-CT) |
+| S0819 (stage IV lung) | 1,299 (a minority: annotations reach the pelvis in 80 persons) | 1,820 | NCTN/NCORP Data Archive, with a collaborative agreement | age, sex |
+| CT-ORG | 140 (about 9, the CTs of PET-CT exams) | 16.9 | open, CC BY 3.0 | not stated |
+
+The rest of the 34 are brain, head-and-neck radiotherapy CT (RADCURE's 3,346 persons among them: no sacrum), chest, abdomen-only pediatric trials (AREN0532, 0533, 0534, AHEP0731) or MIDI-B, which re-packs other TCIA collections with inserted fake identifiers.
+
+Access: a TCIA Restricted collection needs a TCIA account and the TCIA Restricted License Agreement signed by the owner and his institution, sent to TCIA's help desk, then the NBIA Data Retriever; one agreement covers every restricted collection. The NCTN/NCORP trials are released by NCI's NCTN/NCORP Data Archive on a data request, S0819 and A091105 only with a collaborative agreement. Taking the counts at face value, the restricted and trial collections add perhaps 400 to 700 persons with a whole-spine field in about 1.3 TB, S0819 aside; Healthy-Total-Body-CTs is the only normal-anatomy set and, with NMDID, the only one with height and weight for every person.
+
+## 4b. NMDID, read from its own pages
+
+nmdid.unm.edu answers the container now. The metadata CSV cannot be fetched without an account: the site's steps are register, log in, search, add records to a cart and "Download Metadata", each search returning at most 1,000 records. Registration accepts the Database Access, Sharing and Use Agreement on the registrant's behalf (one year, research or education only, no derivative works, no redistribution, data destroyed or returned on request, New Mexico law), so it is the owner's to do, and this thread did not register. What the public pages give, read 2026-10-31:
+
+- The data dictionary (nmdid.unm.edu/docs/data_dictionary_20240606.pdf): sex, gender, race, ethnicity, age in years and months, living height (cm) and weight (kg), cadaver length and weight, birth weight, scoliosis, congenital malformations of the spine (ICD-10 Q05, Q06, Q67, Q76, Q77), surgery, implants, cancer, radiation therapy, bone density, cause and manner of death, decomposition score, the CT protocol and the time from death to scan, among about 60 fields.
+- The CT protocol (docs/CT_OMI_protocol.pdf): an adult (about age 8 and older) is scanned in three acquisitions, head, neck and upper extremities from the vertex to the fingertips with the arms crossed over the abdomen, then the torso from above the clavicles through the ischial tuberosities with the arms lifted, then the lower extremities; a decomposed body splits at the carina and the shoulders. A child under 36 inches is one acquisition, vertex to toes, and a larger child two. Each is reconstructed at 1 mm with 0.5 mm spacing and at 3 mm, in bone and soft-tissue kernels, 512 by 512, in-plane pixels of 0.8 to 1.2 mm.
+
+So for most adults C2 lies in the head-and-neck series and the sacrum in the torso series, taken after the arms were moved: rule 3 holds per person only once the two series are joined, which needs the overlap from the clavicles down to be registered (the head-and-neck series reaching the fingertips, at the abdomen, should overlap the torso series by 30 cm or more). Whether a head-and-neck series alone often reaches the sacrum is not recorded; one downloaded person would settle it.
+
 ## 5. The order to fetch, the owner's word of 2026-10-31 01:10 UTC
 
 The owner: "start with NMDID's metadata file, but i want to proceed in order of decreasing size then starting with NMDID after I give you the okay". So the metadata comes first, and the image fetches go largest first, each only after his okay:
 
-1. NMDID's metadata CSV, now (registration only, no image): the per-person covariates for all 15,000, which also let the research request name its inclusion rule. The site refuses this container and wants an institutional log-in, so the owner registers and downloads it; nmdid-request.md beside this file holds the steps and a draft of the research request.
+1. NMDID's metadata CSV, now (registration only, no image): the per-person covariates for all 15,000, which also let the research request name its inclusion rule. The site answers the container since 01:15 UTC, but the CSV is behind an account whose registration signs the site's DUA, so the owner registers and downloads it (section 4b); nmdid-request.md beside this file holds the steps and a draft of the research request.
 2. NMDID's images, over 50 TB, after the owner's okay and the committee's approval, to the grid under the size rule, a few TB at a time.
 3. The IDC remainder of section 3, about 155 GB, through the existing reacquire route.
 4. CADS's CT-TRI and VISCERAL, 123 GB, after registration.
 5. autoPET longitudinal CT, 54 GB, after a person-overlap check against FDG-PET-CT-Lesions.
+
+The TCIA collections of section 4a sit by size between NMDID and the IDC remainder: S0819 1.8 TB (few whole-spine fields), AHOD0831 450 GB, HNSCC 310 GB, ACRIN-HNSCC-FDG-PET-CT 148 GB, CALGB50303 139 GB, Anti-PD-1_MELANOMA 98 GB, Head-Neck-PET-CT 72 GB, Healthy-Total-Body-CTs 59 GB, Head-Neck Cetuximab 52 GB, CT-ORG 17 GB; all but CT-ORG wait on the TCIA Restricted agreement or an NCTN/NCORP request, both the owner's to sign. Where the order is by size alone, the owner's word decides whether a 1.8 TB set with perhaps 80 usable persons keeps its place.
 
 Nothing above has been fetched.
 
