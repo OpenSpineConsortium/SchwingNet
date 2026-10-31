@@ -25,6 +25,9 @@ name: Checks
 # METRICS.json and JUDGE.json: a maintainer's judge pushes JUDGE.json there
 # with their own credentials (docs/setup/metrics.md), which, unlike
 # GITHUB_TOKEN, start this workflow, and the branch has no checks to run.
+# And it leaves out cards, the branch that holds only the Metaflow cards the
+# grid gate's word cards pushes with the owner's own sign-in for the control
+# panel's Pipelines tab (grid/gate.sh), which has no checks to run either.
 # It also runs by hand, and when .github/workflows/protocol.yml asks: that
 # workflow pushes symphony-protocol/sync and opens its pull request with
 # GITHUB_TOKEN, which start no workflow, so it starts this one on the
@@ -82,7 +85,7 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review, converted_to_draft, edited]
   push:
-    branches-ignore: ["claude/**", "symphony-protocol/**", "crowd/setup", "metrics"]
+    branches-ignore: ["claude/**", "symphony-protocol/**", "crowd/setup", "metrics", "cards"]
   workflow_dispatch:
 
 permissions:

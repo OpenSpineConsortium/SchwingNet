@@ -11,6 +11,7 @@ scancel and df on PATH answer for Slurm; nothing reaches a scheduler. Standard l
 required check runs it."""
 
 import ast
+import base64
 import hashlib
 import importlib.util
 import io
@@ -5900,6 +5901,88 @@ exit "${FAKE_RC:-0}"
         self.assertTrue(all(f" QALOOP_COMMIT={moved} " in line for line in lines[12:]), lines[12:])
         self.assertFalse((logs / "QALOOP-qa_loop.cancelled").exists())
         self.assertTrue((logs / f"QALOOP-qa_loop-{chain}.md").exists())
+
+    # The control panel's Pipelines tab (grid/gate.sh's word cards <kind>): the Metaflow cards of a kind's
+    # newest runs, their data masked, pushed to the branch cards.
+    def card_page(self, run, step, task, name, data, runtime=None):
+        """A card as Metaflow 2.19.39 keeps it in the datastore: its page with the data's one base64
+        line, and its runtime data beside it where the task was still moving it."""
+        task_folder = self.flow_root() / ".metaflow" / "mf.cards" / "QaloopFlow" / "runs" / run / "steps" / step / "tasks" / str(task)
+        (task_folder / "cards").mkdir(parents=True)
+        payload = base64.b64encode(json.dumps(data).encode("utf-8")).decode("ascii")
+        (task_folder / "cards" / f"{name}.html").write_text(
+            f"<!DOCTYPE html>\n<html>\n<head>\n  <title>QaloopFlow/{run}/{step}/{task}</title>\n</head>\n<body>\n"
+            "  <script>\n    var METAFLOW_RELOAD_TOKEN = \"final\"\n    var mfCardDataId = \"aa-bb\";\n"
+            f"    window.__MF_DATA__[\"aa-bb\"] = \"{payload}\"\n\n  </script>\n  <script>bundle()</script>\n</body>\n</html>\n",
+            encoding="utf-8")
+        if runtime is not None:
+            (task_folder / "runtime").mkdir()
+            (task_folder / "runtime" / f"{name}.data.json").write_text(json.dumps(runtime), encoding="utf-8")
+
+    def cards_branch(self, remote, path):
+        return subprocess.run(["git", "--git-dir", str(remote), "show", f"cards:{path}"], check=True, capture_output=True, text=True).stdout
+
+    def test_cards_pushes_a_kinds_newest_cards_masked_and_holds_back_one_that_names_a_dicom_element(self):
+        remote = self.tmp / "remote.git"
+        subprocess.run(["git", "init", "-q", "--bare", str(remote)], check=True)
+        markdown = {"type": "markdown", "id": "markdown_1",
+                    "source": f"# QA loop qa_loop, round 0\n\nfail at enhance_pet:1541; read {self.data}/carmlspine"}
+        card = {"metadata": {"pathspec": "QaloopFlow/17/round/2"},
+                "components": [{"type": "page", "title": "", "contents": [{"type": "section", "contents": [markdown]}]}]}
+        live = {"reload_token": "3", "created_on": 1.5,
+                "data": {"markdown_1": {"type": "markdown", "id": "markdown_1", "source": "# QA loop qa_loop, round 0, step 6"}}}
+        self.card_page("17", "round", 2, "blank-round-" + "a" * 32, card, runtime=live)
+        self.card_page("17", "end", 3, "blank-" + "b" * 32, {"metadata": {}, "components": [{"type": "markdown", "source": "PatientID 99"}]})
+        done = self.gate("cards", "qaloop", CARDS_REMOTE=str(remote))
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("1 card(s) of the newest 1 run(s) of QaloopFlow; 1 held back", done.stdout)
+        self.assertIn('held back: "step": "end", "task": "3"', done.stdout)
+        self.assertIn("its data names a DICOM element", done.stdout)
+        self.assertIn("to the branch cards:", done.stdout)
+        index = json.loads(self.cards_branch(remote, "qaloop.json"))
+        self.assertEqual((index["kind"], index["flow"], index["refresh"]), ("qaloop", "QaloopFlow", "schwingnet-cards-qaloop"))
+        self.assertEqual([r["run"] for r in index["runs"]], ["17"])
+        shown = {c["step"]: c for c in index["runs"][0]["cards"]}
+        self.assertEqual(shown["round"]["file"], "qaloop/17/round-2-blank-round-" + "a" * 32 + ".json")
+        self.assertTrue(shown["round"]["live"])
+        self.assertNotIn("file", shown["end"])
+        self.assertEqual(shown["end"]["withheld"], "its data names a DICOM element")
+        # the data leaves the grid masked and whole: a person key and the data root's path withheld, the JSON still JSON
+        text = self.cards_branch(remote, shown["round"]["file"])
+        self.assertNotIn("1541", text)
+        self.assertNotIn(str(self.data), text)
+        kept = json.loads(text)
+        source = kept["card"]["components"][0]["contents"][0]["contents"][0]["source"]
+        self.assertIn("enhance_pet:<withheld>; read <data root>/carmlspine", source)
+        self.assertEqual(kept["runtime"]["data"]["markdown_1"]["source"], "# QA loop qa_loop, round 0, step 6")
+        self.assertNotIn("PatientID", subprocess.run(["git", "--git-dir", str(remote), "grep", "-c", "PatientID", "cards"],
+                                                     capture_output=True, text=True).stdout)
+        # the page's code once, its data's place marked and its title plain
+        template = self.cards_branch(remote, "template.html")
+        self.assertEqual(template.count("__MF_PAYLOAD__"), 1)
+        self.assertIn('window.__MF_DATA__["aa-bb"] = "__MF_PAYLOAD__"', template)
+        self.assertIn("<title>Metaflow card</title>", template)
+        self.assertIn("<script>bundle()</script>", template)
+        # the same cards again push nothing
+        again = self.gate("cards", "qaloop", CARDS_REMOTE=str(remote))
+        self.assertEqual(again.returncode, 0, again.stdout + again.stderr)
+        self.assertIn("the branch cards already holds these cards; nothing was pushed", again.stdout)
+        commits = subprocess.run(["git", "--git-dir", str(remote), "rev-list", "--count", "cards"], check=True, capture_output=True, text=True)
+        self.assertEqual(commits.stdout.strip(), "1")
+
+    def test_cards_refuses_a_kind_the_registry_does_not_name_and_pushes_nothing_without_a_card(self):
+        remote = self.tmp / "remote.git"
+        subprocess.run(["git", "init", "-q", "--bare", str(remote)], check=True)
+        refused = self.gate("cards", "nope", CARDS_REMOTE=str(remote))
+        self.assertEqual(refused.returncode, 64, refused.stdout)
+        self.assertIn("flows/registry.txt names no flow of the kind nope", refused.stdout)
+        self.assertEqual(self.gate("cards", CARDS_REMOTE=str(remote)).returncode, 64)
+        self.assertEqual(self.gate("cards", "Qa-loop", CARDS_REMOTE=str(remote)).returncode, 64)
+        empty = self.gate("cards", "qaloop", CARDS_REMOTE=str(remote))
+        self.assertEqual(empty.returncode, 0, empty.stdout)
+        self.assertIn("no run of QaloopFlow has a card", empty.stdout)
+        heads = subprocess.run(["git", "--git-dir", str(remote), "for-each-ref", "refs/heads"], check=True, capture_output=True, text=True)
+        self.assertEqual(heads.stdout, "")
 
     def test_select_is_refused_without_the_frozen_holdout(self):
         (self.repo / "data" / "splits" / "anomaly-holdout.json").unlink()

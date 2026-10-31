@@ -305,7 +305,7 @@ class GuardStep(unittest.TestCase):
 
     def test_the_push_trigger_leaves_out_the_setup_branch(self):
         text = (WORKFLOWS / "ci.yml").read_text(encoding="utf-8")
-        self.assertIn('branches-ignore: ["claude/**", "symphony-protocol/**", "crowd/setup", "metrics"]', text)
+        self.assertIn('branches-ignore: ["claude/**", "symphony-protocol/**", "crowd/setup", "metrics", "cards"]', text)
 
 
 class QueueWorkflow(unittest.TestCase):
