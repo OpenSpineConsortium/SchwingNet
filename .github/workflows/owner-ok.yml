@@ -1,32 +1,29 @@
 name: Owner OK
 
-# The owner's own tap on another person's pull request before it merges,
-# in place of an approving review, which GitHub never lets the owner give
-# on a pull request opened under the owner's own login, as every session's
-# is. A pull request whose author administers the repository, the owner
-# and the owner's sessions, deploys to the environment owner-self, which
-# names no reviewer, and passes at once; any other author's, a
-# collaborator's or a worker in Actions', deploys to the environment
+# The owner's own tap on a pull request before it merges, kept now only for a
+# person who may write but does not administer the repository. The owner's
+# word of 2026-10-31 03:45 UTC ("REMOVE ALL OWNER REQUIRED PERMISSION FOR
+# MERGING PRS") ended the tap for everything else: a pull request an admin
+# opened, the owner's own and every session's, and one a bot opened, the
+# synthesis workflow's, the research loop's and the SymphonyBoard App's,
+# deploy to the environment owner-self, which names no reviewer, and pass at
+# once, so they merge as soon as their tests are green. A person who writes
+# without administering, a collaborator, deploys to the environment
 # owner-ok, whose required reviewer is the owner, and waits until the owner
-# presses Approve or Reject, which GitHub Mobile offers on the push
-# notification it sends. Either way the job's check run is named owner-ok,
-# which a ruleset requires (docs/setup/github.md, section 10). The author's
-# role is read from GitHub's collaborator permission with the run's own
-# token, which reads metadata and nothing else. A pull request a bot
-# opened, such as the synthesis workflow's, which the SymphonyBoard App
-# opens, asks for the tap whatever the read says, since nobody stands
-# behind a bot's head; and a role the read cannot give asks for it too, so
-# the first job never fails: a job skipped because the job it needs failed
-# reports as skipped, which a required check takes as passing.
+# presses Approve or Reject; the owner's word of 2026-10-30 22:55 UTC says
+# that was what the tap was for, and it holds until the owner says otherwise.
+# A person whose role the read cannot give is treated as such a collaborator.
+# Either way the job's check run is named owner-ok, which a ruleset requires
+# (docs/setup/github.md, section 10). The author's role is read from GitHub's
+# collaborator permission with the run's own token, which reads metadata and
+# nothing else, and the first job never fails: a job skipped because the job
+# it needs failed reports as skipped, which a required check takes as passing.
 #
 # A draft starts no run, so a worker's pushes to its draft ping no one;
 # GitHub reads the skipped run as passing, and a draft cannot merge anyway.
 # Marking it ready, and every push after, starts a new run, so the tap
 # always covers the head that merges, and a newer push cancels a run still
-# waiting, so only one request is ever pending per pull request. An
-# environment the owner has not set up yet is made by the first run with
-# no reviewer and passes at once: the gate holds only once the owner has
-# named a reviewer on owner-ok.
+# waiting, so only one request is ever pending per pull request.
 
 on:
   pull_request:
@@ -56,11 +53,11 @@ jobs:
           KIND: ${{ github.event.pull_request.user.type }}
         run: |
           set -eu
-          role=unread
+          role=bot
           if [ "$KIND" = User ]; then
             role=$(gh api "repos/$REPO/collaborators/$AUTHOR/permission" --jq .permission) || role=unread
           fi
-          if [ "$KIND" = User ] && [ "$role" = "admin" ]; then
+          if [ "$role" = admin ] || [ "$role" = bot ]; then
             echo "environment=owner-self" >> "$GITHUB_OUTPUT"
           else
             echo "environment=owner-ok" >> "$GITHUB_OUTPUT"
@@ -74,7 +71,7 @@ jobs:
     timeout-minutes: 5
     environment: ${{ needs.author.outputs.environment }}
     steps:
-      - name: The owner approved this head, or the author is an admin
+      - name: The owner approved this head, or the author is an admin or a bot
         env:
           HEAD: ${{ github.event.pull_request.head.sha }}
           ENVIRONMENT: ${{ needs.author.outputs.environment }}
