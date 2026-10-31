@@ -87,8 +87,8 @@ echo "# anomaly $STAGE: job ${SLURM_JOB_ID:-none} on $(hostname), commit ${start
 HOLD=$REPO/grid/logs/HOLD
 RAN_FROM_COPY=""
 # The pack stage copies its code first and never holds the checkout; the others run the checkout's.
-if [ "$STAGE" = pack ]; then RAN_FROM_COPY=yes; else echo "${SLURM_JOB_ID:-$$} $started_at" > "$HOLD"; fi
-unhold() { [ "$RAN_FROM_COPY" = yes ] || [ "$(awk '{ print $1; exit }' "$HOLD" 2>/dev/null)" != "${SLURM_JOB_ID:-$$}" ] || rm -f "$HOLD"; }
+if [ "$STAGE" = pack ]; then RAN_FROM_COPY=yes; else { flock -w 60 9 2>/dev/null || :; echo "${SLURM_JOB_ID:-$$} $started_at" >> "$HOLD"; } 9>>"$HOLD.lock"; fi
+unhold() { [ "$RAN_FROM_COPY" = yes ] || { flock -w 60 9 2>/dev/null || :; [ ! -f "$HOLD" ] || { awk -v me="${SLURM_JOB_ID:-$$}" '$1 != me' "$HOLD" > "$HOLD.tmp"; if [ -s "$HOLD.tmp" ]; then mv -f "$HOLD.tmp" "$HOLD"; else rm -f "$HOLD" "$HOLD.tmp"; fi; }; } 9>>"$HOLD.lock"; }
 WORK=""
 ADMITTED_JOB=""
 settle_pack() {  # the pack's admission is settled once the stage ends, however it ends (grid/size-rule.sh)
