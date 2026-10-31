@@ -93,6 +93,41 @@ class PruneTest(unittest.TestCase):
         self.assertEqual(done.returncode, 2)
         self.assertFalse(self.plan.exists())
 
+    def test_a_path_below_the_account_is_planned_and_deleted(self):
+        derived = self.data / "a_set" / "derived"
+        derived.mkdir()
+        (derived / "bank.npz").write_bytes(b"y" * 7)
+        results = Path(self.tmp.name) / "results" / "old_run"
+        results.mkdir(parents=True)
+        (results / "out.json").write_text("{}", encoding="ascii")
+        done = self.plan_step(["data/a_set/derived", "results/old_run", "data/no_set/derived"])
+        self.assertEqual(done.returncode, 0, done.stderr)
+        planned = json.loads(self.plan.read_text(encoding="ascii"))
+        self.assertEqual(planned["data/a_set/derived"], {"files": 1, "bytes": 7})
+        self.assertEqual(planned["data/no_set/derived"], {"problem": "no folder"})
+        self.delete_step()
+        self.assertFalse(derived.exists())
+        self.assertFalse(results.exists())
+        self.assertTrue((self.data / "a_set" / "raw").is_dir())
+        self.assertTrue((Path(self.tmp.name) / "results").is_dir())
+
+    def test_a_path_through_a_link_is_refused(self):
+        outside = Path(self.tmp.name) / "outside"
+        outside.mkdir()
+        (outside / "keep.bin").write_bytes(b"k")
+        os.symlink(outside, self.data / "linked")
+        self.plan_step(["data/linked"])
+        self.assertIn("link", json.loads(self.plan.read_text(encoding="ascii"))["data/linked"]["problem"])
+        self.delete_step()
+        self.assertTrue((outside / "keep.bin").is_file())
+
+    def test_a_path_outside_data_or_results_is_refused(self):
+        for bad in ("u251_host/results", "data/", "results/", "data/x/../y", "/data/x"):
+            self.list.write_text(bad + "\n", encoding="ascii")
+            done = self.run_tool("plan", "--list", str(self.list), "--data", str(self.data), "--out", str(self.plan),
+                                 "--report", str(self.plan_md))
+            self.assertEqual(done.returncode, 2, bad)
+
     def test_the_committed_list_names_ids(self):
         sys.path.insert(0, str(ROOT / "tools"))
         try:
@@ -101,6 +136,8 @@ class PruneTest(unittest.TestCase):
             sys.path.pop(0)
         self.assertEqual(prune.read_list(ROOT / "grid" / "prune" / "round2.txt"),
                          ["idc_nlst", "hf_abdomenatlas2_0_mini", "zenodo_unitochest", "hf_rexgradient_160k"])
+        round4 = prune.read_list(ROOT / "grid" / "prune" / "round4.txt")
+        self.assertFalse([line for line in round4 if "u251" in line or "versefusion" in line])
 
 
 if __name__ == "__main__":
