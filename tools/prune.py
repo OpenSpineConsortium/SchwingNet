@@ -3,7 +3,9 @@
 The owner's choice of 2026-10-31 (the thread "Prune unused grid datasets", issue #515): four raw
 folders on the data root that neither the gold tier nor the fluoroscopy work reads, none of them a
 set the storage planner tracks, so spine-datasets' retirement cannot reach them. A list under
-grid/prune/ names the sets, one id a line; the folder of each is <data root>/<id>/raw. The gate
+grid/prune/ names the sets, one id a line; the folder of each is <data root>/<id>/raw. A line may
+instead name a folder by its path below the account's folder, the data root's parent, starting
+data/ or results/ (round 4, the derived folders of the owner's choice of 2026-10-31, #518). The gate
 word `prune <list>` runs this twice, as two jobs (grid/prune.sbatch), with the plan shown between:
 
     python3 tools/prune.py plan   --list <list.txt> --data <data root> --out <plan.json> --report <plan.md>
@@ -13,7 +15,7 @@ plan walks each folder, never following a link, and records its files and bytes;
 nothing. delete walks each folder again and deletes it only when it still holds exactly the files
 and bytes the plan recorded, so nothing landed or changed since the owner saw the plan is ever
 deleted; a folder that differs is kept and the report says so. A folder that is a link, has a link
-on its path, or lies outside <data root>/<id>/raw is refused by both. Only ids, counts and sizes
+on its path, or lies outside <data root>/<id>/raw or the path its line names is refused by both. Only ids, counts and sizes
 leave the grid; no path of the volume is named.
 
 The standard library alone, run by the python the gate names as PYDRV, on a compute node, since the
@@ -29,6 +31,8 @@ import sys
 from pathlib import Path
 
 ID = re.compile(r"[a-z0-9_]{1,40}")
+# A folder below the account's data/ or results/, one level down at least, never the root itself.
+PATH = re.compile(r"(data|results)(/[A-Za-z0-9_][A-Za-z0-9_.-]{0,79}){1,4}")
 
 
 def read_list(path):
@@ -38,8 +42,8 @@ def read_list(path):
         line = line.split("#", 1)[0].strip()
         if not line:
             continue
-        if not ID.fullmatch(line):
-            raise ValueError(f"{line!r} is no id: lower-case letters, digits and _, at most 40")
+        if not ID.fullmatch(line) and not PATH.fullmatch(line):
+            raise ValueError(f"{line!r} is no id and no path below data/ or results/")
         if line in ids:
             raise ValueError(f"{line} is named twice")
         ids.append(line)
@@ -48,14 +52,20 @@ def read_list(path):
     return ids
 
 
-def folder_problem(data, folder):
-    """Why a set's raw folder may not be read or deleted, or None when it may."""
+def folder_of(data, line):
+    """The folder a list's line names: <data>/<id>/raw for an id, else the path below data's parent."""
+    return data / line / "raw" if ID.fullmatch(line) else data.parent / line
+
+
+def folder_problem(data, line):
+    """Why the folder a line names may not be read or deleted, or None when it may."""
+    folder = folder_of(data, line)
     if not folder.exists() and not folder.is_symlink():
-        return "no raw folder"
+        return "no raw folder" if ID.fullmatch(line) else "no folder"
     if folder.is_symlink() or not folder.is_dir():
-        return "the raw folder is a link or no folder"
-    if os.path.realpath(folder) != os.path.join(os.path.realpath(data), folder.parent.name, folder.name):
-        return "a link on the folder's path below the data root"
+        return "the folder is a link or no folder"
+    if os.path.realpath(folder) != os.path.join(os.path.realpath(data.parent), os.path.relpath(folder, data.parent)):
+        return "a link on the folder's path below the account's folder"
     return None
 
 
@@ -73,9 +83,8 @@ def plan(ids, data):
     """{id: measure or problem} for each set of the list."""
     entries = {}
     for one in ids:
-        folder = data / one / "raw"
-        problem = folder_problem(data, folder)
-        entries[one] = {"problem": problem} if problem else measure(folder)
+        problem = folder_problem(data, one)
+        entries[one] = {"problem": problem} if problem else measure(folder_of(data, one))
     return entries
 
 
@@ -96,8 +105,8 @@ def delete(ids, data, planned):
     """Delete each folder that still matches its plan; the report's lines and the bytes freed."""
     lines, freed = [], 0
     for one in ids:
-        folder, entry = data / one / "raw", planned.get(one)
-        problem = folder_problem(data, folder)
+        folder, entry = folder_of(data, one), planned.get(one)
+        problem = folder_problem(data, one)
         if entry is None or "problem" in entry:
             lines.append(f"- {one}: kept, the plan lists no folder for it")
         elif problem:
