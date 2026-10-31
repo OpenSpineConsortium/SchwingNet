@@ -85,3 +85,12 @@ The owner: "I ONLY HAVE 20 TB SO I WILL HAVE TO BATCH DOWNLOAD NMDID TRAIN ON TH
 - Every kept file and every deleted raw file is recorded by NMDID's person id and sha256, so a deleted volume can be fetched again by id and checked, and a run can say exactly which persons it used.
 - Training reads the kept crops and projections, which stay on disk across batches, so later epochs still see the early batches; it does not have to train on raw volumes while they exist. A step that truly needs the full raw CT (a new segmenter, a new render) runs in the batch's window or re-fetches by id.
 - The latent-prior test reserve rule applies here as to the gold tier: a held-out set of NMDID persons is drawn once, from the metadata, before the first batch, and no training touches it.
+
+## 7. One dataset for the encoder and decoder, the owner's questions of 01:16 and 01:18 UTC
+
+The owner asked whether to train his own segmenter on the gold tier for NMDID, and said he wants "ONE GIANT DATASET WITH ALL THAT METADATA" for training and testing his encoder and decoder. The thread's recommendation, in order:
+
+1. Train one segmenter on the gold tier 3 CTs first, on the 28 canonical ids with the sacrum as one union mask (the owner's rule of 2026-10-30), with the latent-prior test reserve left out, as a launched flow under its own PREREG. It gives every source one label scheme and does not wait on NMDID. Judge it on held-out human masks, then on VSDFullBody for post-mortem CT.
+2. Grow the gold tier store (tools/gold3_ct.py) into the one dataset instead of making a second: every row a person and a study with source, tier, age, sex, height, weight, scanner and kernel, a post-mortem flag, the rule 3 verdict, and each file's segmenter, version and sha256. The census's 1,388 gold 4 enter first, then the IDC remainder, then NMDID.
+3. NMDID's metadata in, and an NMDID test reserve drawn from it, before any image.
+4. NMDID through the rolling pipeline of section 6 with that segmenter. A machine mask never raises a tier, so NMDID is gold 4 until a person checks it.
