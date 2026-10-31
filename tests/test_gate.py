@@ -5739,7 +5739,7 @@ exit "${FAKE_RC:-0}"
         self.assertEqual(len(lines), 6, lines)
         for line in lines:
             for said in ("--class gpu --name qaloop_qa_transformer ", " PLAN=qa_transformer ", f" QALOOP_COMMIT={full} ",
-                         "--partition galhp --cpus 8 --mem 64G --time 12:00:00 --no-requeue qaloop_tx.sbatch |"):
+                         "--partition galhp,gmsap --cpus 8 --mem 64G --time 12:00:00 --no-requeue qaloop_tx.sbatch |"):
                 self.assertIn(said, line)
         # the loop's own plans stay the kind qaloop, under the loop's PREREG, which the transformer's never edits
         self.assertIn("qaloop_tx.sbatch", (ROOT / "flows" / "registry.txt").read_text(encoding="utf-8"))
