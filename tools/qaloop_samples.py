@@ -37,6 +37,7 @@ import importlib.util  # noqa: E402
 import json  # noqa: E402
 import math  # noqa: E402
 import os  # noqa: E402
+import re  # noqa: E402
 
 import numpy as np  # noqa: E402
 
@@ -311,7 +312,14 @@ def agreed_levels(entry):
     if entry.get("variant_flags"):
         return None
     agreed = {v.get("level") for v in entry.get("vertebrae", []) if v.get("agree") and v.get("level")}
-    return [lv for lv in TYPE_LEVELS["typical"] if lv in agreed]
+    # The longest stretch of consecutive levels, the first of two alike: a run names consecutive
+    # bodies, so a gap where the labellers disagree may not be bridged by the levels on either side.
+    best, run = [], []
+    for lv in TYPE_LEVELS["typical"]:
+        run = run + [lv] if lv in agreed else []
+        if len(run) > len(best):
+            best = list(run)
+    return best
 
 
 def read_pair(root, case, levels, size=512):
@@ -371,15 +379,30 @@ def load_pair(path):
                 "frames": frames, "stand_in": bool(z["stand_in"])}
 
 
+CASE_ID = re.compile(r"\s*(?:case[ _-]?)?0*(\d{1,6})\s*", re.IGNORECASE)
+
+
+def case_person(case):
+    """The person key of a C-ArmLSpine case id as data/splits/test-persons.json spells it,
+    carmlspine:case<number> with no leading zeros, whether levels.json writes case134, Case_0134 or
+    134; None for an id that is no case number, which is then never read."""
+    found = CASE_ID.fullmatch(str(case))
+    return f"carmlspine:case{int(found.group(1))}" if found else None
+
+
 def carm_cases(root):
     """The C-ArmLSpine cases with a CBCT mask, a pose and an entry in levels.json, each with its part
     by the split rule; the test persons are named and left unread."""
     rule, tests = split_rule()
     entries = json.loads((root / "levels.json").read_text())
     entries = entries.get("cases", entries)
-    out, skipped = [], {"test": 0, "flagged": 0, "no mask": 0, "no pose": 0, "too few levels": 0}
+    out, skipped = [], {"test": 0, "unrecognised id": 0, "flagged": 0, "no mask": 0, "no pose": 0, "too few levels": 0}
     for case in sorted(entries):
-        person = f"carmlspine:{case}"
+        person = case_person(case)
+        if person is None:
+            # An id the test list could not be matched against is never read: unknown is not clean.
+            skipped["unrecognised id"] += 1
+            continue
         part = split_part(person, rule, tests)
         if part == "test":
             skipped["test"] += 1

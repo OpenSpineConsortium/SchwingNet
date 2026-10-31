@@ -33,6 +33,7 @@ of a header.
 import hashlib
 import importlib.util
 import json
+import math
 import os
 import re
 import socket
@@ -41,8 +42,8 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-from metaflow import FlowSpec, Parameter, card, current, step
-from metaflow.cards import Markdown
+from metaflow import FlowSpec, Parameter, Run, card, current, namespace, retry, step
+from metaflow.cards import EventsTimeline, Markdown, ProgressBar, Table, ValueBox, VegaChart
 
 import stage
 
@@ -55,8 +56,17 @@ REFRESH = 15
 CHAIN = re.compile(r"[0-9]{1,12}|none")
 # What end writes once the rounds are done, and the record: none of it is a round's work.
 END_WRITES = ("RECORD.json", "ENDED.json", "SUMMARY.md", *stage.REPORT_OUTPUTS)
-# A round's tool is run at most this many times in its task before the loop ends failed.
-ROUND_TRIES = 2
+# A round whose tool fails, its exit no answer of the round's, is run once more by Metaflow's own
+# @retry; on that last attempt the failure is the round's answer and the loop ends failed.
+ROUND_RETRIES = 1
+# The round tool's exits that are answers, never run again: 0 the round's record, 2 a plan or state
+# the tool refuses, and INSANE_EXIT below.
+ANSWERS = (0, 2)
+# The round tool's exit for a check whose numbers cannot be right (tools/qaloop_round.py,
+# INSANE_EXIT): run again it would train the same steps into the same numbers, so it is not.
+INSANE_EXIT = 3
+# The loop's trend, every round's checks in order, gathered from rounds/<n>/TREND.jsonl.
+TREND = "TREND.jsonl"
 # The files of the frozen split the pairs are dealt by, kept by their sha256 for the record.
 SPLIT_FILES = ("data/splits/rule.json", "data/splits/test-persons.json")
 
@@ -206,11 +216,34 @@ def round_summary(n, record, decision, code, tries):
             for g, r in gates.items()}
     held = (record or {}).get("held") or {}
     fingerprint = (record or {}).get("fingerprint") or {}
+    watch = (record or {}).get("watch") or {}
+    progress = decision.get("progress") or {}
     return {"round": n, "exit": code, "tries": tries, "gates": said, "verdict": decision["verdict"],
             "why": decision["why"], "changes": decision.get("changes", []), "stuck": decision.get("stuck", []),
             "config": (record or {}).get("config"), "held_distance_mm": held.get("distance_mm"),
-            "held_dice": held.get("dice"), "chosen": fingerprint.get("chosen"),
+            "held_dice": held.get("dice"), "chosen": fingerprint.get("chosen"), "objective": fingerprint.get("objective"),
+            "epoch": watch.get("epoch"), "trained_steps": watch.get("trained_steps"), "checks": watch.get("checks"),
+            "training_stalled": watch.get("stalled"), "best_distance_mm": watch.get("best_distance_mm"),
+            "best_dice": watch.get("best_dice"), "best_epoch": watch.get("best_epoch"),
+            "raised": progress.get("raised"), "flat_rounds": progress.get("flat_rounds"),
             "seconds": (record or {}).get("seconds"), "stand_in": (record or {}).get("stand_in")}
+
+
+def gather_trend(folder):
+    """The loop's TREND.jsonl drawn again from every round's, in the rounds' order, so a round run
+    again after a cut never adds its checks twice."""
+    lines = []
+    for path in sorted(Path(folder).glob("rounds/*/" + TREND)):
+        lines += [line for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    target = Path(folder) / TREND
+    tmp = target.with_suffix(".tmp")
+    tmp.write_text("".join(line + "\n" for line in lines), encoding="utf-8")
+    os.replace(tmp, target)
+    return len(lines)
+
+
+def plain_number(x):
+    return f"{x:.3f}" if isinstance(x, (int, float)) else "none"
 
 
 def smoke_holds(plan, rounds, decision):
@@ -226,6 +259,156 @@ def smoke_holds(plan, rounds, decision):
     if len(rounds) < 2 and decision["verdict"] != "met":
         why.append(f"{len(rounds)} round run, and a smoke goes round at least twice")
     return why
+
+
+# ---------------------------------------------------------------- the cards
+# Metaflow's own pages for the run (its cards, `card view` and the Metaflow UI show them): the round's
+# card moves while its tool trains (real-time cards, refreshed every REFRESH seconds through the
+# watcher), and end's holds the whole loop. Every value drawn is an aggregate of the record's.
+
+TREND_FIELDS = (("loss", "loss, the check's mean"), ("held_dice", "held Dice"), ("held_distance_mm", "held distance, mm"))
+
+
+def read_points(path):
+    """The checks a TREND.jsonl holds, in order; a line not yet whole is left for the next read."""
+    points = []
+    try:
+        lines = Path(path).read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return points
+    for line in lines:
+        try:
+            point = json.loads(line)
+        except ValueError:
+            continue
+        if isinstance(point, dict):
+            points.append(point)
+    return points
+
+
+def loop_points(folder, upto):
+    """Every check of the rounds before round `upto`, in order."""
+    return [p for n in range(upto) for p in read_points(Path(folder) / "rounds" / f"{n:03d}" / TREND)]
+
+
+def trend_spec(points):
+    """A Vega-Lite chart of the loss, the held Dice and the held distance by step, one line a round."""
+    values = [{"step": p.get("step"), "round": p.get("round"), **{k: p.get(k) for k, _ in TREND_FIELDS}}
+              for p in points if isinstance(p.get("step"), (int, float))]
+
+    def panel(field, title):
+        return {"mark": {"type": "line", "point": True}, "width": 560, "height": 130,
+                "encoding": {"x": {"field": "step", "type": "quantitative", "title": "step"},
+                             "y": {"field": field, "type": "quantitative", "title": title, "scale": {"zero": False}},
+                             "color": {"field": "round", "type": "ordinal", "title": "round"},
+                             "tooltip": [{"field": "round"}, {"field": "step"}, {"field": field, "format": ".4f"}]}}
+
+    return {"$schema": "https://vega.github.io/schema/vega-lite/v5.json", "data": {"values": values},
+            "vconcat": [panel(field, title) for field, title in TREND_FIELDS]}
+
+
+def numbers_of(points, field):
+    """A field's finite values over the points; a check that was not sane wrote words or nothing."""
+    return [float(p[field]) for p in points if isinstance(p.get(field), (int, float)) and not isinstance(p.get(field), bool)
+            and math.isfinite(p[field])]
+
+
+def number(x, digits=4):
+    return f"{x:.{digits}g}" if isinstance(x, (int, float)) and not isinstance(x, bool) else "none"
+
+
+class RoundCard:
+    """The round's real-time card: the watch's latest and best values, the round's steps, the loop's
+    trend so far and each check as an event, moved by line() while the tool runs."""
+
+    def __init__(self, flow, n, plan):
+        self.card, self.n = current.card["round"], n
+        self.watch, self.steps = plan["watch"], int(plan["steps_per_round"])
+        self.folder = flow.round_folder(n)
+        self.before = loop_points(flow.folder, n)
+        self.seen = 0
+        config = flow.state.get("config") or {}
+        self.card.append(Markdown(f"# QA loop {flow.plan_name}, round {n}\n\nChain {flow.chain}; config "
+                                  + ", ".join(f"{k} {v}" for k, v in sorted(config.items())) + "."))
+        self.boxes = {"loss": ValueBox(title="Loss", value="none", subtitle="the latest check's mean"),
+                      "dice": ValueBox(title="Held Dice", value="none", subtitle="the watch rows"),
+                      "distance": ValueBox(title="Held distance, mm", value="none", subtitle="the watch rows"),
+                      "patience": ValueBox(title="Epochs since the last gain", value="none",
+                                           subtitle=f"training stops at {self.watch['patience_epochs']}")}
+        for box in self.boxes.values():
+            self.card.append(box)
+        self.bar = ProgressBar(max=self.steps, label="steps this round", unit="steps")
+        self.chart = VegaChart(trend_spec(self.before), show_controls=False)
+        self.events = EventsTimeline(title="checks and decisions", max_events=200)
+        for part in (self.bar, self.chart, self.events):
+            self.card.append(part)
+        self.card.refresh()
+
+    def line(self):
+        """The round's line for the page, the card moved with every check the tool wrote since."""
+        points = read_points(self.folder / TREND)
+        for p in points[self.seen:]:
+            self.events.update({"check": f"step {p.get('step')}", "epoch": number(p.get("epoch"), 3),
+                                "loss": number(p.get("loss")), "held Dice": number(p.get("held_dice"), 3),
+                                "held distance mm": number(p.get("held_distance_mm"), 3),
+                                "gained": "yes" if p.get("gained") else "no"},
+                               style_theme="success" if p.get("gained") else "default")
+        if len(points) > self.seen and points:
+            self.seen, last = len(points), points[-1]
+            best_dice = max(numbers_of(self.before + points, "held_dice"), default=None)
+            best_distance = min(numbers_of(self.before + points, "held_distance_mm"), default=None)
+            self.boxes["loss"].update(value=number(last.get("loss")))
+            self.boxes["dice"].update(value=number(last.get("held_dice"), 3), subtitle=f"best {number(best_dice, 3)}")
+            self.boxes["distance"].update(value=number(last.get("held_distance_mm"), 3),
+                                          subtitle=f"best {number(best_distance, 3)}")
+            self.boxes["patience"].update(value=number(last.get("since_best"), 3))
+            self.bar.update(min(self.steps, max(int(last.get("round_steps") or 0), 0)))
+            self.chart.update(trend_spec(self.before + points))
+        self.card.refresh()
+        return last_line(self.folder / "PROGRESS.txt") or f"round {self.n}: running"
+
+    def ended(self, decision, record):
+        """The round's gates and the decision as the timeline's last events, the timeline finished."""
+        for gate, result in ((record or {}).get("gates") or {}).items():
+            said = "pass" if result and result.get("pass") else "missing" if not result or result.get("missing") else "fail"
+            self.events.update({"gate": gate, "answer": said}, style_theme={"pass": "success", "fail": "warning"}.get(said, "error"))
+        self.events.update({"decision": decision["verdict"], "why": decision["why"][:400]}, priority="high",
+                           style_theme="primary" if decision["branch"] == "again" else "info", finished=True)
+        self.card.refresh()
+
+
+def loop_card(flow, lines, points):
+    """end's card: the verdict, the loop's trend whole and every round's gates and decision."""
+    parts = [Markdown(f"# QA loop {flow.plan_name}: {flow.decision['verdict']}\n\nChain {flow.chain}, folder "
+                      f"{flow.folder}; verdict {flow.verdict}; progress page {stage.page_path()}."),
+             ValueBox(title="Loop", value=flow.decision["verdict"], subtitle=f"{len(flow.rounds)} rounds",
+                      theme="success" if flow.decision["verdict"] == "met" else "warning"),
+             ValueBox(title="Best held Dice", value=number(max(numbers_of(points, "held_dice"), default=None), 3),
+                      subtitle="the watch rows"),
+             ValueBox(title="Best held distance, mm",
+                      value=number(min(numbers_of(points, "held_distance_mm"), default=None), 3), subtitle="the watch rows"),
+             VegaChart(trend_spec(points), show_controls=False),
+             Table([[str(r["round"]), ", ".join(f"{g} {said}" for g, said in r["gates"].items()) or "none",
+                     r["verdict"], "; ".join(r["changes"]) or "none", number(r.get("held_dice"), 3),
+                     number(r.get("held_distance_mm"), 3)] for r in flow.rounds],
+                   headers=["round", "gates", "decision", "changes", "held Dice", "held distance mm"]),
+             Markdown("\n".join(f"- {said}" for said in lines))]
+    for part in parts:
+        current.card.append(part)
+
+
+def tag_run(words):
+    """Metaflow tags on this run, so the client finds it by its plan, chain and ending
+    (Flow('QaloopFlow').runs('loop:met')); a metadata service that refuses them changes nothing."""
+    try:
+        namespace(None)
+        Run(f"{current.flow_name}/{current.run_id}").add_tags(words)
+    except Exception as error:  # noqa: BLE001 (a tag is an index, never the record)
+        print(f"QaloopFlow: the tags were not added: {type(error).__name__}", flush=True)
+
+
+class QaloopRoundFault(Exception):
+    """A round whose tool ended with no answer, which Metaflow's @retry runs once more."""
 
 
 class QaloopFlow(FlowSpec):
@@ -258,7 +441,9 @@ class QaloopFlow(FlowSpec):
             self.started = utc_now()
             self.where = {"host": socket.gethostname(), "slurm_job": os.environ.get("SLURM_JOB_ID") or "none",
                           "run": f"{current.flow_name}/{current.run_id}", "datastore": stage.datastore_root(), **code_state()}
-            self.state = {"round": 0, "config": dict(plan["start"]), "held": [], "space": {}, "session": ""}
+            self.state = {"round": 0, "config": dict(plan["start"]), "held": [], "space": {}, "session": "",
+                          "watch": {}, "progress": {}, "wandb_group": f"qaloop-{plan['plan']}-{self.chain}",
+                          "commit": self.where.get("commit") or self.commit or "unknown"}
             self.rounds = []
             beat.say(f"{plan['plan']} ({plan['class']}), chain {self.chain}; held to {self.prereg_path}, "
                      f"sha256 {str(self.prereg_sha256)[:16]}; up to {plan['rounds']} rounds; folder {self.folder}")
@@ -273,31 +458,28 @@ class QaloopFlow(FlowSpec):
         if n >= 2:
             (self.round_folder(n - 2) / "session" / "state.npz").unlink(missing_ok=True)
 
-    def run_tool(self, n, beat):
-        """The round's tool run to its end, at most ROUND_TRIES times; (exit, tries)."""
+    def run_tool(self, n, beat, line_of):
+        """The round's tool run to its end, its card and its line on the page moving while it runs;
+        its exit."""
         folder = self.round_folder(n)
         command = [sys.executable, str(ROUND_TOOL), "--plan", self.plan_file, "--state", str(folder / "state.json"),
                    "--out", str(folder), "--work", str(Path(self.folder) / "work"), "--data", self.data,
                    "--workers", str(self.workers)]
         logs = Path(self.folder) / "logs"
         logs.mkdir(parents=True, exist_ok=True)
-        code, tries = 1, 0
-        while tries < ROUND_TRIES:
-            tries += 1
-            (folder / "gates.json").unlink(missing_ok=True)
-            code, out, err = stage.run_watched(command, beat, lambda: last_line(folder / "PROGRESS.txt") or f"round {n}: running",
-                                               every=REFRESH, cwd=REPO)
-            with open(logs / f"round-{n:03d}.log", "a", encoding="utf-8") as log:
-                log.write(f"$ {' '.join(command)}\n{out}{err}\n")
-            if code == 0 or code == 2:
-                break
-            beat.say(f"round {n}: exit {code}" + ("; running it once more" if tries < ROUND_TRIES else ""))
-        return code, tries
+        (folder / "gates.json").unlink(missing_ok=True)
+        code, out, err = stage.run_watched(command, beat, line_of, every=REFRESH, cwd=REPO)
+        with open(logs / f"round-{n:03d}.log", "a", encoding="utf-8") as log:
+            log.write(f"$ {' '.join(command)}  (attempt {current.retry_count})\n{out}{err}\n")
+        return code
 
+    @retry(times=ROUND_RETRIES, minutes_between_retries=0)
+    @card(type="blank", id="round", refresh_interval=REFRESH)
     @step
     def round(self):
         """One round: the tool trains and asks every gate, the controller decides, and the loop goes
-        round again or ends."""
+        round again or ends. A tool that ends with no answer raises, so Metaflow runs the round again;
+        on the last attempt the failure is the round's answer and the loop ends failed."""
         plan = read_json(self.plan_file)
         n = int(self.state["round"])
         with stage.Beat(self, f"round {n}") as beat:
@@ -305,21 +487,38 @@ class QaloopFlow(FlowSpec):
             folder.mkdir(parents=True, exist_ok=True)
             self.drop_old_session(n)
             write_json(folder / "state.json", self.state)
-            code, tries = self.run_tool(n, beat)
+            live = RoundCard(self, n, plan)
+            code = self.run_tool(n, beat, live.line)
+            tries = current.retry_count + 1
+            why = last_line(folder / "why.txt") or "no why.txt"
+            if code not in ANSWERS + (INSANE_EXIT,) and current.retry_count < ROUND_RETRIES:
+                raise QaloopRoundFault(f"round {n}'s tool exited {code}: {why}")
             record = read_json(folder / "gates.json") if code == 0 else None
+            checks = gather_trend(self.folder)
             if record is None:
-                why = last_line(folder / "why.txt") or "no why.txt"
-                decision = {"branch": "done", "verdict": "failed", "why": f"round {n}'s tool exited {code}: {why}",
-                            "changes": [], "stuck": [], "passing": [], "failing": []}
+                if code == INSANE_EXIT:
+                    decision = {"branch": "done", "verdict": "stopped", "why": f"round {n} stopped: {why}",
+                                "changes": [], "stuck": [], "passing": [], "failing": []}
+                else:
+                    decision = {"branch": "done", "verdict": "failed", "why": f"round {n}'s tool exited {code}: {why}",
+                                "changes": [], "stuck": [], "passing": [], "failing": []}
             else:
                 decision = G.controller(record, self.state, plan)
             write_json(folder / "decision.json", decision)
             self.rounds = self.rounds + [round_summary(n, record, decision, code, tries)]
             self.decision = decision
+            # The round's checks and gates as artifacts of its task, for Metaflow's client.
+            self.round_trend = read_points(folder / TREND)
+            self.round_gates = (record or {}).get("gates") or {}
             if decision["branch"] == "again":
                 held = (record.get("held") or {}).get("distance_mm")
-                self.state = {"round": n + 1, "config": decision["config"], "held": self.state["held"] + [held],
-                              "space": record.get("space") or {}, "session": str(folder / "session")}
+                self.state = {**self.state, "round": n + 1, "config": decision["config"],
+                              "held": self.state["held"] + [held], "space": record.get("space") or {},
+                              "session": str(folder / "session"), "watch": record.get("watch") or {},
+                              "progress": decision.get("progress") or {}}
+            live.line()
+            live.ended(decision, record)
+            beat.say(f"round {n}: {checks} checks in the loop's trend")
             self.branch = decision["branch"]
             beat.say(f"round {n}: {decision['verdict']}; {decision['why']}")
         self.next({"again": self.round, "done": self.end}, condition="branch")
@@ -347,6 +546,11 @@ class QaloopFlow(FlowSpec):
         for r in self.rounds:
             gates = ", ".join(f"{g} {said}" for g, said in r["gates"].items()) or "no gates"
             lines.append(f"round {r['round']}: {gates}; {r['verdict']}" + (f"; changes: {'; '.join(r['changes'])}" if r["changes"] else ""))
+            if r.get("epoch") is not None:
+                lines.append(f"round {r['round']} training: {r.get('trained_steps')} steps to epoch {r['epoch']:.1f}, "
+                             f"{r.get('checks')} checks; last gain at epoch {plain_number(r.get('best_epoch'))} "
+                             f"(held distance {plain_number(r.get('best_distance_mm'))} mm, Dice {plain_number(r.get('best_dice'))})"
+                             + ("; training rests, no gain within the watch's patience" if r.get("training_stalled") else ""))
         if any(r.get("stand_in") for r in self.rounds):
             lines.append("the real gates were asked of stand-ins, phantoms rendered as frames, so they say nothing of real fluoroscopy")
         return lines
@@ -364,6 +568,7 @@ class QaloopFlow(FlowSpec):
             smoke_why = smoke_holds(plan, self.rounds, self.decision) if self.plan_class == "smoke" else []
             lines = self.summary_lines(smoke_why)
             (folder / "SUMMARY.md").write_text("\n".join(f"- {line}" for line in lines) + "\n", encoding="utf-8")
+            gather_trend(self.folder)
             ended = {"run": f"{current.flow_name}/{current.run_id}", "host": socket.gethostname(),
                      "slurm_job": os.environ.get("SLURM_JOB_ID") or "none", "ended": utc_now(), **code_state()}
             write_json(folder / "RECORD.json", self.record(ended))
@@ -380,9 +585,9 @@ class QaloopFlow(FlowSpec):
                 print(f"QaloopFlow: {said}", flush=True)
             beat.say(f"verdict {self.verdict}")
             stage.finish(self.verdict, [(ok, line)], none_words="; ".join(lines))
-        current.card.append(Markdown(f"# QA loop, {self.plan_name}\n\nChain {self.chain}, folder {self.folder}; "
-                                     f"verdict {self.verdict}; progress page {stage.page_path()}.\n\n"
-                                     + "\n".join(f"- {said}" for said in lines)))
+        self.trend = read_points(folder / TREND)
+        loop_card(self, lines, self.trend)
+        tag_run([f"plan:{self.plan_name}", f"chain:{self.chain}", f"loop:{self.decision['verdict'].replace(' ', '_')}"])
 
 
 if __name__ == "__main__":

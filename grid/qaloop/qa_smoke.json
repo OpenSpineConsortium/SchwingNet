@@ -102,5 +102,14 @@
     "max_landmarks": 6,
     "presence_floor": 0.1
   },
-  "latency_runs": 50
+  "latency_runs": 50,
+  "watch": {
+    "every_epochs": 2,
+    "patience_epochs": 4,
+    "min_gain": 0.01,
+    "explode": 10.0,
+    "warm_epochs": 50,
+    "watch_per_class": 1,
+    "patience_rounds": 3
+  }
 }

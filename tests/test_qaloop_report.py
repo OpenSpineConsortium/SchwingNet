@@ -23,7 +23,7 @@ STUDY = "qa-loop"
 # restatement (tools/qaloop_report.py, LIMITS).
 LIMIT_WORDS = ("drawn as an l5", "a single body", "no landmark detector", "no sacrum", "typical columns alone",
                "fit them imperfectly", "mirrored", "same in every round", "counts runs", "is a cue", "2 pixels of noise",
-               "stand-ins")
+               "the watch rows", "stand-ins")
 
 
 def load_module():

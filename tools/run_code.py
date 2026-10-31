@@ -186,7 +186,8 @@ LEFT_OUT = {
 LEFT_OUT["autoanatomist2"] = LEFT_OUT["autoanatomist"]
 LEFT_OUT["qaloop"] = {**STAGE_PAGE_LEFT_OUT,
                      "tools/report.py": "writes and checks the loop's CLAIM 2024 and REFORMS report from the record in its end "
-                     "step, after every round; it computes nothing a round or a decision comes from"}
+                     "step, after every round; it computes nothing a round or a decision comes from",
+                     "tools/wandb_log.py": ROW_LEFT_OUT["tools/wandb_log.py"]}
 
 
 class RunCodeError(Exception):

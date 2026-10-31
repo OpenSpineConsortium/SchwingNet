@@ -52,8 +52,11 @@ import math  # noqa: E402
 import multiprocessing  # noqa: E402
 import os  # noqa: E402
 import shutil  # noqa: E402
+import threading  # noqa: E402
 import time  # noqa: E402
 import traceback  # noqa: E402
+from concurrent.futures import ProcessPoolExecutor, as_completed  # noqa: E402
+from concurrent.futures.process import BrokenProcessPool  # noqa: E402
 
 import numpy as np  # noqa: E402
 
@@ -79,7 +82,13 @@ ROW_START = {"typical": "L2", "lumbar_rib": "T12", "no_rib_t12": "T11", "six_lum
              "t13": "T12"}
 ROW_COUNT = 4
 GATE_SEED = 1_000_000          # the gate's rows and persons are drawn from seeds this far above the selection's
+WATCH_SEED = 2_000_000         # the watch's held rows, apart from both, so stopping early never looks at the gate's
 RAM_SHARE, DISK_SHARE = 0.8, 0.9
+INSANE_EXIT = 3                # a round stopped by numbers that cannot be right; the flow runs it no second time
+
+
+class InsaneAnswer(Exception):
+    """A check whose numbers cannot be right (tools/qaloop_gates.py, insane)."""
 
 
 class Progress:
@@ -121,26 +130,187 @@ def peak_bytes():
     return resource.getrusage(resource.RUSAGE_SELF).ru_maxrss * 1024
 
 
-def free_memory():
-    """The memory this job may still take: MemAvailable, bounded by the job's cgroup where one is."""
-    avail = None
+def rss_of(pid):
+    """A process's resident memory in bytes; 0 where it has gone or cannot be read."""
+    try:
+        with open(f"/proc/{pid}/status") as f:
+            for line in f:
+                if line.startswith("VmRSS:"):
+                    return int(line.split()[1]) * 1024
+    except (OSError, ValueError, IndexError):
+        pass
+    return 0
+
+
+def descendants(pid):
+    """Every process below pid, its children and theirs, read from /proc."""
+    parent_of = {}
+    try:
+        entries = os.listdir("/proc")
+    except OSError:
+        return []
+    for entry in entries:
+        if not entry.isdigit():
+            continue
+        try:
+            with open(f"/proc/{entry}/stat") as f:
+                stat = f.read()
+            # the parent is the field after the state, which follows the command's last parenthesis
+            parent_of[int(entry)] = int(stat[stat.rindex(")") + 2:].split()[1])
+        except (OSError, ValueError, IndexError):
+            continue
+    out, frontier = [], [pid]
+    while frontier:
+        here = frontier.pop()
+        kids = [c for c, q in parent_of.items() if q == here]
+        out += kids
+        frontier += kids
+    return out
+
+
+def tree_rss():
+    """The resident memory of this process and every process below it: a pool's spawned workers count."""
+    me = os.getpid()
+    return rss_of(me) + sum(rss_of(c) for c in descendants(me))
+
+
+class PeakWatch:
+    """The most resident memory this process and the processes it started held above what they held
+    when the block began, sampled every `every` seconds by a thread and joined with this process's
+    own peak since the block began: one process's peak alone misses a pool's workers."""
+
+    def __init__(self, every=0.25):
+        self.every, self.peak, self.base, self.top = every, 0, 0, 0
+        self._stop = threading.Event()
+        self._thread = None
+        self._own = False
+
+    def __enter__(self):
+        self.base = tree_rss()
+        self.top = self.base
+        self._own = peak_reset()
+        self._thread = threading.Thread(target=self._sample, daemon=True)
+        self._thread.start()
+        return self
+
+    def _sample(self):
+        while not self._stop.wait(self.every):
+            self.top = max(self.top, tree_rss())
+
+    def __exit__(self, *exc):
+        self._stop.set()
+        self._thread.join()
+        self.top = max(self.top, tree_rss(), peak_bytes() if self._own else 0)
+        self.peak = max(self.top - self.base, 0)
+        return False
+
+
+def meminfo(name):
+    """A line of /proc/meminfo in bytes, or None."""
     try:
         for line in open("/proc/meminfo"):
-            if line.startswith("MemAvailable:"):
-                avail = int(line.split()[1]) * 1024
-    except OSError:
+            if line.startswith(name + ":"):
+                return int(line.split()[1]) * 1024
+    except (OSError, ValueError, IndexError):
         pass
-    for limit_file, use_file in (("/sys/fs/cgroup/memory.max", "/sys/fs/cgroup/memory.current"),
-                                 ("/sys/fs/cgroup/memory/memory.limit_in_bytes", "/sys/fs/cgroup/memory/memory.usage_in_bytes")):
-        try:
-            limit = open(limit_file).read().strip()
-            if limit != "max" and int(limit) < 2 ** 60:
-                room = int(limit) - int(open(use_file).read().strip())
-                avail = room if avail is None else min(avail, room)
-                break
-        except (OSError, ValueError):
+    return None
+
+
+def read_number(path):
+    try:
+        text = Path(path).read_text().strip()
+    except OSError:
+        return None
+    if text == "max":
+        return None
+    try:
+        value = int(text)
+    except ValueError:
+        return None
+    return value if value < 2 ** 60 else None
+
+
+def reclaimable(folder, v2):
+    """The page cache a cgroup holds that the kernel gives back before it kills: its inactive files."""
+    key = "inactive_file" if v2 else "total_inactive_file"
+    try:
+        for line in open(Path(folder) / "memory.stat"):
+            name, _, value = line.partition(" ")
+            if name == key:
+                return int(value)
+    except (OSError, ValueError):
+        pass
+    return 0
+
+
+def cgroup_rooms():
+    """The room left under each memory limit of this process's own cgroups, cgroup v2's and v1's
+    memory controller's, at its own path and at every parent's up to the root: {where: bytes}. A
+    Slurm job's limit is on its job's cgroup, never on the root, which is why the path is walked."""
+    out = {}
+    try:
+        lines = Path("/proc/self/cgroup").read_text().splitlines()
+    except OSError:
+        return out
+    for line in lines:
+        parts = line.split(":", 2)
+        if len(parts) != 3:
             continue
-    return avail if avail is not None else 0
+        _, controllers, path = parts
+        if controllers == "":
+            base, limit_name, use_name, v2 = Path("/sys/fs/cgroup"), "memory.max", "memory.current", True
+        elif "memory" in controllers.split(","):
+            base, limit_name, use_name, v2 = Path("/sys/fs/cgroup/memory"), "memory.limit_in_bytes", "memory.usage_in_bytes", False
+        else:
+            continue
+        folder = base / path.lstrip("/")
+        while True:
+            limit, use = read_number(folder / limit_name), read_number(folder / use_name)
+            if limit is not None and use is not None:
+                out[f"cgroup {folder}"] = limit - max(use - reclaimable(folder, v2), 0)
+            if folder == base or base not in folder.parents:
+                break
+            folder = folder.parent
+    return out
+
+
+def slurm_limit():
+    """The memory Slurm gave the job, in bytes, from its environment; None outside a job or where unsaid."""
+    per_node = os.environ.get("SLURM_MEM_PER_NODE")
+    if per_node and per_node.isdigit():
+        return int(per_node) * 2 ** 20
+    per_cpu, count = os.environ.get("SLURM_MEM_PER_CPU"), os.environ.get("SLURM_CPUS_ON_NODE")
+    if per_cpu and per_cpu.isdigit() and count and count.isdigit():
+        return int(per_cpu) * int(count) * 2 ** 20
+    return None
+
+
+def memory_bounds():
+    """Each bound on the memory this job may still take, by where it comes from: the host's
+    MemAvailable, the room under every cgroup limit above this process, and Slurm's grant less what
+    this process and its children hold."""
+    bounds = {}
+    avail = meminfo("MemAvailable")
+    if avail is not None:
+        bounds["MemAvailable"] = avail
+    bounds.update(cgroup_rooms())
+    granted = slurm_limit()
+    if granted is not None:
+        bounds["Slurm's grant"] = granted - tree_rss()
+    return bounds
+
+
+def free_memory():
+    """The memory this job may still take: the least of its bounds, or 0 where none can be read, so a
+    host that says nothing grows nothing."""
+    bounds = memory_bounds()
+    return max(min(bounds.values()), 0) if bounds else 0
+
+
+def binding_bound():
+    """The name of the bound that binds now, for the record."""
+    bounds = memory_bounds()
+    return min(bounds, key=bounds.get) if bounds else "none readable"
 
 
 def folder_bytes(folder):
@@ -160,11 +330,13 @@ class Space:
     def __init__(self):
         self.blocks = {}
 
-    def measure(self, name, unit, units, disk_bytes, began_peak):
+    def measure(self, name, unit, units, disk_bytes, peak):
+        """One block: its bytes on disk and the peak memory it took above where it began (a PeakWatch's
+        peak, every process of the block counted), each per unit; peak None where none was watched."""
         units = max(int(units), 1)
         self.blocks[name] = {"unit": unit, "units": units, "disk_bytes": int(disk_bytes / units),
-                             "rss_bytes": int(max(peak_bytes() - began_peak, 0) / units) if began_peak is not None else 0,
-                             "peak_bytes": int(peak_bytes())}
+                             "rss_bytes": int(peak / units) if peak is not None else 0,
+                             "peak_bytes": int(peak) if peak is not None else 0}
 
 
 def cpus():
@@ -187,8 +359,8 @@ def workers_for(per_unit_ram, asked, ram):
 
 def class_rows(classes, per_class, part, spacing, noise):
     """Each class's phantom rows: per_class rows of four levels from the class's start, the gate's
-    seeds a million above the selection's so no row is in both."""
-    base = GATE_SEED if part == "gate" else 0
+    seeds a million above the selection's and the watch's two million, so no row is in two parts."""
+    base = {"gate": GATE_SEED, "watch": WATCH_SEED}.get(part, 0)
     rows = []
     for i, kind in enumerate(classes):
         for j in range(per_class):
@@ -224,14 +396,7 @@ def examples(rows, cfg, cache, workers, say):
     todo = [r for r in rows if not os.path.exists(os.path.join(cache, R.row_digest(r, cfg, True) + ".npz"))]
     if todo:
         say(f"rendering {len(todo)} rows with {workers} workers")
-        jobs = [(r, config_record(cfg), cache, True) for r in todo]
-        if workers > 1:
-            with multiprocessing.get_context("spawn").Pool(workers) as pool:
-                for _ in pool.imap_unordered(render_job, jobs):
-                    pass
-        else:
-            for job in jobs:
-                render_job(job)
+        run_pool(render_job, [(r, config_record(cfg), cache, True) for r in todo], workers, say)
     return R.examples_for(rows, cfg, cache)
 
 
@@ -276,18 +441,29 @@ def session_for(source, words, say):
     return Session.new(b)
 
 
-def per_crop(session, ex):
+def per_crop(session, ex, batch=16):
     """The CT-only path on every crop: its target vertebra's hard Dice, the name head's name and
-    the latent."""
+    the latent. The logits are brought back onto the crops' grid batch crops at a time, since all of
+    them at once would hold every crop's full grid on the card together."""
     import jax
     import jax.numpy as jnp
     from autoanatomist import train
     out = train.predict(session.model, ex.hu)
     logits = out["logits"]
-    shape = (len(logits),) + tuple(session.cfg.shape) + (logits.shape[-1],)
-    up = np.asarray(jax.image.resize(jnp.asarray(logits), shape, "trilinear"))
-    dice = train.hard_dice(up > 0.0, ex.masks >= train.MASK_THRESHOLD)[:, 0]
+    dice = []
+    for at in range(0, len(logits), batch):
+        part = logits[at:at + batch]
+        shape = (len(part),) + tuple(session.cfg.shape) + (part.shape[-1],)
+        up = np.asarray(jax.image.resize(jnp.asarray(part), shape, "trilinear"))
+        dice.append(train.hard_dice(up > 0.0, ex.masks[at:at + batch] >= train.MASK_THRESHOLD)[:, 0])
+    dice = np.concatenate(dice) if dice else np.empty(0)
     return dice, np.argmax(out["name_logits"], -1), np.asarray(out["latent"])
+
+
+def latents_of(session, ex):
+    """The latent of every crop on the CT-only path, which is all the probe needs of the selection."""
+    from autoanatomist import train
+    return np.asarray(train.predict(session.model, ex.hu)["latent"])
 
 
 def anomaly_result(classes, gate, sel, bars):
@@ -304,9 +480,16 @@ def anomaly_result(classes, gate, sel, bars):
     for kind, label in zip(classes, names):
         m = (kinds == "typical") if kind == "typical" else (kinds == kind) & (levels == KEY_LEVEL[kind])
         n = int(m.sum())
+        probed = recall.get(label, {})
+        probe_n = int(probed.get("n", 0))
+        probe_recall = float(probed.get("recall", float("nan")))
         per_class[label] = {"n": n, "dice": float(gate["dice"][m].mean()) if n else float("nan"),
                             "named_right": float(gate["right"][m].mean()) if n else float("nan"),
-                            "probe_recall": float(recall.get(label, {}).get("recall", float("nan")))}
+                            "probe_recall": probe_recall, "probe_n": probe_n,
+                            "dice_low": G.mean_low(gate["dice"][m]) if n else float("nan"),
+                            "named_low": G.wilson(int(gate["right"][m].sum()), n)[0] if n else float("nan"),
+                            "probe_low": (G.wilson(int(round(probe_recall * probe_n)), probe_n)[0]
+                                          if probe_n and math.isfinite(probe_recall) else float("nan"))}
     result = G.anomaly_gate(per_class, bars, names)
     result["per_class"] = per_class
     return result
@@ -350,11 +533,31 @@ def pairs_for(plan, data, work, workers, say):
     return pairs, {"source": "stand-ins", "cases": count, "read": len(pairs), "stand_in": True}
 
 
-def run_pool(fn, jobs, workers):
-    if workers > 1 and len(jobs) > 1:
-        with multiprocessing.get_context("spawn").Pool(min(workers, len(jobs))) as pool:
-            return pool.map(fn, jobs)
-    return [fn(j) for j in jobs]
+def run_pool(fn, jobs, workers, say=None):
+    """Each job's answer, in the jobs' order, from a pool of spawned processes. A worker the kernel
+    kills, as it does one that runs the memory out, breaks the pool; the jobs not answered yet are
+    then run again with half the workers, down to one, in this process, so a round slows rather than
+    hangs on a dead worker as a plain Pool would."""
+    results = {}
+    todo = list(range(len(jobs)))
+    n = min(max(int(workers), 1), max(len(jobs), 1))
+    while todo:
+        if n <= 1 or len(todo) == 1:
+            for i in todo:
+                results[i] = fn(jobs[i])
+            break
+        try:
+            with ProcessPoolExecutor(n, mp_context=multiprocessing.get_context("spawn")) as pool:
+                futures = {pool.submit(fn, jobs[i]): i for i in todo}
+                for future in as_completed(futures):
+                    results[futures[future]] = future.result()
+            todo = []
+        except BrokenProcessPool:
+            todo = [i for i in todo if i not in results]
+            n //= 2
+            if say:
+                say(f"a worker was killed, the memory likely run out; {len(todo)} jobs again with {max(n, 1)} workers")
+    return [results[i] for i in range(len(jobs))]
 
 
 def presence_by_part(pairs, spec):
@@ -398,46 +601,55 @@ def run_round(plan, state, out, work, data, asked_workers):
     config = dict(plan["start"], **state.get("config", {}))
     round_no = int(state.get("round", 0))
     bars = plan["bars"]
+    watch = plan["watch"]
     classes = list(plan["classes"])
     space = Space()
     earlier = state.get("space", {}).get("blocks", {})
     ram = free_memory()
-    say(f"round {round_no}: config {json.dumps(config, sort_keys=True)}; free memory {ram / 2**30:.1f} GiB")
-    record = {"round": round_no, "config": config, "plan": plan["plan"], "gates": {}, "seconds": {}}
+    say(f"round {round_no}: config {json.dumps(config, sort_keys=True)}; free memory {ram / 2**30:.1f} GiB "
+        f"({binding_bound()} binds)")
+    record = {"round": round_no, "config": config, "plan": plan["plan"], "gates": {}, "seconds": {},
+              "memory_bounds": {k: int(v) for k, v in memory_bounds().items()}}
 
     # the pairs
-    t0, p0 = time.time(), (peak_bytes() if peak_reset() else None)
+    t0 = time.time()
     workers = workers_for(earlier.get("pairs", {}).get("rss_bytes", 0), asked_workers, ram)
-    pairs, pair_record = pairs_for(plan, data, work, workers, say)
-    space.measure("pairs", "case", max(len(pairs), 1), folder_bytes(Path(work) / "pairs"), p0)
+    with PeakWatch() as peak:
+        pairs, pair_record = pairs_for(plan, data, work, workers, say)
+    space.measure("pairs", "case", max(len(pairs), 1), folder_bytes(Path(work) / "pairs"), peak.peak)
     record["pairs"] = pair_record
     record["seconds"]["pairs"] = time.time() - t0
 
-    # the network
-    t0, p0 = time.time(), (peak_bytes() if peak_reset() else None)
+    # the network's rows: the selection's, the gate's and the watch's, each from seeds of its own
+    t0 = time.time()
     from autoanatomist.model import Config  # noqa: F401  (the JAX side starts here)
+    from autoanatomist import train
     words = list(plan["words"]) + [f"w_name={config['w_name']}"]
     source = state.get("session") or ""
     if source and not (Path(source) / "session.json").is_file():
         raise RuntimeError(f"the round before saved no session where the state says ({Path(source).parent.name}/session)")
     session = session_for(source, words, say)
     rp = plan.get("phantom_rows", {})
-    sel_rows = class_rows(classes, int(config["phantoms_per_class"]), "selection", rp.get("spacing", 1.25), rp.get("noise", 20.0))
-    gate_rows = class_rows(classes, int(rp.get("gate_per_class", 2)), "gate", rp.get("spacing", 1.25), rp.get("noise", 20.0))
+    spacing, noise = rp.get("spacing", 1.25), rp.get("noise", 20.0)
+    sel_rows = class_rows(classes, int(config["phantoms_per_class"]), "selection", spacing, noise)
+    gate_rows = class_rows(classes, int(rp.get("gate_per_class", 2)), "gate", spacing, noise)
+    watch_rows = class_rows(classes, int(watch["watch_per_class"]), "watch", spacing, noise)
     workers = workers_for(earlier.get("crops", {}).get("rss_bytes", 0), asked_workers, ram)
     cache = str(Path(work) / "crops")
-    sel_ex = examples(sel_rows, session.cfg, cache, workers, say)
-    gate_ex = examples(gate_rows, session.cfg, cache, workers, say)
+    with PeakWatch() as peak:
+        sel_ex = examples(sel_rows, session.cfg, cache, workers, say)
+        gate_ex = examples(gate_rows, session.cfg, cache, workers, say)
+        watch_ex = examples(watch_rows, session.cfg, cache, workers, say)
+    held_rows = len(sel_rows) + len(gate_rows) + len(watch_rows)
     row_bytes = (sel_ex.hu.nbytes + sel_ex.masks.nbytes + sel_ex.targets.nbytes) / max(len(sel_rows), 1)
-    space.measure("crops", "row", len(sel_rows) + len(gate_rows), folder_bytes(cache), p0)
+    space.measure("crops", "row", held_rows, folder_bytes(cache), peak.peak)
     space.blocks["crops"]["memory_bytes"] = int(row_bytes)
     record["seconds"]["crops"] = time.time() - t0
 
+    # the training, watched a check at a time
     t0 = time.time()
-    steps = int(plan["steps_per_round"])
-    say(f"training {steps} steps from step {session.step} on {len(sel_rows)} rows ({len(sel_ex)} crops)")
-    session.train(sel_ex, steps, on_step=lambda r: (r["step"] + 1) % max(1, steps // 10) == 0 and say(
-        f"step {r['step'] + 1}: loss {r['total']:.4f}"))
+    trained, wstate = train_watched(session, sel_ex, watch_ex, len(sel_rows), plan, state, round_no, out, say)
+    record["watch"] = wstate
     # The round's own session folder, its steps' rows carried on from the round before's, so a round
     # run again after a cut starts from the same session and writes the same rows.
     saved = Path(out) / "session"
@@ -448,35 +660,156 @@ def run_round(plan, state, out, work, data, asked_workers):
     session.save(str(saved))
     record["seconds"]["train"] = time.time() - t0
 
-    t0, p0 = time.time(), (peak_bytes() if peak_reset() else None)
-    from autoanatomist import train
-    held = train.evaluate_masks(session.model, gate_ex)
-    dice, named, latent = per_crop(session, gate_ex)
-    kinds, levels = row_classes(gate_ex, gate_rows)
-    _, _, sel_latent = per_crop(session, sel_ex)
-    sel_kinds, sel_levels = row_classes(sel_ex, sel_rows)
-    gate_view = {"kinds": kinds, "levels": levels, "dice": dice, "right": named == gate_ex.names, "latent": latent}
-    sel_view = {"kinds": sel_kinds, "levels": sel_levels, "latent": sel_latent}
-    totals = read_totals(saved)
-    history = list(state.get("held", [])) + [held["distance_mm"]]
-    record["gates"]["convergence"] = G.convergence(totals, history, bars["convergence"])
-    record["gates"]["anomaly"] = anomaly_result(classes, gate_view, sel_view, bars["anomaly"])
+    # the held gates
+    t0 = time.time()
+    with PeakWatch() as peak:
+        held = train.evaluate_masks(session.model, gate_ex)
+        dice, named, latent = per_crop(session, gate_ex)
+        kinds, levels = row_classes(gate_ex, gate_rows)
+        sel_latent = latents_of(session, sel_ex)
+        sel_kinds, sel_levels = row_classes(sel_ex, sel_rows)
+        gate_view = {"kinds": kinds, "levels": levels, "dice": dice, "right": named == gate_ex.names, "latent": latent}
+        sel_view = {"kinds": sel_kinds, "levels": sel_levels, "latent": sel_latent}
+        totals = read_totals(saved)
+        history = list(state.get("held", [])) + [held["distance_mm"]]
+        record["gates"]["convergence"] = G.convergence(totals, history, bars["convergence"])
+        record["gates"]["anomaly"] = anomaly_result(classes, gate_view, sel_view, bars["anomaly"])
     record["held"] = {k: held[k] for k in ("dice", "dice_every", "distance_mm", "centroid_mm", "named_right",
                                            "named_within_one", "crops")}
     record["held_history"] = history
-    space.measure("evaluate", "round", 1, 0, p0)
+    space.measure("evaluate", "round", 1, 0, peak.peak)
     record["seconds"]["evaluate"] = time.time() - t0
     say(f"held: Dice {held['dice']:.3f}, distance {held['distance_mm']:.2f} mm, named right {held['named_right']:.3f}")
 
     # the fingerprint
-    t0, p0 = time.time(), (peak_bytes() if peak_reset() else None)
+    t0 = time.time()
     fp = plan["fingerprint"]
     persons = int(config["fingerprint_persons"])
+    gate_persons = int(fp["gate_persons"])
+    with PeakWatch() as peak:
+        fingerprint_part(plan, config, record, pairs, pair_record, persons, gate_persons, round_no, say)
+    # The fingerprint's memory grows with its persons, the selection's and the gate's of every type,
+    # so it is measured a person, and the next round's persons a type are as many as the memory holds.
+    space.measure("fingerprint", "person", (persons + gate_persons) * len(classes), 0, peak.peak)
+    record["seconds"]["fingerprint"] = time.time() - t0
+
+    # the space plan for the next round
+    space.measure("round", "round", 1, folder_bytes(out), None)
+    disk = shutil.disk_usage(work)
+    plan_space = G.space_plan(space.blocks, disk.free, free_memory(), DISK_SHARE, RAM_SHARE)
+    # What the memory holds next round: the rows held now and more in half the share of what is still
+    # free with them held, the fingerprint's persons a type in the other half, so the controller may
+    # grow both in one round and the two together still fit.
+    room = free_memory() * RAM_SHARE / 2
+    plan_space["rows_fit"] = held_rows + int(room // max(row_bytes, 1))
+    per_person = space.blocks["fingerprint"]["rss_bytes"]
+    plan_space["persons_fit"] = persons + int(room // (per_person * len(classes))) if per_person > 0 else None
+    record["space"] = plan_space
+    record["gates"] = {g: record["gates"].get(g) for g in plan.get("gates", G.GATES)}
+    record["stand_in"] = bool(pair_record.get("stand_in", False))
+    record["environment"] = environment()
+    for g, r in record["gates"].items():
+        say(f"gate {g}: {'pass' if r and r.get('pass') else 'fail'}"
+            + (f" ({r.get('missing') or r.get('why') or '; '.join(r.get('failing', [])[:3])})" if r and not r.get("pass") else ""))
+    return record
+
+
+def train_watched(session, sel_ex, watch_ex, rows, plan, state, round_no, out, say):
+    """The round's training, a check at a time (tools/qaloop_gates.py, the training watch): every
+    every_epochs the check's loss and the watch rows' held Dice and surface distance written to
+    TREND.jsonl, said on PROGRESS.txt and logged to Weights and Biases where it runs; a check whose
+    numbers cannot be right raises InsaneAnswer; training stops once the held measures have gained
+    nothing for patience_epochs, and rests in later rounds until the rows it trains on grow.
+    Returns (steps trained, the watch's state)."""
+    from autoanatomist import train
+    watch = plan["watch"]
+    w = dict(state.get("watch") or {})
+    spines = len(sel_ex.spines())
+    per_step = int(session.blocks.batch) / max(spines, 1)
+    epoch0 = float(w.get("epoch", 0.0))
+    w_name = float(session.blocks.w_name)
+    # The loss is its terms weighted, so a new name weight moves it however well the network does: its
+    # best is counted afresh from the first check under the new weight, or the explode test would read
+    # the controller's own change as a network gone wrong.
+    reweighted = w.get("w_name") is not None and float(w["w_name"]) != w_name
+    if reweighted:
+        w.pop("best_loss", None)
+    # Training that rests starts again when what it trains on changes: more rows, or a new weight.
+    if G.stalled(w, watch) and (rows > int(w.get("rows", 0)) or reweighted):
+        what = (f"the rows grew from {w.get('rows')} to {rows}" if rows > int(w.get("rows", 0))
+                else f"the name weight went from {w['w_name']} to {w_name}")
+        say(f"{what}: training starts again, {watch['patience_epochs']} epochs to gain")
+        w.update(best_epoch=epoch0, since_best=0.0)
+    steps = int(plan["steps_per_round"])
+    if G.stalled(w, watch):
+        say(f"training rests: the held measures gained nothing in {w['since_best']:.1f} epochs and neither the "
+            f"rows nor the weights have changed")
+        steps = 0
+    every = max(1, int(round(watch["every_epochs"] / per_step)))
+    trend = Path(out) / "TREND.jsonl"
+    trend.unlink(missing_ok=True)
+    telemetry = round_telemetry(out, plan, state, round_no, {"rows": rows, "spines": spines, "every_steps": every,
+                                                              "epochs_per_step": per_step})
+    say(f"training up to {steps} steps from step {session.step} (epoch {epoch0:.1f}) on {rows} rows ({len(sel_ex)} crops), "
+        f"a check every {every} steps ({every * per_step:.1f} epochs)")
+    done, checks = 0, 0
+    try:
+        while done < steps:
+            chunk = session.train(sel_ex, min(every, steps - done))
+            done += len(chunk)
+            losses = np.asarray([r["total"] for r in chunk], float)
+            held = train.evaluate_masks(session.model, watch_ex)
+            point = {"round": round_no, "step": int(session.step), "round_steps": done, "epoch": epoch0 + done * per_step,
+                     "loss": float(losses.mean()), "loss_last": float(losses[-1]), "held_dice": float(held["dice"]),
+                     "held_distance_mm": float(held["distance_mm"]), "held_named_right": float(held["named_right"]),
+                     "surface_missing": int(held["surface_missing"]), "crops": int(held["crops"])}
+            why = G.insane(point, w.get("best_loss"), watch, float(held["surface_bound_mm"]))
+            if why is None:
+                w, point["gained"] = G.watch_step(w, point, watch)
+                point["since_best"] = w["since_best"]
+            checks += 1
+            with open(trend, "a") as f:
+                f.write(json.dumps(plain(point), sort_keys=True) + "\n")
+            telemetry.log({k: v for k, v in point.items() if isinstance(v, (int, float))}, step=point["step"])
+            if why is not None:
+                say(f"insane at epoch {point['epoch']:.1f}: {why}")
+                raise InsaneAnswer(why)
+            say(f"epoch {point['epoch']:.1f}, step {point['step']}: loss {point['loss']:.4f}; held Dice "
+                f"{point['held_dice']:.3f}, distance {point['held_distance_mm']:.2f} mm; last gain at epoch "
+                f"{w['best_epoch']:.1f} ({w['since_best']:.1f} since)")
+            if G.stalled(w, watch):
+                say(f"training stops: no gain of {watch['min_gain']} in {w['since_best']:.1f} epochs, "
+                    f"the watch's patience {watch['patience_epochs']}")
+                break
+    finally:
+        telemetry.summary({"round": round_no, "checks": checks, "trained_steps": done})
+        telemetry.finish()
+    w.update(rows=rows, epoch=epoch0 + done * per_step, trained_steps=done, checks=checks, w_name=w_name,
+             stalled=G.stalled(w, watch), epochs_per_step=per_step, every_steps=every)
+    return done, w
+
+
+def round_telemetry(out, plan, state, round_no, config):
+    """The round's Weights and Biases run, one a round grouped by the loop's run, its x axis the
+    session's step; a no-op wherever W&B is off, absent or cannot start (tools/wandb_log.py)."""
+    tool = load_tool("wandb_log")
+    group = "".join(c if c.isalnum() or c in "-_" else "-" for c in str(state.get("wandb_group") or f"qaloop-{plan['plan']}"))[:48]
+    record = {"run_id": group, "code_commit": str(state.get("commit") or "unknown"), "catalog_sha256": "none",
+              "catalog_version": "none", "clean_tree": True}
+    return tool.Telemetry(out, record, f"round{round_no:03d}", dict(config, plan=plan["plan"], round=round_no), resume=True)
+
+
+def fingerprint_part(plan, config, record, pairs, pair_record, persons, gate_persons, round_no, say):
+    """The fingerprint and the gates that read it: the greedy search over the landmarks the presence
+    floor keeps, on the selection's phantoms and pairs, judged on the gate's; presence on the gate's
+    real frames; real naming on the gate's pairs; latency of the naming path."""
+    bars = plan["bars"]
+    classes = list(plan["classes"])
+    fp = plan["fingerprint"]
     sel_samples = S.phantom_samples(classes, S.seeds_for(classes, persons, "selection"), fp["frames_per_view"],
                                     fp["k_max"], fp["noise_px"], fp.get("pose"), tuple(fp.get("lordosis", (0.3, 1.2))))
     # The gate's phantom persons are drawn anew each round, so a change the controller made from one
     # round's answers is judged on persons it was not chosen on.
-    gate_persons = int(fp["gate_persons"])
     gate_seeds = S.seeds_for(classes, gate_persons, "gate", round_offset=round_no * gate_persons)
     gate_samples = S.phantom_samples(classes, gate_seeds, fp["frames_per_view"], fp["k_max"], fp["noise_px"],
                                      fp.get("pose"), tuple(fp.get("lordosis", (0.3, 1.2))))
@@ -491,7 +824,7 @@ def run_round(plan, state, out, work, data, asked_workers):
     if presence is not None and len(presence["training"]):
         means = S.column_means(presence["training"])
         by_landmark = {G.LANDMARKS[i]: float(means[i]) for i in range(len(G.LANDMARKS))}
-        pool = [i for i in pool if not (means[i] < floor)]
+        pool = floor_pool(pool, means, floor)
         say(f"presence floor {floor:.2f} keeps {len(pool)} of {len(G.LANDMARKS)} landmarks")
     sel_packs = G.pack(sel_samples + real_sel)
     gate_packs = G.pack(gate_samples + real_gate)
@@ -503,62 +836,51 @@ def run_round(plan, state, out, work, data, asked_workers):
                              "presence_by_landmark": by_landmark, "selection_runs": G.count(sel_packs),
                              "gate_runs": G.count(gate_packs), "real_selection_runs": len(real_sel),
                              "real_gate_runs": len(real_gate)}
+    if trace:
+        record["fingerprint"]["objective"] = trace[-1].get("objective") if isinstance(trace[-1], dict) else None
     if not chosen:
         record["gates"]["fingerprint"] = {"pass": False, "missing": "no landmark pair could be scored"}
         record["gates"]["real_naming"] = {"pass": False, "missing": "no fingerprint was chosen"}
         record["gates"]["presence"] = {"pass": False, "missing": "no fingerprint was chosen"}
         record["gates"]["latency"] = {"pass": False, "missing": "no fingerprint was chosen"}
+        return
+    namer, table = gate_cells(sel_packs, gate_packs, chosen, S.TYPE_LEVELS)
+    _, ceiling = gate_cells(sel_packs, gate_packs, pool, S.TYPE_LEVELS)
+    record["cells"] = table
+    record["ceiling_cells"] = ceiling
+    record["gates"]["fingerprint"] = G.fingerprint_gate(table, bars["fingerprint"], fp.get("anchors", G.ANCHORS),
+                                                        "phantom", ceiling)
+    if real_gate:
+        real = G.fingerprint_gate(table, bars["real_naming"], ("none",), "real", ceiling)
+        real["stand_in"] = pair_record.get("stand_in", False)
+        record["gates"]["real_naming"] = real
     else:
-        namer, table = gate_cells(sel_packs, gate_packs, chosen, S.TYPE_LEVELS)
-        _, ceiling = gate_cells(sel_packs, gate_packs, pool, S.TYPE_LEVELS)
-        record["cells"] = table
-        record["ceiling_cells"] = ceiling
-        record["gates"]["fingerprint"] = G.fingerprint_gate(table, bars["fingerprint"], fp.get("anchors", G.ANCHORS),
-                                                            "phantom", ceiling)
-        if real_gate:
-            real = G.fingerprint_gate(table, bars["real_naming"], ("none",), "real", ceiling)
-            real["stand_in"] = pair_record.get("stand_in", False)
-            record["gates"]["real_naming"] = real
-        else:
-            record["gates"]["real_naming"] = {"pass": False, "missing": "no gate person's frame shows two agreed levels"}
-        if presence is not None and len(presence["validation"]):
-            frame_means = [float(np.nanmean(r[chosen])) if np.isfinite(r[chosen]).any() else float("nan")
-                           for r in presence["validation"]]
-            pres = G.presence_gate(frame_means, bars["presence"])
-            pres["stand_in"] = pair_record.get("stand_in", False)
-            record["gates"]["presence"] = pres
-        else:
-            record["gates"]["presence"] = {"pass": False, "missing": "no gate frame to look at"}
-        seconds = G.time_naming(namer, gate_packs, chosen, int(plan.get("latency_runs", 500)))
-        lat = G.latency_gate(seconds, bars["latency"])
-        lat["what"] = "the 2-D naming path alone (features and every hypothesis), no landmark detector"
-        record["gates"]["latency"] = lat
-    # The fingerprint's memory grows with its persons, the selection's and the gate's of every type,
-    # so it is measured a person, and the next round's persons a type are as many as the memory holds.
-    space.measure("fingerprint", "person", (persons + gate_persons) * len(classes), 0, p0)
-    record["seconds"]["fingerprint"] = time.time() - t0
+        record["gates"]["real_naming"] = {"pass": False, "missing": "no gate person's frame shows two agreed levels"}
+    if presence is not None and len(presence["validation"]):
+        frame_means = [float(np.nanmean(r[chosen])) if np.isfinite(r[chosen]).any() else float("nan")
+                       for r in presence["validation"]]
+        pres = G.presence_gate(frame_means, bars["presence"])
+        pres["stand_in"] = pair_record.get("stand_in", False)
+        record["gates"]["presence"] = pres
+    else:
+        record["gates"]["presence"] = {"pass": False, "missing": "no gate frame to look at"}
+    seconds = G.time_naming(namer, gate_packs, chosen, int(plan.get("latency_runs", 500)))
+    lat = G.latency_gate(seconds, bars["latency"])
+    lat["what"] = "the 2-D naming path alone (features and every hypothesis), no landmark detector"
+    record["gates"]["latency"] = lat
 
-    # the space plan for the next round
-    space.measure("round", "round", 1, folder_bytes(out), None)
-    disk = shutil.disk_usage(work)
-    plan_space = G.space_plan(space.blocks, disk.free, free_memory(), DISK_SHARE, RAM_SHARE)
-    # The rows the host's memory holds next round: those held now and as many more as fit in the
-    # share of what is still free with them held.
-    held_rows = len(sel_rows) + len(gate_rows)
-    room = free_memory() * RAM_SHARE
-    plan_space["rows_fit"] = held_rows + int(room // max(row_bytes, 1))
-    # The persons a type the memory holds next round, the same way; none where the peak could not be
-    # measured, and the controller then adds none past the plan's limit.
-    per_person = space.blocks["fingerprint"]["rss_bytes"]
-    plan_space["persons_fit"] = persons + int(room // (per_person * len(classes))) if per_person > 0 else None
-    record["space"] = plan_space
-    record["gates"] = {g: record["gates"].get(g) for g in plan.get("gates", G.GATES)}
-    record["stand_in"] = bool(pair_record.get("stand_in", False))
-    record["environment"] = environment()
-    for g, r in record["gates"].items():
-        say(f"gate {g}: {'pass' if r and r.get('pass') else 'fail'}"
-            + (f" ({r.get('missing') or r.get('why') or '; '.join(r.get('failing', [])[:3])})" if r and not r.get("pass") else ""))
-    return record
+
+def floor_pool(pool, means, floor):
+    """The landmarks the presence floor keeps: those whose mean percentile on the selection's frames
+    is a number at or above it; with a floor of 0 every landmark stays, measured or not. Where fewer
+    than two would stay, the two best measured stay, since the search starts from a pair."""
+    if floor <= 0:
+        return list(pool)
+    kept = [i for i in pool if math.isfinite(means[i]) and means[i] >= floor]
+    if len(kept) >= 2:
+        return kept
+    measured = sorted((i for i in pool if math.isfinite(means[i])), key=lambda i: -means[i])
+    return sorted(measured[:2]) if len(measured) >= 2 else list(pool)
 
 
 def environment():
@@ -606,6 +928,10 @@ def main(argv=None):
         return 2
     try:
         record = run_round(plan, state, a.out, a.work, a.data, a.workers)
+    except InsaneAnswer as error:
+        Path(a.out, "why.txt").write_text(f"insane answer: {error}\n")
+        print(f"insane answer: {error}", file=sys.stderr)
+        return INSANE_EXIT
     except Exception:
         Path(a.out, "why.txt").write_text(traceback.format_exc())
         traceback.print_exc()

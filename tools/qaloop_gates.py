@@ -356,24 +356,33 @@ def judged(best_of, groups, truth):
 
 
 def name_rows(namer, packs, feats, masks=None):
-    """Each run named, one entry per run whose every point is present: arrays of its view, anchor,
-    type, person, length, whether its names came out right and its margin."""
+    """Each run named, one entry per run (of the masks where given): arrays of its view, anchor,
+    type, person, length, whether its names came out right and its margin. A run with a chosen
+    landmark missing, out of its frame, cannot be named from that frame: it counts as a miss with a
+    margin of 0, so a choice of landmarks is never flattered by leaving out the runs it cannot see."""
     cols = {f: [] for f in ("view", "anchor", "type", "person", "k", "right", "margin")}
+
+    def add(p, k, sel, right, margin):
+        for field in ("view", "anchor", "type", "person"):
+            cols[field].append(p[field][sel])
+        cols["k"].append(np.full(int(sel.sum()), k))
+        cols["right"].append(np.asarray(right, bool))
+        cols["margin"].append(np.asarray(margin, float))
+
     for k, p in packs.items():
         f = feats[k]
-        keep = whole_runs(f) if masks is None else whole_runs(f) & masks[k]
-        for view in np.unique(p["view"][keep]):
-            for anchor in np.unique(p["anchor"][keep]):
-                sel = keep & (p["view"] == view) & (p["anchor"] == anchor)
-                if not sel.any():
-                    continue
-                best_of, t = namer.name(str(view), str(anchor), f[sel])
-                right, margin = judged(best_of, t["groups"], p["names"][sel])
-                for field in ("view", "anchor", "type", "person"):
-                    cols[field].append(p[field][sel])
-                cols["k"].append(np.full(int(sel.sum()), k))
-                cols["right"].append(right)
-                cols["margin"].append(margin)
+        inside = np.ones(len(f), bool) if masks is None else np.asarray(masks[k], bool)
+        whole = whole_runs(f)
+        for view in np.unique(p["view"][inside]):
+            for anchor in np.unique(p["anchor"][inside]):
+                cell = inside & (p["view"] == view) & (p["anchor"] == anchor)
+                sel, miss = cell & whole, cell & ~whole
+                if sel.any():
+                    best_of, t = namer.name(str(view), str(anchor), f[sel])
+                    right, margin = judged(best_of, t["groups"], p["names"][sel])
+                    add(p, k, sel, right, margin)
+                if miss.any():
+                    add(p, k, miss, np.zeros(int(miss.sum()), bool), np.zeros(int(miss.sum())))
     return {f: np.concatenate(v) if v else np.empty(0) for f, v in cols.items()}
 
 
@@ -409,14 +418,21 @@ def arm_of(view):
     return "real" if str(view).endswith("_real") else "phantom"
 
 
-def objective(table):
+def objective(table, arms=()):
     """The selection's objective: the mean over the arms (the phantoms', the real pairs') of the mean
     over each arm's cells of the cell's accuracy, every cell weighed alike within its arm, so an
-    anomalous type counts as much as the typical one, and the real frames as much as every phantom."""
-    arms = {}
+    anomalous type counts as much as the typical one, and the real frames as much as every phantom.
+    An arm the runs hold (arms, from the packs) with no cell in the table counts 0, so a choice that
+    names none of an arm's runs never scores as though the arm were not there."""
+    by_arm = {arm: [] for arm in arms}
     for key, c in table.items():
-        arms.setdefault(arm_of(key.split("/")[0]), []).append(c["accuracy"])
-    return float(np.mean([np.mean(v) for v in arms.values()])) if arms else 0.0
+        by_arm.setdefault(arm_of(key.split("/")[0]), []).append(c["accuracy"])
+    return float(np.mean([np.mean(v) if v else 0.0 for v in by_arm.values()])) if by_arm else 0.0
+
+
+def arms_of(packs):
+    """The arms the runs of the packs belong to."""
+    return sorted({arm_of(v) for p in packs.values() for v in np.unique(p["view"])})
 
 
 def deal_folds(packs, folds):
@@ -453,7 +469,7 @@ def cv_objective(packs, chosen, type_levels, folds=3, ids=None):
         namer = Namer(NameModel().fit(packs, feats, train), type_levels)
         parts.append(name_rows(namer, packs, feats, test))
     table = cells(join_rows(parts))
-    return objective(table), table
+    return objective(table, arms_of(packs)), table
 
 
 def greedy_select(packs, pool, type_levels, max_landmarks=8, min_gain=0.005, folds=3, log=None):
@@ -531,8 +547,13 @@ def fingerprint_gate(table, bars, anchors=ANCHORS, arm="phantom", ceiling=None):
                               "ceiling_high": upper(top) if top else None, "within_reach": reach})
         if not reach:
             beyond.append(key)
-    return {"pass": asked > 0 and not failing, "failing": failing, "cells": asked, "failing_cells": cells_failing,
-            "beyond_ceiling": beyond, "ceiling_known": ceiling is not None}
+    result = {"pass": asked > 0 and not failing, "failing": failing, "cells": asked, "failing_cells": cells_failing,
+              "beyond_ceiling": beyond, "ceiling_known": ceiling is not None}
+    if asked == 0:
+        # No cell of the arm to judge is the gate's data missing, which stops the loop with its
+        # reason, never a failure the controller would try to mend with more landmarks.
+        result["missing"] = f"no {arm} cell under the anchors {', '.join(anchors)} to judge"
+    return result
 
 
 def within_reach(result):
@@ -719,9 +740,22 @@ def probe(train_latents, train_labels, test_latents, test_labels):
     return out
 
 
+def mean_low(values, z=Z95):
+    """The lower end of the normal 95 per cent interval of the mean of values, the mean less z
+    standard errors; not a number where fewer than two of the values are numbers."""
+    x = np.asarray(values, float)
+    x = x[np.isfinite(x)]
+    if len(x) < 2:
+        return float("nan")
+    return float(x.mean() - z * x.std(ddof=1) / math.sqrt(len(x)))
+
+
 def anomaly_gate(per_class, bars, classes):
     """Whether every anomaly class the plan names is decoded and encoded: per_class gives each class's
-    held-out crops' mean Dice, the name head's share named right and the probe's recall."""
+    held-out crops' Dice, the name head's share named right and the probe's recall, each judged by the
+    lower end of its 95 per cent interval where the round gives one (dice_low, named_low, probe_low:
+    the mean's normal interval for Dice, Wilson's for the two shares), so a class passes on its crops'
+    evidence and not on a lucky few; by the measure itself where no interval is given."""
     failing = []
     for c in classes:
         r = per_class.get(c)
@@ -729,10 +763,12 @@ def anomaly_gate(per_class, bars, classes):
             failing.append(f"{c}: no held-out crop")
             continue
         # Written as not-at-or-above, so a measure that is not a number fails the bar.
-        for measure, words in (("dice", "Dice"), ("named_right", "named right"), ("probe_recall", "probe recall")):
-            value = r.get(measure, float("nan"))
+        for measure, low, words in (("dice", "dice_low", "Dice"), ("named_right", "named_low", "named right"),
+                                    ("probe_recall", "probe_low", "probe recall")):
+            value = r.get(low, r.get(measure, float("nan")))
             if not (isinstance(value, (int, float)) and value >= bars[measure]):
-                failing.append(f"{c}: {words} {value} below {bars[measure]}")
+                said = f"{value:.3f}" if isinstance(value, (int, float)) else str(value)
+                failing.append(f"{c}: {words}{' lower bound' if low in r else ''} {said} below {bars[measure]}")
     return {"pass": not failing, "failing": failing}
 
 
@@ -787,10 +823,153 @@ def space_plan(blocks, free_disk, free_ram, disk_share=0.9, ram_share=0.8):
 
 # ---------------------------------------------------------------- the controller
 
+# ---------------------------------------------------------------- the training watch
+#
+# The owner's words of 2026-10-31 04:18 UTC: track the objective and the loss as training goes,
+# watch for answers that cannot be right, and go on only while a run makes progress, over some fifty
+# epochs. Within a round the network trains a check at a time (every_epochs), each check's loss and
+# held measures written down; a check whose numbers cannot be right stops the run; training rests
+# once the held measures have gained nothing for patience_epochs, and starts again only when the
+# rows it trains on have grown; the loop ends once patience_rounds rounds in a row raised no measure.
+
+WATCH_KEYS = ("every_epochs", "patience_epochs", "min_gain", "explode", "warm_epochs", "watch_per_class",
+              "patience_rounds")
+LOSS_FLOOR = 0.01   # the explode test's best loss is taken as at least this, so a loss near nought never trips it
+
+
+def insane(point, best_loss, watch, bound_mm):
+    """Why one check's numbers cannot be right, or None: a loss or a held measure that is not a
+    number, a loss over watch['explode'] times the best check's, a Dice outside 0 to 1, a surface
+    distance below nought or past the crop's longest side (bound_mm), or, once warm_epochs have
+    passed, no held crop with any predicted surface, the network collapsed to empty masks."""
+    for name in ("loss", "loss_last", "held_dice", "held_distance_mm"):
+        value = point.get(name)
+        if not isinstance(value, (int, float)) or not math.isfinite(value):
+            return f"{name} is not a number at step {point.get('step')}"
+    if best_loss is not None and point["loss"] > watch["explode"] * max(best_loss, LOSS_FLOOR):
+        return (f"the loss {point['loss']:.4g} at step {point['step']} is over {watch['explode']:g} times "
+                f"its best check's {best_loss:.4g}")
+    if not 0.0 <= point["held_dice"] <= 1.0:
+        return f"a held Dice of {point['held_dice']:.4g} at step {point['step']}"
+    if not 0.0 <= point["held_distance_mm"] <= bound_mm * (1 + 1e-6):
+        return (f"a held surface distance of {point['held_distance_mm']:.4g} mm at step {point['step']}, "
+                f"outside 0 to the crop's {bound_mm:.1f} mm")
+    crops = int(point.get("crops") or 0)
+    if point["epoch"] >= watch["warm_epochs"] and crops and int(point.get("surface_missing", 0)) >= crops:
+        return f"collapsed: no held crop has a predicted surface after {point['epoch']:.1f} epochs"
+    return None
+
+
+def watch_step(state, point, watch):
+    """The watch after one check, and whether the check gained: a held distance below the last
+    gaining one by min_gain of itself, or a held Dice above the last gaining one by min_gain. Keeps
+    the last gaining values and their epoch, step and round, the best loss and the epochs since the
+    last gain."""
+    s = dict(state)
+    gained = False
+    if s.get("best_distance_mm") is None or point["held_distance_mm"] < s["best_distance_mm"] * (1 - watch["min_gain"]):
+        s["best_distance_mm"], gained = point["held_distance_mm"], True
+    if s.get("best_dice") is None or point["held_dice"] > s["best_dice"] + watch["min_gain"]:
+        s["best_dice"], gained = point["held_dice"], True
+    if gained or s.get("best_epoch") is None:
+        s.update(best_epoch=point["epoch"], best_step=point["step"], best_round=point["round"])
+    s["best_loss"] = point["loss"] if s.get("best_loss") is None else min(s["best_loss"], point["loss"])
+    s["epoch"] = point["epoch"]
+    s["since_best"] = point["epoch"] - s["best_epoch"]
+    return s, gained
+
+
+def stalled(state, watch):
+    """Whether training has gained nothing on the held measures for patience_epochs."""
+    return state.get("best_epoch") is not None and state.get("since_best", 0.0) >= watch["patience_epochs"]
+
+
+def round_measures(record):
+    """The measures the loop's progress is judged by, each larger for better and on one scale, so one
+    min_gain serves them all: the held Dice; the log of the held distance and of the latency's 95th
+    percentile, negated, so a share of either is a gain; each anomaly class's worst lower bound
+    against its bar, averaged; the mean lower bound of the phantom cells and of the real cells; and
+    the presence share's lower bound. A measure the round could not give is left out."""
+    out = {}
+    held = record.get("held") or {}
+    gates = record.get("gates") or {}
+
+    def number(x):
+        return isinstance(x, (int, float)) and math.isfinite(x)
+
+    if number(held.get("dice")):
+        out["held_dice"] = float(held["dice"])
+    fingerprint = record.get("fingerprint") or {}
+    if number(fingerprint.get("objective")):
+        out["objective"] = float(fingerprint["objective"])
+    if number(held.get("distance_mm")) and held["distance_mm"] > 0:
+        out["held_distance"] = -math.log(held["distance_mm"])
+    per_class = ((gates.get("anomaly") or {}).get("per_class") or {})
+    worst = []
+    for r in per_class.values():
+        lows = [r.get(k, r.get(m)) for k, m in (("dice_low", "dice"), ("named_low", "named_right"), ("probe_low", "probe_recall"))]
+        worst.append(min(x if number(x) else 0.0 for x in lows))
+    if worst:
+        out["anomaly"] = float(np.mean(worst))
+    for arm in ("phantom", "real"):
+        lows = [c["low"] for key, c in (record.get("cells") or {}).items() if arm_of(key.split("/")[0]) == arm]
+        if lows:
+            out[f"cells_{arm}"] = float(np.mean(lows))
+    presence = gates.get("presence") or {}
+    if number(presence.get("low")):
+        out["presence"] = float(presence["low"])
+    latency = gates.get("latency") or {}
+    if number(latency.get("p95_ms")) and latency["p95_ms"] > 0:
+        out["latency"] = -math.log(latency["p95_ms"])
+    return out
+
+
+# The measures the loop's progress is judged by: each is read off rows, persons or frames that stay
+# the same from round to round, so a change in it is the network's or the controller's doing. The
+# phantom cells and the latency are recorded but judge nothing: the gate's phantom persons are drawn
+# anew every round and the latency is a timing, so their noise alone would read as a gain and keep a
+# loop that has stopped improving going.
+PROGRESS_MEASURES = ("held_dice", "held_distance", "objective", "anomaly", "cells_real", "presence")
+
+
+def loop_progress(progress, measures, watch):
+    """The loop's progress after a round: each steady measure's best so far (PROGRESS_MEASURES),
+    whether this round raised any of them by min_gain, and how many rounds in a row raised none. The
+    first round's measures are the first bests and count as a gain."""
+    measures = {k: v for k, v in measures.items() if k in PROGRESS_MEASURES}
+    best = dict(progress.get("best") or {})
+    raised = [k for k, v in measures.items() if k not in best or v > best[k] + watch["min_gain"]]
+    for k, v in measures.items():
+        best[k] = max(v, best.get(k, v))
+    flat = 0 if raised else int(progress.get("flat_rounds", 0)) + 1
+    return {"best": best, "raised": raised, "flat_rounds": flat}
+
+
+def watch_problems(plan):
+    """What keeps the plan's watch from holding, in words."""
+    w = plan.get("watch")
+    if not isinstance(w, dict):
+        return ["the plan has no watch"]
+    out = [f"watch has no {k}" for k in WATCH_KEYS if k not in w]
+    if out:
+        return out
+    for k in WATCH_KEYS:
+        if not isinstance(w[k], (int, float)) or isinstance(w[k], bool) or w[k] <= 0:
+            out.append(f"watch {k} is a number above 0, not {w[k]!r}")
+    for k in ("watch_per_class", "patience_rounds"):
+        if not isinstance(w[k], int):
+            out.append(f"watch {k} is a whole number")
+    if not out and w["explode"] <= 1:
+        out.append("watch explode is above 1, a multiple of the best loss")
+    if not out and w["patience_epochs"] < w["every_epochs"]:
+        out.append("watch patience_epochs is at least every_epochs, or no check could see it pass")
+    return out
+
+
 GATES = ("convergence", "anomaly", "fingerprint", "presence", "real_naming", "latency")
 CLASSES = ("typical", "lumbar_rib", "no_rib_t12", "six_lumbar", "four_lumbar", "t13")
 PLAN_KEYS = ("plan", "purpose", "class", "rounds", "gates", "words", "steps_per_round", "classes", "phantom_rows",
-             "fingerprint", "pairs", "presence", "bars", "start", "limits", "latency_runs")
+             "fingerprint", "pairs", "presence", "bars", "start", "limits", "latency_runs", "watch")
 START_KEYS = ("phantoms_per_class", "w_name", "fingerprint_persons", "max_landmarks", "presence_floor")
 PLAN_CLASSES = ("smoke", "loop")
 
@@ -822,6 +1001,7 @@ def plan_problems(plan):
         out.append("a loop plan never names stand-ins: its real gates are asked of real frames or not at all")
     if not isinstance(plan["steps_per_round"], int) or plan["steps_per_round"] < 1:
         out.append("steps_per_round is a whole number of at least 1")
+    out += watch_problems(plan)
     if not missing:
         out += limits_problems(plan)
     return out
@@ -880,7 +1060,9 @@ def controller(record, state, plan):
     passing = [g for g, r in results.items() if r and r.get("pass")]
     failing = [g for g in asked if g not in passing]
     round_ = int(state.get("round", 0))
-    common = {"passing": passing, "failing": failing, "changes": [], "stuck": []}
+    watch = plan.get("watch") or {}
+    progress = loop_progress(state.get("progress") or {}, round_measures(record), watch) if watch else {}
+    common = {"passing": passing, "failing": failing, "changes": [], "stuck": [], "progress": progress}
     if missing:
         whys = "; ".join(f"{g}: {(results[g] or {}).get('missing') or 'not run'}" for g in missing)
         return {**common, "branch": "done", "verdict": "stopped", "why": f"missing data: {whys}"}
@@ -889,16 +1071,33 @@ def controller(record, state, plan):
     if round_ + 1 >= int(plan["rounds"]):
         return {**common, "branch": "done", "verdict": "not met",
                 "why": f"{plan['rounds']} rounds run; failing {', '.join(failing)}"}
+    if watch and progress["flat_rounds"] >= int(watch["patience_rounds"]):
+        best = ", ".join(f"{k} {v:.3f}" for k, v in sorted(progress["best"].items()))
+        return {**common, "branch": "done", "verdict": "not met",
+                "why": f"no progress: {progress['flat_rounds']} rounds in a row raised no measure by "
+                       f"{watch['min_gain']}; failing {', '.join(failing)}; best {best}"}
     limits = plan.get("limits", {})
     nxt = dict(plan.get("start", {}), **state.get("config", {}))
     changes, stuck = [], []
-    converged = "convergence" not in asked or results["convergence"]["pass"]
+    # Training that has gained nothing on the held measures for the watch's patience has converged
+    # as far as these rows take it: the data may change, and training rests until it does.
+    resting = bool((record.get("watch") or {}).get("stalled"))
+    converged = "convergence" not in asked or results["convergence"]["pass"] or resting
     if "convergence" in failing:
-        changes.append("convergence: train on, the loss has not settled")
+        if resting:
+            stuck.append("convergence: training rests, the held measures gained nothing in "
+                         f"{watch.get('patience_epochs')} epochs; it trains again once the rows grow")
+        else:
+            changes.append("convergence: train on, the loss has not settled")
     if "anomaly" in failing:
         anomaly_change(nxt, limits, record, plan, converged, changes, stuck)
+    chosen = len((record.get("fingerprint") or {}).get("chosen") or []) if record.get("fingerprint") else None
+    if "latency" in failing:
+        # First, so the cap it sets binds the landmarks the other gates would add this same round.
+        latency_change(nxt, chosen, changes, stuck)
     if "fingerprint" in failing:
-        fingerprint_change(nxt, limits, results["fingerprint"], (record.get("space") or {}).get("persons_fit"), changes, stuck)
+        fingerprint_change(nxt, limits, results["fingerprint"], (record.get("space") or {}).get("persons_fit"), changes,
+                           stuck, chosen)
     if "presence" in failing:
         floor = round(min(nxt["presence_floor"] + 0.1, limits.get("presence_floor", 0.5)), 3)
         if floor > nxt["presence_floor"]:
@@ -913,23 +1112,31 @@ def controller(record, state, plan):
             stuck.append("real naming: every failing cell is beyond the ceiling of the pool's landmarks on real frames")
         elif any(c.startswith("fingerprint: up to") for c in changes):
             changes.append("real naming: the fingerprint's added landmarks serve it too")
-        elif nxt["max_landmarks"] < limits.get("max_landmarks", len(LANDMARKS)):
-            nxt["max_landmarks"] = min(nxt["max_landmarks"] + 2, limits.get("max_landmarks", len(LANDMARKS)))
+        elif nxt["max_landmarks"] < landmark_top(nxt, limits) and (chosen is None or chosen >= nxt["max_landmarks"]):
+            nxt["max_landmarks"] = min(nxt["max_landmarks"] + 2, landmark_top(nxt, limits))
             changes.append(f"real naming: up to {nxt['max_landmarks']} landmarks")
         else:
-            stuck.append(f"real naming: landmarks at their limit {nxt['max_landmarks']}")
-    if "latency" in failing:
-        if nxt["max_landmarks"] > 2:
-            nxt["max_landmarks"] = max(2, nxt["max_landmarks"] - 2)
-            changes.append(f"latency: at most {nxt['max_landmarks']} landmarks")
-        else:
-            stuck.append("latency: two landmarks already")
+            stuck.append(f"real naming: landmarks at {nxt['max_landmarks']}, as many as the plan, the latency and "
+                         f"the search allow")
     common = {**common, "stuck": stuck}
     if not changes:
         return {**common, "branch": "done", "verdict": "not met",
                 "why": "no change left in the plan's ranges or the measured memory: " + "; ".join(stuck)}
     return {**common, "branch": "again", "verdict": "running", "why": "; ".join(changes), "changes": changes,
             "config": nxt}
+
+
+def latency_change(nxt, chosen, changes, stuck):
+    """The latency gate's change: at most two landmarks fewer than this round named with, held as a cap
+    the fingerprint and real naming never raise past, since the naming path's time grows with them."""
+    used = int(chosen) if chosen else int(nxt["max_landmarks"])
+    if used > 2:
+        cap = max(2, used - 2)
+        nxt["landmark_cap"] = cap
+        nxt["max_landmarks"] = min(int(nxt["max_landmarks"]), cap)
+        changes.append(f"latency: at most {cap} landmarks from now on")
+    else:
+        stuck.append("latency: two landmarks already")
 
 
 def anomaly_change(nxt, limits, record, plan, converged, changes, stuck):
@@ -958,16 +1165,27 @@ def anomaly_change(nxt, limits, record, plan, converged, changes, stuck):
                  f"and the name head's weight at its limit {nxt['w_name']}")
 
 
-def fingerprint_change(nxt, limits, result, persons_fit, changes, stuck):
-    """The fingerprint's change. Where a failing cell is within reach, two more landmarks, which move
-    the choice toward the whole pool; then, with every landmark of the range in, or where every
-    failing cell is beyond the ceiling, twice the selection's persons a type, as many as the memory
-    holds (persons_fit, measured this round), which fit the namer's tables better. The ceiling is
-    measured at the selection's size, so the cells beyond one frame of the pool's landmarks are named
-    as the finding only once the memory holds no more persons."""
-    reach = within_reach(result)
+def landmark_top(nxt, limits):
+    """The most landmarks the controller may ask for: the plan's limit, and below it the cap the
+    latency gate set once the naming path ran too slow, so the two gates never undo each other."""
     top = int(limits.get("max_landmarks", len(LANDMARKS)))
-    if reach and nxt["max_landmarks"] < top:
+    cap = nxt.get("landmark_cap")
+    return min(top, int(cap)) if cap is not None else top
+
+
+def fingerprint_change(nxt, limits, result, persons_fit, changes, stuck, chosen=None):
+    """The fingerprint's change. Where a failing cell is within reach and the search took every
+    landmark it was allowed (chosen, this round's count), two more landmarks, which move the choice
+    toward the whole pool; then, with every landmark of the range in, where the search stopped short
+    of its allowance on its own, or where every failing cell is beyond the ceiling, twice the
+    selection's persons a type, as many as the memory holds (persons_fit, measured this round),
+    which fit the namer's tables better. The ceiling is measured at the selection's size, so the
+    cells beyond one frame of the pool's landmarks are named as the finding only once the memory
+    holds no more persons."""
+    reach = within_reach(result)
+    top = landmark_top(nxt, limits)
+    full = chosen is None or int(chosen) >= int(nxt["max_landmarks"])
+    if reach and full and nxt["max_landmarks"] < top:
         nxt["max_landmarks"] = min(nxt["max_landmarks"] + 2, top)
         changes.append(f"fingerprint: up to {nxt['max_landmarks']} landmarks")
         return

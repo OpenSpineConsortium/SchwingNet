@@ -25,7 +25,7 @@ STUDY = "qa-loop"
 PREREG = ROOT / "docs" / "research" / "qa-loop" / "PREREG.md"
 # The pre-registration the design answers restate, by its sha256: PREREG.md as frozen, the digest
 # PREREG.md.sha256 beside it holds (tests/test_qaloop_report.py holds the two together).
-DESIGN = "fdaa3fcec245ba881ca4b49dac6debccd01a2b6734fa41c1060016589409b0e0"
+DESIGN = "c588988049e1c983ee551f9d5c1177f0b8c7db8083bf2dfd73bea6a656e9da55"
 LICENCES = ROOT / "data" / "licences.json"
 SOURCE = "carmlspine"
 # PREREG.md section 6's known limits, one restatement each in the section's order;
@@ -46,8 +46,10 @@ LIMITS = (
     "here, would be a test",
     "each Wilson interval counts runs, and runs of one person are not independent",
     "a row's crops end at its last level, so a crop's place in its row is a cue the network may use",
-    "the 2 pixels of noise on each projected landmark and the lordosis scale of 0.3 to 1.2 are choices, tuned on "
-    "nothing",
+    "the 2 pixels of noise on each projected landmark, the lordosis scale of 0.3 to 1.2 and the training watch's "
+    "numbers are choices, tuned on nothing, the 50 epochs of patience the owner's",
+    "the watch rows are phantoms like the selection's, so the watch says the network learns the phantoms, not that it "
+    "outlines a real CT",
     "the smoke runs on stand-ins where no C-ArmLSpine is at hand, which say nothing of real fluoroscopy",
 )
 # The gates in the order PREREG.md section 3 names them, with the words a page says them in.
@@ -250,7 +252,8 @@ def fact_subsets(run):
 def fact_missing_data(run):
     return restated(run, "no imputation: a real case that cannot be read is left out and counted by the kind of its error, "
                          "a gate without its data ends the loop stopped, a measure that is not a number fails its bar, "
-                         "and a round whose tool fails twice ends the loop failed (PREREG.md sections 3 to 5)")
+                         "a training check whose numbers cannot be right ends it stopped, and a round whose tool fails "
+                         "twice, Metaflow's @retry running it once more, ends the loop failed (PREREG.md sections 3 to 5a)")
 
 
 def split_files(run):
@@ -317,10 +320,20 @@ def fact_training(run):
     rounds = summaries(run["record"])
     changed = sum(1 for r in rounds if r.get("changes"))
     steps = ((gates.get("gates") or {}).get("convergence") or {}).get("steps")
-    return met(f"{plan(run).get('steps_per_round')} steps a round over {len(rounds)} rounds, {steps} steps in all by round "
-               f"{n}, the session carried from round to round; the controller changed the configuration after {changed} of "
-               f"them, to {json.dumps(gates.get('config') or {}, sort_keys=True)} for round {n} (RECORD.json, "
-               f"{where(n, 'convergence and config')})")
+    watch = gates.get("watch") or {}
+    watched = (f"; the watch checked the held measures {watch.get('checks')} times in round {n}, which ended at epoch "
+               f"{number_words(watch.get('epoch'))}, its last gain at epoch {number_words(watch.get('best_epoch'))}"
+               + (", and training rested, no gain within the watch's patience" if watch.get("stalled") else "")
+               if watch else "")
+    return met(f"up to {plan(run).get('steps_per_round')} steps a round, stopped once the held measures gained nothing "
+               f"within the watch's patience, over {len(rounds)} rounds, {steps} steps in all by round {n}, the session "
+               f"carried from round to round{watched}; the controller changed the configuration after {changed} of them, to "
+               f"{json.dumps(gates.get('config') or {}, sort_keys=True)} for round {n} (RECORD.json, "
+               f"{where(n, 'convergence, watch and config')}; TREND.jsonl)")
+
+
+def number_words(x):
+    return f"{x:.1f}" if isinstance(x, (int, float)) and not isinstance(x, bool) else "none"
 
 
 def fact_model_selection(run):

@@ -149,8 +149,15 @@ Metaflow's own resume rather than by anything written around it.
   end writes RECORD.json, SUMMARY.md, ENDED.json and the report (`tools/report.py --study
   qa-loop`). Each chain works in <out>/<plan>/<chain>/, each round in rounds/<n>/. The rounds
   measure each block's bytes on disk and peak memory per unit and size the next round by them; that
-  is the loop's only bound on the data it grows. tests/test_qaloop.py holds the gates and the
-  controller, and the smoke ran end to end through the launcher on CPU in about four minutes.
+  is the loop's only bound on the data it grows. Within a round a training watch checks the loss
+  and the held Dice and distance of fixed watch rows every few epochs, stops the loop on a number
+  that cannot be right (exit 3, verdict stopped, never retried) and stops training once it gains
+  nothing for the plan's patience (PREREG.md section 5a). The round step carries Metaflow's own
+  `@card(type="blank", id="round", refresh_interval=...)`, which moves while the round runs,
+  and `@retry(times=1)` for a fault that is no answer; each round keeps round_trend, round_gates
+  and its memory as artifacts, end draws the loop's card, and the run is tagged plan:, chain: and
+  loop: once it ends. tests/test_qaloop.py holds the gates, the watch and the controller, and the
+  smoke ran end to end through the launcher on CPU in about four minutes.
 
 Every flow's end step sets an int artifact `verdict`, 0 when all went well and 1 otherwise.
 
