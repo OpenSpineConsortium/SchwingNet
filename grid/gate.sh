@@ -246,6 +246,13 @@
 #                   chain did not end, queues the links that carry the same chain on at the chain's own commit, and
 #                   where it ended in failure, or a link failed or the cancel word cancelled it before its end, a new
 #                   chain once a fix has moved the checkout
+#   cards <kind>   the Metaflow cards of the kind's newest runs (flows/registry.txt's first column) for the
+#                   control panel's Pipelines tab (the owner's words of 2026-10-31 04:11 and 04:12 UTC: each
+#                   pipeline run's pages in the panel, embedded): copied from the datastore into a git copy on
+#                   the lab volume, each card as its data alone, masked as status masks a line and held back
+#                   whole where it names a DICOM element, and the page's code once as template.html, then
+#                   pushed to this repository's branch cards, which the panel reads with the viewer's own
+#                   GitHub sign-in; bash and git alone, nothing queued
 #   literature <list>  one reading list's papers fetched onto the grid (the owner's word of 2026-10-27
 #                   23:00 UTC; grid/literature.sbatch, grid/literature_fetch.py, the list grid/literature/<list>.csv):
 #                   PMC's open-access copies, Elsevier's through its API with the key and institutional token
@@ -388,6 +395,13 @@ QALOOP_PARTITION=galhp
 # The links a send of a loop plan queues, each a GPU job of 12 hours afterany the one before, so the
 # loop runs up to three days on one send; a smoke plan is one link.
 QALOOP_LINKS=6
+# The Pipelines tab's cards (word_cards): the git copy on the lab volume the word builds the branch in,
+# the repository it pushes to (the checkout's own origin unless CARDS_REMOTE names another, as the
+# tests do), the branch, and how many of a kind's newest runs it carries.
+CARDS_GIT=${CARDS_GIT:-$VOLUME/go2432/cards}
+CARDS_REMOTE=${CARDS_REMOTE:-}
+CARDS_BRANCH=cards
+CARDS_RUNS=3
 # The owner's word for one more join of the morphometry rows with sex and age, covariates:<job of the
 # report or the record it replaces>, or covariates:lost for a submission whose answer was lost, then
 # covariates:lost2 for the next such and on, each spent once (logs/MORPHOMETRY-covariates.lost records
@@ -452,18 +466,18 @@ GOLD4_CODE=(pixi.toml pixi.lock flows/gold4_totalseg.py flows/stage.py flows/sta
 COVARIATES_PAGE_LINES=300
 LOGS=$REPO/grid/logs
 STATE=$LOGS/GATE_JOBS.txt
-WORDS="start status leaks v1 latency fetch explore dropzip unpack prune nodequota folders samples sweep bank experiment bench anomaly bordercall census totalseg realism autoanatomist qaloop morphometry literature stop cancel"
+WORDS="start status leaks v1 latency fetch explore dropzip unpack prune nodequota folders samples sweep bank experiment bench anomaly bordercall census totalseg realism autoanatomist qaloop cards morphometry literature stop cancel"
 ENVS="default train-cpu train-gpu telemetry"
 
 word=${1:-}
 id=${2:-}
 # Matched whole, so one argument holding two words ("v1 latency") is refused and never runs nothing.
 case "$word" in
-  start|status|leaks|v1|latency|fetch|explore|dropzip|unpack|prune|nodequota|folders|samples|sweep|bank|experiment|bench|anomaly|bordercall|census|totalseg|realism|autoanatomist|qaloop|morphometry|literature|stop|cancel) ;;
+  start|status|leaks|v1|latency|fetch|explore|dropzip|unpack|prune|nodequota|folders|samples|sweep|bank|experiment|bench|anomaly|bordercall|census|totalseg|realism|autoanatomist|qaloop|cards|morphometry|literature|stop|cancel) ;;
   "") echo "refusing: no word; one of: $WORDS"; exit 64 ;;
   *) echo "refusing: '$word' is not one of: $WORDS"; exit 64 ;;
 esac
-if [ "$word" = fetch ] || [ "$word" = explore ] || [ "$word" = dropzip ] || [ "$word" = unpack ] || [ "$word" = prune ] || [ "$word" = sweep ] || [ "$word" = bank ] || [ "$word" = bench ] || [ "$word" = anomaly ] || [ "$word" = bordercall ] || [ "$word" = census ] || [ "$word" = totalseg ] || [ "$word" = realism ] || [ "$word" = autoanatomist ] || [ "$word" = qaloop ] || [ "$word" = morphometry ] || [ "$word" = literature ]; then
+if [ "$word" = fetch ] || [ "$word" = explore ] || [ "$word" = dropzip ] || [ "$word" = unpack ] || [ "$word" = prune ] || [ "$word" = sweep ] || [ "$word" = bank ] || [ "$word" = bench ] || [ "$word" = anomaly ] || [ "$word" = bordercall ] || [ "$word" = census ] || [ "$word" = totalseg ] || [ "$word" = realism ] || [ "$word" = autoanatomist ] || [ "$word" = qaloop ] || [ "$word" = cards ] || [ "$word" = morphometry ] || [ "$word" = literature ]; then
   [ $# -eq 2 ] || { echo "refusing: $word takes exactly one id"; exit 64; }
   case "$id" in ""|*[!a-z0-9_]*) echo "refusing: an id is lower-case letters, digits and _"; exit 64 ;; esac
   [ ${#id} -le 40 ] || { echo "refusing: an id is at most 40 characters"; exit 64; }
@@ -3301,7 +3315,7 @@ word_qaloop() {  # one plan of the QA loop: queued as a chain of links, its repo
     loop) links=$QALOOP_LINKS ;;
     *) echo "refusing: the plan $id is of class '${class:-none}', and the loop runs a smoke or a loop; nothing was queued"; return 64 ;;
   esac
-  read -r chain chain_commit < "$LOGS/QALOOP-$id.chain" 2>/dev/null
+  read -r chain chain_commit 2>/dev/null < "$LOGS/QALOOP-$id.chain"
   busy=$(qaloop_live)
   if [ -n "$busy" ]; then
     echo "refusing: the plan $id is still queued or running (job ${busy// /, job }); send qaloop $id again once its links end"
@@ -3361,6 +3375,150 @@ word_qaloop() {  # one plan of the QA loop: queued as a chain of links, its repo
   fi
   chain=$(qaloop_queue "" "$full" 1 "$links") || return 1
   echo "submitted the plan $id: chain $chain, $links GPU link(s) of 12 hours on $QALOOP_PARTITION, each afterany the one before, in $QALOOP_ROOT/$id/$chain. Send qaloop $id again once they end to read its report, logs/QALOOP-$id.md."
+}
+
+# The control panel's Pipelines tab (the owner's words of 2026-10-31 04:11 and 04:12 UTC): every card
+# Metaflow keeps for a run, under <datastore>/.metaflow/mf.cards/<Flow>/runs/<run>/steps/<step>/tasks/
+# <task>/cards/<name>.html, with its newest data under .../runtime/<name>.data.json while the task runs
+# (flows/launch.py starts every flow in the datastore root, so the cards are there). A card's page is
+# Metaflow's own code, the same for every card of one Metaflow, around one line that holds the card's
+# data as base64; the data alone leaves the grid, decoded, masked and checked here, and the code goes
+# once as template.html with the data's place marked. The login node runs no python, so sed, base64
+# and git do it all.
+CARDS_PAYLOAD=__MF_PAYLOAD__
+cards_flow() {  # cards_flow KIND: the flow class flows/registry.txt names for the kind, else nothing
+  awk -v kind="$1" '$1 !~ /^#/ && NF == 5 && $1 == kind { print $2; exit }' "$REPO/flows/registry.txt" 2>/dev/null
+}
+cards_literal() {  # cards_literal TEXT: TEXT as a sed -r pattern that matches itself alone
+  printf '%s' "$1" | sed 's/[][\.*^$+?(){}|#\\]/\\&/g'
+}
+cards_mask() {  # a card's JSON on stdin, masked by the rules of grid/redact.sed that leave JSON whole: the data root's path, person keys, hashed identifiers, UIDs and token shapes
+  # A rule that withholds a whole line would take a card's one line of JSON with it, and the date
+  # rules would cut a number's digits, so a card that names a DICOM element is held back whole
+  # (cards_unsafe); a card's numbers are the run's own and carry no DICOM date.
+  sed -r -e "s#$(cards_literal "$DATA_ROOT")#<data root>#g" \
+    -e "s#\\b([a-z][a-z0-9_]*):([A-Za-z0-9][^[:space:],;)'\"\\\\]*)#\\1:<withheld>#g" \
+    -e 's#\b([0-9a-fA-F]{32}|[0-9a-fA-F]{40})\b#<hex withheld>#g' \
+    -e 's#\b[0-9]+(\.[0-9]+){4,}\b#<uid withheld>#g' \
+    -e 's#\b(ghp_|gho_|ghs_|ghu_|ghr_|github_pat_|glpat-|xox[abprs]-|sk-)[A-Za-z0-9_-]{8,}#<withheld>#g' \
+    -e 's#\bhf_[A-Za-z0-9]{20,}#<withheld>#g' \
+    -e 's#\b(AKIA|ASIA)[0-9A-Z]{16}\b#<withheld>#g'
+}
+cards_unsafe() {  # cards_unsafe FILE: status 0 where the card's data names a DICOM tag or element, as grid/redact.sed withholds a line that does
+  grep -Eiq '\([0-9A-Fa-f]{4}, ?[0-9A-Fa-f]{4}\)|Patient|Accession|Institution|Physician|Operators|StationName|DeviceSerial|InstanceUID|StudyDate|SeriesDate|AcquisitionDate|ContentDate|StudyTime|StudyID|Invalid value for VR' "$1"
+}
+cards_payload() {  # cards_payload HTML: the card's data, the base64 of its one data line, decoded
+  sed -n 's|^ *window\.__MF_DATA__\["[^"]*"\] = "\([A-Za-z0-9+/=]*\)";\{0,1\} *$|\1|p' "$1" | head -n 1 | base64 -d 2>/dev/null
+}
+cards_template() {  # cards_template HTML OUT: the card's page with its data's place marked and its title plain, the page every card of this Metaflow shares
+  sed -e 's|^\( *window\.__MF_DATA__\["[^"]*"\] = "\)[A-Za-z0-9+/=]*\(";\{0,1\} *\)$|\1'"$CARDS_PAYLOAD"'\2|' \
+    -e 's|<title>[^<]*</title>|<title>Metaflow card</title>|' "$1" > "$2" \
+    && [ "$(grep -c "$CARDS_PAYLOAD" "$2")" = 1 ]
+}
+cards_git() {  # cards_git ARGS...: git in the cards copy, through gh's own sign-in where gh is found, as carry_fetch fetches
+  local gh helper=()
+  gh=$(carry_gh) && helper=(-c credential.helper= -c "credential.helper=!env -u GITHUB_TOKEN -u GH_TOKEN $gh auth git-credential")
+  GIT_TERMINAL_PROMPT=0 timeout "$CARRY_TIMEOUT" git ${helper[@]+"${helper[@]}"} -c gc.auto=0 -c maintenance.auto=false \
+    -c user.name="SchwingNet grid gate" -c user.email="grid-gate@users.noreply.github.com" -C "$CARDS_GIT" "$@" < /dev/null
+}
+cards_copy() {  # the cards copy made once, its origin the repository, at the branch's tip where the branch stands, else on a branch of its own
+  local remote=${CARDS_REMOTE:-$(git -C "$REPO" remote get-url origin 2>/dev/null)} rc
+  [ -n "$remote" ] || { echo "refusing: the checkout names no origin to push the cards to"; return 2; }
+  if [ ! -d "$CARDS_GIT/.git" ]; then
+    ( umask 077; mkdir -p "$CARDS_GIT" && git init -q "$CARDS_GIT" ) || { echo "cards failed: no git copy could be made at $CARDS_GIT"; return 1; }
+  fi
+  git -C "$CARDS_GIT" remote remove origin > /dev/null 2>&1
+  git -C "$CARDS_GIT" remote add origin "$remote" || return 1
+  cards_git ls-remote --exit-code --heads origin "$CARDS_BRANCH" > /dev/null 2>&1
+  rc=$?
+  case "$rc" in
+    0) cards_git fetch -q --no-tags --depth 1 origin "+refs/heads/$CARDS_BRANCH:refs/remotes/origin/$CARDS_BRANCH" \
+         && cards_git checkout -q -f -B "$CARDS_BRANCH" "origin/$CARDS_BRANCH" \
+         || { echo "cards failed: git could not fetch the branch $CARDS_BRANCH"; return 1; } ;;
+    2) cards_git checkout -q -f "$CARDS_BRANCH" 2> /dev/null || cards_git checkout -q --orphan "$CARDS_BRANCH" || return 1 ;;
+    *) echo "cards failed: git could not reach the repository (exit $rc)"; return 1 ;;
+  esac
+  cards_git clean -q -f -d
+}
+cards_one() {  # cards_one HTML OUT: one card's data and its newest runtime data, masked, as OUT; the reason where it is held back
+  local html=$1 out=$2 runtime raw=${W:?}/card.json
+  runtime=$(dirname "$(dirname "$html")")/runtime/$(basename "$html" .html).data.json
+  cards_payload "$html" > "$raw"
+  [ -s "$raw" ] || { echo "its page holds no data line"; return 1; }
+  [ ! -f "$runtime" ] || cat "$runtime" >> "$raw"
+  cards_unsafe "$raw" && { echo "its data names a DICOM element"; return 1; }
+  { printf '{"card": '
+    cards_payload "$html" | cards_mask
+    printf ', "runtime": '
+    if [ -f "$runtime" ]; then cards_mask < "$runtime"; else printf 'null'; fi
+    printf '}\n'; } > "$out"
+}
+cards_live() {  # cards_live HTML: true where the card's runtime data is still moving (its reload token is not final), else false
+  local runtime
+  runtime=$(dirname "$(dirname "$1")")/runtime/$(basename "$1" .html).data.json
+  if [ -f "$runtime" ] && ! grep -q '"reload_token": *"final"' "$runtime"; then echo true; else echo false; fi
+}
+cards_run() {  # cards_run KIND FLOW RUN: the run's cards into the copy under KIND/RUN/, its entry of KIND.json on stdout
+  local kind=$1 flow=$2 run=$3 html step task name file why first=1
+  mkdir -p "$CARDS_GIT/$kind/$run"
+  printf '{"run": "%s", "updated": "%s", "cards": [' "$run" "$(date -u -r "$FLOW_ROOT/.metaflow/mf.cards/$flow/runs/$run" '+%FT%TZ')"
+  while IFS= read -r html; do
+    step=$(basename "$(dirname "$(dirname "$(dirname "$(dirname "$html")")")")")
+    task=$(basename "$(dirname "$(dirname "$html")")")
+    name=$(basename "$html" .html)
+    [[ $step =~ ^[A-Za-z0-9_]+$ ]] && [[ $task =~ ^[0-9]+$ ]] && [[ $name =~ ^[A-Za-z0-9_.-]+$ ]] || continue
+    file=$kind/$run/$step-$task-$name.json
+    [ "$first" = 1 ] || printf ', '
+    first=0
+    if why=$(cards_one "$html" "$CARDS_GIT/$file"); then
+      [ -f "$CARDS_GIT/template.html" ] || cards_template "$html" "$CARDS_GIT/template.html" || rm -f "${CARDS_GIT:?}/template.html"
+      printf '{"step": "%s", "task": "%s", "name": "%s", "file": "%s", "live": %s}' "$step" "$task" "$name" "$file" "$(cards_live "$html")"
+    else
+      rm -f "${CARDS_GIT:?}/${file:?}"
+      printf '{"step": "%s", "task": "%s", "name": "%s", "withheld": "%s"}' "$step" "$task" "$name" "$why"
+    fi
+  done < <(find "$FLOW_ROOT/.metaflow/mf.cards/$flow/runs/$run/steps" -path '*/cards/*.html' -type f 2>/dev/null | LC_ALL=C sort)
+  printf ']}'
+}
+word_cards() {  # the cards of a kind's newest runs pushed to the branch cards for the control panel's Pipelines tab
+  local flow runs run first=1 commit
+  flow=$(cards_flow "$id")
+  [ -n "$flow" ] || { echo "refusing: flows/registry.txt names no flow of the kind $id; nothing was copied"; return 64; }
+  [[ $flow =~ ^[A-Za-z0-9_]+$ ]] || { echo "refusing: the registry's flow for $id is no class name; nothing was copied"; return 64; }
+  mapfile -t runs < <(ls -1t "$FLOW_ROOT/.metaflow/mf.cards/$flow/runs" 2>/dev/null | grep -E '^[A-Za-z0-9_.-]+$' | head -n "$CARDS_RUNS")
+  [ "${#runs[@]}" -gt 0 ] || { echo "no run of $flow has a card in $FLOW_ROOT yet; nothing was pushed"; return 0; }
+  cards_copy || return
+  W="${CARDS_GIT:?}.work"
+  mkdir -p "$W" || return 1
+  rm -rf "${CARDS_GIT:?}/${id:?}"
+  rm -f "${CARDS_GIT:?}/template.html"
+  {
+    # No time of the send's own, so a send that finds the same cards changes nothing; the commit's date is when they were read.
+    printf '{"kind": "%s", "flow": "%s", "refresh": "schwingnet-cards-%s", "runs": [' "$id" "$flow" "$id"
+    for run in "${runs[@]}"; do
+      [ "$first" = 1 ] || printf ', '
+      first=0
+      cards_run "$id" "$flow" "$run"
+    done
+    printf ']}\n'
+  } > "$CARDS_GIT/$id.json"
+  rm -rf "${W:?}"
+  [ -f "$CARDS_GIT/template.html" ] || cards_git checkout -q HEAD -- template.html 2> /dev/null
+  echo "  $(grep -o '"file": "' "$CARDS_GIT/$id.json" | wc -l) card(s) of the newest ${#runs[@]} run(s) of $flow; $(grep -o '"withheld": "' "$CARDS_GIT/$id.json" | wc -l) held back"
+  grep -o '"step": "[^"]*", "task": "[^"]*", "name": "[^"]*", "withheld": "[^"]*"' "$CARDS_GIT/$id.json" | sed 's/^/  held back: /'
+  cards_git add -A . || return 1
+  if cards_git diff --cached --quiet; then
+    echo "the branch $CARDS_BRANCH already holds these cards; nothing was pushed"
+    return 0
+  fi
+  cards_git commit -q -m "Cards of $flow's newest runs" || { echo "cards failed: git could not commit the cards"; return 1; }
+  commit=$(git -C "$CARDS_GIT" rev-parse --short HEAD)
+  if ! cards_git push -q origin "HEAD:refs/heads/$CARDS_BRANCH" > "$CARDS_GIT.push.log" 2>&1; then
+    echo "cards failed: git could not push the branch $CARDS_BRANCH; what it said last:"
+    tail -n 3 "$CARDS_GIT.push.log" | masked | sed 's/^/  /'
+    return 1
+  fi
+  echo "pushed $commit to the branch $CARDS_BRANCH: $id.json, template.html and $id/<run>/<step>-<task>-<card>.json, for the control panel's Pipelines tab"
 }
 
 word_samples() {
@@ -3740,6 +3898,7 @@ case "$word" in
   realism) word_realism ;;
   autoanatomist) word_autoanatomist ;;
   qaloop) word_qaloop ;;
+  cards) word_cards ;;
   morphometry) word_morphometry ;;
   literature) word_literature ;;
   samples) word_samples ;;
