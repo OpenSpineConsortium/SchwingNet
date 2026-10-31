@@ -10,3 +10,13 @@ The second screen asks whether one of four changes to the anneal, which the owne
 - The grid word: `autoanatomist gold3_latent_smoke2`, then `autoanatomist gold3_latent_screen2` (grid/gate.sh, AUTOANATOMIST2_PLANS). The gate sends the second smoke only once the first screen's report ends in exit 0, and the second screen only once the second smoke's does (AUTOANATOMIST_AFTER).
 
 Where it stands on 30 October 2026: built and frozen, nothing sent yet; counted in AUTOANATOMIST_COUNTED since the owner lifted his hold on grid jobs at 23:03 UTC. The copy under grid/autoanatomist is bordercall 0300f20, PR 48 as merged. The second smoke is sent once the first screen's report ends in exit 0, and the second screen once the second smoke's does.
+
+## The verdict, 31 October 2026
+
+Both sent and both ended 0: the second smoke (40900847) and the second screen, twelve trials (array 40902102, all exit 0, the last two on galhp after a wait) and the join (40902104, at commit ab8826a, held to PREREG.md sha256 e5f4d06ca2657736), read by the owner's local session from grid/logs/AUTOANATOMIST-gold3_latent_screen2.md. Against lambda_then_w by the bar of section 3 (every seed's final validation distance below every one of the null's):
+
+- cyclic beats the null: selected for a longer run under a pre-registration of its own, never reported as an effect;
+- ct_only beats the null: the CT branch alone ends below the anneal, as the first screen's null suggested;
+- adaptive, overlapping and restraint do not.
+
+Five arms against one null at two seeds a side make a chance pass likely, so the two passes are leads, not findings. The figures (curves.png, finals.png) and the CLAIM and REFORMS report are under /rs/rs_grp_oschome/go2432/autoanatomist/gold3_latent_screen2/40902102/.
