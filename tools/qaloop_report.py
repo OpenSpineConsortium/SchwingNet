@@ -25,7 +25,7 @@ STUDY = "qa-loop"
 PREREG = ROOT / "docs" / "research" / "qa-loop" / "PREREG.md"
 # The pre-registration the design answers restate, by its sha256: PREREG.md as frozen, the digest
 # PREREG.md.sha256 beside it holds (tests/test_qaloop_report.py holds the two together).
-DESIGN = "c588988049e1c983ee551f9d5c1177f0b8c7db8083bf2dfd73bea6a656e9da55"
+DESIGN = "576a094d6771334a11ba7c06b76a0f5cf8c8737464b95ba5dff02b61608d655c"
 LICENCES = ROOT / "data" / "licences.json"
 SOURCE = "carmlspine"
 # PREREG.md section 6's known limits, one restatement each in the section's order;
