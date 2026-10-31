@@ -1,7 +1,9 @@
 {
  "aliases": {
   "aariz": "aariz_cephalograms",
-  "mimic_cxr_jpg": "mimic_cxr"
+  "mimic_cxr_jpg": "mimic_cxr",
+  "radiopaedia_fluoro": "radiopaedia",
+  "radiopaedia_xr": "radiopaedia"
  },
  "sources": {
   "aariz_cephalograms": {
