@@ -244,7 +244,8 @@
 #                   (exit 90), and a loop only where the data root holds C-ArmLSpine's pairs; a send while a link
 #                   lasts prints where each round stands; a later one prints logs/QALOOP-<plan>.md and, where its
 #                   chain did not end, queues the links that carry the same chain on at the chain's own commit, and
-#                   where it ended in failure, a new chain once a fix has moved the checkout
+#                   where it ended in failure, or a link failed or the cancel word cancelled it before its end, a new
+#                   chain once a fix has moved the checkout
 #   literature <list>  one reading list's papers fetched onto the grid (the owner's word of 2026-10-27
 #                   23:00 UTC; grid/literature.sbatch, grid/literature_fetch.py, the list grid/literature/<list>.csv):
 #                   PMC's open-access copies, Elsevier's through its API with the key and institutional token
@@ -3231,6 +3232,26 @@ qaloop_covered() {  # qaloop_covered PLAN NAME: status 0 where the loop's frozen
 qaloop_live() {  # the plan's live links, space-separated
   live_of "qaloop_$id" | tr '\n' ' ' | sed 's/ $//'
 }
+qaloop_stopped() {  # qaloop_stopped CHAIN REPORT: why a chain that did not end stopped, where a failure or a cancel stopped it; nothing where its time limit cut it
+  # A link cut by its time limit ends 143 (grid/qaloop.sbatch, link_end), and its chain is carried on at
+  # its own commit, so the run resumes at the round it was cut in. A link that failed, or a chain the
+  # cancel word took, is another case: carried on at its own commit it would run the code that failed.
+  local rc file
+  [ "$(cat "$LOGS/QALOOP-$id.cancelled" 2>/dev/null)" = "$1" ] && { echo "the cancel word cancelled it"; return 0; }
+  for file in "$2" "$2.part"; do
+    [ -f "$file" ] || continue
+    rc=$(sed -n 's/^- exit \([0-9][0-9]*\) at .*/\1/p' "$file" | tail -n 1)
+    case "$rc" in ""|0|143) ;; *) echo "its last link exited $rc, which no time limit gives" ;; esac
+    return 0
+  done
+}
+mark_cancelled() {  # mark_cancelled WORD: the chain of a QA loop plan the cancel or stop word took, kept for the plan's next send (qaloop_stopped)
+  local plan
+  case "$1" in qaloop:*) plan=${1#qaloop:} ;; *) return 0 ;; esac
+  case "$plan" in ""|*[!a-z0-9_]*) return 0 ;; esac
+  [ ! -f "$LOGS/QALOOP-$plan.chain" ] || awk '{ print $1; exit }' "$LOGS/QALOOP-$plan.chain" > "$LOGS/QALOOP-$plan.cancelled"
+  return 0
+}
 qaloop_progress() {  # qaloop_progress CHAIN: where each round of the chain stands, its PROGRESS.txt's last line, masked
   local folder=$QALOOP_ROOT/$id/$1 file
   if ! compgen -G "$folder/rounds/*/PROGRESS.txt" > /dev/null; then
@@ -3271,7 +3292,7 @@ qaloop_queue() {  # qaloop_queue CHAIN COMMIT FIRST LINKS: links FIRST to LINKS 
   echo "$chain"
 }
 word_qaloop() {  # one plan of the QA loop: queued as a chain of links, its report printed on every later send, an unended chain carried on
-  local plan=$REPO/grid/qaloop/$id.json report=$LOGS/QALOOP-$id.md class links busy chain chain_commit full root last ended
+  local plan=$REPO/grid/qaloop/$id.json report=$LOGS/QALOOP-$id.md class links busy chain chain_commit full root last ended stopped
   [ -f "$plan" ] || { echo "refusing: no plan grid/qaloop/$id.json at commit $commit"; return 64; }
   qaloop_covered "$plan" "$id" || return
   class=$(qaloop_field "$plan" class)
@@ -3304,26 +3325,39 @@ word_qaloop() {  # one plan of the QA loop: queued as a chain of links, its repo
     [ -f "$report" ] && { echo "## $(basename "$report") ($(date -r "$report" '+%F %T'))"; head -n 200 "$report"; } | LC_ALL=C tr -cd '\11\12\40-\176' | masked | head -c 30000
     [ -f "$report" ] || { [ -f "$report.part" ] && { echo "## $(basename "$report") unfinished ($(date -r "$report.part" '+%F %T'))"; head -n 200 "$report.part"; } | LC_ALL=C tr -cd '\11\12\40-\176' | masked | head -c 30000; }
     ended=$QALOOP_ROOT/$id/$chain/ENDED.json
-    if [ ! -f "$ended" ]; then
+    stopped=""
+    [ -f "$ended" ] || stopped=$(qaloop_stopped "$chain" "$report")
+    if [ ! -f "$ended" ] && { [ -z "$stopped" ] || [ "$chain_commit" = "$full" ]; }; then
       # The chain did not end: its run is carried on at the chain's own commit, so the launcher's key,
-      # which the code names, is the same and the run resumes at the round it was cut in.
+      # which the code names, is the same and the run resumes at the round it was cut in. A chain a
+      # failure or a cancel stopped is carried on the same way while the checkout has not moved, since
+      # the same code may yet get past a node's fault.
       [[ $chain_commit =~ ^[0-9a-f]{40}$ ]] || { echo "refusing: logs/QALOOP-$id.chain names no commit for chain $chain"; return 2; }
       echo "  chain $chain did not end: queueing $links more link(s) that carry it on at its commit ${chain_commit:0:7}"
       [ ! -f "$report" ] || mv "$report" "$report.part" || return 1
       qaloop_queue "$chain" "$chain_commit" 1 "$links" > /dev/null || return 1
+      rm -f "$LOGS/QALOOP-$id.cancelled"
       echo "submitted the links that carry chain $chain of the plan $id on, in $QALOOP_ROOT/$id/$chain. Send qaloop $id again once they end to read its report, logs/QALOOP-$id.md."
       return 0
     fi
-    last=$(tail -n 1 "$report" 2>/dev/null)
-    [[ "$last" =~ ^-\ exit\ 0\  ]] && return 0
-    if [ "$chain_commit" = "$full" ]; then
-      # The same code on the same plan answers the same way, so a chain that ended in failure is sent
-      # again only once a commit has changed what failed.
-      echo "  chain $chain ended in failure at the checkout's own commit ${full:0:7}: a new chain is queued once a commit changes what failed; nothing was queued"
-      return 0
+    if [ -n "$stopped" ]; then
+      # A failure or a cancel stopped the chain and a commit has moved the checkout since: that commit is
+      # the fix, which a chain carried on at its own commit would never run, so a new chain starts at it.
+      echo "  chain $chain did not end: $stopped, and the checkout has moved to ${full:0:7}: queueing a new chain"
+      [ -f "$report" ] || report=$report.part
+    else
+      last=$(tail -n 1 "$report" 2>/dev/null)
+      [[ "$last" =~ ^-\ exit\ 0\  ]] && return 0
+      if [ "$chain_commit" = "$full" ]; then
+        # The same code on the same plan answers the same way, so a chain that ended in failure is sent
+        # again only once a commit has changed what failed.
+        echo "  chain $chain ended in failure at the checkout's own commit ${full:0:7}: a new chain is queued once a commit changes what failed; nothing was queued"
+        return 0
+      fi
+      echo "  chain $chain ended in failure at ${chain_commit:0:7}, and the checkout has moved to ${full:0:7}: queueing a new chain"
     fi
-    echo "  chain $chain ended in failure at ${chain_commit:0:7}, and the checkout has moved to ${full:0:7}: queueing a new chain"
     mv "$report" "$LOGS/QALOOP-$id-$chain.md" 2>/dev/null
+    rm -f "$LOGS/QALOOP-$id.cancelled"
   fi
   chain=$(qaloop_queue "" "$full" 1 "$links") || return 1
   echo "submitted the plan $id: chain $chain, $links GPU link(s) of 12 hours on $QALOOP_PARTITION, each afterany the one before, in $QALOOP_ROOT/$id/$chain. Send qaloop $id again once they end to read its report, logs/QALOOP-$id.md."
@@ -3621,11 +3655,13 @@ word_bank() {
 }
 
 word_stop() {
-  local live
+  local live job
   live=$(live_ids | tr '\n' ' ')
   [ -n "${live// /}" ] || { echo "nothing of the gate's is queued or running"; return 0; }
   # shellcheck disable=SC2086
-  "$SCANCEL" $live && echo "cancelled: $live"
+  "$SCANCEL" $live || return
+  echo "cancelled: $live"
+  for job in $live; do mark_cancelled "$(awk -v job="$job" '$1 == job { print $2; exit }' "$STATE" 2>/dev/null)"; done
 }
 
 word_cancel() {  # the job named, if the gate's and live, with every live job of the same word
@@ -3637,7 +3673,7 @@ word_cancel() {  # the job named, if the gate's and live, with every live job of
     case "$QUEUED" in *" $job "*) echo "$job" ;; esac
   done | tr '\n' ' ')
   # shellcheck disable=SC2086
-  "$SCANCEL" $cancel && echo "cancelled ($from): $cancel"
+  "$SCANCEL" $cancel && echo "cancelled ($from): $cancel" && mark_cancelled "$from"
 }
 
 release_hold() {  # each run's line of the hold (grid/v1-driver.sbatch, grid/sweep-driver.sbatch, grid/experiment-driver.sbatch, grid/bench.sbatch, grid/drr-seg.sbatch, grid/anomaly.sbatch, grid/bordercall.sbatch, grid/realism.sbatch, grid/morphometry.sbatch and the rest) is dropped once Slurm no longer holds its job, and the file with the last
