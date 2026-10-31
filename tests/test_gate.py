@@ -5788,6 +5788,82 @@ exit "${FAKE_RC:-0}"
         self.assertFalse(report.exists())
         self.assertEqual((logs / "QALOOP-qa_smoke.chain").read_text(encoding="utf-8"), f"101 {moved}\n")
 
+    def test_qaloop_starts_a_new_chain_after_a_failed_link_only_once_the_checkout_moves(self):
+        full = self.qaloop_ready()
+        logs = self.repo / "grid" / "logs"
+        logs.mkdir(parents=True, exist_ok=True)
+        (logs / "QALOOP-qa_smoke.chain").write_text(f"4242 {full}\n", encoding="utf-8")
+        report = logs / "QALOOP-qa_smoke.md"
+        report.write_text(f"# qaloop qa_smoke: link 1 of 1, job 4242 on node, commit {full[:7]}, 2026-10-31 04:00:00 UTC; chain 4242\n"
+                          "- launcher: it printed no decision line (exit 1)\n- exit 1 at 2026-10-31 04:10:00 UTC\n", encoding="utf-8")
+        # no ENDED.json: the flow failed; at the chain's own commit the same chain is tried again, as a node's fault may pass
+        again = self.gate("qaloop", "qa_smoke")
+        self.assertEqual(again.returncode, 0, again.stdout + again.stderr)
+        self.assertIn(f"chain 4242 did not end: queueing 1 more link(s) that carry it on at its commit {full[:7]}", again.stdout)
+        lines = self.submitted()
+        self.assertEqual(len(lines), 1, lines)
+        self.assertIn(f" QALOOP_COMMIT={full} ", lines[0])
+        self.assertTrue(lines[0].endswith(" QALOOP_CHAIN=4242"), lines[0])
+        part = logs / "QALOOP-qa_smoke.md.part"
+        self.assertTrue(part.exists())
+        self.assertFalse(report.exists())
+        with part.open("a", encoding="utf-8") as out:
+            out.write("- exit 1 at 2026-10-31 04:30:00 UTC\n")
+        (self.fake / "queue").write_text("", encoding="utf-8")
+        # once a fix moves the checkout, a chain a failed link stopped starts anew at it, never carried on at the code that failed
+        moved = self.qaloop_moved()
+        fresh = self.gate("qaloop", "qa_smoke")
+        self.assertEqual(fresh.returncode, 0, fresh.stdout + fresh.stderr)
+        self.assertIn(f"chain 4242 did not end: its last link exited 1, which no time limit gives, and the checkout has moved to {moved[:7]}: "
+                      "queueing a new chain", fresh.stdout)
+        lines = self.submitted()
+        self.assertEqual(len(lines), 2, lines)
+        self.assertIn(f" QALOOP_COMMIT={moved} ", lines[1])
+        self.assertTrue(lines[1].endswith(" QALOOP_CHAIN="), lines[1])
+        self.assertIn("- exit 1 at 2026-10-31 04:30:00 UTC", (logs / "QALOOP-qa_smoke-4242.md").read_text(encoding="utf-8"))
+        chain = self.recorded()["qaloop_qa_smoke"]
+        self.assertEqual((logs / "QALOOP-qa_smoke.chain").read_text(encoding="utf-8"), f"{chain} {moved}\n")
+
+    def test_qaloop_carries_a_chain_its_time_limit_cut_on_at_its_commit_and_starts_anew_after_the_cancel_word(self):
+        full = self.qaloop_ready()
+        self.qaloop_pairs()
+        logs = self.repo / "grid" / "logs"
+        done = self.gate("qaloop", "qa_loop")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        # the chain is its first link's job, as the gate's chain file records it
+        chain = (logs / "QALOOP-qa_loop.chain").read_text(encoding="utf-8").split()[0]
+        part = logs / "QALOOP-qa_loop.md.part"
+        # every link cut by its time limit: the run is carried on at the chain's own commit, whatever the checkout says
+        with part.open("a", encoding="utf-8") as out:
+            out.write("- TERMINATED: Slurm ended link 6 (its time limit, or a cancel)\n- exit 143 at 2026-11-02 05:00:00 UTC\n")
+        part.rename(logs / "QALOOP-qa_loop.md")
+        moved = self.qaloop_moved()
+        carried = self.gate("qaloop", "qa_loop")
+        self.assertEqual(carried.returncode, 0, carried.stdout + carried.stderr)
+        self.assertIn(f"chain {chain} did not end: queueing 6 more link(s) that carry it on at its commit {full[:7]}", carried.stdout)
+        lines = self.submitted()
+        self.assertEqual(len(lines), 12, lines)
+        self.assertTrue(all(f" QALOOP_COMMIT={full} " in line for line in lines[6:]), lines[6:])
+        # the cancel word marks the chain it took, and the next send starts anew at the moved checkout
+        live = [line.split()[0] for line in (logs / "GATE_JOBS.txt").read_text(encoding="utf-8").splitlines() if line.split()[2] == "qaloop_qa_loop"]
+        self.live(*live)
+        cancelled = self.gate("cancel", live[-1])
+        self.assertEqual(cancelled.returncode, 0, cancelled.stdout + cancelled.stderr)
+        self.assertIn("cancelled (qaloop:qa_loop):", cancelled.stdout)
+        self.assertEqual((logs / "QALOOP-qa_loop.cancelled").read_text(encoding="utf-8"), f"{chain}\n")
+        with part.open("a", encoding="utf-8") as out:
+            out.write("- TERMINATED: Slurm ended link 1 (its time limit, or a cancel)\n- exit 143 at 2026-11-02 06:00:00 UTC\n")
+        (self.fake / "queue").write_text("", encoding="utf-8")
+        fresh = self.gate("qaloop", "qa_loop")
+        self.assertEqual(fresh.returncode, 0, fresh.stdout + fresh.stderr)
+        self.assertIn(f"chain {chain} did not end: the cancel word cancelled it, and the checkout has moved to {moved[:7]}: queueing a new chain",
+                      fresh.stdout)
+        lines = self.submitted()
+        self.assertEqual(len(lines), 18, lines)
+        self.assertTrue(all(f" QALOOP_COMMIT={moved} " in line for line in lines[12:]), lines[12:])
+        self.assertFalse((logs / "QALOOP-qa_loop.cancelled").exists())
+        self.assertTrue((logs / f"QALOOP-qa_loop-{chain}.md").exists())
+
     def test_select_is_refused_without_the_frozen_holdout(self):
         (self.repo / "data" / "splits" / "anomaly-holdout.json").unlink()
         self.environments_ready()
