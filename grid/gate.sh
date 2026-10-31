@@ -157,6 +157,17 @@
 #                   a job that left no report is not queued again without the owner's word, and a second job, the
 #                   report kept as logs/TOTALSEG-complete-<job>.md, only where TOTALSEG_RERUNS, committed by pull
 #                   request, carries his word for it
+#   totalseg gold4  TotalSegmentator on the gold tier 4 CTs (the owner's word of 2026-10-31 00:55 UTC, "you can
+#                   start the totalsegmentator segmentation of those scans currently on the grid";
+#                   grid/totalseg-gold4.sbatch, tools/gold4_totalseg_grid.py, the launched flow gold4_totalseg under
+#                   docs/research/gold4-totalseg/PREREG.md): every CT the census found showing C2's foot and the
+#                   sacrum's top in the collections no release draws, TotalSegmentator 2.18.0's total task with every
+#                   vertebra and the sacrum in roi_subset, each map in VerSe's ids beside the census's SPINEPS mask;
+#                   an array of GOLD4_TASKS GPU tasks that share the CTs and a merge on a CPU node afterany it, from a
+#                   copy of the code at the gate's commit, so it holds no checkout; the next send printing
+#                   logs/TOTALSEG-gold4.md and, until it ends in exit 0, queueing the pair again while the send
+#                   before wrote label maps or the code has changed since, each CT segmented once whatever send
+#                   it falls to; else refused, but where TOTALSEG_RERUNS carries gold4:<job> for the record it replaces
 #   morphometry <set>  bordercall's morphometry engine (the packages morphometry, scanimport and screening,
 #                   and morphoview's lines, pinned under grid/bordercall/ beside the archived package,
 #                   bordercall 9c85de1 since 2026-10-30) over one gold tier 3 set (the thread "Extract morphometrics from gold tier 3
@@ -384,7 +395,20 @@ MORPHOMETRY_RERUNS="enhance:40872077 verse:40877151"
 # replaces>, or complete:lost for a submission whose answer was lost; one word, one more job (word_totalseg). complete:40882547 is his tap of 2026-10-30 16:49 UTC
 # on "Fix and rerun (one GPU job)": the first job failed on every study it ran, before any segmenter
 # drew, since tools/profile.py shadowed the standard library's profile (fixed in tools/gold3_totalseg_grid.py).
+# gold4:<job> lets one more send of totalseg gold4 through where its rule would refuse it: a report that
+# ended 0, or a send that wrote no label map at the code the checkout still holds (word_totalseg_gold4).
 TOTALSEG_RERUNS="complete:40882547"
+# TotalSegmentator on the gold tier 4 CTs (word_totalseg_gold4, grid/totalseg-gold4.sbatch): how many GPU
+# tasks of one send share the CTs, a committed default changed by pull request as DRR_GAP_TASKS is, the
+# tasks asking no partition, so the gpu class puts each on whichever card frees first; where the run
+# keeps its records, label maps and chains; and what it reads: the census job 40870542's detail of its
+# part gold4, the ruleclass tier lists whose rows name each SPINEPS mask's CT, and the two weight parts
+# totalseg complete unpacked.
+GOLD4_TASKS=16
+GOLD4_ROOT=${GOLD4_ROOT:-$VOLUME/go2432/gold4-totalseg}
+GOLD4_CENSUS=${GOLD4_CENSUS:-$VOLUME/go2432/gold3_census/40870542/gold4.json}
+GOLD4_TIERS=${GOLD4_TIERS:-$VOLUME/go2432/ruleclass/tiers}
+GOLD4_WEIGHTS=${GOLD4_WEIGHTS:-$VOLUME/go2432/gold3-totalseg/weights}
 # A page of the join's report: the relay keeps the last 400 lines of a send's answer (grid_accounts.py's
 # log_in) and status holds itself to 400 lines and 64 KiB, so a page is 300 of the report's lines with its
 # first and last, each cut to LINE_CHARS by the masks, about 61,000 bytes at most, and the gate's own few
@@ -1925,7 +1949,8 @@ word_totalseg() {  # the gold tier 3 completion's TotalSegmentator arm (the owne
   local report=$LOGS/TOTALSEG-complete.md sent=$LOGS/TOTALSEG-complete.sent busy job holds zip row opts=() again=""
   case "$id" in
     complete) ;;
-    *) echo "refusing: totalseg takes complete"; return 64 ;;
+    gold4) word_totalseg_gold4; return ;;
+    *) echo "refusing: totalseg takes complete or gold4"; return 64 ;;
   esac
   busy=$(live_of totalseg_complete)
   [ -z "$busy" ] || { echo "refusing: the totalseg complete job is still queued or running (job $busy); send totalseg complete again once it ends"; return 75; }
@@ -2009,6 +2034,178 @@ totalseg_rerun_allowed() {  # totalseg_rerun_allowed JOB: TOTALSEG_RERUNS names 
   [ -n "$1" ] || return 1
   case " $TOTALSEG_RERUNS " in *" complete:$1 "*) return 0 ;; esac
   return 1
+}
+
+# TotalSegmentator on the gold tier 4 CTs (the owner's word of 2026-10-31 00:55 UTC, "you can start the
+# totalsegmentator segmentation of those scans currently on the grid"; grid jobs need no count since his
+# word of 2026-10-30 23:03 UTC). A send is one chain, an array of GOLD4_TASKS GPU tasks and its merge;
+# each CT's record and label map outlive the chain, so a send again takes up only what the sends before
+# it left, and the word queues one again while the send before made headway, so the sends end once the
+# CTs run out: each is segmented, or given up after failing in two sends at one code.
+gold4_live() {  # the segmentation's live jobs, the array and the merge, the gate's list's or a lost answer's by Slurm's name, space-separated
+  { live_of gold4_totalseg; live_of gold4_totalseg_merge; named_live gold4_totalseg; named_live gold4_totalseg_merge; } \
+    | sort -u | tr '\n' ' ' | sed 's/ $//'
+}
+gold4_chain() {  # the newest array the gate queued for the segmentation, else nothing
+  awk '$3 == "gold4_totalseg" { job = $1 } END { print job }' "$STATE" 2>/dev/null
+}
+gold4_progress() {  # gold4_progress CHAIN: where each task of the chain stands, its last line, masked
+  local folder=$GOLD4_ROOT/chains/$1 file
+  if ! compgen -G "$folder/tasks/*.txt" > /dev/null; then
+    echo "  no task of chain $1 has written a line yet: each writes its first once it has read the census"
+    return 0
+  fi
+  echo "  where each task of chain $1 stands, its last line:"
+  for file in "$folder"/tasks/*.txt; do
+    echo "    $(tail -n 1 "$file" | cut -d' ' -f2-)"
+  done | LC_ALL=C tr -cd '\11\12\40-\176' | masked
+}
+gold4_labels() {  # how many label maps the segmentation has written, whichever send wrote them
+  find "$GOLD4_ROOT/labels" -maxdepth 1 -type f -name '*.nii.gz' 2>/dev/null | wc -l | tr -d ' '
+}
+gold4_inputs_missing() {  # what a send reads and does not find, in words, else nothing
+  local part
+  [ -f "$GOLD4_CENSUS" ] || { echo "the census detail $GOLD4_CENSUS, which census gold3 writes"; return; }
+  [ -f "$GOLD4_TIERS/tier1.tsv" ] || [ -f "$GOLD4_TIERS/tier2.tsv" ] || { echo "the census tier lists under $GOLD4_TIERS"; return; }
+  for part in 292 298; do
+    compgen -G "$GOLD4_WEIGHTS/Dataset${part}_*/UNPACKED" > /dev/null \
+      || { echo "TotalSegmentator's weight part Dataset$part unpacked whole under $GOLD4_WEIGHTS, which totalseg complete unpacks"; return; }
+  done
+}
+gold4_frozen() {  # status 0 where the kind's PREREG is the one its hash froze; the refusal otherwise
+  # The launcher holds every part to it (flows/stage.py); a PREREG it would stop is refused here,
+  # before a card is spent, as screen_covered refuses a plan's.
+  local prereg frozen bytes
+  prereg=$(flow_prereg gold4_totalseg)
+  case "$prereg" in
+    ""|/*|../*|*/../*) echo "refusing: flows/registry.txt names no PREREG inside the checkout for gold4_totalseg; nothing was queued"; return 90 ;;
+  esac
+  frozen=$(awk 'NR == 1 && NF == 2 && ($2 == "PREREG.md" || $2 == "*PREREG.md") { print $1 }' "$REPO/$prereg.sha256" 2>/dev/null)
+  bytes=$(sha256sum < "$REPO/$prereg" 2>/dev/null | cut -c1-64)
+  if [ -z "$frozen" ] || [ "$frozen" != "$bytes" ]; then
+    echo "refusing: STOP: $prereg is not frozen as its PREREG.md.sha256 says (the Lab Recipe's freeze), so no task runs under it; nothing was queued"
+    return 90
+  fi
+}
+gold4_queued() {  # gold4_queued CHAIN: the send's record where its report goes, until its merge writes its own
+  # The merge starts the report again under this name, so a send whose merge never ran still leaves a
+  # record the next send reads; set -C makes the file only where no part has yet.
+  ( set -C
+    { echo "# totalseg gold4: job $1 queued, commit ${commit:0:7}, $(date -u '+%F %T') UTC; no part of it has started yet"
+      echo "- queued: the array $1, $GOLD4_TASKS tasks of a card each, and its merge on a CPU node afterany it"
+      echo "- folder: $GOLD4_ROOT/chains/$1, where every part works"; } > "$LOGS/TOTALSEG-gold4.md.part" ) 2>/dev/null
+  return 0
+}
+gold4_note() {  # gold4_note LINE: one more line on the send's record, where the record stands
+  [ ! -f "$LOGS/TOTALSEG-gold4.md.part" ] || echo "- $1" >> "$LOGS/TOTALSEG-gold4.md.part"
+}
+gold4_rerun_allowed() {  # gold4_rerun_allowed JOB: TOTALSEG_RERUNS names JOB beside gold4
+  [ -n "$1" ] || return 1
+  case " $TOTALSEG_RERUNS " in *" gold4:$1 "*) return 0 ;; esac
+  return 1
+}
+gold4_again() {  # gold4_again RECORD KEPT LABELS FULL: why another send may follow the one the record stands for; else 1 and the word that it is done, or 2 and the refusal
+  # The tally is the label maps that stood, and the commit, when the send before was queued: a send
+  # that wrote none at the code the checkout still holds would do the same again, so it waits for a
+  # fix; one that never started spent nothing.
+  local record=$1 kept=$2 labels=$3 full=$4 job before before_commit chain
+  job=$(bench_job_of "$record")
+  before=$(awk 'NR == 1 { print $1 }' "$LOGS/TOTALSEG-gold4.count" 2>/dev/null)
+  before_commit=$(awk 'NR == 1 { print $2 }' "$LOGS/TOTALSEG-gold4.count" 2>/dev/null)
+  [[ $before =~ ^[0-9]+$ ]] || before=""
+  chain=$(gold4_chain)
+  if gold4_rerun_allowed "$job"; then
+    echo "the record above is job $job's, which TOTALSEG_RERUNS lets the owner's word send once more"
+  elif [ -z "$kept" ] && [[ $(tail -n 1 "$record") =~ ^-\ exit\ 0\  ]]; then
+    echo "  the segmentation is done: every CT is segmented, or given up after failing in two sends at one code; nothing was queued"
+    return 1
+  elif [ -n "$kept" ] && [ -n "$chain" ] && [ ! -e "$GOLD4_ROOT/chains/$chain" ]; then
+    echo "Slurm ended the send above before any part of it started"
+  elif [ -z "$before" ] || [ "$labels" -gt "$before" ]; then
+    echo "the CTs left carry on (${before:+$((labels - before)) label maps since the send before, }$labels in all)"
+  elif [ "$before_commit" != "$full" ]; then
+    echo "the send above wrote no label map, and the code has changed since it was sent (${before_commit:0:7} to ${full:0:7})"
+  else
+    echo "refusing: the send above wrote no label map ($labels in all, as before it) at the code the checkout still holds, so another would do the same; a fix is a new commit, or the owner's word gold4:${job:-<job>} in TOTALSEG_RERUNS; nothing was queued"
+    return 2
+  fi
+}
+word_totalseg_gold4() {  # TotalSegmentator on the gold tier 4 CTs: an array and its merge, queued again while the sends make headway; the last report printed on every send
+  local report=$LOGS/TOTALSEG-gold4.md sent=$LOGS/TOTALSEG-gold4.sent
+  local busy chain record kept="" job again="" aside="" labels missing full setup opts=() gold4 merge rc
+  busy=$(gold4_live)
+  if [ -n "$busy" ]; then
+    echo "refusing: the gold 4 segmentation is still queued or running (job ${busy// /, job }); send totalseg gold4 again once it ends"
+    chain=$(gold4_chain)
+    [ -z "$chain" ] || gold4_progress "$chain"
+    return 75
+  fi
+  full=$(git -C "$REPO" rev-parse HEAD 2>/dev/null)
+  [[ $full =~ ^[0-9a-f]{40}$ ]] || { echo "refusing: the checkout's commit cannot be read, and every part copies the code at it"; return 2; }
+  labels=$(gold4_labels)
+  if [ -f "$report" ] || [ -f "$report.part" ]; then
+    record=$report
+    [ -f "$record" ] || record=$report.part kept=-unfinished
+    if [ -z "$kept" ]; then
+      echo "## $(basename "$report") ($(date -r "$report" '+%F %T'))"
+    else
+      echo "## $(basename "$report") unfinished: the send ended before its merge wrote its exit ($(date -r "$record" '+%F %T'))"
+    fi
+    head -n 200 "$record" | LC_ALL=C tr -cd '\11\12\40-\176' | masked | head -c 30000
+    again=$(gold4_again "$record" "$kept" "$labels" "$full") || { rc=$?; echo "$again"; [ "$rc" = 1 ] && return 0; return "$rc"; }
+    [[ $again != "Slurm ended"* ]] || kept=-unstarted
+    job=$(bench_job_of "$record")
+    aside=$LOGS/TOTALSEG-gold4-${job:-$(gold4_chain)}$kept.md
+  fi
+  [ -f "$REPO/grid/totalseg-gold4.sbatch" ] && [ -f "$REPO/tools/gold4_totalseg_grid.py" ] && [ -f "$REPO/flows/gold4_totalseg.py" ] \
+    || { echo "refusing: no gold 4 job script, tool or flow at this commit"; return 2; }
+  gold4_frozen || return
+  missing=$(gold4_inputs_missing)
+  [ -z "$missing" ] || { echo "refusing: the gold 4 segmentation reads $missing, which is not there; nothing was queued"; return 2; }
+  setup=$(setup_dependency) || return 1
+  [ -z "$setup" ] || echo "  the environments: after the setup job that rebuilds them (${setup#afterok:})"
+  gold4=(GOLD4_COMMIT="$full" GOLD4_TASKS="$GOLD4_TASKS" GOLD4_ROOT="$GOLD4_ROOT" GOLD4_CENSUS="$GOLD4_CENSUS" GOLD4_TIERS="$GOLD4_TIERS"
+         GOLD4_WEIGHTS="$GOLD4_WEIGHTS")
+  # What can refuse a send without queueing anything is asked before the send is marked, as the screen's
+  # word asks it: the job script, which submit refuses for a GPU job no flow names, and each shape, the
+  # array asked as one of its tasks, since job submit asks no array first (grid/hpcw.sh).
+  launched_script totalseg-gold4.sbatch || {
+    echo "refusing: flows/registry.txt names grid/totalseg-gold4.sbatch as no flow's job script, and every GPU job starts through flows/launch.py; nothing was queued"
+    return 90
+  }
+  hpcw_check gold4_totalseg gpu "${gold4[@]}" PART=run --cpus 8 --mem 64G --time 12:00:00 --no-requeue -- totalseg-gold4.sbatch || return 1
+  hpcw_check gold4_totalseg_merge batch "${gold4[@]}" PART=merge RUN_JOB=1 --cpus 4 --mem 16G --time 02:00:00 --no-requeue -- totalseg-gold4.sbatch || return 1
+  [ -z "$again" ] || echo "  $again: queueing the segmentation again at $commit"
+  depend_on "$setup" || return 1
+  # The record a send again replaces moves aside only here, past every refusal, so a send refused
+  # leaves it where the next send reads it, and the new send's record never meets the old one.
+  [ -z "$aside" ] || mv "$record" "$aside" || return 1
+  # A send whose answer was lost may have queued an array; Slurm holds no job of its name now (gold4_live),
+  # so whatever it did is in the CTs' records, and this send takes up what is left.
+  [ ! -f "$sent" ] || echo "  a send at $(cat "$sent") may have queued an array whose answer was lost; Slurm holds no job of its name now, so this send takes up what it left"
+  echo "$(date -u '+%F %T') UTC at commit $commit" > "$sent" || { echo "refusing: the mark $(basename "$sent") could not be written; nothing was queued"; return 1; }
+  chain=$(submit gold4_totalseg gpu "${gold4[@]}" PART=run ${opts[@]+"${opts[@]}"} --array "0-$((GOLD4_TASKS - 1))" \
+    --cpus 8 --mem 64G --time 12:00:00 --no-requeue -- totalseg-gold4.sbatch) || return 1
+  # The record names the array as soon as it is queued, and the tally the label maps that stood then,
+  # which the next send reads to tell headway from none.
+  gold4_queued "$chain"
+  echo "$labels $full" > "$LOGS/TOTALSEG-gold4.count"
+  [ ! -f "$report.part" ] || rm -f "$sent"
+  # Both or neither, as the screen's word queues its trials and join: an array whose merge was refused
+  # would leave no report. The merge waits for the setup as the tasks do.
+  if ! depend_on "$(joined "$setup" "afterany:$chain")" || ! merge=$(submit gold4_totalseg_merge batch "${gold4[@]}" PART=merge RUN_JOB="$chain" \
+    ${opts[@]+"${opts[@]}"} --cpus 4 --mem 16G --time 02:00:00 --no-requeue -- totalseg-gold4.sbatch); then
+    if "$SCANCEL" "$chain"; then
+      gold4_note "merge: refused, so the gate cancelled the array $chain"
+      echo "  cancelled the array $chain, since its merge was refused"
+    else
+      gold4_note "merge: refused, and the gate's cancel of the array $chain failed"
+      echo "  the merge was refused and the cancel of the array $chain failed: it may still run, and the next send waits for it and takes up what it left"
+    fi
+    return 1
+  fi
+  gold4_note "merge: job $merge on a CPU node, afterany the array"
+  echo "submitted TotalSegmentator on the gold 4 CTs: the array $chain ($GOLD4_TASKS tasks, each on the first card of the gpu class that frees, sharing the CTs; $labels label maps stood before it) and the merge $merge afterany it on a CPU node, in $GOLD4_ROOT/chains/$chain. Send totalseg gold4 again once they end to read the report, logs/TOTALSEG-gold4.md, and to carry on the CTs left."
 }
 
 word_census() {  # the gold tier census (the owner's tap of 2026-10-29 12:26 UTC, one CPU job): queued once, its report printed on every later send

@@ -45,7 +45,8 @@ NEW_SCRIPTS = ("gate.sh", "hpcw.sh", "box.sh", "bin/pixi", "bin/train-cpu-python
                "00-carmlspine.sbatch", "v1-driver.sbatch", "experiment-driver.sbatch", "run-xray-chain.sh",
                "run-platform-fetch.sh", "sweep-driver.sbatch", "v1-version.sh", "realism.sbatch", "venv.sh",
                "drr-gap.sbatch", "drr-seg.sbatch", "morphometry.sbatch", "gold3-census.sbatch", "bordercall-complete.sbatch",
-               "autoanatomist.sbatch", "autoanatomist2.sbatch", "morphometry-covariates.sbatch", "morphometry-prior.sbatch")
+               "autoanatomist.sbatch", "autoanatomist2.sbatch", "morphometry-covariates.sbatch", "morphometry-prior.sbatch",
+               "totalseg-gold4.sbatch")
 ENVS = ("default", "train-cpu", "train-gpu", "telemetry")
 # The morphometry engine's code stamps: the merged bordercall ee495d5's, and 16f7b40's, which the sets'
 # first reports name (grid/gate.sh, MORPHOMETRY_RERUNS).
@@ -5080,6 +5081,441 @@ exit "${FAKE_RC:-0}"
         report = (self.repo / "grid" / "logs" / f"AUTOANATOMIST-{self.SCREEN}.md").read_text(encoding="utf-8")
         self.assertIn("- STOP: PREREG.md changed since the freeze", report)
         self.assertFalse((self.fake / "screen-python.log").exists())
+
+    # TotalSegmentator on the gold tier 4 CTs (grid/gate.sh's word totalseg gold4, grid/totalseg-gold4.sbatch).
+    def gold4_root(self):
+        return self.tmp / "go2432" / "gold4-totalseg"
+
+    def gold4_prereg(self, moved=False):
+        """The segmentation's frozen PREREG and its hash in the checkout, where flows/registry.txt names them;
+        MOVED adds a line after the freeze."""
+        folder = self.repo / "docs" / "research" / "gold4-totalseg"
+        folder.mkdir(parents=True, exist_ok=True)
+        for name in ("PREREG.md", "PREREG.md.sha256"):
+            shutil.copy(ROOT / "docs" / "research" / "gold4-totalseg" / name, folder / name)
+        if moved:
+            (folder / "PREREG.md").write_text((folder / "PREREG.md").read_text(encoding="utf-8") + "\nA line after the freeze.\n", encoding="utf-8")
+        return folder / "PREREG.md"
+
+    def gold4_inputs(self, *which):
+        """What a send reads on the lab volume, each a stand-in where the gate's and the job's defaults look:
+        the census detail, a tier list, and the two weight parts totalseg complete unpacked, each marked
+        UNPACKED; all four where none is named. Their paths by name."""
+        volume = self.tmp / "go2432"
+        paths = {"census": volume / "gold3_census" / "40870542" / "gold4.json", "tiers": volume / "ruleclass" / "tiers" / "tier1.tsv",
+                 "292": volume / "gold3-totalseg" / "weights" / "Dataset292_TotalSegmentator_part2_vertebrae_1792subj" / "UNPACKED",
+                 "298": volume / "gold3-totalseg" / "weights" / "Dataset298_TotalSegmentator_total_6mm_1559subj" / "UNPACKED"}
+        for name in which or paths:
+            paths[name].parent.mkdir(parents=True, exist_ok=True)
+            paths[name].write_text("[]\n" if name == "census" else "\n", encoding="utf-8")
+        return paths
+
+    def full_commit(self):
+        return subprocess.run(["git", "-C", str(self.repo), "rev-parse", "HEAD"], check=True, capture_output=True, text=True).stdout.strip()
+
+    def commit_again(self):
+        """One more commit of the checkout, as a merged fix moves it: the new full commit."""
+        subprocess.run(["git", "-c", "gc.auto=0", "-c", "maintenance.auto=false", "-c", "user.name=t", "-c", "user.email=t@t",
+                        "-C", str(self.repo), "commit", "-q", "--allow-empty", "-m", "a fix"], check=True)
+        return self.full_commit()
+
+    def gold4_ready(self):
+        """The checkout and the lab volume as a send reads them: a commit, the environments, the frozen
+        PREREG, the tool and the flow, and every input: the full commit."""
+        self.gold4_prereg()
+        for name in ("tools/gold4_totalseg_grid.py", "flows/gold4_totalseg.py"):
+            (self.repo / name).write_text("", encoding="utf-8")
+        self.gold4_inputs()
+        self.git_repo()
+        self.environments_ready()
+        return self.full_commit()
+
+    def gold4_labels(self, count):
+        """COUNT label maps under the run's labels/, as the tasks leave them, one per CT."""
+        labels = self.gold4_root() / "labels"
+        labels.mkdir(parents=True, exist_ok=True)
+        for n in range(count):
+            (labels / f"{n:064x}.nii.gz").write_bytes(b"map")
+
+    def gold4_report(self, merge, array, commit, *lines):
+        """The report as the merge leaves it, its record renamed into place: the send's record gone."""
+        logs = self.repo / "grid" / "logs"
+        (logs / "TOTALSEG-gold4.md.part").unlink(missing_ok=True)
+        (self.gold4_root() / "chains" / str(array)).mkdir(parents=True, exist_ok=True)
+        report = logs / "TOTALSEG-gold4.md"
+        report.write_text(f"# totalseg gold4: job {merge} on node, commit {commit[:7]}, 2026-10-31 05:00:00 UTC; the merge of the array {array}\n"
+                          + "".join(f"{line}\n" for line in lines), encoding="utf-8")
+        return report
+
+    def test_totalseg_gold4_refuses_until_its_code_its_frozen_prereg_and_every_input_are_there(self):
+        # sixteen tasks share the CTs, and the owner's word lets no send of gold 4 through again yet
+        gate = (ROOT / "grid" / "gate.sh").read_text(encoding="utf-8")
+        self.assertIn("\nGOLD4_TASKS=16\n", gate)
+        self.assertIn('\nTOTALSEG_RERUNS="complete:40882547"\n', gate)
+        refused = self.gate("totalseg", "gold5")
+        self.assertEqual(refused.returncode, 64, refused.stdout)
+        self.assertIn("totalseg takes complete or gold4", refused.stdout)
+        # every part copies the code at the checkout's commit, so a checkout with none sends nothing
+        refused = self.gate("totalseg", "gold4")
+        self.assertEqual(refused.returncode, 2, refused.stdout)
+        self.assertIn("the checkout's commit cannot be read", refused.stdout)
+        self.git_repo()
+        refused = self.gate("totalseg", "gold4")
+        self.assertEqual(refused.returncode, 2, refused.stdout)
+        self.assertIn("no gold 4 job script, tool or flow at this commit", refused.stdout)
+        for name in ("tools/gold4_totalseg_grid.py", "flows/gold4_totalseg.py"):
+            (self.repo / name).write_text("", encoding="utf-8")
+        # no PREREG, or one that moved since its freeze, stops the send before any card is spent
+        refused = self.gate("totalseg", "gold4")
+        self.assertEqual(refused.returncode, 90, refused.stdout)
+        self.assertIn("STOP: docs/research/gold4-totalseg/PREREG.md is not frozen as its PREREG.md.sha256 says", refused.stdout)
+        self.gold4_prereg(moved=True)
+        self.assertEqual(self.gate("totalseg", "gold4").returncode, 90)
+        self.gold4_prereg()
+        # each input is asked for in turn, by what writes it
+        for missing, said in (("census", "the census detail"), ("tiers", "the census tier lists under"),
+                              ("292", "weight part Dataset292 unpacked whole"), ("298", "weight part Dataset298 unpacked whole")):
+            refused = self.gate("totalseg", "gold4")
+            self.assertEqual(refused.returncode, 2, refused.stdout)
+            self.assertIn(said, refused.stdout)
+            self.assertIn("nothing was queued", refused.stdout)
+            self.gold4_inputs(missing)
+        self.assertEqual(self.submitted(), [])
+
+    def test_totalseg_gold4_queues_sixteen_gpu_tasks_that_share_the_cts_and_a_cpu_merge_afterany_them(self):
+        full = self.gold4_ready()
+        done = self.gate("totalseg", "gold4")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        array, merge = self.submitted()
+        # the tasks ask no partition, so each takes the first card of the gpu class that frees
+        self.assertIn("--class gpu --name gold4_totalseg --array 0-15 --cpus 8 --mem 64G --time 12:00:00 --no-requeue totalseg-gold4.sbatch |", array)
+        self.assertIn("--class batch --name gold4_totalseg_merge --dependency=afterany:101 --kill-on-invalid-dep=yes --cpus 4 --mem 16G "
+                      "--time 02:00:00 --no-requeue totalseg-gold4.sbatch |", merge)
+        inputs = self.gold4_inputs()
+        for line in (array, merge):
+            for said in (f" GOLD4_COMMIT={full} ", " GOLD4_TASKS=16 ", f" GOLD4_ROOT={self.gold4_root()} ", f" GOLD4_CENSUS={inputs['census']} ",
+                         f" GOLD4_TIERS={inputs['tiers'].parent} ", f" GOLD4_WEIGHTS={inputs['292'].parent.parent} "):
+                self.assertIn(said, line)
+        self.assertIn(" PART=run ", array)
+        self.assertTrue(array.endswith(" RUN_JOB="), array)
+        self.assertIn(" PART=merge ", merge)
+        self.assertTrue(merge.endswith(" RUN_JOB=101"), merge)
+        recorded = self.recorded()
+        self.assertEqual((recorded["gold4_totalseg"], recorded["gold4_totalseg_merge"]), ("101", "102"))
+        logs = self.repo / "grid" / "logs"
+        record = (logs / "TOTALSEG-gold4.md.part").read_text(encoding="utf-8")
+        self.assertTrue(record.startswith(f"# totalseg gold4: job 101 queued, commit {full[:7]},"), record)
+        self.assertIn("- merge: job 102 on a CPU node, afterany the array", record)
+        # the tally the next send reads to tell headway from none: no label map stood then, at this commit
+        self.assertEqual((logs / "TOTALSEG-gold4.count").read_text(encoding="utf-8"), f"0 {full}\n")
+        self.assertFalse((logs / "TOTALSEG-gold4.sent").exists())
+        self.assertIn("submitted TotalSegmentator on the gold 4 CTs: the array 101 (16 tasks", done.stdout)
+        # while either lasts a send queues nothing and says where each task stands, by its last line
+        self.live(101)
+        busy = self.gate("totalseg", "gold4")
+        self.assertEqual(busy.returncode, 75, busy.stdout)
+        self.assertIn("still queued or running (job 101)", busy.stdout)
+        self.assertIn("no task of chain 101 has written a line yet", busy.stdout)
+        tasks = self.gold4_root() / "chains" / "101" / "tasks"
+        tasks.mkdir(parents=True)
+        (tasks / "3.txt").write_text("2026-10-31T02:00:00Z task 3 of 16: 1,328 units in the chain's list; GPU NVIDIA L40S\n"
+                                     "2026-10-31T02:01:00Z task 3: u exit 0 (concordant) in 41.2 s; 1 segmented, 0 failed, 0 passed over\n",
+                                     encoding="utf-8")
+        busy = self.gate("totalseg", "gold4")
+        self.assertEqual(busy.returncode, 75, busy.stdout)
+        self.assertIn("    task 3: u exit 0 (concordant) in 41.2 s; 1 segmented, 0 failed, 0 passed over", busy.stdout)
+        self.assertNotIn("2026-10-31T02:01:00Z", busy.stdout)
+        self.live(102)
+        self.assertEqual(self.gate("totalseg", "gold4").returncode, 75)
+        self.assertEqual(len(self.submitted()), 2)
+
+    def test_totalseg_gold4_queues_again_while_the_sends_make_headway_and_stops_once_one_ends_in_exit_0(self):
+        full = self.gold4_ready()
+        logs = self.repo / "grid" / "logs"
+        self.assertEqual(self.gate("totalseg", "gold4").returncode, 0)
+        # Slurm ended the send before any part made the chain's folder: it spent nothing, so it is queued again at once
+        again = self.gate("totalseg", "gold4")
+        self.assertEqual(again.returncode, 0, again.stdout + again.stderr)
+        self.assertIn("## TOTALSEG-gold4.md unfinished", again.stdout)
+        self.assertIn("Slurm ended the send above before any part of it started: queueing the segmentation again", again.stdout)
+        self.assertTrue((logs / "TOTALSEG-gold4-101-unstarted.md").exists())
+        self.assertEqual(self.recorded()["gold4_totalseg"], "103")
+        # a send that started and left label maps made headway, so the CTs left carry on
+        (self.gold4_root() / "chains" / "103").mkdir(parents=True)
+        self.gold4_labels(5)
+        again = self.gate("totalseg", "gold4")
+        self.assertEqual(again.returncode, 0, again.stdout + again.stderr)
+        self.assertIn("the CTs left carry on (5 label maps since the send before, 5 in all): queueing", again.stdout)
+        self.assertTrue((logs / "TOTALSEG-gold4-103-unfinished.md").exists())
+        self.assertEqual((logs / "TOTALSEG-gold4.count").read_text(encoding="utf-8"), f"5 {full}\n")
+        # its merge's report did not end in 0 and no map came since: at the same code another send would do the same
+        report = self.gold4_report(106, 105, full, "- task 0: exit 1 at 2026-10-31 04:00:00 UTC; task 0: stopped after 3 failures in a row",
+                                   "- exit 1 at 2026-10-31 05:10:00 UTC")
+        for _ in range(2):
+            refused = self.gate("totalseg", "gold4")
+            self.assertEqual(refused.returncode, 2, refused.stdout)
+            self.assertIn("## TOTALSEG-gold4.md (", refused.stdout)
+            self.assertIn("- task 0: exit 1", refused.stdout)
+            self.assertIn("wrote no label map (5 in all, as before it) at the code the checkout still holds", refused.stdout)
+            self.assertIn("the owner's word gold4:106 in TOTALSEG_RERUNS", refused.stdout)
+        self.assertEqual(len(self.submitted()), 6)
+        self.assertTrue(report.exists())
+        # the owner's word for that report lets one more send through, and the report is kept aside
+        self.set_gate_line("TOTALSEG_RERUNS", "complete:40882547 gold4:106")
+        again = self.gate("totalseg", "gold4")
+        self.assertEqual(again.returncode, 0, again.stdout + again.stderr)
+        self.assertIn("the record above is job 106's, which TOTALSEG_RERUNS lets the owner's word send once more", again.stdout)
+        self.assertTrue((logs / "TOTALSEG-gold4-106.md").exists())
+        self.assertEqual(len(self.submitted()), 8)
+        self.set_gate_line("TOTALSEG_RERUNS", "complete:40882547")
+        # a fix is a new commit, which lets a send through where the last one wrote nothing
+        self.gold4_report(108, 107, full, "- exit 1 at 2026-10-31 07:10:00 UTC")
+        self.assertEqual(self.gate("totalseg", "gold4").returncode, 2)
+        fixed = self.commit_again()
+        again = self.gate("totalseg", "gold4")
+        self.assertEqual(again.returncode, 0, again.stdout + again.stderr)
+        self.assertIn(f"the send above wrote no label map, and the code has changed since it was sent ({full[:7]} to {fixed[:7]})", again.stdout)
+        self.assertIn(f" GOLD4_COMMIT={fixed} ", self.submitted()[-2])
+        self.assertTrue((logs / "TOTALSEG-gold4-108.md").exists())
+        # a report that ends in exit 0 is done: printed on every send, and nothing queued
+        self.gold4_report(110, 109, fixed, "- H2, every bone named as SPINEPS names it: 900 of 1,000 (90.0%); bar 80%; met",
+                          "- exit 0 at 2026-10-31 09:10:00 UTC")
+        for _ in range(2):
+            done = self.gate("totalseg", "gold4")
+            self.assertEqual(done.returncode, 0, done.stdout)
+            self.assertIn("bar 80%; met", done.stdout)
+            self.assertIn("the segmentation is done", done.stdout)
+        self.assertEqual(len(self.submitted()), 10)
+
+    def test_totalseg_gold4_cancels_the_array_whose_merge_was_refused_and_queues_the_pair_again(self):
+        full = self.gold4_ready()
+        # a merge refused once the array was queued cancels the array, so no task runs with no merge to report it
+        (self.fake / "refuse").write_text("--dependency=afterany:101", encoding="utf-8")
+        refused = self.gate("totalseg", "gold4")
+        self.assertEqual(refused.returncode, 1, refused.stdout)
+        self.assertIn("cancelled the array 101, since its merge was refused", refused.stdout)
+        self.assertEqual((self.fake / "scancel.log").read_text(encoding="utf-8").split(), ["101"])
+        logs = self.repo / "grid" / "logs"
+        record = (logs / "TOTALSEG-gold4.md.part").read_text(encoding="utf-8")
+        self.assertTrue(record.startswith(f"# totalseg gold4: job 101 queued, commit {full[:7]},"), record)
+        self.assertIn("- merge: refused, so the gate cancelled the array 101", record)
+        # cancelled before any task made the chain's folder, it spent nothing, so the next send queues the pair at once
+        (self.fake / "refuse").write_text("", encoding="utf-8")
+        done = self.gate("totalseg", "gold4")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("Slurm ended the send above before any part of it started", done.stdout)
+        self.assertTrue((logs / "TOTALSEG-gold4-101-unstarted.md").exists())
+        lines = self.submitted()
+        self.assertEqual(len(lines), 3, lines)
+        self.assertIn("--name gold4_totalseg_merge --dependency=afterany:102 ", lines[-1])
+
+    def test_totalseg_gold4_takes_up_what_a_send_whose_answer_was_lost_left_once_slurm_holds_none_of_it(self):
+        self.gold4_ready()
+        (self.fake / "lossy").write_text("--name gold4_totalseg --array", encoding="utf-8")
+        lost = self.gate("totalseg", "gold4", HPCW_LOSSY=str(self.fake / "lossy"))
+        self.assertNotEqual(lost.returncode, 0, lost.stdout)
+        self.assertEqual(len(self.submitted()), 1)
+        sent = self.repo / "grid" / "logs" / "TOTALSEG-gold4.sent"
+        self.assertTrue(sent.exists())
+        # Slurm holds the array under hpcworker's name, which the gate's list never named: the next send waits for it
+        (self.fake / "queue").write_text("101_3 schwingnet-gold4_totalseg\n", encoding="utf-8")
+        busy = self.gate("totalseg", "gold4")
+        self.assertEqual(busy.returncode, 75, busy.stdout)
+        self.assertIn("still queued or running (job 101)", busy.stdout)
+        # once it ends, each CT's record says what it did, so the next send takes up what it left
+        (self.fake / "queue").write_text("", encoding="utf-8")
+        done = self.gate("totalseg", "gold4")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("may have queued an array whose answer was lost; Slurm holds no job of its name now", done.stdout)
+        self.assertEqual(len(self.submitted()), 3)
+        self.assertFalse(sent.exists())
+
+    def test_totalseg_gold4_marks_a_send_only_past_what_could_refuse_it_without_queueing(self):
+        self.gold4_ready()
+        sent = self.repo / "grid" / "logs" / "TOTALSEG-gold4.sent"
+        # a job script no flow names is refused before the mark, as submit would refuse it after
+        registry = self.repo / "flows" / "registry.txt"
+        listed = registry.read_text(encoding="utf-8")
+        self.assertIn(" totalseg-gold4.sbatch ", listed)
+        registry.write_text(listed.replace(" totalseg-gold4.sbatch ", " totalseg-gold4-old.sbatch "), encoding="utf-8")
+        refused = self.gate("totalseg", "gold4")
+        self.assertEqual(refused.returncode, 90, refused.stdout)
+        self.assertIn("names grid/totalseg-gold4.sbatch as no flow's job script", refused.stdout)
+        registry.write_text(listed, encoding="utf-8")
+        # either shape refused by the scheduler marks nothing and queues nothing
+        for shape in ("--name gold4_totalseg ", "--name gold4_totalseg_merge "):
+            (self.fake / "refuse").write_text(shape, encoding="utf-8")
+            refused = self.gate("totalseg", "gold4")
+            self.assertEqual(refused.returncode, 1, refused.stdout)
+            self.assertIn("hpcworker refused", refused.stdout)
+            self.assertFalse(sent.exists())
+        self.assertEqual(self.submitted(), [])
+        # past the mark the array is not asked again; the merge's shape is, by job submit, once the array's record stands
+        (self.fake / "refuse").write_text("", encoding="utf-8")
+        checks = self.fake / "checks.log"
+        done = self.gate("totalseg", "gold4", HPCW_CHECK_LOG=str(checks))
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        asked = checks.read_text(encoding="utf-8").splitlines()
+        self.assertEqual([line.split()[3] for line in asked], ["gold4_totalseg", "gold4_totalseg_merge", "gold4_totalseg_merge"])
+        self.assertEqual(len(self.submitted()), 2)
+        self.assertFalse(sent.exists())
+
+    # A stand-in for the segmenter environment's python: the torch check by -c, and the launcher as the job
+    # runs it, its words logged, its lines printed as flows/launch.py and Metaflow's runtime print them; a
+    # task leaves its line in tasks/<task>.txt and the merge its REPORT.md where the tool writes them.
+    # FAKE_TORCH_RC is the torch check's exit and FAKE_RC the launcher's.
+    FAKE_GOLD4_PYTHON = """#!/bin/bash
+echo "$*" >> "$FAKE/gold4-python.log"
+case "$1" in
+  -c) exit "${FAKE_TORCH_RC:-0}" ;;
+  */flows/launch.py) ;;
+  *) exit 0 ;;
+esac
+part="" chain="" out="" task=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --part|--chain|--out|--task) eval "${1#--}=\\$2"; shift 2 ;;
+    *) shift ;;
+  esac
+done
+run=1761900000000001
+echo '{"code": "c0de", "decision": "run", "flow": "gold4_totalseg", "key": "k", "live": null, "origin": null, "root": "/rs/x/metaflow"}'
+if [ "$part" = run ]; then
+  mkdir -p "$out/chains/$chain/tasks"
+  echo "2026-10-31T04:00:00Z task $task: ended: 3 segmented, ${FAKE_RC:-0} failed, 0 passed over" >> "$out/chains/$chain/tasks/$task.txt"
+  echo "2026-10-31 04:00:00.123 [$run/end/7 (pid 4242)] Gold4TotalsegFlow: task $task of 2: exit ${FAKE_RC:-0}"
+else
+  printf -- '- units: 6 segmented\\n- H2: met\\n' > "$out/chains/$chain/REPORT.md"
+  echo "2026-10-31 04:00:00.123 [$run/end/7 (pid 4242)] Gold4TotalsegFlow: merge: exit 0"
+fi
+echo "2026-10-31 04:00:00.123 [$run/end/7 (pid 4242)] Gold4TotalsegFlow: verdict ${FAKE_RC:-0}"
+echo '{"flow": "gold4_totalseg", "run": "Gold4TotalsegFlow/'"$run"'", "successful": true, "verdict": 0}'
+exit "${FAKE_RC:-0}"
+"""
+
+    def gold4_checkout(self, moved=False):
+        """A checkout whose commit holds every path grid/totalseg-gold4.sbatch copies, the frozen PREREG among
+        them, each a stand-in but the grid's scripts and the split, and every input on the lab volume: the
+        full commit. MOVED commits a PREREG with a line added after its freeze."""
+        for path in ("src/schwingnet/__init__.py", "vendor/README.md", "data/reporting/README.md", "data/licences.json", "pixi.toml"):
+            (self.repo / path).parent.mkdir(parents=True, exist_ok=True)
+            (self.repo / path).write_text("{}\n" if path.endswith(".json") else "\n", encoding="utf-8")
+        self.gold4_prereg(moved=moved)
+        self.gold4_inputs()
+        git = ["git", "-c", "gc.auto=0", "-c", "maintenance.auto=false", "-c", "user.name=t", "-c", "user.email=t@t", "-C", str(self.repo)]
+        subprocess.run([*git, "init", "-q"], check=True)
+        subprocess.run([*git, "add", "-A"], check=True)
+        subprocess.run([*git, "commit", "-q", "-m", "c"], check=True)
+        return self.full_commit()
+
+    def gold4_job(self, part, commit, **extra):
+        """grid/totalseg-gold4.sbatch run as Slurm runs it, over the stand-in python in a ready environment
+        and a stand-in nvidia-smi that names a card."""
+        pin = re.search(r'^TS_PIN="([^"]*)"$', (self.repo / "grid" / "totalseg-gold4.sbatch").read_text(encoding="utf-8"), re.M).group(1)
+        venv = self.tmp / "go2432" / ".cache" / "bench" / f"venv-{hashlib.sha256(pin.encode()).hexdigest()[:12]}"
+        (venv / "bin").mkdir(parents=True, exist_ok=True)
+        (venv / "READY").write_text(pin + "\n", encoding="utf-8")
+        (venv / "bin" / "python").write_text(self.FAKE_GOLD4_PYTHON, encoding="utf-8")
+        (venv / "bin" / "python").chmod(0o755)
+        (self.fake / "nvidia-smi").write_text("#!/bin/bash\necho 'NVIDIA L40S, 46068 MiB, 550.54.15'\n", encoding="utf-8")
+        (self.fake / "nvidia-smi").chmod(0o755)
+        env = dict(os.environ, PATH=f"{self.fake}:{os.environ['PATH']}", SCHWINGNET=str(self.repo), LAB_VOLUME=str(self.tmp),
+                   FAKE=str(self.fake), SCHWINGNET_NATIVE="1", PART=part, GOLD4_TASKS="2", GOLD4_COMMIT=commit)
+        for name in ("SLURM_JOB_ID", "SLURM_ARRAY_JOB_ID", "SLURM_ARRAY_TASK_ID", "RUN_JOB", "RS_ROOT", "GOLD4_ROOT", "GOLD4_CENSUS",
+                     "GOLD4_TIERS", "GOLD4_WEIGHTS", "CUDA_VISIBLE_DEVICES"):
+            env.pop(name, None)
+        env.update(extra)
+        return subprocess.run(["bash", str(self.repo / "grid" / "totalseg-gold4.sbatch")], cwd=self.repo / "grid", env=env,
+                              capture_output=True, text=True, timeout=60)
+
+    def gold4_launches(self):
+        """Each launcher call the stand-in python logged: the script, then its words as a dict."""
+        log = self.fake / "gold4-python.log"
+        calls = log.read_text(encoding="utf-8").splitlines() if log.exists() else []
+        return [(words[0], words[1:5], dict(zip(words[5::2], words[6::2]))) for words in (line.split() for line in calls)
+                if words[0].endswith("/flows/launch.py")]
+
+    def test_the_gold4_job_refuses_words_that_name_no_part_before_touching_anything(self):
+        commit = "a" * 40
+        array = {"SLURM_ARRAY_JOB_ID": "5000", "SLURM_ARRAY_TASK_ID": "0"}
+        for part, extra, said in (("", {}, "PART is run or merge"), ("run", {**array, "GOLD4_COMMIT": "abc1234"}, "the full commit"),
+                                  ("run", {**array, "GOLD4_TASKS": "0"}, "GOLD4_TASKS"), ("run", {}, "the chain is the send's array job"),
+                                  ("merge", {}, "(for the merge, RUN_JOB)"),
+                                  ("run", {**array, "SLURM_ARRAY_TASK_ID": "2"}, "outside the array's 2 tasks")):
+            with self.subTest(part=part, said=said):
+                done = self.gold4_job(part, commit, SLURM_JOB_ID="4242", **extra)
+                self.assertEqual(done.returncode, 64, done.stdout + done.stderr)
+                self.assertIn(said, done.stdout)
+                self.assertIn("SN_GOLD4_TOTALSEG_RC=64", done.stdout)
+        self.assertFalse(self.gold4_root().exists())
+        self.assertFalse((self.fake / "gold4-python.log").exists())
+
+    def test_the_gold4_jobs_tasks_share_one_copy_and_the_merge_reports_each_task_and_the_counts(self):
+        commit = self.gold4_checkout()
+        inputs = self.gold4_inputs()
+        for task in (0, 1):
+            done = self.gold4_job("run", commit, SLURM_JOB_ID=str(5000 + task), SLURM_ARRAY_JOB_ID="5000", SLURM_ARRAY_TASK_ID=str(task),
+                                  FAKE_RC=str(task))
+            self.assertEqual(done.returncode, task, done.stdout + done.stderr)
+            self.assertIn(f"SN_GOLD4_TOTALSEG_RC={task}", done.stdout)
+            step = (self.gold4_root() / "chains" / "5000" / "steps" / f"task-{task}.md").read_text(encoding="utf-8")
+            self.assertTrue(step.startswith(f"# totalseg gold4 task {task} of 2: job 5000_{task} on "), step)
+            for said in ("- PREREG.md: as frozen", "- GPU: NVIDIA L40S, 46068 MiB", "- environment: TotalSegmentator==2.18.0 over train-gpu's Python",
+                         '- launcher: {"code": "c0de", "decision": "run"', f"- task {task} of 2: exit {task}",
+                         "- progress page: /rs/x/metaflow/progress/Gold4TotalsegFlow/1761900000000001/index.html"):
+                self.assertIn(said, step)
+            self.assertEqual(step.splitlines()[-1][:len(f"- exit {task} ")], f"- exit {task} ")
+        out = self.gold4_root() / "chains" / "5000"
+        code = out / f"code-{commit[:7]}"
+        self.assertEqual([path.name for path in out.glob("*code-*")], [code.name])
+        self.assertEqual((code / "COPY.txt").read_text(encoding="utf-8").splitlines()[0], commit)
+        # the records name CTs and person keys, so the run's folder is the owner's alone
+        self.assertEqual(self.gold4_root().stat().st_mode & 0o777, 0o700)
+        done = self.gold4_job("merge", commit, SLURM_JOB_ID="5002", RUN_JOB="5000")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        logs = self.repo / "grid" / "logs"
+        report = (logs / "TOTALSEG-gold4.md").read_text(encoding="utf-8")
+        lines = report.splitlines()
+        # the first line names the merge's own job and commit, as the gate reads every report's
+        self.assertRegex(lines[0], rf"^# totalseg gold4: job 5002 on \S+, commit {commit[:7]}, .*; the merge of the array 5000$")
+        for said in ("- task 0: exit 0 at ", "- task 1: exit 1 at ", "task 1: ended: 3 segmented, 1 failed, 0 passed over",
+                     "### The counts (chains/5000/REPORT.md)", "- H2: met", "- merge: exit 0"):
+            self.assertIn(said, report)
+        self.assertNotIn("- GPU:", report)
+        self.assertEqual(lines[-1][:9], "- exit 0 ")
+        self.assertEqual((out / "steps" / "merge.md").read_text(encoding="utf-8"), report)
+        self.assertFalse((logs / "TOTALSEG-gold4.md.part").exists())
+        # every part ran the launcher from the copy, with the chain and the run's folder; a task with its inputs and its place
+        launches = self.gold4_launches()
+        self.assertEqual([script for script, _, _ in launches], [str(code / "flows" / "launch.py")] * 3)
+        self.assertEqual(launches[0][1], ["gold4_totalseg", "--max-workers", "1", "--"])
+        self.assertEqual([given["--part"] for _, _, given in launches], ["run", "run", "merge"])
+        first = launches[0][2]
+        self.assertEqual((first["--chain"], first["--out"], first["--task"], first["--tasks"]), ("5000", str(self.gold4_root()), "0", "2"))
+        self.assertEqual((first["--census"], first["--tiers"], first["--weights"]),
+                         (str(inputs["census"]), str(inputs["tiers"].parent), str(inputs["292"].parent.parent)))
+        self.assertEqual(launches[2][2], {"--chain": "5000", "--out": str(self.gold4_root()), "--part": "merge"})
+
+    def test_a_gold4_task_stops_before_any_flow_on_a_moved_prereg_missing_weights_or_a_card_torch_cannot_see(self):
+        task = {"SLURM_JOB_ID": "5000", "SLURM_ARRAY_JOB_ID": "5000", "SLURM_ARRAY_TASK_ID": "0"}
+        step = self.gold4_root() / "chains" / "5000" / "steps" / "task-0.md"
+        commit = self.gold4_checkout(moved=True)
+        done = self.gold4_job("run", commit, **task)
+        self.assertEqual(done.returncode, 90, done.stdout + done.stderr)
+        self.assertIn("- STOP: PREREG.md changed since the freeze", step.read_text(encoding="utf-8"))
+        self.assertFalse((self.fake / "gold4-python.log").exists())
+        shutil.rmtree(self.repo / ".git")
+        shutil.rmtree(self.gold4_root())
+        commit = self.gold4_checkout()
+        self.gold4_inputs()["298"].unlink()
+        done = self.gold4_job("run", commit, **task)
+        self.assertEqual(done.returncode, 2, done.stdout + done.stderr)
+        self.assertIn("holds no whole Dataset292 or Dataset298 (totalseg complete unpacks them)", step.read_text(encoding="utf-8"))
+        self.gold4_inputs("298")
+        done = self.gold4_job("run", commit, FAKE_TORCH_RC="1", **task)
+        self.assertEqual(done.returncode, 4, done.stdout + done.stderr)
+        self.assertIn("- FAILED: torch in the environment sees no GPU", step.read_text(encoding="utf-8"))
+        self.assertEqual(self.gold4_launches(), [])
 
     def test_select_is_refused_without_the_frozen_holdout(self):
         (self.repo / "data" / "splits" / "anomaly-holdout.json").unlink()

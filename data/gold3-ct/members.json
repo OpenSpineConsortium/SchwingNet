@@ -244,7 +244,7 @@
     "geneva": [1, 0, 0],
     "nlst_pilot": [489, 0, 0]
    },
-   "by_collection_columns": "rows with a mask, admitted (gold 4, each its own person), look (border cases); the members apart: tcia_fdg_pet_ct_lesions 853 rows, 820 admitted and matched to their ENHANCE.PET study, 1 look, 32 not admitted; verse 374 rows, 21 admitted, 8 look, 13 set aside; ts is TotalSegmentator's census masks, whose admitted 69 are gold 4 by the SPINEPS mask only where the release's masks did not admit the subject",
+   "by_collection_columns": "rows with a mask, admitted (gold 4, each its own person), look (border cases); the members apart: tcia_fdg_pet_ct_lesions 853 rows, 820 admitted and matched to their ENHANCE.PET study, 1 look, 32 not admitted; verse 374 rows, 21 admitted, 8 look, 13 set aside; ts is TotalSegmentator's census masks, its own subjects, whose 69 admitted and 14 look the census counted as new since its member rule reads the prefixes totalseg and ts_ alone (tools/gold3_census.py MEMBER_OF_COLLECTION), so gold 4 outside the three members is 1,319 admitted and 9 look (docs/research/gold4-totalseg/README.md)",
    "ends_and_flags": "the new gold 4's ends (head, foot): drawn drawn 968, drawn in_view 46, in_view drawn 366, in_view in_view 8; flags: c2_at_field_top 32, cut_in_plane 7, label_spans_levels 12, level_past_sacrum_top 103, name_skipped 42, no_l5 68, sacrum_at_field_foot 14, small_column 9, stray_labels 31",
    "against_the_release": "ENHANCE.PET's SPINEPS masks against its release masks' verdicts (release, SPINEPS): admitted admitted 820, not_admitted look 1, not_admitted not_admitted 32; VerSe's: admitted admitted 20, look look 4, look not_admitted 2, not_admitted admitted 1, not_admitted look 4, not_admitted not_admitted 330"
   },

@@ -30,8 +30,10 @@ is a sweep's state folder, tools/block_sweep.py's with the rows it starts; `swee
 flows/, named by the launcher's key (schwingnet.pipeline.run_key), `v1` the version 1 run of
 tools/flow.py as a launched flow, `experiment` one requested combination of it, `latency` one job
 of the latency word on a run's checkpoint, the last two the DRR domain-gap study's parts and its
-MOOSE masks; `realism` and `autoanatomist` are flows of flows/ too, the FluXray reproduction's
-stages and the auto-anatomist screen's trials and join.
+MOOSE masks; `realism`, `totalseg`, `autoanatomist`, `autoanatomist2` and `gold4_totalseg` are
+flows of flows/ too, the FluXray reproduction's stages, the gold tier 3 completion's TotalSegmentator
+arm, the auto-anatomist screens' trials and joins, and TotalSegmentator's tasks and merge on the gold
+tier 4 CTs.
 
 A copy of the code that `git archive` made, as the DRR domain-gap study's prepare makes one so that
 no later step reads the checkout while the gate moves it, holds no .git; it holds COPY_RECORD
@@ -113,6 +115,11 @@ KINDS = {
                       "flows/stage_registry.py", "tools/autoanatomist_trial.py", "tools/autoanatomist_join.py",
                       "grid/autoanatomist/", "data/splits/rule.json", "data/splits/test-persons.json",
                       "data/splits/latent-prior-test-reserve.json", "data/splits/latent-prior-repeat-groups.json"),
+    # TotalSegmentator on the gold tier 4 CTs (docs/research/gold4-totalseg/PREREG.md): the flow and the
+    # tool each part runs; the job script only makes the environment and starts the launcher, and every
+    # map's record names the segmenter's version it was drawn with.
+    "gold4_totalseg": (*ENVIRONMENT, "flows/gold4_totalseg.py", "flows/stage.py", "flows/stage_registry.py",
+                       "tools/gold4_totalseg_grid.py"),
 }
 # The second screen (docs/research/autoanatomist-screen2/PREREG.md) runs the first screen's flow under
 # a kind of its own, so it reaches every file the first does and its own flow file.
@@ -178,6 +185,9 @@ LEFT_OUT = {
                       "in its end step, after every number; it computes nothing a trial or the decision comes from"},
 }
 LEFT_OUT["autoanatomist2"] = LEFT_OUT["autoanatomist"]
+LEFT_OUT["gold4_totalseg"] = {**STAGE_PAGE_LEFT_OUT,
+                              "tools/report.py": "is named by flows/stage.py for a run's report, which this flow never makes; "
+                              "its report is the merge's counts, written by its tool"}
 
 
 class RunCodeError(Exception):
