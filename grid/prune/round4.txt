@@ -1,0 +1,14 @@
+# The owner's choices of 2026-10-31 (issue #518): "APPROVE ALL" at 02:54 UTC on the derived folders the
+# read-only survey of the lab volume found (job 40902375), VerseFusion kept, and "All but U251" at
+# 02:55 UTC for the folders left to his call. Paths are below the account's folder. data/anomaly_harvest
+# and data/idc stay, under his rule of 02:11 UTC that keeps gold tier 3 and 4: they hold the CTs and
+# SPINEPS masks most of gold 4 was read from (#520).
+results/nnunet_results/Dataset813_SpineSurgLSTVFullRibs
+results/ablate
+data/hf_cads_unique/raw
+data/ctsp_april/ct
+data/spine_detector_corpus/derived
+data/deepfluoro_vendor/unpacked
+data/or_ready/indomain
+data/or_ready/film_ncurve
+data/multisource_banks/derived
