@@ -11,9 +11,13 @@ tiers are kept apart: every sample carries its tier in its view's name, so no ce
 pools them. This module reads each CT once into a case:
 
 - the oracle's eighteen landmarks of each level of the column (T12 to L5 for a typical column) on the
-  CT's own label map, in the CT's world millimetres; the sacrum's top, the mean of its voxels within
-  SACRUM_TOP_MM of its head-most along the column; and the column's axes, the mean of the oracle's
-  level frames (x to the right, y anterior, z up), as the phantoms' are laid out;
+  CT's own label map, in the CT's world millimetres, a level with a landmark more than OFF_BONE_MM
+  from its own bone read as one the oracle could not place (DEVIATIONS.md, item 2); the sacrum's
+  top, the mean of its body's voxels within SACRUM_TOP_MM of the head-most along the column, its body
+  the voxels within SACRUM_BODY_MM of the nearest it comes to the column's line through the lowest
+  level read, since its wings and the processes that meet L5 rise beside and behind L5 above the top
+  of its body (DEVIATIONS.md, item 1); and the column's axes, the mean of the oracle's level frames
+  (x to the right, y anterior, z up), as the phantoms' are laid out;
 - drr_per_view radiographs a view and field (digitally reconstructed): a C-arm pose drawn about the
   anteroposterior or the lateral view as the phantoms' are, the detector's field one of fields_mm (an
   image intensifier's 23 or 30 cm across), its pixels the field over the frame's size, and the CT's
@@ -78,7 +82,9 @@ TEST_LISTS = ("data/splits/test-persons.json", "data/splits/latent-prior-test-re
 # store's normal class, and TotalSegmentator's map has no label for an L6 or a T13. The screen's
 # parts, in the words the loop's samples use.
 PARTS = {"train": "training", "training": "training", "validation": "validation"}
-SACRUM_TOP_MM = 10.0                  # the sacrum's top: its voxels within this of its head-most, along the column
+SACRUM_TOP_MM = 10.0                  # the sacrum's top: its body's voxels within this of the head-most, along the column
+SACRUM_BODY_MM = 15.0                 # its body: its voxels within this of the nearest it comes to the column's line
+OFF_BONE_MM = 8.0                     # a level with a landmark farther than this from its own bone is read as unplaced
 FIELD_MARGIN = 4.0                    # a point counts as seen this many pixels inside the field's circle
 DRR_STEP_MM = 2.0                     # the step along each ray
 DRR_VOXEL_MM = 2.0                    # the CT brought down by whole blocks to about this before the rays are cast
@@ -248,14 +254,45 @@ def column_levels(kind):
 
 def read_column(labels, affine, ids, levels):
     """The oracle's landmarks of each level, (levels, 18, 3) in world mm, NaN for a level it did not
-    read, and the frames of the levels it read."""
+    read or read off its own bone, and the frames of the levels it read on their bones. On a twisted
+    column the oracle can take a level's frame askew and place its landmarks well off the bone, a
+    misreading no less than a level it could not place (DEVIATIONS.md, item 2)."""
     from autoanatomist.oracle import ChordOracle
     keys = oracle_keys()
     names = {int(ids[lv]): lv for lv in levels if lv in ids}
     readings = {r.level: r for r in ChordOracle(keys).read(labels, affine, names)}
-    marks = np.array([readings[lv].landmarks(keys) if lv in readings else np.full((len(G.LANDMARKS), 3), np.nan)
-                      for lv in levels])
-    return marks, [readings[lv].frame for lv in levels if lv in readings]
+    marks, frames = [], []
+    for lv in levels:
+        got = readings[lv].landmarks(keys) if lv in readings else None
+        if got is not None and not on_bone(labels, affine, ids[lv], got):
+            got = None
+        marks.append(np.full((len(G.LANDMARKS), 3), np.nan) if got is None else got)
+        if got is not None:
+            frames.append(readings[lv].frame)
+    return np.array(marks), frames
+
+
+def on_bone(labels, affine, label, points, within_mm=OFF_BONE_MM):
+    """Whether every placed point lies within within_mm of the nearest voxel of its bone. Only the
+    voxels within reach of the points are searched, which is all the answer needs: a whole map of
+    fine voxels takes seconds a level to search."""
+    points = np.asarray(points, float)
+    points = points[np.isfinite(points).all(axis=1)]
+    if not len(points):
+        return True
+    A = np.asarray(affine, float)
+    inv = np.linalg.inv(A)
+    ijk = points @ inv[:3, :3].T + inv[:3, 3]
+    reach = within_mm / np.linalg.norm(A[:3, :3], axis=0) + 1.0
+    lo = np.maximum(np.floor(ijk.min(axis=0) - reach).astype(int), 0)
+    hi = np.minimum(np.ceil(ijk.max(axis=0) + reach).astype(int) + 1, np.asarray(labels.shape[:3]))
+    if (hi <= lo).any():
+        return False
+    near = np.argwhere(labels[lo[0]:hi[0], lo[1]:hi[1], lo[2]:hi[2]] == int(label)) + lo
+    if not len(near):
+        return False
+    bone = near @ A[:3, :3].T + A[:3, 3]
+    return all(float(((bone - p) ** 2).sum(axis=1).min()) <= within_mm ** 2 for p in points)
 
 
 def unit(v):
@@ -279,14 +316,31 @@ def column_axes(frames):
     return np.column_stack([ex, ey, ez])
 
 
-def sacrum_top(labels, affine, sacrum_id, ez, top_mm=SACRUM_TOP_MM):
-    """The sacrum's top: the mean of its voxels within top_mm of its head-most, along the column."""
+def sacrum_top(labels, affine, sacrum_id, ez, through, top_mm=SACRUM_TOP_MM, body_mm=SACRUM_BODY_MM):
+    """The sacrum's top: the mean of its body's voxels within top_mm of the head-most, along the
+    column. Its body is its voxels within body_mm of the nearest it comes to the column's line through
+    the point given, the centre of the lowest level read: on a CT the sacrum's wings and the processes
+    that meet L5 rise beside and behind L5 above the top of its body, and the head-most of the whole
+    mask is one of them."""
     idx = np.argwhere(labels == int(sacrum_id))
     if not len(idx):
         raise CaseRefused("the label map draws no sacrum")
     world = idx @ np.asarray(affine, float)[:3, :3].T + np.asarray(affine, float)[:3, 3]
-    along = world @ ez
-    return world[along >= along.max() - top_mm].mean(axis=0)
+    off = world - np.asarray(through, float)
+    along = off @ ez
+    apart = np.linalg.norm(off - np.outer(along, ez), axis=1)
+    body = apart <= apart.min() + body_mm
+    along = along[body]
+    return world[body][along >= along.max() - top_mm].mean(axis=0)
+
+
+def lowest_centre(marks):
+    """The centre of the lowest level whose body the oracle placed."""
+    centres = level_centres(marks)
+    placed = np.flatnonzero(np.isfinite(centres).all(axis=1))
+    if not len(placed):
+        raise CaseRefused("the oracle placed no body of the column")
+    return centres[placed[-1]]
 
 
 def coarse(volume, affine, target_mm=DRR_VOXEL_MM):
@@ -433,7 +487,7 @@ def read_case(case, spec):
     levels = column_levels(case["type"])
     marks, frames = read_column(labels, affine, case["ids"], levels)
     axes = column_axes(frames)
-    sacrum = sacrum_top(labels, affine, case["ids"]["sacrum"], axes[:, 2])
+    sacrum = sacrum_top(labels, affine, case["ids"]["sacrum"], axes[:, 2], lowest_centre(marks))
     del labels
     mu, mu_affine = coarse_attenuation(nib.load(case["ct"]))
     out = dict(case, levels=levels, landmarks=marks, sacrum=sacrum, axes=axes)

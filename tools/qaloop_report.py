@@ -63,6 +63,8 @@ LIMITS = (
 # the loop's, one restatement each in the section's order; tests/test_qaloop_report.py holds them to
 # the section's bullets as LIMITS are held.
 GOLD_PREREG = "docs/research/qa-loop-gold/PREREG.md"
+# Where the gold design records its departures after the freeze, each dated with its reason.
+GOLD_DEVIATIONS = "docs/research/qa-loop-gold/DEVIATIONS.md"
 GOLD_LIMITS = (
     "the radiographs are digitally reconstructed from CTs, with no scatter, no detector and no image "
     "intensifier's distortion, so they are not fluoroscopy, and their presence is not the real frames'",
@@ -263,8 +265,8 @@ def gold_read_words(gates):
         what = ("stand-ins, typical phantoms in place of its CTs, which say nothing of a real CT" if r.get("stand_in")
                 else "CTs")
         said.append(f"{GOLD_NAMES.get(tier, tier)}: {r.get('read')} {what} read, {persons.get('training')} training and "
-                    f"{persons.get('validation')} held-out persons, {r.get('levels_unread')} levels the oracle could not "
-                    f"place ({r.get('cases')} found under the data root)")
+                    f"{persons.get('validation')} held-out persons, {r.get('levels_unread')} levels left unread, the "
+                    f"oracle having placed them nowhere or off their bone ({r.get('cases')} found under the data root)")
     return "; ".join(said)
 
 
@@ -577,8 +579,12 @@ def fact_limitations(run):
 
 def fact_protocol(run):
     gap = design_gap(run)
-    return missing(gap) if gap else met(f"{DESIGNS[design_of(run)]}, frozen, sha256 {design_of(run)[:16]}, its Covers "
-                                        f"line naming the plan by its bytes ({str(run['record'].get('prereg_part'))})")
+    if gap:
+        return missing(gap)
+    after = (f"; its departures after the freeze, each dated with its reason, are {GOLD_DEVIATIONS}"
+             if DESIGNS.get(design_of(run)) == GOLD_PREREG else "")
+    return met(f"{DESIGNS[design_of(run)]}, frozen, sha256 {design_of(run)[:16]}, its Covers line naming the plan by its "
+               f"bytes ({str(run['record'].get('prereg_part'))}){after}")
 
 
 def fact_code_state(run):

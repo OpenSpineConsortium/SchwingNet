@@ -209,6 +209,78 @@ class CasesTest(unittest.TestCase):
             self.assertTrue(all(len(p) == 1 for p in parts.values()))
 
 
+@unittest.skipIf(MISSING, f"needs numpy ({', '.join(MISSING)} missing)")
+class SacrumTopTest(unittest.TestCase):
+    """The sacrum's top on a map of 1 mm voxels whose wings rise above its body, as a sacrum's alae and
+    the processes that meet L5 rise beside and behind L5 on a CT (DEVIATIONS.md, item 1): a body
+    x 20 to 39, y 20 to 39 and z 10 to 39, and two wings off its sides, behind it, up to z 54."""
+
+    def setUp(self):
+        self.X = round_tool().X
+        self.labels = np.zeros((60, 60, 70), np.int16)
+        self.labels[20:40, 20:40, 10:40] = 28
+        self.labels[0:10, 5:20, 20:55] = 28
+        self.labels[50:60, 5:20, 20:55] = 28
+        self.up = np.array([0.0, 0.0, 1.0])
+
+    def top(self, through):
+        return self.X.sacrum_top(self.labels, np.eye(4), 28, self.up, np.asarray(through, float))
+
+    def test_the_top_is_its_bodys_top_band_under_the_line_and_not_its_wings(self):
+        np.testing.assert_allclose(self.top([30.0, 30.0, 60.0]), [29.5, 29.5, 34.0])
+        whole = np.argwhere(self.labels == 28)
+        self.assertEqual(int(whole[:, 2].max()), 54)
+
+    def test_a_line_that_passes_in_front_of_it_still_takes_the_top_of_its_body(self):
+        # The line through L4, where the oracle placed no L5, passes in front of the sacrum: its body is
+        # then the voxels within 15 mm of the nearest the sacrum comes, 16 mm away, which the wings are not.
+        top = self.top([30.0, 55.0, 60.0])
+        self.assertTrue(20.0 <= top[0] <= 39.0 and 20.0 <= top[1] <= 39.0, top)
+        self.assertAlmostEqual(float(top[2]), 34.0)
+
+    def test_a_map_with_no_sacrum_and_a_column_with_no_body_are_refused_in_words(self):
+        with self.assertRaisesRegex(self.X.CaseRefused, "^the label map draws no sacrum$"):
+            self.X.sacrum_top(np.zeros((4, 4, 4), np.int16), np.eye(4), 28, self.up, np.zeros(3))
+        marks = np.full((6, len(self.X.G.LANDMARKS), 3), np.nan)
+        with self.assertRaisesRegex(self.X.CaseRefused, "^the oracle placed no body of the column$"):
+            self.X.lowest_centre(marks)
+        marks[3, : self.X.S.BODY_POINTS] = [1.0, 2.0, 3.0]
+        np.testing.assert_allclose(self.X.lowest_centre(marks), [1.0, 2.0, 3.0])
+
+
+@unittest.skipIf(MISSING, f"needs numpy ({', '.join(MISSING)} missing)")
+class OnBoneTest(unittest.TestCase):
+    """A level's landmarks are on its bone while every placed one lies within 8 mm of the bone's
+    nearest voxel (DEVIATIONS.md, item 2): a bone of 1 mm voxels x, y and z 10 to 19."""
+
+    def setUp(self):
+        self.X = round_tool().X
+        self.labels = np.zeros((40, 40, 40), np.int16)
+        self.labels[10:20, 10:20, 10:20] = 3
+
+    def on(self, *points, label=3):
+        return self.X.on_bone(self.labels, np.eye(4), label, np.array(points, float))
+
+    def test_every_placed_point_within_8_mm_is_on_the_bone_and_one_beyond_is_not(self):
+        self.assertEqual(self.X.OFF_BONE_MM, 8.0)
+        self.assertTrue(self.on([15, 15, 15], [19, 19, 27.0], [np.nan] * 3))
+        self.assertFalse(self.on([15, 15, 15], [15, 15, 27.1]))
+
+    def test_no_point_placed_is_nothing_off_and_a_bone_the_map_lacks_holds_no_point(self):
+        self.assertTrue(self.on([np.nan] * 3))
+        self.assertFalse(self.on([15, 15, 15], label=4))
+        self.assertFalse(self.on([15, 15, 15], [15, 15, 80.0]))
+        self.assertFalse(self.on([-30, 15, 15.0]))
+
+    def test_the_search_near_the_points_answers_as_the_whole_map_would(self):
+        rng = np.random.default_rng(7)
+        bone = np.argwhere(self.labels == 3).astype(float)
+        for _ in range(200):
+            points = rng.uniform(-5, 45, (int(rng.integers(1, 4)), 3))
+            whole = all(float(((bone - p) ** 2).sum(axis=1).min()) <= 64.0 for p in points)
+            self.assertEqual(self.on(*points), whole, points)
+
+
 @unittest.skipIf(MISSING_READ, f"needs numpy, scipy and nibabel ({', '.join(MISSING_READ)} missing)")
 class RadiographTest(unittest.TestCase):
     """The radiograph's geometry, against the projection the landmarks take, and the CT's
@@ -406,8 +478,10 @@ class StandInTest(unittest.TestCase):
 def write_gold_ct(folder, X, seed):
     """A phantom's CT and bone map written as a gold tier's files: the CT stored as whole numbers with
     a slope and an intercept, as scanners store it; the map with a sacrum (28) drawn as a box below L5
-    and a label of another bone (30) in a corner; and the same map with no sacrum. Returns the map as
-    written, the affine its file holds, the box's voxel bounds and the three paths."""
+    with two wings beside and behind L5 rising to its centre's height, as a sacrum's alae and the
+    processes that meet L5 rise on a CT, and a label of another bone (30) in a corner; and the same map
+    with no sacrum. Returns the map as written, the affine its file holds, the box's voxel bounds and
+    the three paths."""
     import nibabel as nib
     from autoanatomist import phantom
 
@@ -422,6 +496,13 @@ def write_gold_ct(folder, X, seed):
     hi = np.minimum(np.round(below + 10).astype(int), np.array(labels.shape) - 1)
     box = labels[lo[0]:hi[0], lo[1]:hi[1], lo[2]:hi[2]]
     box[box == 0] = IDS3["sacrum"]
+    centre = np.argwhere(labels == IDS3["L5"]).mean(axis=0)
+    near = [np.arange(max(0, int(c) - 34), min(n, int(c) + 34)) for c, n in zip(centre, labels.shape)]
+    grid = np.stack(np.meshgrid(*near, indexing="ij"), axis=-1)
+    x, y, z = np.moveaxis(((grid - centre) @ ph.affine[:3, :3].T) @ ph.rotations[-1], -1, 0)
+    wings = (np.abs(x) >= 25) & (np.abs(x) <= 45) & (y >= -35) & (y <= -10) & (z >= -30) & (z <= 0)
+    region = labels[near[0][0]:near[0][-1] + 1, near[1][0]:near[1][-1] + 1, near[2][0]:near[2][-1] + 1]
+    region[wings & (region == 0)] = IDS3["sacrum"]
     corner = labels[:4, :4, :4]
     corner[corner == 0] = 30
     stored = np.round(ph.hu + 1024.0).astype(np.int16)
@@ -457,7 +538,7 @@ class GoldCtTest(unittest.TestCase):
         cls.tmp.cleanup()
         sys.path.remove(VENDORED)
 
-    def test_the_landmarks_are_the_maps_and_the_sacrum_its_box(self):
+    def test_the_landmarks_are_the_maps_and_the_sacrums_top_its_box_below_l5_not_its_wings(self):
         read = self.read
         self.assertEqual(read["levels"], LEVELS)
         self.assertTrue(np.isfinite(read["landmarks"]).all())
@@ -466,6 +547,12 @@ class GoldCtTest(unittest.TestCase):
         at = np.linalg.inv(self.affine) @ np.append(read["sacrum"], 1.0)
         lo, hi = self.box
         self.assertTrue(((at[:3] >= lo - 1) & (at[:3] <= hi + 1)).all(), (at, lo, hi))
+        # The wings are the mask's head-most voxels, about as high as L5's centre, and the top is the
+        # box's, below L5's body.
+        up, l5 = read["axes"][:, 2], self.X.level_centres(read["landmarks"])[-1]
+        sacrum = np.argwhere(self.labels == IDS3["sacrum"]) @ self.affine[:3, :3].T + self.affine[:3, 3]
+        self.assertGreater(float(((sacrum - l5) @ up).max()), -10.0)
+        self.assertLess(float((read["sacrum"] - l5) @ up), -20.0)
         self.assertFalse(read["stand_in"])
 
     def test_each_level_lies_in_its_own_shadow_and_two_levels_off_in_none(self):
@@ -485,6 +572,18 @@ class GoldCtTest(unittest.TestCase):
                     if abs(int(j) - int(i)) >= 2:
                         u, v = (int(x) for x in uv[j])
                         self.assertLess(float(shadow[v, u]), 0.5, (frame["view"], LEVELS[i], LEVELS[j]))
+
+    def test_a_level_read_off_its_bone_is_read_as_one_the_oracle_could_not_place(self):
+        X, at = self.X, LEVELS.index("L3")
+        with mock.patch.object(X, "on_bone", side_effect=lambda labels, affine, label, points: label != IDS3["L3"]):
+            marks, frames = X.read_column(self.labels, self.affine, IDS3, LEVELS)
+        self.assertTrue(np.isnan(marks[at]).all())
+        self.assertTrue(np.isfinite(np.delete(marks, at, axis=0)).all())
+        self.assertEqual(len(frames), len(LEVELS) - 1)
+        # On the phantom's own map the oracle places every level on its bone.
+        marks, frames = X.read_column(self.labels, self.affine, IDS3, LEVELS)
+        self.assertTrue(np.isfinite(marks).all())
+        self.assertEqual(len(frames), len(LEVELS))
 
     def test_a_map_that_draws_no_sacrum_is_refused_in_words(self):
         with tempfile.TemporaryDirectory() as cache, mock.patch.dict(os.environ):

@@ -193,6 +193,7 @@ class ReportTest(unittest.TestCase):
         self.assertIn("docs/research/qa-loop-transformer/PREREG.md, frozen, sha256 " + tx[:16], text)
         self.assertNotIn("the chain ran another design", text)
         self.assertNotIn("the gold arm's", text)
+        self.assertNotIn("DEVIATIONS.md", text)
 
     def test_a_gold_chain_is_reported_under_its_own_design_tier_by_tier_with_its_limits(self):
         gold = next(sha for sha, path in self.module.DESIGNS.items() if "qa-loop-gold" in path)
@@ -203,6 +204,9 @@ class ReportTest(unittest.TestCase):
         self.assertEqual(checked.returncode, 0, checked.stdout + checked.stderr)
         text = "".join(p.read_text(encoding="utf-8") for p in self.folder.rglob("*.md"))
         self.assertIn("docs/research/qa-loop-gold/PREREG.md, frozen, sha256 " + gold[:16], text)
+        self.assertIn("its departures after the freeze, each dated with its reason, are "
+                      "docs/research/qa-loop-gold/DEVIATIONS.md", text)
+        self.assertTrue((ROOT / "docs" / "research" / "qa-loop-gold" / "DEVIATIONS.md").is_file())
         self.assertNotIn("the chain ran another design", text)
         claim = items(self.folder, "claim")
         limits = claim["40"]["evidence"]
@@ -214,8 +218,8 @@ class ReportTest(unittest.TestCase):
         self.assertIn("gold presence without its data: gold4: no held-out radiograph of gold4", performance)
         self.assertIn("typical phantoms in place of a tier's CTs", performance)
         self.assertIn("gold tier 3 (ENHANCE.PET's CTs, each bone annotated): 3 stand-ins", claim["7"]["evidence"])
-        self.assertIn("1 held-out persons, 2 levels the oracle could not place (4 found under the data root)",
-                      claim["7"]["evidence"])
+        self.assertIn("1 held-out persons, 2 levels left unread, the oracle having placed them nowhere or off their "
+                      "bone (4 found under the data root)", claim["7"]["evidence"])
         self.assertIn("gold4: left out before reading, by reason: a gold tier 3 person 1, the segmenters disagree 2",
                       claim["35"]["evidence"])
         evaluation = claim["32"]["evidence"]
