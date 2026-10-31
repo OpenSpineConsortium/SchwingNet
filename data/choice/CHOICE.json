@@ -170,11 +170,11 @@
   }
  ],
  "inputs": {
-  "licences": "601fffcecd06a2480ce2df0cdce4c8738f0871ee8d1abb2407b9988a59659de3",
+  "licences": "c901aafdfee77d173bbfcdae0e8fccc43919068749796a14343c87b8558616a9",
   "recipe": "e8eb14349cdcec98ad1c07ce6969cdbf710095464482607ad2951202a2eeba3d",
   "rule": "4f26dbc75ea43b3cb8605204b343e6144f9e99b027654e6f126158e4ba3634c3",
   "settings": "7abbc73ea0cacad43bfcf9cc6f0abd1ff20d354eaa8845a4993f5246d1daa3df",
-  "sources": "19cf991ebc90de12da7a3659f071f39c077e108df1b31840993b50f4f2b88fc2",
+  "sources": "6d08202d120e242cab8643b5ae4b636b81181c5ca91632f14b0a24d30be2e4d3",
   "test_persons": "4c57462fb8d4fa4591fb73d10e506957b5f00f66c25c2e7f07731f2f073cb59d"
  },
  "power": {

@@ -1,0 +1,17 @@
+{
+  "source": "radiopaedia_fluoro",
+  "identity_level": "patient",
+  "person_key_rule": "radiopaedia_fluoro:<rID, the case folder grid/banks/radiopaedia_fluoro.json reads>; one case is one patient, though a patient shown in two cases cannot be told from the site",
+  "access": "CC BY-NC-SA 3.0 (the site); ML use by application",
+  "modality": "rf",
+  "device_class": "mobile_c_arm",
+  "regions": [
+    "cervical",
+    "thoracic",
+    "lumbar",
+    "sacrum"
+  ],
+  "grid_root": "/rs/rs_grp_oschome/go2432/data/radiopaedia_fluoro",
+  "shards": [],
+  "notes": "fluoroscopy and angiographic series of the Spine cases, held under the owner's Radiopaedia agreement 202610-9517 (countersigned 2026-10-23), saved by hand from radiopaedia.org (the site refuses scripted requests) and laid out by tools/radiopaedia_import.py; the raw copy is /rs/rs_grp_oschome/go2432/data/radiopaedia_fluoro/raw and the bank /rs/rs_grp_oschome/go2432/data/radiopaedia_fluoro/bank; level truth only as the case text names it; leak-checked against every held shard (grid/run-leaks.sh NEW=...) before any frame enters a test split; no shard yet; device_class mobile_c_arm is the commonest case, some series are fixed-room fluoroscopy"
+}
