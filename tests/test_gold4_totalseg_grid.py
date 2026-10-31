@@ -1,13 +1,15 @@
 """tools/gold4_totalseg_grid.py: which census rows become units and why the rest are left out, how the
-tasks of an array share the units, when a unit is passed over or given up, the weights guard, each
-unit's kind against SPINEPS, and, where numpy and nibabel are installed, the label maps turned into
-VerSe's ids and a whole run and merge over crafted CTs with a stand-in segmenter."""
+tasks of an array share the units, when a unit is passed over or given up and the code its failures are
+counted at, the weights guard and the segmenter's pin, each unit's kind against SPINEPS, and, where numpy
+and nibabel are installed, the label maps turned into VerSe's ids, SPINEPS's end plates read as their
+vertebrae, and a whole run and merge over crafted CTs with a stand-in segmenter."""
 from __future__ import annotations
 
 import csv
 import importlib.util
 import json
 import os
+import re
 import sys
 import tempfile
 import unittest
@@ -36,7 +38,7 @@ def load_tool():
 
 
 G = load_tool()
-TIER_FIELDS = ["tier", "ct_path", "collection", "case_id", "person_key", "spineps_vert", "spineps_ids"]
+TIER_FIELDS = ["tier", "ct_path", "collection", "case_id", "person_key", "real_frames", "spineps_vert", "spineps_ids"]
 
 
 def census_row(collection, case, mask, verdict="admitted", person="", head="drawn", foot="drawn"):
@@ -45,14 +47,20 @@ def census_row(collection, case, mask, verdict="admitted", person="", head="draw
             "spineps_ids": "verse", "verdict": verdict, "head": head, "foot": foot, "complete": True, "flags": []}
 
 
-def write_tiers(folder, rows, name="tier1.tsv"):
+def write_tiers(folder, rows, name="tier1.tsv", both=True):
+    """A tier list of (mask, CT) rows, or (mask, CT, person, real_frames); with both, the other list too,
+    empty where it is not there yet, since the tool reads both or stops."""
     folder.mkdir(parents=True, exist_ok=True)
     with open(folder / name, "w", encoding="utf-8", newline="") as fh:
         writer = csv.DictWriter(fh, fieldnames=TIER_FIELDS, delimiter="\t")
         writer.writeheader()
-        for mask, ct in rows:
-            writer.writerow({"tier": "1", "ct_path": ct, "collection": "x", "case_id": "x", "person_key": "",
-                             "spineps_vert": mask, "spineps_ids": "verse"})
+        for mask, ct, *more in rows:
+            person, frames = (*more, "", "")[:2]
+            writer.writerow({"tier": "1", "ct_path": ct, "collection": "x", "case_id": "x", "person_key": person,
+                             "real_frames": frames, "spineps_vert": mask, "spineps_ids": "verse"})
+    for other in G.TIER_FILES:
+        if both and not (folder / other).exists():
+            write_tiers(folder, [], other, both=False)
 
 
 def spine_facts(names=None, step=30.0, voxels=1000, **moved):
@@ -76,7 +84,7 @@ class Selection(unittest.TestCase):
             census_row("TotalSegmentator_v2", "s2", "/m/ts2.nii.gz"),            # a release by its collection
             census_row("IDC_x", "c9", "/m/TSV3_s0123_vert.nii.gz"),             # a release by its mask's name
             census_row("verse2020", "v1", "/m/v1.nii.gz"),
-            census_row("FDG-PET-CT-Lesions", "f1", "/m/f1.nii.gz"),
+            census_row("tcia_fdg_pet_ct_lesions", "f1", "/m/f1.nii.gz"),
             census_row("CT-ORG", "o1", "/m/o1.nii.gz"),                          # no tier row
             census_row("CT-ORG", "o2", "/m/o2.nii.gz"),                          # its CT is DICOM
             census_row("CT-ORG", "o3", "/m/o3.nii.gz"),                          # its CT is not there
@@ -101,7 +109,7 @@ class Selection(unittest.TestCase):
         self.assertEqual(dict(left_out), {"second_mask": 1, "release": 4, "fdg": 1, "no_tier_row": 1, "not_nifti": 1,
                                           "no_ct": 1, "no_spineps": 1})
         self.assertEqual(dict(by_collection["release"]), {"ts": 1, "TotalSegmentator_v2": 1, "idc": 1, "verse2020": 1})
-        self.assertEqual(dict(by_collection["fdg"]), {"FDG-PET-CT-Lesions": 1})
+        self.assertEqual(dict(by_collection["fdg"]), {"tcia_fdg_pet_ct_lesions": 1})
 
     def test_a_unit_is_named_by_its_ct_and_carries_what_the_census_said(self):
         units, *_ = self.select()
@@ -117,6 +125,34 @@ class Selection(unittest.TestCase):
         units, *_ = self.select()
         self.assertEqual({u["case_id"]: u["held_out"] for u in units}, {"a1": False, "case134": True, "n1": False})
 
+    def test_a_ct_or_person_the_tier_lists_mark_test_only_is_held_out(self):
+        by_ct = {"ct": {"/c/n1.nii"}, "person": set()}
+        units, *_ = G.select(self.rows, self.ct_of, exists=self.there.__contains__, test_only=by_ct)
+        self.assertEqual({u["case_id"]: u["held_out"] for u in units}, {"a1": False, "case134": True, "n1": True})
+        # a1's person has real frames by another CT of theirs: a render inherits its CT's person
+        by_person = {"ct": set(), "person": {"p1"}}
+        units, *_ = G.select(self.rows, self.ct_of, exists=self.there.__contains__, test_only=by_person)
+        self.assertEqual({u["case_id"]: u["held_out"] for u in units}, {"a1": True, "case134": True, "n1": False})
+        # a row with no person key holds out no unit that has none either
+        units, *_ = G.select(self.rows, self.ct_of, exists=self.there.__contains__, test_only={"ct": set(), "person": {""}})
+        self.assertEqual(sum(u["held_out"] for u in units), 1)
+
+    def test_the_tier_lists_real_frames_column_marks_cts_and_persons_test_only(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            write_tiers(tmp, [("/m/a.nii.gz", "/c/a.nii.gz", "pa", "1"), ("/m/b.nii.gz", "/c/b.nii.gz", "pb", "0")], "tier1.tsv")
+            write_tiers(tmp, [("/m/c.nii.gz", "/c/c.nii.gz", "", " 1 "), ("/m/d.nii.gz", "/c/d.nii.gz", "pd", "")], "tier2.tsv")
+            _, test_only, _ = G.read_tiers(str(tmp))
+        self.assertEqual(test_only, {"ct": {"/c/a.nii.gz", "/c/c.nii.gz"}, "person": {"pa"}})
+
+    def test_fdg_pet_ct_lesions_is_its_collection_alone(self):
+        ct_of = {"/m/f2.nii.gz": "/c/f2.nii.gz"}
+        there = {"/c/f2.nii.gz", "/m/f2.nii.gz"}
+        for collection, why in (("tcia_fdg_pet_ct_lesions", "fdg"), ("TCIA_FDG_PET_CT_Lesions", "fdg"),
+                                ("idc_acrin_nsclc_fdg_pet", None), ("fdg_somewhere_else", None)):
+            row = census_row(collection, "f2", "/m/f2.nii.gz")
+            self.assertEqual(G.left_out_reason(row, ct_of, set(), there.__contains__), why, collection)
+
     def test_the_census_order_changes_nothing(self):
         first = self.select()
         again = self.select(list(reversed(self.rows)))
@@ -131,6 +167,18 @@ class Selection(unittest.TestCase):
         self.assertTrue(G.release_study({"collection": "other", "case_id": "x", "spineps_vert": "/m/TSV3C_s0007_vert.nii.gz"}))
         self.assertFalse(G.release_study({"collection": "CT-ORG", "case_id": "x", "spineps_vert": "/m/tsv3.nii.gz"}))
 
+    def test_a_release_is_read_from_its_cts_path_too(self):
+        row = {"collection": "AbdomenAtlas", "case_id": "x", "spineps_vert": "/m/x.nii.gz"}
+        self.assertTrue(G.release_study(row, "/d/VerSeFusion/data/unified/scan-gl003/scan-gl003_ct.nii.gz"))
+        self.assertTrue(G.release_study(row, "/d/TotalSegmentator/s0007/ct.nii.gz"))
+        for ct in ("/d/AbdomenAtlas/BDMAP_00000001/ct.nii.gz", "/d/amos/s0007_ct.nii.gz", "/d/s0007/ct_arterial.nii.gz", ""):
+            self.assertFalse(G.release_study(row, ct), ct)
+        rows = [census_row("AbdomenAtlas", "a9", "/m/a9.nii.gz"), census_row("AbdomenAtlas", "a1", "/m/a1.nii.gz")]
+        ct_of = {**self.ct_of, "/m/a9.nii.gz": "/d/TotalSegmentator/s0042/ct.nii.gz"}
+        units, left_out, by_collection, _ = G.select(rows, ct_of, exists=self.there.__contains__)
+        self.assertEqual([u["case_id"] for u in units], ["a1"])
+        self.assertEqual((dict(left_out), dict(by_collection["release"])), ({"release": 1}, {"AbdomenAtlas": 1}))
+
     def test_selection_reads_the_files_and_is_the_same_bytes_from_every_task(self):
         with tempfile.TemporaryDirectory() as tmp:
             tmp = Path(tmp)
@@ -142,7 +190,7 @@ class Selection(unittest.TestCase):
             self.assertEqual(json.dumps(first, sort_keys=True), json.dumps(again, sort_keys=True))
             self.assertEqual(len(first["units"]), 3)
             self.assertEqual(first["census_sha256"], G.sha256_of(census))
-            self.assertEqual(sorted(first["tiers"]), ["tier1.tsv"])
+            self.assertEqual(sorted(first["tiers"]), ["tier1.tsv", "tier2.tsv"])
             self.assertEqual(first["task"]["roi_subset"], list(G.VERSE_ID))
 
     def test_a_missing_census_or_tier_list_stops_the_run_in_words(self):
@@ -155,13 +203,17 @@ class Selection(unittest.TestCase):
                 G.read_census(str(tmp / "bad.json"))
             with self.assertRaisesRegex(G.InputsMissing, "tier list"):
                 G.read_tiers(str(tmp))
+            # one list alone would leave most units out with no word, so it stops the run too
+            write_tiers(tmp / "one", [("/m/a.nii.gz", "/c/a.nii.gz")], "tier1.tsv", both=False)
+            with self.assertRaisesRegex(G.InputsMissing, "no census tier list tier2.tsv under .*both of tier1.tsv and tier2.tsv"):
+                G.read_tiers(str(tmp / "one"))
 
     def test_a_masks_first_tier_row_keeps_its_place(self):
         with tempfile.TemporaryDirectory() as tmp:
             tmp = Path(tmp)
             write_tiers(tmp, [("/m/a.nii.gz", "/c/first.nii.gz")], "tier1.tsv")
             write_tiers(tmp, [("/m/a.nii.gz", "/c/second.nii.gz"), ("/m/b.nii.gz", "/c/b.nii.gz")], "tier2.tsv")
-            ct_of, read = G.read_tiers(str(tmp))
+            ct_of, _, read = G.read_tiers(str(tmp))
         self.assertEqual(ct_of, {"/m/a.nii.gz": "/c/first.nii.gz", "/m/b.nii.gz": "/c/b.nii.gz"})
         self.assertEqual(sorted(read), ["tier1.tsv", "tier2.tsv"])
 
@@ -196,17 +248,53 @@ class Sharing(unittest.TestCase):
             self.assertFalse(G.segmented(tmp, "u1", {"exit": None}))
 
     def test_failures_count_at_one_code_and_a_run_that_ended_mid_unit_counts_once_its_chain_is_over(self):
-        failed = {"exit": 1, "chain": "11", "commit": "c1", "failed": [{"chain": "10", "commit": "c1"}, {"chain": "11", "commit": "c1"}]}
-        self.assertEqual(G.failures_of(failed, "c1"), {"10", "11"})
-        self.assertTrue(G.given_up(failed, "c1"))
-        self.assertEqual(G.failures_of(failed, "c2"), set())
-        self.assertFalse(G.given_up(failed, "c2"))
-        killed = {"exit": None, "chain": "12", "commit": "c1", "failed": [{"chain": "10", "commit": "c1"}]}
-        self.assertEqual(G.failures_of(killed, "c1", running="12"), {"10"})
-        self.assertEqual(G.failures_of(killed, "c1", running="13"), {"10", "12"})
-        self.assertTrue(G.given_up(killed, "c1"))
-        self.assertEqual(G.failures_of({"exit": 0, "failed": [{"chain": "10", "commit": "c1"}]}, "c1"), set())
-        self.assertEqual(G.failures_of(None, "c1"), set())
+        # two sends at two commits of main that changed none of the kind's files are two failures at one code
+        failed = {"exit": 1, "chain": "11", "commit": "c2", "code": "k1",
+                  "failed": [{"chain": "10", "commit": "c1", "code": "k1"}, {"chain": "11", "commit": "c2", "code": "k1"}]}
+        self.assertEqual(G.failures_of(failed, "k1"), {"10", "11"})
+        self.assertTrue(G.given_up(failed, "k1"))
+        self.assertEqual(G.failures_of(failed, "k2"), set())
+        self.assertFalse(G.given_up(failed, "k2"))
+        self.assertEqual(G.failures_of(failed, ""), set())
+        killed = {"exit": None, "chain": "12", "commit": "c3", "code": "k1", "failed": [{"chain": "10", "commit": "c1", "code": "k1"}]}
+        self.assertEqual(G.failures_of(killed, "k1", running="12"), {"10"})
+        self.assertEqual(G.failures_of(killed, "k1", running="13"), {"10", "12"})
+        self.assertTrue(G.given_up(killed, "k1"))
+        self.assertEqual(G.failures_of({"exit": 0, "failed": [{"chain": "10", "code": "k1"}]}, "k1"), set())
+        self.assertEqual(G.failures_of(None, "k1"), set())
+
+    def test_a_record_keeps_every_earlier_failure_with_the_code_it_failed_at(self):
+        killed = {"exit": None, "chain": "12", "commit": "c3", "code": "k2",
+                  "failed": [{"chain": "10", "commit": "c1", "code": "k1"}, "junk", {"commit": "c1"}]}
+        self.assertEqual(G.earlier_failures(killed, running="13"),
+                         [{"chain": "10", "commit": "c1", "code": "k1"}, {"chain": "12", "commit": "c3", "code": "k2"}])
+        self.assertEqual(G.earlier_failures(killed, running="12"), [{"chain": "10", "commit": "c1", "code": "k1"}])
+        self.assertEqual(G.earlier_failures({"exit": 0, "failed": [{"chain": "1"}]}), [])
+        self.assertEqual(G.earlier_failures(None), [])
+
+
+class Code(unittest.TestCase):
+    """The code a unit's failures are counted at, and the segmenter's pin inside it."""
+
+    def test_the_code_is_run_codes_digest_of_the_kind(self):
+        spec = importlib.util.spec_from_file_location("run_code_for_gold4", ROOT / "tools" / "run_code.py")
+        run_code = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(run_code)
+        self.assertEqual(G.code_digest(), run_code.digest(G.KIND, ROOT))
+        self.assertIn("tools/gold4_totalseg_grid.py", run_code.files(G.KIND, ROOT))
+        words = Namespace(code="")
+        self.assertIsNone(G.code_problem(words))
+        self.assertEqual(words.code, run_code.digest(G.KIND, ROOT))
+        given = Namespace(code="k" * 64)
+        self.assertIsNone(G.code_problem(given))
+        self.assertEqual(given.code, "k" * 64)
+
+    def test_the_pin_is_the_job_scripts_and_another_version_installed_stops_a_task(self):
+        text = (ROOT / "grid" / "totalseg-gold4.sbatch").read_text(encoding="utf-8")
+        self.assertEqual(re.findall(r'^TS_PIN="([^"]+)"$', text, re.M), [G.SEGMENTER])
+        self.assertIsNone(G.version_problem(G.SEGMENTER.split("==")[1]))
+        self.assertIsNone(G.version_problem("not read"))
+        self.assertIn("holds TotalSegmentator 2.17.0, not 2.18.0", G.version_problem("2.17.0"))
 
 
 class Weights(unittest.TestCase):
@@ -264,12 +352,13 @@ class Kinds(unittest.TestCase):
 
     def test_a_level_above_the_top_of_the_others_field_is_coverage_and_one_below_it_is_not(self):
         theirs = spine_facts()
-        for name in ("C2", "C3"):                      # SPINEPS's field shows C2's foot alone, and its head-most level is C4
+        for name in ("C1", "C2", "C3"):                # SPINEPS's field shows C2's foot alone, and its head-most level is C4
             del theirs[name]
         self.assertEqual(G.judge(spine_facts(), theirs), "concordant")
         ours = spine_facts()
-        ours["C2"]["voxels"] = G.MIN_VOXELS            # TotalSegmentator draws C2 by the floor and SPINEPS beside it ...
-        theirs = spine_facts()
+        ours["C2"]["voxels"] = G.MIN_VOXELS            # TotalSegmentator draws C2 by the floor and SPINEPS beside it,
+        theirs = spine_facts()                         # whose field ends at C2 and draws no C1, ...
+        del theirs["C1"]
         theirs["C2"]["voxels"] = G.MIN_VOXELS - 1      # ... draws it under the floor
         self.assertEqual(G.judge(ours, theirs), "concordant")
         theirs = spine_facts()
@@ -278,6 +367,26 @@ class Kinds(unittest.TestCase):
         ours = spine_facts()
         del ours["L5"]
         self.assertEqual(G.judge(ours, spine_facts()), "unmatched")
+
+    def test_a_spineps_c1_over_an_undrawn_c2_is_inside_its_field_so_totalsegmentators_c2_alone_is_unmatched(self):
+        # SPINEPS's C2 under the floor, absent, or taken into its C1: TotalSegmentator's C2 has no partner and
+        # lies below SPINEPS's C1, inside SPINEPS's field, so the two disagree on the top of the column
+        under = spine_facts()
+        under["C2"]["voxels"] = G.MIN_VOXELS - 1
+        absent = spine_facts()
+        del absent["C2"]
+        swallowed = spine_facts()
+        del swallowed["C2"]
+        swallowed["C1"] = {"voxels": 3000, "centroid": [0.0, 0.0, -15.0]}
+        for theirs in (under, absent, swallowed):
+            self.assertEqual(G.judge(spine_facts(), theirs), "unmatched")
+        # the control: SPINEPS's field starts at C3 and draws no C1, so TotalSegmentator's C1 and C2 are coverage
+        top_cut = spine_facts()
+        for name in ("C1", "C2"):
+            del top_cut[name]
+        self.assertEqual(G.judge(spine_facts(), top_cut), "concordant")
+        # a C2 of SPINEPS's that sits between TotalSegmentator's C2 and C3, pairing neither, is no coverage either
+        self.assertEqual(G.judge(spine_facts(), spine_facts(C2=[0.0, 0.0, -48.0])), "unmatched")
 
     def test_maps_with_no_bone_in_common_are_unmatched(self):
         far = {name: {"voxels": 1000, "centroid": [500.0, 0.0, f["centroid"][2]]} for name, f in spine_facts().items()}
@@ -308,8 +417,16 @@ class Bars(unittest.TestCase):
         self.assertIn("whose SPINEPS mask draws both: 10 of 12 (83.3%); bar 90%; not met", lines[1])
         self.assertIn("an end only in view or as a border case: 2 of 3 drawn whole by TotalSegmentator (66.7%)", lines[2])
         self.assertIn("in SPINEPS's map: 7 of 10 (70.0%); bar 80%; not met", lines[3])
-        self.assertIn("(C 0.80, T 0.85, L 0.85), over the 6 concordant units on a shared lattice: C 0.850, T 0.900, L 0.800; not met",
-                      lines[4])
+        self.assertIn("(C 0.80, T 0.85, L 0.85; C from C2, C1 and the sacrum with no bar), over the 6 concordant units on a "
+                      "shared lattice: C 0.850, T 0.900, L 0.800; not met", lines[4])
+
+    def test_c1_is_read_apart_from_the_cervical_bar(self):
+        # a field cut through C1 gives it a low Dice, which would move the cervical median and the verdict
+        records = [record("concordant", grid="same", dice={"C1": 0.10, "C2": 0.82, "C3": 0.82, "T1": 0.9, "L1": 0.9})] * 3
+        self.assertIn("C 0.820, T 0.900, L 0.900; met", G.bar_lines(records)[4])
+        dice, _ = G.concordant_dice(records)
+        self.assertEqual((dice["C1"], dice["C"]), ([0.10] * 3, [0.82, 0.82] * 3))
+        self.assertEqual([G.region_of(name) for name in ("C1", "C2", "C7", "T13", "L6", "sacrum")], ["C1", "C", "C", "T", "L", "sacrum"])
 
     def test_a_bar_with_nothing_to_read_is_not_tested_and_open_units_make_it_provisional(self):
         lines = G.bar_lines([record("concordant", grid="another lattice"), record(None, status="failed"), record(None, status="not run")])
@@ -370,6 +487,19 @@ class Maps(unittest.TestCase):
         self.assertEqual(outside, 1)
         self.assertEqual(G.level_facts(np.zeros((3, 3, 3), dtype=np.int16), affine), ({}, 0))
 
+    def test_spineps_end_plates_are_read_as_their_vertebra_and_its_discs_left_out(self):
+        values = np.array([0, 2, 202, 102, 226, 227, 229, 230, 199], dtype=np.uint8)
+        held = values.copy()
+        labels, plates = G.with_end_plates(values)
+        self.assertEqual(labels.tolist(), [0, 2, 2, 102, 26, 227, 29, 230, 199])
+        self.assertEqual((plates, labels.dtype), (3, np.uint8))
+        self.assertTrue(np.array_equal(values, held))
+        same, none = G.with_end_plates(np.array([1, 2, 120], dtype=np.int16))
+        self.assertEqual((same.tolist(), none), ([1, 2, 120], 0))
+        facts, outside = G.level_facts(labels.reshape(1, 1, -1), np.eye(4))
+        self.assertEqual((facts["C2"]["voxels"], facts["sacrum"]["voxels"]), (2, 2))
+        self.assertEqual(outside, 4)                                          # the disc, the coccyx's plate, 230 and 199
+
     def test_dice_by_level_on_one_grid(self):
         ours = np.zeros((6, 6, 6), dtype=np.int16)
         ours[0:2, 0:2, 0:2] = 2
@@ -389,6 +519,22 @@ class Maps(unittest.TestCase):
         self.assertTrue(G.same_grid((2, 2, 2), affine, (2, 2, 2), near))
         self.assertFalse(G.same_grid((2, 2, 2), affine, (2, 2, 2), far))
         self.assertFalse(G.same_grid((2, 2, 2), affine, (2, 2, 3), affine))
+
+    def test_one_grid_is_judged_by_where_its_voxels_lie_not_by_its_affines_entries(self):
+        # a spacing 0.009 mm apart is within the slack entry by entry, yet puts the far corner 4.6 mm away
+        fine, coarse = np.diag([0.781, 0.781, 0.781, 1.0]), np.diag([0.790, 0.790, 0.790, 1.0])
+        self.assertFalse(G.same_grid((512, 512, 600), fine, (512, 512, 600), coarse))
+        self.assertAlmostEqual(float(np.abs(G.corners((512, 512, 600), fine) - G.corners((512, 512, 600), coarse)).max()), 5.391, 3)
+        # an origin far from zero gets no relative slack: 0.011 mm is a different grid at 1,500 mm as at 0
+        here, there = np.eye(4), np.eye(4)
+        here[:3, 3], there[:3, 3] = [1500.0, -1500.0, 1500.0], [1500.011, -1500.0, 1500.0]
+        self.assertFalse(G.same_grid((4, 4, 4), here, (4, 4, 4), there))
+        there[0, 3] = 1500.009
+        self.assertTrue(G.same_grid((4, 4, 4), here, (4, 4, 4), there))
+        # a turn of the axes about the grid's centre moves the corners, and a grid of one voxel has one corner
+        turned = np.eye(4)[[1, 0, 2, 3]]
+        self.assertFalse(G.same_grid((4, 4, 4), np.eye(4), (4, 4, 4), turned))
+        self.assertTrue(G.same_grid((1, 1, 1), np.eye(4), (1, 1, 1), turned))
 
     @unittest.skipUnless(nib is not None, "nibabel is not installed")
     def test_a_map_reoriented_shares_the_lattice_and_one_on_other_voxels_does_not(self):
@@ -443,6 +589,7 @@ class WholeRun(unittest.TestCase):
     mask again in TotalSegmentator's ids, or fails where the CT's name says so."""
 
     ids = {name: 100 + i for i, name in enumerate(G.VERSE_ID)}
+    CODE = "k" * 64
 
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
@@ -476,26 +623,30 @@ class WholeRun(unittest.TestCase):
         if fail and "fails" in str(ct):
             raise RuntimeError("CUDA out of memory")
         verse = np.asanyarray(nib.load(str(self.root / "spineps" / (Path(ct).name.split(".")[0] + "_vert.nii.gz"))).dataobj)
+        verse = np.where((verse > 200) & (verse < 230), verse - 200, verse)    # a whole bone, its end plates and all
         values = np.zeros(verse.shape, dtype=np.uint8)
         back = {}
         for name, value in self.ids.items():
             back.setdefault(G.VERSE_ID[name], value)
         for verse_id, ts_id in back.items():
             values[verse == verse_id] = ts_id
-        nib.save(nib.Nifti1Image(values, self.affine), str(dest))
+        image = nib.Nifti1Image(values, self.affine)
+        # TotalSegmentator writes its own label table into the header, by its ids
+        image.header.extensions.append(nib.nifti1.Nifti1Extension("comment", b"<label Key=\"26\">vertebrae_S1</label>"))
+        nib.save(image, str(dest))
 
-    def args(self, chain, task=0, tasks=1, commit="c" * 40, device="cpu"):
+    def args(self, chain, task=0, tasks=1, commit="c" * 40, code=CODE, device="cpu"):
         return Namespace(census=str(self.census), tiers=str(self.root / "tiers"), out=str(self.out), chain=chain, task=task,
-                         tasks=tasks, commit=commit, weights=str(self.weights), threads=1, device=device,
+                         tasks=tasks, commit=commit, code=code, weights=str(self.weights), threads=1, device=device,
                          stop_after=G.STOP_AFTER)
 
     def run_chain(self, chain, **words):
         with mock.patch("sys.stdout"):
             return G.run(self.args(chain, **words), segment=self.segment, ids=self.ids)
 
-    def merge(self, chain, commit="c" * 40):
+    def merge(self, chain, commit="c" * 40, code=CODE):
         with mock.patch("sys.stdout"):
-            return G.merge(Namespace(out=str(self.out), chain=chain, commit=commit))
+            return G.merge(Namespace(out=str(self.out), chain=chain, commit=commit, code=code))
 
     def unit(self, name):
         jobs = json.loads((self.out / "chains" / "1" / "jobs.json").read_text(encoding="utf-8"))
@@ -508,15 +659,20 @@ class WholeRun(unittest.TestCase):
         self.assertEqual(image.get_data_dtype(), np.int16)
         self.assertTrue(np.allclose(image.affine, self.affine))
         self.assertTrue(np.array_equal(np.asanyarray(image.dataobj), spine_map()))
+        self.assertEqual(len(image.header.extensions), 0)                  # no label table by TotalSegmentator's ids
         record = json.loads(G.record_path(self.out, good["id"]).read_text(encoding="utf-8"))
-        self.assertEqual((record["exit"], record["kind"], record["grid"]), (0, "concordant", "same"))
+        self.assertEqual((record["exit"], record["kind"], record["grid"], record["code"]), (0, "concordant", "same", self.CODE))
         self.assertEqual(set(record["dice"].values()), {1.0})
         self.assertEqual(len(record["dice"]), len(LEVELS))                # every level both maps drew, C1 and the sacrum among them
         self.assertNotIn("failed", record)
         self.assertEqual(record["labels_sha256"], G.sha256_of(G.labels_path(self.out, good["id"])))
         failed = json.loads(G.record_path(self.out, self.unit("fails")["id"]).read_text(encoding="utf-8"))
-        self.assertEqual((failed["exit"], failed["failed"]), (1, [{"chain": "1", "commit": "c" * 40}]))
+        self.assertEqual((failed["exit"], failed["failed"]), (1, [{"chain": "1", "commit": "c" * 40, "code": self.CODE}]))
         self.assertTrue(failed["error"].startswith("RuntimeError: CUDA out of memory"))
+        lines = (self.out / "chains" / "1" / "tasks" / "0.txt").read_text(encoding="utf-8")
+        self.assertIn("a CT ended exit 0 (concordant)", lines)
+        for unit in json.loads((self.out / "chains" / "1" / "jobs.json").read_text(encoding="utf-8"))["units"]:
+            self.assertNotIn(unit["id"], lines)                             # the report copies a task's last line
         self.assertEqual(os.environ["TOTALSEG_WEIGHTS_PATH"], str(self.weights))
         config = json.loads((Path(os.environ["TOTALSEG_HOME_DIR"]) / "config.json").read_text(encoding="utf-8"))
         self.assertFalse(config["send_usage_stats"])
@@ -544,8 +700,60 @@ class WholeRun(unittest.TestCase):
         self.assertEqual(self.merge("3"), 0)
         lines = (self.out / "chains" / "3" / "tasks" / "0.txt").read_text(encoding="utf-8")
         self.assertIn("0 segmented, 0 failed, 3 passed over", lines)
-        # a new commit gives the unit that failed its chances again
-        self.assertEqual(self.run_chain("4", commit="d" * 40), 1)
+        # a send at a new commit of main that changed none of the kind's files runs the same code: still given up
+        self.assertEqual(self.run_chain("4", commit="d" * 40), 0)
+        self.assertEqual(self.merge("4", commit="d" * 40), 0)
+        # a new code gives the unit that failed its chances again, and keeps the failures at the old one
+        self.assertEqual(self.run_chain("5", commit="e" * 40, code="n" * 64), 1)
+        failed = json.loads(G.record_path(self.out, self.unit("fails")["id"]).read_text(encoding="utf-8"))
+        self.assertEqual([(f["chain"], f["code"]) for f in failed["failed"]], [("1", self.CODE), ("2", self.CODE), ("5", "n" * 64)])
+        self.assertEqual(self.merge("5", code="n" * 64), 3)
+
+    def test_spineps_end_plates_count_as_bone_and_its_discs_as_none(self):
+        mask = self.root / "spineps" / "good_vert.nii.gz"
+        labels = spine_map()
+        for i, name in enumerate(LEVELS):
+            low, value = labels.shape[2] - SLICES * (i + 1), 26 if name == "sacrum" else G.IDS_OF[name][0]
+            labels[:, :, low] = 200 + value                                   # the slab's lowest slice an end plate
+            labels[0, 0, low + 1] = 100 + value                               # and one voxel a disc
+        nib.save(nib.Nifti1Image(labels, self.affine), str(mask))
+        self.run_chain("1")
+        record = json.loads(G.record_path(self.out, self.unit("good")["id"]).read_text(encoding="utf-8"))
+        self.assertEqual((record["kind"], record["grid"]), ("concordant", "same"))
+        self.assertEqual(set(record["dice"].values()), {1.0})
+        self.assertEqual(record["spineps_end_plate_voxels"], 64 * len(LEVELS))
+        self.assertEqual(record["spineps"]["C2"]["voxels"], 8 * 8 * SLICES - 1)
+        self.assertEqual(record["spineps_outside_ids"], len(LEVELS))
+
+    def test_an_exit_inside_the_segmenter_fails_that_ct_alone(self):
+        def exits(ct, dest, args):
+            if "fails" in str(ct):
+                sys.exit(1)                                                   # as TotalSegmentator does where its input is not there
+            self.segment(ct, dest, args, fail=False)
+        with mock.patch("sys.stdout"):
+            self.assertEqual(G.run(self.args("1"), segment=exits, ids=self.ids), 1)
+        failed = json.loads(G.record_path(self.out, self.unit("fails")["id"]).read_text(encoding="utf-8"))
+        self.assertEqual((failed["exit"], failed["error"]), (1, "SystemExit: 1"))
+        for name in ("good", "good2"):
+            self.assertEqual(json.loads(G.record_path(self.out, self.unit(name)["id"]).read_text(encoding="utf-8"))["exit"], 0)
+
+    def test_a_map_that_cannot_be_written_leaves_no_part_file(self):
+        dest = self.root / "labels" / "u.nii.gz"
+        with mock.patch("nibabel.save", side_effect=OSError("disk full")), self.assertRaisesRegex(OSError, "disk full"):
+            G.save_labels(spine_map(), self.affine, nib.Nifti1Header(), dest)
+        self.assertEqual(list(dest.parent.iterdir()), [])
+
+    def test_a_part_stops_where_its_code_cannot_be_named_or_another_version_is_installed(self):
+        with mock.patch.object(G, "code_digest", side_effect=OSError("no tools/run_code.py")), mock.patch("sys.stdout"):
+            self.assertEqual(G.run(self.args("1", code=""), segment=self.segment, ids=self.ids), 2)
+            self.assertEqual(G.merge(Namespace(out=str(self.out), chain="1", commit="c" * 40, code="")), 2)
+        lines = (self.out / "chains" / "1" / "tasks" / "0.txt").read_text(encoding="utf-8")
+        self.assertIn("stopped before any CT: the code cannot be named by tools/run_code.py (OSError: no tools/run_code.py)", lines)
+        with mock.patch.object(G, "segmenter_version", return_value="2.19.0"), mock.patch("sys.stdout"):
+            self.assertEqual(G.run(self.args("2"), segment=self.segment, ids=self.ids), 2)
+        lines = (self.out / "chains" / "2" / "tasks" / "0.txt").read_text(encoding="utf-8")
+        self.assertIn("stopped before any CT: the environment holds TotalSegmentator 2.19.0, not 2.18.0", lines)
+        self.assertFalse((self.out / "units").exists())
 
     def test_the_merge_writes_every_unit_and_a_report_of_counts_alone(self):
         self.run_chain("1")
@@ -554,6 +762,7 @@ class WholeRun(unittest.TestCase):
         self.assertEqual(sorted(r["status"] for r in records), ["failed", "segmented", "segmented"])
         good = next(r for r in records if r["case_id"] == "good")
         self.assertEqual(good["labels"], f"labels/{good['id']}.nii.gz")
+        self.assertEqual((good["code"], good["spineps_end_plate_voxels"], good["spineps_outside_ids"]), (self.CODE, 0, 0))
         self.assertEqual(good["ct"], str(self.root / "data" / "good.nii.gz"))
         self.assertEqual(good["spineps_mask"], str(self.root / "spineps" / "good_vert.nii.gz"))
         report = (self.out / "chains" / "1" / "REPORT.md").read_text(encoding="utf-8")

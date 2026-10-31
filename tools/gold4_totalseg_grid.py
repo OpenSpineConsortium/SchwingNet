@@ -1,15 +1,18 @@
 """TotalSegmentator's vertebrae on the gold tier 4 CTs, the census's studies that no release draws.
 
     python3 tools/gold4_totalseg_grid.py run --census FILE --tiers DIR --out DIR --chain JOB --task K --tasks N \\
-        [--commit SHA] [--weights DIR] [--threads N] [--device gpu] [--stop-after SECONDS]
-    python3 tools/gold4_totalseg_grid.py merge --out DIR --chain JOB [--commit SHA]
+        [--commit SHA] [--code DIGEST] [--weights DIR] [--threads N] [--device gpu] [--stop-after SECONDS]
+    python3 tools/gold4_totalseg_grid.py merge --out DIR --chain JOB [--commit SHA] [--code DIGEST]
 
 Why this exists. The gold tier 3 releases, VerSe, TotalSegmentator and ENHANCE.PET, are the CTs whose
 masks someone drew; the census (tools/gold3_census.py, part gold4, job 40870542) read every SPINEPS
 mask of the other collections on the grid through rule 3's field test and found some 1,300 more CTs
-whose image shows C2's foot and the sacrum's top. Those masks are SPINEPS's alone, one machine's
-reading. The owner's word of 2026-10-31 00:55 UTC, "you can start the totalsegmentator segmentation
-of those scans currently on the grid", is that TotalSegmentator draws them too: its total task with
+whose image shows C2's foot and the sacrum's top. The census admitted them by SPINEPS's masks alone,
+one machine's reading. TotalSegmentator 2.18.0 drew most of them in September, as the ruleclass
+census's arm A, whose code is kept on the grid and in no repository; this run reads none of those
+maps and makes its own, so that each is reproduced by a command from a record here (the PREREG's
+opening). The owner's word of 2026-10-31 00:55 UTC, "you can start the totalsegmentator segmentation
+of those scans currently on the grid", is that TotalSegmentator draws them: its total task with
 every vertebra, S1 and the sacrum in roi_subset, run on each CT as it lies, so the label map comes
 out on the CT's own grid and nothing is resampled. The two machines' maps side by side say where
 they agree on which bone is which, which the population priors and the owner's own decoder need
@@ -19,27 +22,37 @@ masks or with SPINEPS's (docs/research/gold4-totalseg/PREREG.md).
 
 The units. Every census row of gold4.json whose verdict is admitted or look, less the releases' own
 studies (VerSe, and TotalSegmentator's subjects, the census's collection "ts" among them, whose rows
-the census counted as new for want of its prefix), FDG-PET-CT-Lesions (ENHANCE.PET's autoPET under
-TCIA's names), a row whose CT no tier list names, whose CT is not a NIfTI file on the data root or
-whose SPINEPS mask is not on the lab volume, and a second mask of a CT already taken, each counted
-by its reason. A unit is one CT, named by the sha256 of its path; C-ArmLSpine's, SchwingNet's held
-out measurement, is segmented and marked held_out so that nothing trains on it.
+the census counted as new for want of its prefix, each known by its collection, its case, its mask's
+name or its CT's path as the gold tier 3 completion reads them), FDG-PET-CT-Lesions (ENHANCE.PET's autoPET under
+TCIA's names, its collection tcia_fdg_pet_ct_lesions and no other), a row whose CT no tier list names,
+whose CT is not a NIfTI file on the data root or whose SPINEPS mask is not on the lab volume, and a
+second mask of a CT already taken, each counted by its reason; both tier lists are read, or the run
+stops. A unit is one CT, named by the sha256 of its path. C-ArmLSpine's, SchwingNet's held out
+measurement, and every CT whose person the tier lists mark test only (real_frames 1, a person with
+real fluoroscopy, kept for validation and test by the owner's word of 2026-10-31 01:43 UTC) is
+segmented and marked held_out so that nothing trains on it.
 
 run, one task of a Slurm array of N: the units in a fixed order, each task starting at its own
 place and going round, each unit claimed by creating chains/<chain>/claims/<unit> exclusively, so
 the tasks share the list with no plan and a task that ends early leaves its units to the others.
 A unit whose run.json records a run that ended 0 with its label map there is passed over, so a send
 again carries on where the last stopped; so is one that failed in GIVE_UP_AFTER chains at this
-code, whose failure is then the report's to show. For each unit TotalSegmentator writes its
+code, whose failure is then the report's to show. The code is tools/run_code.py's digest of the kind
+gold4_totalseg, the one the launcher names the run by, read from the copy the job runs: a merge to
+main that changes none of the kind's files keeps it, so the gate's sends, each at main's newest
+commit, still give a unit up, while a change to them, the segmenter's pin (SEGMENTER) among them,
+gives every unit its chances again. For each unit TotalSegmentator writes its
 multilabel file to a scratch folder under TMPDIR (/dev/shm on the grid); its labels are turned into
 VerSe's ids (C1 to C7 at 1 to 7, T1 to T12 at 8 to 19, L1 to L5 at 20 to 24, and its S1 and sacrum
 both at 26, since the owner trusts no segmenter's S1 class and keeps the sacrum one full mask, his
 word of 2026-10-30 22:58 UTC) and written as labels/<unit>.nii.gz, int16 as VerSe's copies are,
-on the CT's grid, renamed into place whole; then each level's voxels and centre in world mm, beside
-the SPINEPS mask's, give the unit's kind (judge) and, where both maps share one lattice (one grid,
-or SPINEPS's reoriented, which moves no voxel), each level's Dice. run.json is written before the
-segmenter starts (exit null) and again at the end, so a process killed mid-run leaves a record the
-next chain counts as that chain's failure. A task stops
+on the CT's grid, with no label table of TotalSegmentator's own in its header, renamed into place
+whole; then each level's voxels and centre in world mm, beside the SPINEPS mask's, its end plates
+(200 + X) read as their vertebra X and its discs (100 + X) left out, give the unit's kind (judge)
+and, where both maps share one lattice (one grid, or SPINEPS's reoriented, which moves no voxel),
+each level's Dice. run.json is written before the segmenter starts (exit null) and again at the
+end, so a process killed mid-run leaves a record the next chain counts as that chain's failure,
+and an exit TotalSegmentator calls on one CT fails that CT alone. A task stops
 after FAILS_IN_A_ROW failures in a row, and takes no new unit once --stop-after seconds have passed,
 an hour short of the job's time limit. Its lines go to chains/<chain>/tasks/<task>.txt.
 
@@ -48,9 +61,10 @@ top, and the counts into chains/<chain>/REPORT.md, which the job script prints i
 report: counts by reason, by kind, by collection and by region, and the PREREG's three bars read from
 them, never a path, a case or a person.
 
-Exits: run 0 where every unit it took ended 0, 1 where any failed, 2 where an input is missing, 4
-where torch sees no GPU; merge 0 where every unit is segmented or given up, 3 where some are not
-yet, 2 where the chain has no jobs.json. Standard library here; numpy and nibabel are imported where
+Exits: run 0 where every unit it took ended 0, 1 where any failed, 2 where an input is missing, the
+code cannot be named or the environment holds another version than SEGMENTER, 4 where torch sees no
+GPU; merge 0 where every unit is segmented or given up, 3 where some are not yet, 2 where the chain
+has no jobs.json or the code cannot be named. Standard library here; numpy and nibabel are imported where
 a map is read, torch and totalsegmentator where they run, so the rest is tested without them
 (tests/test_gold4_totalseg_grid.py). tools/ leaves sys.path before anything else, since
 tools/profile.py would shadow the standard library's profile, which torch's imports reach.
@@ -60,6 +74,7 @@ from __future__ import annotations
 import argparse
 import csv
 import hashlib
+import importlib.util
 import json
 import math
 import os
@@ -76,17 +91,33 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path[:] = [entry for entry in sys.path if Path(entry or ".").resolve() != ROOT / "tools"]
 
+KIND = "gold4_totalseg"
+# The version the job's environment installs (grid/totalseg-gold4.sbatch's TS_PIN, which
+# tests/test_gold4_totalseg_grid.py holds equal to this): kept here too so that a new version is a
+# change to this file, which names a new code (tools/run_code.py) and so gives every unit its chances again.
+SEGMENTER = "TotalSegmentator==2.18.0"
 TIER_FILES = ("tier1.tsv", "tier2.tsv")
 VERDICTS = ("admitted", "look")
 # The releases' own studies: the census's reading of a collection (tools/gold3_census.py,
-# MEMBER_OF_COLLECTION), the collection "ts" it missed, and the ids a case or a mask's name carries.
+# MEMBER_OF_COLLECTION), the collection "ts" it missed, and the ids a case, a mask's name or a CT's
+# path carries, as the gold tier 3 completion reads them (tools/gold3_complete_grid.py): VerSe's
+# series as VerSeFusion lays them out, scan-<id>/scan-<id>_ct.nii.gz, and TotalSegmentator's
+# subjects as its release does, <s>/ct.nii.gz.
 RELEASE_PREFIXES = ("verse", "totalseg", "ts_")
 RELEASE_COLLECTIONS = ("ts",)
 TS_IN_CASE = re.compile(r"^ts:(s\d{4})$")
 TS_IN_MASK = re.compile(r"TSV3C?_(s\d{4})_")
+TS_IN_PATH = re.compile(r"/(s\d{4})/ct\.nii(\.gz)?$")
 VERSE_IN_MASK = re.compile(r"VERSE_([A-Za-z0-9]+)_")
-# SchwingNet's held out measurement: its CTs are segmented and marked, and nothing trains on them.
+VERSE_IN_PATH = re.compile(r"scan-([A-Za-z0-9]+)_ct\b")
+# SchwingNet's held out measurement: its CTs are segmented and marked, and nothing trains on them; so
+# is every CT whose person a tier list marks test only (TEST_ONLY in its column real_frames), since
+# that person's real fluoroscopy is kept for validation and test and a render inherits its CT's person.
 HELD_OUT = ("carmlspine",)
+TEST_ONLY = "1"
+# FDG-PET-CT-Lesions by the collection the tier lists and the census spell it with, and no other: a
+# collection whose name only holds "fdg", as IDC's ACRIN-NSCLC-FDG-PET, is no autoPET.
+FDG_COLLECTIONS = ("tcia_fdg_pet_ct_lesions",)
 NIFTI = (".nii.gz", ".nii")
 WHY = {
     "release": "a release's own study (VerSe or TotalSegmentator), drawn by hand already",
@@ -108,13 +139,20 @@ IDS_OF = {}
 for _id, _name in VERSE_NAMES.items():
     IDS_OF.setdefault(_name, []).append(_id)
 ORDER = (*[f"C{i}" for i in range(1, 8)], *[f"T{i}" for i in range(1, 14)], *[f"L{i}" for i in range(1, 7)], "sacrum")
+# SPINEPS's instance mask labels vertebra X's end plates 200 + X and the disc below it 100 + X (its
+# README, the instance mask's labels): an end plate is bone of its vertebra, which TotalSegmentator's
+# class holds whole, while a disc is no bone and stays outside VerSe's ids.
+END_PLATES = 200
 # The levels both segmenters can name in the field the census admitted, C2's foot to the sacrum's top.
 SPAN = tuple(name for name in TS_VERTEBRAE if name not in ("C1",))
 VARIANTS = ("T13", "L6")
-REGIONS = ("C", "T", "L", "sacrum")
+# C1 is a region of its own: it lies above the field the census admitted, so how much of it a field
+# holds, and so its Dice, moves with where the field ends, and its median is reported with no bar.
+REGIONS = ("C1", "C", "T", "L", "sacrum")
 # The PREREG's bars (docs/research/gold4-totalseg/PREREG.md, part 4), which the merge reads from the records;
-# the sacrum's Dice has none, since the two machines' sacrum masks are not drawn to one definition, and
-# the cervical bar is lower, since one boundary voxel weighs more in a smaller bone's Dice.
+# C1's and the sacrum's Dice have none, the sacrum's since the two machines' sacrum masks are not drawn to
+# one definition, and the cervical bar, C2 to C7, is lower, since one boundary voxel weighs more in a
+# smaller bone's Dice.
 BARS = {"H1": 0.90, "H2": 0.80}
 DICE_BARS = {"C": 0.80, "T": 0.85, "L": 0.85}
 NOT_WHOLE = ("no_c2", "no_sacrum", "sacrum_above")
@@ -123,7 +161,7 @@ TASK = {"task": "total", "roi_subset": list(VERSE_ID), "fast": False, "ml": True
 KINDS = ("concordant", "variant", "name_shift", "unmatched", "no_c2", "no_sacrum", "sacrum_above", "no_comparison")
 MIN_VOXELS = 200                # drawn at all, as the field test and the matcher count a level
 MATCH_MM = 10.0                 # two centres this close are one bone
-AFFINE_SLACK_MM = 0.01          # two affines this close are one grid
+AFFINE_SLACK_MM = 0.01          # two grids whose corner voxels lie this close are one grid
 FAILS_IN_A_ROW = 3
 GIVE_UP_AFTER = 2               # chains at one code in which a unit failed before it is left to the report
 STOP_AFTER = 39600              # seconds after which a task takes no new unit: an hour short of 12 hours
@@ -204,43 +242,49 @@ def read_census(path):
 
 
 def read_tiers(folder):
-    """{SPINEPS mask: its CT} from the census's tier lists, the first row of a mask keeping its place,
-    and the sha256 of each list read."""
-    ct_of, read = {}, {}
+    """({SPINEPS mask: its CT}, the CTs and persons the lists mark test only, and the sha256 of each list
+    read), the first row of a mask keeping its place. Both lists are read, or the run stops: one alone
+    would leave most units out as rows no tier list names, and the run would still end 0."""
+    ct_of, test_only, read = {}, {"ct": set(), "person": set()}, {}
     for name in TIER_FILES:
         path = os.path.join(folder, name)
         if not os.path.isfile(path):
-            continue
+            raise InputsMissing(f"no census tier list {name} under {folder} (both of {' and '.join(TIER_FILES)} are read)")
         read[name] = sha256_of(path)
         with open(path, encoding="utf-8", newline="") as fh:
             for row in csv.DictReader(fh, delimiter="\t"):
                 mask, ct = row.get("spineps_vert") or "", row.get("ct_path") or ""
                 if mask and ct:
                     ct_of.setdefault(mask, ct)
-    if not read:
-        raise InputsMissing(f"no census tier list ({' or '.join(TIER_FILES)}) under {folder}")
-    return ct_of, read
+                if (row.get("real_frames") or "").strip() == TEST_ONLY:
+                    test_only["ct"].add(ct)
+                    test_only["person"].add(row.get("person_key") or "")
+    test_only["ct"].discard("")
+    test_only["person"].discard("")
+    return ct_of, test_only, read
 
 
 def folded(collection):
     return "idc" if collection.lower().startswith("idc_") else collection
 
 
-def release_study(row):
+def release_study(row, ct=""):
+    """Whether the row is a release's own study, by its collection, its case, its mask's name or its CT's path."""
     collection = (row.get("collection") or "").lower()
     if collection in RELEASE_COLLECTIONS or collection.startswith(RELEASE_PREFIXES):
         return True
     case, mask = row.get("case_id") or "", row.get("spineps_vert") or ""
-    return bool(TS_IN_CASE.match(case) or TS_IN_MASK.search(mask) or VERSE_IN_MASK.search(mask))
+    return bool(TS_IN_CASE.match(case) or TS_IN_MASK.search(mask) or VERSE_IN_MASK.search(mask)
+                or TS_IN_PATH.search(ct) or VERSE_IN_PATH.search(ct))
 
 
 def left_out_reason(row, ct_of, taken, exists):
     """Why a candidate row is no unit, as a key of WHY, or None."""
-    if release_study(row):
-        return "release"
-    if "fdg" in (row.get("collection") or "").lower():
-        return "fdg"
     ct = ct_of.get(row.get("spineps_vert") or "")
+    if release_study(row, ct or ""):
+        return "release"
+    if (row.get("collection") or "").lower() in FDG_COLLECTIONS:
+        return "fdg"
     if not ct:
         return "no_tier_row"
     if ct in taken:
@@ -258,15 +302,23 @@ def unit_id(ct):
     return hashlib.sha256(ct.encode("utf-8")).hexdigest()[:16]
 
 
-def unit_of(row, ct):
-    collection = row.get("collection") or ""
+def held_out(collection, ct, person, test_only):
+    """Whether nothing may train on the CT: SchwingNet's held out measurement, or a CT or person the tier
+    lists mark test only."""
+    test_only = test_only or {}
+    return (folded(collection).lower() in HELD_OUT or ct in test_only.get("ct", ())
+            or bool(person) and person in test_only.get("person", ()))
+
+
+def unit_of(row, ct, test_only=None):
+    collection, person = row.get("collection") or "", row.get("person_key") or ""
     return {"id": unit_id(ct), "collection": collection, "group": folded(collection), "case_id": row.get("case_id") or "",
-            "person_key": row.get("person_key") or "", "tier": row.get("tier") or "", "ct": ct, "spineps": row["spineps_vert"],
+            "person_key": person, "tier": row.get("tier") or "", "ct": ct, "spineps": row["spineps_vert"],
             "census": {k: row.get(k) for k in ("verdict", "head", "foot", "complete", "flags")},
-            "held_out": folded(collection).lower() in HELD_OUT}
+            "held_out": held_out(collection, ct, person, test_only)}
 
 
-def select(rows, ct_of, exists=os.path.isfile):
+def select(rows, ct_of, exists=os.path.isfile, test_only=None):
     """(units, left out by reason, left out by reason and collection, candidates): one unit per CT, in
     a fixed order whatever order the census lists its rows in."""
     candidates = sorted((r for r in rows if isinstance(r, dict) and r.get("verdict") in VERDICTS),
@@ -281,15 +333,15 @@ def select(rows, ct_of, exists=os.path.isfile):
             continue
         ct = ct_of[row["spineps_vert"]]
         taken.add(ct)
-        units.append(unit_of(row, ct))
+        units.append(unit_of(row, ct, test_only))
     return units, left_out, by_collection, len(candidates)
 
 
 def selection(census, tiers, exists=os.path.isfile):
     """What a chain runs, as jobs.json holds it: the same bytes from every task of the chain."""
     rows = read_census(census)
-    ct_of, tier_sums = read_tiers(tiers)
-    units, left_out, by_collection, candidates = select(rows, ct_of, exists)
+    ct_of, test_only, tier_sums = read_tiers(tiers)
+    units, left_out, by_collection, candidates = select(rows, ct_of, exists, test_only)
     return {"census": census, "census_sha256": sha256_of(census), "tiers": tier_sums, "verdicts": list(VERDICTS),
             "segmenter": "TotalSegmentator", "task": TASK, "label_ids": "VerSe (C1 to C7 1 to 7, T1 to T12 8 to 19, "
             "L1 to L5 20 to 24, S1 and sacrum 26)", "candidates": candidates, "units": units,
@@ -331,19 +383,47 @@ def segmented(out, uid, ran=None):
     return isinstance(ran, dict) and ran.get("exit") == 0 and labels_path(out, uid).is_file()
 
 
-def failures_of(ran, commit, running=None):
-    """The chains whose run of the unit failed at this code: those its record lists, and the record's
-    own chain where its process ended mid-run (exit null) and that chain is not one still running."""
+def earlier_failures(ran, running=None):
+    """Every failure the unit's record holds, at whatever code: those its failed list keeps, and the
+    record's own run where its process ended mid-run (exit null) in a chain that is not one still
+    running, at the commit and code that run had."""
     if not isinstance(ran, dict) or ran.get("exit") == 0:
-        return set()
-    chains = {f.get("chain") for f in ran.get("failed") or [] if isinstance(f, dict) and f.get("commit") == commit}
-    if ran.get("exit") is None and ran.get("commit") == commit and ran.get("chain") not in (None, running):
-        chains.add(ran["chain"])
-    return {c for c in chains if c}
+        return []
+    found = [dict(f) for f in ran.get("failed") or [] if isinstance(f, dict) and f.get("chain")]
+    if ran.get("exit") is None and ran.get("chain") not in (None, running):
+        found.append({"chain": ran["chain"], "commit": ran.get("commit"), "code": ran.get("code")})
+    return found
 
 
-def given_up(ran, commit, running=None):
-    return len(failures_of(ran, commit, running)) >= GIVE_UP_AFTER
+def failures_of(ran, code, running=None):
+    """The chains whose run of the unit failed at this code, tools/run_code.py's digest of the kind."""
+    return {f["chain"] for f in earlier_failures(ran, running) if code and f.get("code") == code}
+
+
+def given_up(ran, code, running=None):
+    return len(failures_of(ran, code, running)) >= GIVE_UP_AFTER
+
+
+def code_digest(root=ROOT):
+    """tools/run_code.py's digest of this kind's files under root, the copy the job runs: the code the
+    launcher names the run by and a unit's failures are counted at. Loaded by its path, as
+    flows/launch.py loads it, since tools/ is off sys.path."""
+    spec = importlib.util.spec_from_file_location("gold4_run_code", Path(root) / "tools" / "run_code.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.digest(KIND, root)
+
+
+def code_problem(args):
+    """None once args.code holds the code, read from the copy where the words name none; else why it
+    cannot be named, which stops the part, since no failure could be counted at it."""
+    if getattr(args, "code", ""):
+        return None
+    try:
+        args.code = code_digest()
+    except Exception as exc:                                    # noqa: BLE001 - said in words, and the part stops
+        return f"the code cannot be named by tools/run_code.py ({type(exc).__name__}: {short(exc)})"
+    return None
 
 
 # ---- the segmenter -----------------------------------------------------------------------------------
@@ -363,6 +443,15 @@ def segmenter_version():
         return version("TotalSegmentator")
     except Exception:                                           # noqa: BLE001
         return "not read"
+
+
+def version_problem(version):
+    """Why the environment's TotalSegmentator is not the one SEGMENTER pins, or None; a version that
+    could not be read passes, since every record says it."""
+    pinned = SEGMENTER.split("==", 1)[1]
+    if version in ("not read", pinned):
+        return None
+    return f"the environment holds TotalSegmentator {version}, not {pinned} as SEGMENTER and the job's TS_PIN say"
 
 
 def has_part(weights, part, whole=False):
@@ -480,6 +569,22 @@ def to_verse(values, ids):
     return verse, counts
 
 
+def with_end_plates(values):
+    """(SPINEPS's map with each end plate read as its vertebra, the end-plate voxels so read): 200 + X
+    becomes X for each id X that names a level; the discs, 100 + X, are left as they are, outside VerSe's ids."""
+    import numpy as np
+    labels = as_labels(np.asarray(values))
+    where = np.nonzero((labels > END_PLATES) & (labels <= END_PLATES + max(VERSE_NAMES)))
+    vertebra = labels[where] - END_PLATES
+    named = np.isin(vertebra, list(VERSE_NAMES))
+    if not named.any():
+        return labels, 0
+    # A copy, so a map nibabel memory-mapped from its file is never written into.
+    labels = labels.copy()
+    labels[tuple(axis[named] for axis in where)] = vertebra[named]
+    return labels, int(named.sum())
+
+
 def level_facts(labels, affine):
     """({level name: {voxels, centroid in world mm}} of a map in VerSe's ids, two ids of one name as one
     level, and how many ids it holds that name nothing)."""
@@ -509,9 +614,23 @@ def level_facts(labels, affine):
     return facts, outside
 
 
-def same_grid(a_shape, a_affine, b_shape, b_affine):
+def corners(shape, affine):
+    """The world points, in mm, of a grid's corner voxels."""
+    import itertools
     import numpy as np
-    return tuple(a_shape) == tuple(b_shape) and bool(np.allclose(a_affine, b_affine, atol=AFFINE_SLACK_MM))
+    affine = np.asarray(affine, float)
+    ends = np.array(list(itertools.product(*[(0, max(int(size) - 1, 0)) for size in shape[:3]])), float)
+    return ends @ affine[:3, :3].T + affine[:3, 3]
+
+
+def same_grid(a_shape, a_affine, b_shape, b_affine):
+    """Whether two grids are one: one shape, and every corner voxel within AFFINE_SLACK_MM of its twin.
+    Two affines differ by an affine map, whose largest move over the box lies at a corner, so no voxel
+    of the grid lies further from its twin than the corners do."""
+    import numpy as np
+    if tuple(a_shape) != tuple(b_shape):
+        return False
+    return bool(np.abs(corners(a_shape, a_affine) - corners(b_shape, b_affine)).max() <= AFFINE_SLACK_MM)
 
 
 def on_our_lattice(theirs, theirs_affine, shape, affine):
@@ -550,17 +669,24 @@ def dice_by_level(ours, theirs, names):
 
 
 def save_labels(verse, affine, header, dest):
-    """The map written whole: a part file under a name of its own, renamed into place."""
+    """The map written whole: a part file under a name of its own, renamed into place, or removed where
+    the write fails. TotalSegmentator's header carries its own label table as an extension (its
+    nifti_ext_header), whose names are its ids' and not VerSe's, so the map keeps no extension."""
     import nibabel as nib
     import numpy as np
     dest = Path(dest)
     dest.parent.mkdir(parents=True, exist_ok=True)
     image = nib.Nifti1Image(verse.astype(np.int16, copy=False), affine, header)
+    image.header.extensions.clear()
     image.set_data_dtype(np.int16)
     image.header.set_slope_inter(1, 0)
     part = part_beside(dest, suffix=".part.nii.gz")
-    nib.save(image, str(part))
-    os.replace(part, dest)
+    try:
+        nib.save(image, str(part))
+        os.replace(part, dest)
+    except BaseException:
+        part.unlink(missing_ok=True)
+        raise
 
 
 # ---- the unit's kind (standard library) ----------------------------------------------------------------
@@ -621,11 +747,12 @@ def sacrum_above(drawn):
 
 
 def above_the_other(point, other, place):
-    """Whether a level's centre lies above every level from C2 to L5 the other map draws: a level one map draws
+    """Whether a level's centre lies above every vertebra the other map draws, C1 to L5: a level one map draws
     past the top of the other's field, which is coverage, since the census admitted fields that show only
-    C2's foot, and no disagreement on any bone's name. Below the top no level is passed over: the foot of
-    the column is where the count's variants lie."""
-    places = [place(c) for name, c in other.items() if name in SPAN]
+    C2's foot, and no disagreement on any bone's name. A C1 the other draws counts in its top, since a level
+    that lies below the other's C1 is inside its field, not past it. Below the top no level is passed over:
+    the foot of the column is where the count's variants lie."""
+    places = [place(c) for name, c in other.items() if name in TS_VERTEBRAE]
     return bool(places) and place(point) < min(places)
 
 
@@ -663,7 +790,7 @@ def judge(ours, theirs):
 
 def measure(raw, dest, spineps, ids):
     """TotalSegmentator's multilabel file turned into VerSe's map and written to dest, its levels, and
-    SPINEPS's beside them; the facts for run.json."""
+    SPINEPS's beside them, its end plates read as their vertebrae; the facts for run.json."""
     values, affine, image = load_map(raw)
     verse, counts = to_verse(values, ids)
     del values
@@ -672,12 +799,13 @@ def measure(raw, dest, spineps, ids):
     found = {"totalseg_voxels": counts, "levels": ours, "shape": list(verse.shape), "labels_sha256": sha256_of(dest)}
     try:
         theirs_map, theirs_affine, _ = load_map(spineps)
+        theirs_map, plates = with_end_plates(theirs_map)
         theirs, outside = level_facts(theirs_map, theirs_affine)
     except Exception as exc:                                    # noqa: BLE001 - the segmentation stands without its comparison
         found.update(spineps_error=f"{type(exc).__name__}: {short(exc)}", kind=judge(ours, None))
         return found
     aligned, grid = on_our_lattice(theirs_map, theirs_affine, verse.shape, affine)
-    found.update(spineps=theirs, spineps_outside_ids=outside, grid=grid, kind=judge(ours, theirs))
+    found.update(spineps=theirs, spineps_end_plate_voxels=plates, spineps_outside_ids=outside, grid=grid, kind=judge(ours, theirs))
     if aligned is not None:
         both = [name for name in drawn_levels(ours) if name in drawn_levels(theirs)]
         found["dice"] = dice_by_level(verse, aligned, both)
@@ -685,12 +813,12 @@ def measure(raw, dest, spineps, ids):
 
 
 def segment_one(unit, out, args, segment=run_totalseg, ids=None):
-    """One unit run and recorded: run.json written before the segmenter starts and again at its end."""
+    """One unit run and recorded: run.json written before the segmenter starts and again at its end,
+    every failure it had before kept with the code it failed at."""
     uid = unit["id"]
-    before = read_json(record_path(out, uid))
-    failed = [{"chain": c, "commit": args.commit} for c in sorted(failures_of(before, args.commit, running=args.chain))]
+    failed = earlier_failures(read_json(record_path(out, uid)), running=args.chain)
     began = time.time()
-    record = {"unit": uid, "exit": None, "chain": args.chain, "task": args.task, "commit": args.commit,
+    record = {"unit": uid, "exit": None, "chain": args.chain, "task": args.task, "commit": args.commit, "code": args.code,
               "host": socket.gethostname(), "gpu": args.gpu, "version": segmenter_version(), "began": utc(began)}
     if failed:
         record["failed"] = failed
@@ -702,10 +830,11 @@ def segment_one(unit, out, args, segment=run_totalseg, ids=None):
         record.update(measure(raw, labels_path(out, uid), unit["spineps"], ids or ts_ids()))
         record["exit"] = 0
         record.pop("failed", None)
-    except Exception as exc:                                    # noqa: BLE001 - one CT never stops the others
+    except (Exception, SystemExit) as exc:                     # noqa: BLE001 - one CT never stops the others
+        # TotalSegmentator calls sys.exit where its input is not there (nnunet.py), which would end the task.
         record["exit"] = 1
         record["error"] = f"{type(exc).__name__}: {short(exc)}"
-        record["failed"] = failed + [{"chain": args.chain, "commit": args.commit}]
+        record["failed"] = failed + [{"chain": args.chain, "commit": args.commit, "code": args.code}]
     finally:
         shutil.rmtree(scratch, ignore_errors=True)
     record["seconds"] = round(time.time() - began, 1)
@@ -741,17 +870,21 @@ def run(args, segment=run_totalseg, ids=None, clock=time.monotonic):
     if lacking:
         lines.say(f"task {args.task}: stopped before any CT: no whole Dataset{' or Dataset'.join(lacking)} folder in the weights folder")
         return 2
+    problem = code_problem(args) or version_problem(segmenter_version())
+    if problem:
+        lines.say(f"task {args.task}: stopped before any CT: {problem}")
+        return 2
     args.gpu = gpu_name() if args.device == "gpu" else args.device
     if not args.gpu:
         lines.say(f"task {args.task}: stopped before any CT: torch sees no GPU")
         return 4
     os.environ["TOTALSEG_WEIGHTS_PATH"] = str(args.weights)
     os.environ["TOTALSEG_HOME_DIR"] = str(home_for(out, args.task))
-    lines.say(f"task {args.task} of {args.tasks}: {n(len(units))} units in the chain's list; GPU {args.gpu}")
+    lines.say(f"task {args.task} of {args.tasks}: {n(len(units))} units in the chain's list; code {args.code[:12]}; GPU {args.gpu}")
     began, tally, in_a_row = clock(), Counter(), 0
     for unit in rotated(units, args.task, args.tasks):
         ran = read_json(record_path(out, unit["id"]))
-        if segmented(out, unit["id"], ran) or given_up(ran, args.commit, running=args.chain):
+        if segmented(out, unit["id"], ran) or given_up(ran, args.code, running=args.chain):
             tally["passed over"] += 1
             continue
         if clock() - began > args.stop_after:
@@ -763,7 +896,8 @@ def run(args, segment=run_totalseg, ids=None, clock=time.monotonic):
         tally["segmented" if record["exit"] == 0 else "failed"] += 1
         in_a_row = 0 if record["exit"] == 0 else in_a_row + 1
         said = record.get("kind") if record["exit"] == 0 else record["error"].split(":")[0]
-        lines.say(f"task {args.task}: {unit['id']} exit {record['exit']} ({said}) in {record['seconds']} s; "
+        # No unit's id: the job copies a task's last line into the report, which carries counts alone.
+        lines.say(f"task {args.task}: a CT ended exit {record['exit']} ({said}) in {record['seconds']} s; "
                   f"{tally['segmented']} segmented, {tally['failed']} failed, {tally['passed over']} passed over")
         if in_a_row >= FAILS_IN_A_ROW:
             lines.say(f"task {args.task}: stopped after {FAILS_IN_A_ROW} failures in a row")
@@ -774,12 +908,12 @@ def run(args, segment=run_totalseg, ids=None, clock=time.monotonic):
 
 # ---- the merge and its report ------------------------------------------------------------------------------
 
-def status_of(out, uid, ran, commit):
+def status_of(out, uid, ran, code):
     if segmented(out, uid, ran):
         return "segmented"
     if not isinstance(ran, dict):
         return "not run"
-    return "given up" if given_up(ran, commit) else "failed"
+    return "given up" if given_up(ran, code) else "failed"
 
 
 def error_kind(ran):
@@ -795,8 +929,9 @@ def merged_record(unit, ran, status):
     record["spineps_mask"] = unit["spineps"]
     record["status"] = status
     if isinstance(ran, dict):
-        for key in ("exit", "chain", "commit", "seconds", "version", "gpu", "kind", "levels", "spineps", "grid", "dice",
-                    "totalseg_voxels", "labels_sha256", "error", "spineps_error", "failed"):
+        for key in ("exit", "chain", "commit", "code", "seconds", "version", "gpu", "kind", "levels", "spineps", "grid", "dice",
+                    "totalseg_voxels", "spineps_end_plate_voxels", "spineps_outside_ids", "labels_sha256", "error",
+                    "spineps_error", "failed"):
             if key in ran:
                 record[key] = ran[key]
     if status == "segmented":
@@ -805,7 +940,7 @@ def merged_record(unit, ran, status):
 
 
 def region_of(name):
-    return "sacrum" if name == "sacrum" else name[0]
+    return name if name in ("C1", "sacrum") else name[0]
 
 
 def concordant_dice(records):
@@ -858,6 +993,7 @@ def bar_lines(records):
     else:
         verdict = "met" if all(medians[region] >= bar for region, bar in DICE_BARS.items()) else "not met"
     lines.append("  - H3, the median Dice of each region at least its bar (" + ", ".join(f"{r} {b:.2f}" for r, b in DICE_BARS.items())
+                 + "; C from C2, C1 and the sacrum with no bar"
                  + f"), over the {n(sum(lattice.values()))} concordant units on a shared lattice: "
                  + ", ".join(f"{region} {value:.3f}" for region, value in medians.items()) + ("; " if medians else "") + verdict)
     return lines
@@ -911,7 +1047,8 @@ def report_lines(jobs, records, chain):
                  f"{spent / 3600:.1f} GPU hours of TotalSegmentator by this chain")
     held = [r for r in records if r.get("held_out")]
     if held:
-        lines.append(f"- held out: {n(len(held))} C-ArmLSpine CTs, {n(sum(1 for r in held if r['status'] == 'segmented'))} segmented, "
+        lines.append(f"- held out: {n(len(held))} CTs, C-ArmLSpine's and those whose person the tier lists mark test only, "
+                     f"{n(sum(1 for r in held if r['status'] == 'segmented'))} segmented, "
                      "marked held_out in the records so that nothing trains on them")
     lines.append("- the label maps and records are under the lab volume's gold4-totalseg/ (labels/, units/, records.jsonl)")
     return lines
@@ -932,10 +1069,14 @@ def merge(args):
     if not isinstance(jobs, dict) or not isinstance(jobs.get("units"), list):
         print(f"merge: chain {args.chain} has no jobs.json: no task of it read the census")
         return 2
+    problem = code_problem(args)
+    if problem:
+        print(f"merge: {problem}, and a unit is given up by its failures at it")
+        return 2
     records = []
     for unit in jobs["units"]:
         ran = read_json(record_path(out, unit["id"]))
-        records.append(merged_record(unit, ran, status_of(out, unit["id"], ran, args.commit)))
+        records.append(merged_record(unit, ran, status_of(out, unit["id"], ran, args.code)))
     write_records(chain / "records.jsonl", records)
     write_records(out / "records.jsonl", records)
     text = "\n".join(report_lines(jobs, records, args.chain)) + "\n"
@@ -954,7 +1095,9 @@ def main(argv=None):
     s.add_argument("--chain", required=True, help="the send's array job")
     s.add_argument("--task", type=int, required=True)
     s.add_argument("--tasks", type=int, required=True)
-    s.add_argument("--commit", default="", help="the commit of the code that runs, which a unit's failures are counted at")
+    s.add_argument("--commit", default="", help="the commit of the code that runs, kept in each record")
+    s.add_argument("--code", default="", help="the code a unit's failures are counted at; by default tools/run_code.py's "
+                   "digest of the kind, read from the files beside this tool")
     s.add_argument("--weights", default=os.environ.get("TOTALSEG_WEIGHTS_PATH", ""), help="the unpacked Dataset folders")
     s.add_argument("--threads", type=int, default=4)
     s.add_argument("--device", default="gpu")
@@ -964,6 +1107,7 @@ def main(argv=None):
     s.add_argument("--out", required=True)
     s.add_argument("--chain", required=True)
     s.add_argument("--commit", default="")
+    s.add_argument("--code", default="", help="as for run")
     s.set_defaults(go=merge)
     args = p.parse_args(argv)
     if args.command == "run" and not (0 <= args.task < args.tasks):

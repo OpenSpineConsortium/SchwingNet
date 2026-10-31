@@ -48,7 +48,9 @@ WEIGHTS=${GOLD4_WEIGHTS:-$RS/gold3-totalseg/weights}
 STUDY_DIR=docs/research/gold4-totalseg
 FLOW_CLASS=Gold4TotalsegFlow
 # TotalSegmentator's environment, the completion's to the byte (grid/totalseg-complete.sbatch's
-# TS_PIN), so venv_path finds the one already made on the lab volume.
+# TS_PIN), so venv_path finds the one already made on the lab volume; the tool's SEGMENTER says the
+# same (tests/test_gold4_totalseg_grid.py holds the two equal), so a new pin changes the code the
+# tool counts a CT's failures at.
 TS_PIN="TotalSegmentator==2.18.0"
 # What every part runs, copied at the gate's commit: the tools and the packages they import, the flows
 # and the launcher with their registry, the frozen split and the report's checklists the launcher's
@@ -154,7 +156,8 @@ venv_once() {  # venv_once PINS: venv_for under a lock, since venv_for removes a
 segmenter_venv() {  # TotalSegmentator's environment, made by the copy's grid/venv.sh, into venv
   # shellcheck source=grid/venv.sh
   . "$CODE/grid/venv.sh"
-  venv=$(venv_once "$TS_PIN")
+  # What a build prints goes to its log, so venv holds the path venv_ready gives and nothing else.
+  venv_once "$TS_PIN" > "$LOGS/venv-$PART-$TASK.log" 2>&1 && venv=$(venv_ready "$TS_PIN")
 }
 torch_on_gpu() {  # the environment's torch sees a card, so a task never segments on the CPU unawares
   bash "$CODE/grid/box.sh" "$venv/bin/python" -c 'import sys, torch; sys.exit(not torch.cuda.is_available())' > "$LOGS/torch-$TASK.log" 2>&1

@@ -415,6 +415,12 @@ GOLD4_ROOT=${GOLD4_ROOT:-$VOLUME/go2432/gold4-totalseg}
 GOLD4_CENSUS=${GOLD4_CENSUS:-$VOLUME/go2432/gold3_census/40870542/gold4.json}
 GOLD4_TIERS=${GOLD4_TIERS:-$VOLUME/go2432/ruleclass/tiers}
 GOLD4_WEIGHTS=${GOLD4_WEIGHTS:-$VOLUME/go2432/gold3-totalseg/weights}
+# What a send that wrote no label map waits for before another follows it: a change to the code the
+# tool counts a CT's failures at, tools/run_code.py's list for the kind gold4_totalseg (tests/test_gate.py
+# holds the two equal), or to the job script that makes its environment and starts it; a merge to main
+# that changes none of them leaves every CT given up as it was, so it lets no send through.
+GOLD4_CODE=(pixi.toml pixi.lock flows/gold4_totalseg.py flows/stage.py flows/stage_registry.py tools/gold4_totalseg_grid.py
+  grid/totalseg-gold4.sbatch)
 # A page of the join's report: the relay keeps the last 400 lines of a send's answer (grid_accounts.py's
 # log_in) and status holds itself to 400 lines and 64 KiB, so a page is 300 of the report's lines with its
 # first and last, each cut to LINE_CHARS by the masks, about 61,000 bytes at most, and the gate's own few
@@ -2104,12 +2110,18 @@ gold4_progress() {  # gold4_progress CHAIN: where each task of the chain stands,
   done | LC_ALL=C tr -cd '\11\12\40-\176' | masked
 }
 gold4_labels() {  # how many label maps the segmentation has written, whichever send wrote them
-  find "$GOLD4_ROOT/labels" -maxdepth 1 -type f -name '*.nii.gz' 2>/dev/null | wc -l | tr -d ' '
+  # A map is written under a dot name of its own and renamed into place, so a part file a killed task
+  # left behind is no map.
+  find "$GOLD4_ROOT/labels" -maxdepth 1 -type f -name '*.nii.gz' ! -name '.*' 2>/dev/null | wc -l | tr -d ' '
+}
+gold4_code_changed() {  # gold4_code_changed FROM TO: status 0 where a file of GOLD4_CODE differs between the two commits, or FROM is no commit the checkout holds
+  [[ $1 =~ ^[0-9a-f]{40}$ ]] && git -C "$REPO" cat-file -e "$1^{commit}" 2>/dev/null || return 0
+  ! git -C "$REPO" diff --quiet "$1" "$2" -- "${GOLD4_CODE[@]}" 2>/dev/null
 }
 gold4_inputs_missing() {  # what a send reads and does not find, in words, else nothing
   local part
   [ -f "$GOLD4_CENSUS" ] || { echo "the census detail $GOLD4_CENSUS, which census gold3 writes"; return; }
-  [ -f "$GOLD4_TIERS/tier1.tsv" ] || [ -f "$GOLD4_TIERS/tier2.tsv" ] || { echo "the census tier lists under $GOLD4_TIERS"; return; }
+  [ -f "$GOLD4_TIERS/tier1.tsv" ] && [ -f "$GOLD4_TIERS/tier2.tsv" ] || { echo "the census tier lists tier1.tsv and tier2.tsv under $GOLD4_TIERS, both"; return; }
   for part in 292 298; do
     compgen -G "$GOLD4_WEIGHTS/Dataset${part}_*/UNPACKED" > /dev/null \
       || { echo "TotalSegmentator's weight part Dataset$part unpacked whole under $GOLD4_WEIGHTS, which totalseg complete unpacks"; return; }
@@ -2149,8 +2161,8 @@ gold4_rerun_allowed() {  # gold4_rerun_allowed JOB: TOTALSEG_RERUNS names JOB be
 }
 gold4_again() {  # gold4_again RECORD KEPT LABELS FULL: why another send may follow the one the record stands for; else 1 and the word that it is done, or 2 and the refusal
   # The tally is the label maps that stood, and the commit, when the send before was queued: a send
-  # that wrote none at the code the checkout still holds would do the same again, so it waits for a
-  # fix; one that never started spent nothing.
+  # that wrote none at the code the checkout still holds (GOLD4_CODE, whatever else main changed)
+  # would do the same again, so it waits for a fix; one that never started spent nothing.
   local record=$1 kept=$2 labels=$3 full=$4 job before before_commit chain
   job=$(bench_job_of "$record")
   before=$(awk 'NR == 1 { print $1 }' "$LOGS/TOTALSEG-gold4.count" 2>/dev/null)
@@ -2166,10 +2178,10 @@ gold4_again() {  # gold4_again RECORD KEPT LABELS FULL: why another send may fol
     echo "Slurm ended the send above before any part of it started"
   elif [ -z "$before" ] || [ "$labels" -gt "$before" ]; then
     echo "the CTs left carry on (${before:+$((labels - before)) label maps since the send before, }$labels in all)"
-  elif [ "$before_commit" != "$full" ]; then
-    echo "the send above wrote no label map, and the code has changed since it was sent (${before_commit:0:7} to ${full:0:7})"
+  elif gold4_code_changed "$before_commit" "$full"; then
+    echo "the send above wrote no label map, and the code it runs has changed since it was sent (${before_commit:0:7} to ${full:0:7})"
   else
-    echo "refusing: the send above wrote no label map ($labels in all, as before it) at the code the checkout still holds, so another would do the same; a fix is a new commit, or the owner's word gold4:${job:-<job>} in TOTALSEG_RERUNS; nothing was queued"
+    echo "refusing: the send above wrote no label map ($labels in all, as before it) at the code the checkout still holds, so another would do the same; a fix is a change to the code it runs, or the owner's word gold4:${job:-<job>} in TOTALSEG_RERUNS; nothing was queued"
     return 2
   fi
 }

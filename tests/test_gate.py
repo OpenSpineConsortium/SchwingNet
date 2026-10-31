@@ -5099,10 +5099,11 @@ exit "${FAKE_RC:-0}"
 
     def gold4_inputs(self, *which):
         """What a send reads on the lab volume, each a stand-in where the gate's and the job's defaults look:
-        the census detail, a tier list, and the two weight parts totalseg complete unpacked, each marked
-        UNPACKED; all four where none is named. Their paths by name."""
+        the census detail, the two tier lists, and the two weight parts totalseg complete unpacked, each marked
+        UNPACKED; all five where none is named. Their paths by name."""
         volume = self.tmp / "go2432"
         paths = {"census": volume / "gold3_census" / "40870542" / "gold4.json", "tiers": volume / "ruleclass" / "tiers" / "tier1.tsv",
+                 "tiers2": volume / "ruleclass" / "tiers" / "tier2.tsv",
                  "292": volume / "gold3-totalseg" / "weights" / "Dataset292_TotalSegmentator_part2_vertebrae_1792subj" / "UNPACKED",
                  "298": volume / "gold3-totalseg" / "weights" / "Dataset298_TotalSegmentator_total_6mm_1559subj" / "UNPACKED"}
         for name in which or paths:
@@ -5113,10 +5114,15 @@ exit "${FAKE_RC:-0}"
     def full_commit(self):
         return subprocess.run(["git", "-C", str(self.repo), "rev-parse", "HEAD"], check=True, capture_output=True, text=True).stdout.strip()
 
-    def commit_again(self):
-        """One more commit of the checkout, as a merged fix moves it: the new full commit."""
-        subprocess.run(["git", "-c", "gc.auto=0", "-c", "maintenance.auto=false", "-c", "user.name=t", "-c", "user.email=t@t",
-                        "-C", str(self.repo), "commit", "-q", "--allow-empty", "-m", "a fix"], check=True)
+    def commit_again(self, changed=None):
+        """One more commit of the checkout, as a merge to main moves it: the new full commit. CHANGED names a
+        file of the checkout the commit adds a line to; with none the commit changes no file."""
+        git = ["git", "-c", "gc.auto=0", "-c", "maintenance.auto=false", "-c", "user.name=t", "-c", "user.email=t@t", "-C", str(self.repo)]
+        if changed:
+            path = self.repo / changed
+            path.write_text((path.read_text(encoding="utf-8") if path.exists() else "") + "# a fix\n", encoding="utf-8")
+            subprocess.run([*git, "add", changed], check=True)
+        subprocess.run([*git, "commit", "-q", "--allow-empty", "-m", "a fix"], check=True)
         return self.full_commit()
 
     def gold4_ready(self):
@@ -5173,7 +5179,8 @@ exit "${FAKE_RC:-0}"
         self.assertEqual(self.gate("totalseg", "gold4").returncode, 90)
         self.gold4_prereg()
         # each input is asked for in turn, by what writes it
-        for missing, said in (("census", "the census detail"), ("tiers", "the census tier lists under"),
+        for missing, said in (("census", "the census detail"), ("tiers", "the census tier lists tier1.tsv and tier2.tsv under"),
+                              ("tiers2", "the census tier lists tier1.tsv and tier2.tsv under"),
                               ("292", "weight part Dataset292 unpacked whole"), ("298", "weight part Dataset298 unpacked whole")):
             refused = self.gate("totalseg", "gold4")
             self.assertEqual(refused.returncode, 2, refused.stdout)
@@ -5248,9 +5255,11 @@ exit "${FAKE_RC:-0}"
         self.assertIn("the CTs left carry on (5 label maps since the send before, 5 in all): queueing", again.stdout)
         self.assertTrue((logs / "TOTALSEG-gold4-103-unfinished.md").exists())
         self.assertEqual((logs / "TOTALSEG-gold4.count").read_text(encoding="utf-8"), f"5 {full}\n")
-        # its merge's report did not end in 0 and no map came since: at the same code another send would do the same
+        # its merge's report did not end in 0 and no map came since: at the same code another send would do the same;
+        # a part file a killed task left under its dot name is no map
         report = self.gold4_report(106, 105, full, "- task 0: exit 1 at 2026-10-31 04:00:00 UTC; task 0: stopped after 3 failures in a row",
                                    "- exit 1 at 2026-10-31 05:10:00 UTC")
+        (self.gold4_root() / "labels" / f".{7:064x}.nii.gz.k2j4x9.part.nii.gz").write_bytes(b"half a map")
         for _ in range(2):
             refused = self.gate("totalseg", "gold4")
             self.assertEqual(refused.returncode, 2, refused.stdout)
@@ -5268,13 +5277,20 @@ exit "${FAKE_RC:-0}"
         self.assertTrue((logs / "TOTALSEG-gold4-106.md").exists())
         self.assertEqual(len(self.submitted()), 8)
         self.set_gate_line("TOTALSEG_RERUNS", "complete:40882547")
-        # a fix is a new commit, which lets a send through where the last one wrote nothing
+        # a merge to main that changes none of the files the segmentation's code is named by is no fix: the tool
+        # counts a CT's failures at that code, so another send would give up nothing it has not given up
         self.gold4_report(108, 107, full, "- exit 1 at 2026-10-31 07:10:00 UTC")
         self.assertEqual(self.gate("totalseg", "gold4").returncode, 2)
-        fixed = self.commit_again()
+        moved = self.commit_again("README.md")
+        refused = self.gate("totalseg", "gold4")
+        self.assertEqual(refused.returncode, 2, refused.stdout)
+        self.assertIn("at the code the checkout still holds, so another would do the same; a fix is a change to the code it runs", refused.stdout)
+        self.assertNotEqual(moved, full)
+        # a fix is a change to that code, which lets a send through where the last one wrote nothing
+        fixed = self.commit_again("tools/gold4_totalseg_grid.py")
         again = self.gate("totalseg", "gold4")
         self.assertEqual(again.returncode, 0, again.stdout + again.stderr)
-        self.assertIn(f"the send above wrote no label map, and the code has changed since it was sent ({full[:7]} to {fixed[:7]})", again.stdout)
+        self.assertIn(f"the send above wrote no label map, and the code it runs has changed since it was sent ({full[:7]} to {fixed[:7]})", again.stdout)
         self.assertIn(f" GOLD4_COMMIT={fixed} ", self.submitted()[-2])
         self.assertTrue((logs / "TOTALSEG-gold4-108.md").exists())
         # a report that ends in exit 0 is done: printed on every send, and nothing queued
@@ -5286,6 +5302,14 @@ exit "${FAKE_RC:-0}"
             self.assertIn("bar 80%; met", done.stdout)
             self.assertIn("the segmentation is done", done.stdout)
         self.assertEqual(len(self.submitted()), 10)
+
+    def test_totalseg_gold4_judges_a_change_by_the_files_run_code_names_its_kind_by(self):
+        # The tool counts a CT's failures at tools/run_code.py's digest of its kind, so the gate's list of the
+        # files whose change lets a send through after one that wrote nothing is that kind's list, and the job
+        # script that makes the environment and starts the flow.
+        listed = re.search(r"^GOLD4_CODE=\(([^)]*)\)$", (ROOT / "grid" / "gate.sh").read_text(encoding="utf-8"), re.M | re.S).group(1).split()
+        run_code = load_module(ROOT / "tools" / "run_code.py", "run_code_for_gold4_gate")
+        self.assertEqual(listed, [*run_code.KINDS["gold4_totalseg"], "grid/totalseg-gold4.sbatch"])
 
     def test_totalseg_gold4_cancels_the_array_whose_merge_was_refused_and_queues_the_pair_again(self):
         full = self.gold4_ready()

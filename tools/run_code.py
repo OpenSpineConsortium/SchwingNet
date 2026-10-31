@@ -116,8 +116,9 @@ KINDS = {
                       "grid/autoanatomist/", "data/splits/rule.json", "data/splits/test-persons.json",
                       "data/splits/latent-prior-test-reserve.json", "data/splits/latent-prior-repeat-groups.json"),
     # TotalSegmentator on the gold tier 4 CTs (docs/research/gold4-totalseg/PREREG.md): the flow and the
-    # tool each part runs; the job script only makes the environment and starts the launcher, and every
-    # map's record names the segmenter's version it was drawn with.
+    # tool each part runs; the job script only makes the environment and starts the launcher, and the
+    # segmenter's pin is the tool's SEGMENTER as well as the job script's TS_PIN, a test holding the two
+    # equal, so a new version names a new code, at which the tool counts each CT's failures afresh.
     "gold4_totalseg": (*ENVIRONMENT, "flows/gold4_totalseg.py", "flows/stage.py", "flows/stage_registry.py",
                        "tools/gold4_totalseg_grid.py"),
 }
@@ -186,6 +187,7 @@ LEFT_OUT = {
 }
 LEFT_OUT["autoanatomist2"] = LEFT_OUT["autoanatomist"]
 LEFT_OUT["gold4_totalseg"] = {**STAGE_PAGE_LEFT_OUT,
+                              "tools/run_code.py": NAMES_THE_RUN,
                               "tools/report.py": "is named by flows/stage.py for a run's report, which this flow never makes; "
                               "its report is the merge's counts, written by its tool"}
 
