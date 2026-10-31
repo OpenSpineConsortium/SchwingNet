@@ -35,7 +35,8 @@ ENTRIES = {"row": ("tools/flow.py",), "state": ("tools/block_sweep.py",), "sweep
            "drr_gap": ("flows/drr_gap.py",), "drr_seg": ("flows/drr_seg.py",), "realism": ("flows/realism.py",),
            "totalseg": ("flows/totalseg.py",),
            "autoanatomist": ("flows/autoanatomist.py",), "autoanatomist2": ("flows/autoanatomist2.py",),
-           "gold4_totalseg": ("flows/gold4_totalseg.py",)}
+           "gold4_totalseg": ("flows/gold4_totalseg.py",),
+           "qaloop": ("flows/qaloop.py",)}
 # The calls that load a neighbour of tools/ by its name: tools/domain_gap.py names its own helper tool,
 # which loads tools/<name>.py by path, as the others name load_tool and run_tool.
 LOADERS = ("load_tool", "run_tool", "tool")
@@ -301,6 +302,15 @@ class ListsTest(unittest.TestCase):
         paths = code_paths("autoanatomist.sbatch")
         self.assertIn("grid/autoanatomist.sbatch", paths)
         for name in self.code.KINDS["autoanatomist"]:
+            with self.subTest(name=name):
+                self.assertTrue(any(name.rstrip("/") == path or name.startswith(path.rstrip("/") + "/") for path in paths), name)
+
+    def test_the_loops_copy_holds_every_file_its_kind_names(self):
+        # Each link copies CODE_PATHS at the chain's commit and its launcher names the run's code from
+        # that copy, so a file the kind names outside them would refuse every link
+        paths = code_paths("qaloop.sbatch")
+        self.assertIn("grid/qaloop.sbatch", paths)
+        for name in self.code.KINDS["qaloop"]:
             with self.subTest(name=name):
                 self.assertTrue(any(name.rstrip("/") == path or name.startswith(path.rstrip("/") + "/") for path in paths), name)
 

@@ -30,10 +30,10 @@ is a sweep's state folder, tools/block_sweep.py's with the rows it starts; `swee
 flows/, named by the launcher's key (schwingnet.pipeline.run_key), `v1` the version 1 run of
 tools/flow.py as a launched flow, `experiment` one requested combination of it, `latency` one job
 of the latency word on a run's checkpoint, the last two the DRR domain-gap study's parts and its
-MOOSE masks; `realism`, `totalseg`, `autoanatomist`, `autoanatomist2` and `gold4_totalseg` are
-flows of flows/ too, the FluXray reproduction's stages, the gold tier 3 completion's TotalSegmentator
-arm, the auto-anatomist screens' trials and joins, and TotalSegmentator's tasks and merge on the gold
-tier 4 CTs.
+MOOSE masks; `realism`, `totalseg`, `autoanatomist`, `autoanatomist2`, `gold4_totalseg` and `qaloop`
+are flows of flows/ too, the FluXray reproduction's stages, the gold tier 3 completion's
+TotalSegmentator arm, the auto-anatomist screens' trials and joins, TotalSegmentator's tasks and
+merge on the gold tier 4 CTs, and the QA loop's rounds.
 
 A copy of the code that `git archive` made, as the DRR domain-gap study's prepare makes one so that
 no later step reads the checkout while the gate moves it, holds no .git; it holds COPY_RECORD
@@ -125,6 +125,12 @@ KINDS = {
 # The second screen (docs/research/autoanatomist-screen2/PREREG.md) runs the first screen's flow under
 # a kind of its own, so it reaches every file the first does and its own flow file.
 KINDS["autoanatomist2"] = (*KINDS["autoanatomist"], "flows/autoanatomist2.py")
+# The QA loop (docs/research/qa-loop/PREREG.md): the flow, the round tool it runs and the two tools that
+# loads, the vendored package the round trains and draws its phantoms with, and the frozen split and
+# test list the real pairs are dealt by. The plan is in the launcher's key by its bytes (key_reads).
+KINDS["qaloop"] = ("flows/qaloop.py", "flows/stage.py", "flows/stage_registry.py", "tools/qaloop_round.py",
+                   "tools/qaloop_gates.py", "tools/qaloop_samples.py", "grid/autoanatomist/", "data/splits/rule.json",
+                   "data/splits/test-persons.json")
 
 NAMES_THE_RUN = "names the run: the files it lists are the digest, so a change to the lists changes the digest by itself"
 LAUNCHES = "starts or carries on the flow's run, which it names by this digest, and computes nothing the run keeps"
@@ -190,6 +196,10 @@ LEFT_OUT["gold4_totalseg"] = {**STAGE_PAGE_LEFT_OUT,
                               "tools/run_code.py": NAMES_THE_RUN,
                               "tools/report.py": "is named by flows/stage.py for a run's report, which this flow never makes; "
                               "its report is the merge's counts, written by its tool"}
+LEFT_OUT["qaloop"] = {**STAGE_PAGE_LEFT_OUT,
+                     "tools/report.py": "writes and checks the loop's CLAIM 2024 and REFORMS report from the record in its end "
+                     "step, after every round; it computes nothing a round or a decision comes from",
+                     "tools/wandb_log.py": ROW_LEFT_OUT["tools/wandb_log.py"]}
 
 
 class RunCodeError(Exception):

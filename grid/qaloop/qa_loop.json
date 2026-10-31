@@ -1,0 +1,114 @@
+{
+  "plan": "qa_loop",
+  "purpose": "The QA loop: the auto-anatomist trained round after round on the six column classes' phantoms, every round asking the six gates, until every gate passes, a gate lacks its data, no failing gate has a change left within these limits, or the rounds run out; the fingerprint searched on phantoms and the C-ArmLSpine CBCT-to-frame pairs together, presence and real naming asked of the pairs' validation persons.",
+  "class": "loop",
+  "rounds": 40,
+  "gates": [
+    "convergence",
+    "anomaly",
+    "fingerprint",
+    "presence",
+    "real_naming",
+    "latency"
+  ],
+  "words": [
+    "objective=mask",
+    "naming=off",
+    "schedule=fixed",
+    "lam_fixed=1",
+    "w_fixed=0",
+    "w_feature=0",
+    "seed=1"
+  ],
+  "steps_per_round": 2000,
+  "classes": [
+    "typical",
+    "lumbar_rib",
+    "no_rib_t12",
+    "six_lumbar",
+    "four_lumbar",
+    "t13"
+  ],
+  "phantom_rows": {
+    "gate_per_class": 32,
+    "spacing": 1.25,
+    "noise": 20.0
+  },
+  "fingerprint": {
+    "gate_persons": 64,
+    "frames_per_view": 4,
+    "k_max": 6,
+    "noise_px": 2.0,
+    "folds": 3,
+    "min_gain": 0.005,
+    "lordosis": [
+      0.3,
+      1.2
+    ],
+    "anchors": [
+      "bottom",
+      "none"
+    ]
+  },
+  "pairs": {
+    "root": "carmlspine",
+    "stand_ins": 0,
+    "size": 512
+  },
+  "presence": {
+    "radius": 8,
+    "sigma": 1.5,
+    "null_per_body": 200
+  },
+  "bars": {
+    "convergence": {
+      "window": 200,
+      "rel_tol": 0.02,
+      "rise_tol": 0.05
+    },
+    "anomaly": {
+      "dice": 0.8,
+      "named_right": 0.7,
+      "probe_recall": 0.6
+    },
+    "fingerprint": {
+      "accuracy_low": 0.9,
+      "margin": 2.1972
+    },
+    "presence": {
+      "frame_mean": 0.6,
+      "share_low": 0.6
+    },
+    "real_naming": {
+      "accuracy_low": 0.9,
+      "margin": 2.1972
+    },
+    "latency": {
+      "p95_ms": 97.0
+    }
+  },
+  "start": {
+    "phantoms_per_class": 8,
+    "w_name": 0.1,
+    "fingerprint_persons": 16,
+    "max_landmarks": 6,
+    "presence_floor": 0.0
+  },
+  "limits": {
+    "phantoms_per_class": null,
+    "w_name": 1.6,
+    "fingerprint_persons": null,
+    "max_landmarks": 18,
+    "presence_floor": 0.5
+  },
+  "latency_runs": 500,
+  "watch": {
+    "every_epochs": 10,
+    "patience_epochs": 50,
+    "min_gain": 0.01,
+    "explode": 10.0,
+    "warm_epochs": 20,
+    "watch_per_class": 8,
+    "patience_rounds": 4
+  }
+}
