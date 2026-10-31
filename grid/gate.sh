@@ -2273,7 +2273,7 @@ word_totalseg_gold4() {  # TotalSegmentator on the gold tier 4 CTs: an array and
   echo "submitted TotalSegmentator on the gold 4 CTs: the array $chain ($GOLD4_TASKS tasks, each on the first card of the gpu class that frees, sharing the CTs; $labels label maps stood before it) and the merge $merge afterany it on a CPU node, in $GOLD4_ROOT/chains/$chain. Send totalseg gold4 again once they end to read the report, logs/TOTALSEG-gold4.md, and to carry on the CTs left."
 }
 
-word_census() {  # two censuses, each one CPU job: tiers, the owner's gold and silver tiers (waiting for his count), and gold3, the gold tier census (his count of 2026-10-29 12:26 UTC)
+word_census() {  # two censuses, each one CPU job: tiers, the owner's gold and silver tiers (no count needed since his word of 2026-10-30 23:03 UTC), and gold3, the gold tier census (his count of 2026-10-29 12:26 UTC)
   case "$id" in
     tiers) word_census_tiers ;;
     gold3) word_census_gold3 ;;
