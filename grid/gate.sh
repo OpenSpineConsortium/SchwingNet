@@ -233,9 +233,9 @@
 # grid/morphometry.sbatch;
 # not the DRR domain-gap study's steps, grid/drr-gap.sbatch, which run from a copy of their code); the
 # gate's side skips its fast-forward while the file is there, and every word but a refused one
-# clears a hold whose job Slurm no longer holds, so the run's later steps run the code it
-# recorded. One file holds one job, so each run that takes it waits afterany on every other one
-# still live (checkout_holders) rather than run beside it.
+# drops each line of the hold whose job Slurm no longer holds, so the run's later steps run the code it
+# recorded. The file holds one line a run, so runs side by side at one commit each hold it, and the
+# checkout moves only once the last of them has ended (release_hold, checkout_holders).
 # Every submission is one line of grid/logs/GATE_JOBS.txt (<job id> <word> <what> <when>) as well
 # as of hpcworker's ledger for the project; status and stop read the gate's file, which knows the
 # word each job came from, and touch no job it does not name. Which of them are live is read from
@@ -557,20 +557,17 @@ chain() {  # chain DEPEND [run-xray-chain.sh arguments...]: the X-ray chain afte
   record "$XR_FETCH" xr_fetch; record "$(value_of bank "$after")" xr_bank; record "$XR_CATALOG" xr_catalog
 }
 checkout_holders() {  # afterany:<job> for every live job of the gate's that holds the checkout while it runs, comma-joined
-  # A version 1 run, a sweep, an experiment run, a benchmark, an anomaly, bordercall, totalseg or realism stage and a morphometry set each write grid/logs/HOLD, one file
-  # naming one job, and the first of two side by side to end would clear it while the other still
-  # runs, whose end check then finds the checkout moved and throws the run away; so each waits for
-  # the others, a sweep sent while a benchmark lasts up to its 12 hours among them. The DRR domain-gap
-  # study's three jobs (bench_flexray_drr_gap, _shard, _merge) match too, though they run from a copy
-  # of their code and hold no HOLD, so a run sent while the study lasts waits for it as it waited for
-  # the study's one job before: bench flexray_drr_seg among them, which writes the masks it reads.
-  # The morphometry join, morphometry_covariates, runs from git's copy of its code and holds none; its
-  # interpreter is the checkout's train-cpu environment only where no other imports numpy and sqlite3.
-  # A morphometry set whose submission's answer was lost holds it all the same, though the gate's list
-  # never named its job, so that job is found as morphometry_lost_live finds it and waited for too.
+  # Every run that holds the checkout (a version 1 run, a sweep, an experiment run, a benchmark, an
+  # anomaly, bordercall, totalseg or realism stage, a morphometry set) adds a line of its own to
+  # grid/logs/HOLD and drops only that line when it ends, and the gate's side skips its fast-forward
+  # while any line is left (release_hold). So since 2026-10-31 (greg: "i dont see why multiple jobs can
+  # pin to the same commit") those runs no longer wait for each other: each one sent while the checkout
+  # is held starts at the held commit beside the others. Until then the file named one job, and the
+  # first of two side by side to end would have freed the checkout under the other. What still waits
+  # is data, not code: the DRR domain-gap study (bench_flexray_drr_gap, _shard, _merge) reads the masks
+  # bench flexray_drr_seg writes, so a run sent while either lasts waits for it.
   local job waits=""
-  for job in $( { [ ! -f "$STATE" ] || awk '$3 == "v1_driver" || $3 == "sweep" || $3 ~ /^experiment_[0-9]+$/ || $3 ~ /^bench_[a-z_]+$/ || $3 ~ /^anomaly_[a-z_]+$/ || $3 ~ /^bordercall_[a-z]+$/ || $3 ~ /^totalseg_[a-z]+$/ || $3 ~ /^realism_[a-z]+$/ || ($3 ~ /^morphometry_[a-z]+$/ && $3 != "morphometry_covariates") { print $1 }' "$STATE"
-                  morphometry_lost_live enhance; morphometry_lost_live verse; } | sort -u); do
+  for job in $( { [ ! -f "$STATE" ] || awk '$3 ~ /^bench_flexray_drr_(gap|seg)/ { print $1 }' "$STATE"; } | sort -u); do
     case "$QUEUED" in *" $job "*) waits=$(joined "$waits" "afterany:$job") ;; esac
   done
   echo "$waits"
@@ -2146,10 +2143,10 @@ word_morphometry() {  # bordercall's morphometry engine over one gold tier 3 set
     prior) word_morphometry_prior; return ;;
     *) echo "refusing: morphometry takes enhance or verse, covariates once both have run, or prior"; return 64 ;;
   esac
-  # One at a time: both sets hold the checkout and write under one root, and the count is one job a set;
-  # the join reads both sets' rows, so neither set is measured again while it runs. A job a lost answer
-  # may have queued counts as one of them (morphometry_busy).
-  busy=$(morphometry_busy)
+  # The two sets write under their own folders and each holds the checkout by a line of its own, so
+  # enhance and verse run side by side (greg, 2026-10-31); a set waits only for its own live job and for
+  # the join and the prior, which read both sets' rows. A job a lost answer may have queued counts too.
+  busy=$(morphometry_busy_for "$id")
   [ -z "${busy// /}" ] || { echo "refusing: a morphometry job is still queued or running (job $busy); send morphometry $id again once it ends"; return 75; }
   if [ -f "$report" ]; then
     # Kept, so the owner's count holds: a report that stands queues nothing, whether it ended 0 or in
@@ -2311,6 +2308,10 @@ morphometry_lost_live() {  # morphometry_lost_live SET: the live job a submissio
 morphometry_busy() {  # the live jobs of both sets and the join, those the gate's list names and those a lost answer may have queued, space-separated
   { live_of morphometry_enhance; live_of morphometry_verse; live_of morphometry_covariates; live_of morphometry_prior
     morphometry_lost_live enhance; morphometry_lost_live verse; morphometry_lost_live covariates; } | tr '\n' ' '
+}
+morphometry_busy_for() {  # morphometry_busy_for SET: the live jobs a new SET job waits for, its own set's, the join's and the prior's, space-separated
+  { live_of "morphometry_$1"; live_of morphometry_covariates; live_of morphometry_prior
+    morphometry_lost_live "$1"; morphometry_lost_live covariates; } | tr '\n' ' '
 }
 marker_back() {  # marker_back MARKER BEFORE: a send that queued nothing puts its marker back as it stood, BEFORE's text, or none where BEFORE is empty
   if [ -n "$2" ]; then echo "$2" > "$1"; else rm -f "$1"; fi
@@ -3230,14 +3231,23 @@ word_cancel() {  # the job named, if the gate's and live, with every live job of
   "$SCANCEL" $cancel && echo "cancelled ($from): $cancel"
 }
 
-release_hold() {  # a run's hold (grid/v1-driver.sbatch, grid/sweep-driver.sbatch, grid/experiment-driver.sbatch, grid/bench.sbatch, grid/drr-seg.sbatch, grid/anomaly.sbatch, grid/bordercall.sbatch, grid/realism.sbatch, grid/morphometry.sbatch) is cleared once Slurm no longer holds its job
-  local job
+release_hold() {  # each run's line of the hold (grid/v1-driver.sbatch, grid/sweep-driver.sbatch, grid/experiment-driver.sbatch, grid/bench.sbatch, grid/drr-seg.sbatch, grid/anomaly.sbatch, grid/bordercall.sbatch, grid/realism.sbatch, grid/morphometry.sbatch and the rest) is dropped once Slurm no longer holds its job, and the file with the last
+  # One line a run, so runs side by side at one commit each hold it and the first to end frees nothing
+  # the others still need; the drivers add and drop their own line under the same flock.
+  local job live="" line
   [ -f "$LOGS/HOLD" ] || return 0
-  job=$(awk '{ print $1; exit }' "$LOGS/HOLD")
-  case "$QUEUED" in
-    *" $job "*) echo "  the checkout holds still at $(awk '{ print substr($2, 1, 7); exit }' "$LOGS/HOLD") while the run that took it (job $job) lasts" ;;
-    *) rm -f "$LOGS/HOLD" ;;
-  esac
+  exec 7>>"$LOGS/HOLD.lock"; flock -w 60 7 2>/dev/null || :
+  while read -r line; do
+    job=${line%% *}
+    case "$QUEUED" in *" $job "*) live="$live$line"$'\n' ;; esac
+  done < "$LOGS/HOLD"
+  if [ -n "$live" ]; then
+    printf '%s' "$live" > "$LOGS/HOLD.tmp" && mv -f "$LOGS/HOLD.tmp" "$LOGS/HOLD"
+    echo "  the checkout holds still at $(awk '{ print substr($2, 1, 7); exit }' "$LOGS/HOLD") while the runs that took it (job $(awk '{ print $1 }' "$LOGS/HOLD" | tr '\n' ' ' | sed 's/ $//; s/ /, job /g')) last"
+  else
+    rm -f "$LOGS/HOLD"
+  fi
+  exec 7>&-
 }
 settle_banks() {  # every bank's admission whose job Slurm no longer holds is settled (grid/size-rule.sh, settle_admission)
   # The job hands itself to the launcher with exec and so cannot settle its own once it ends; the
