@@ -3,7 +3,7 @@ name: Research loop
 # The textbook's research loop (issue #220): every four hours a Claude session takes the
 # best-ranked item of the claims register (docs/textbook/claims.json, chapter 33) that nobody
 # holds, opens or carries on its issue labelled research, claims it as the worker research-loop
-# and works it to a pull request the owner merges, under the standing brief
+# and works it to a pull request that merges itself once its checks are green, under the standing brief
 # .github/symphony/research.md. The owner asked for it on 2026-10-24 ("CONTINUE THESE TYPES OF
 # REQUESTS AUTONOMOUSLY FOR LEADING THE REASAEARCH FURTHER") and gave it "full command to direct
 # autonmous research": it starts grid work, fetches and training without asking, within the rules
