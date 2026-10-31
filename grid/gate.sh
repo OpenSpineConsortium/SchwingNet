@@ -57,6 +57,12 @@
 #                   queues one job, which starts writing only when the size rule admits what the
 #                   unpacked files take; the next send prints its report, logs/UNPACK-<id>.md, and
 #                   clears it, so a later send goes on where a job cut short stopped
+#   prune <list>    the deletion of the raw folders a list of grid/prune/ names (tools/prune.py,
+#                   grid/prune.sbatch, the owner's choice of 2026-10-31, #515), in four sends: the first
+#                   queues one job that plans, recording each folder's files and bytes and deleting
+#                   nothing; the second prints the plan; the third queues the deletion, which removes a
+#                   folder only when it still matches its plan; the fourth prints what went and clears
+#                   the list's files, so a later send plans again; never while a fetch of a set it names is live
 #   nodequota       the volume's readout as a compute node reads it (grid/nodequota.sbatch, the owner's yes
 #                   of 2026-10-24): the first send queues one job, the next prints logs/NODEQUOTA.md and
 #                   clears it, so the send after that looks again
@@ -394,18 +400,18 @@ TOTALSEG_RERUNS="complete:40882547"
 COVARIATES_PAGE_LINES=300
 LOGS=$REPO/grid/logs
 STATE=$LOGS/GATE_JOBS.txt
-WORDS="start status leaks v1 latency fetch explore dropzip unpack nodequota folders samples sweep bank experiment bench anomaly bordercall census totalseg realism autoanatomist morphometry literature stop cancel"
+WORDS="start status leaks v1 latency fetch explore dropzip unpack prune nodequota folders samples sweep bank experiment bench anomaly bordercall census totalseg realism autoanatomist morphometry literature stop cancel"
 ENVS="default train-cpu train-gpu telemetry"
 
 word=${1:-}
 id=${2:-}
 # Matched whole, so one argument holding two words ("v1 latency") is refused and never runs nothing.
 case "$word" in
-  start|status|leaks|v1|latency|fetch|explore|dropzip|unpack|nodequota|folders|samples|sweep|bank|experiment|bench|anomaly|bordercall|census|totalseg|realism|autoanatomist|morphometry|literature|stop|cancel) ;;
+  start|status|leaks|v1|latency|fetch|explore|dropzip|unpack|prune|nodequota|folders|samples|sweep|bank|experiment|bench|anomaly|bordercall|census|totalseg|realism|autoanatomist|morphometry|literature|stop|cancel) ;;
   "") echo "refusing: no word; one of: $WORDS"; exit 64 ;;
   *) echo "refusing: '$word' is not one of: $WORDS"; exit 64 ;;
 esac
-if [ "$word" = fetch ] || [ "$word" = explore ] || [ "$word" = dropzip ] || [ "$word" = unpack ] || [ "$word" = sweep ] || [ "$word" = bank ] || [ "$word" = bench ] || [ "$word" = anomaly ] || [ "$word" = bordercall ] || [ "$word" = census ] || [ "$word" = totalseg ] || [ "$word" = realism ] || [ "$word" = autoanatomist ] || [ "$word" = morphometry ] || [ "$word" = literature ]; then
+if [ "$word" = fetch ] || [ "$word" = explore ] || [ "$word" = dropzip ] || [ "$word" = unpack ] || [ "$word" = prune ] || [ "$word" = sweep ] || [ "$word" = bank ] || [ "$word" = bench ] || [ "$word" = anomaly ] || [ "$word" = bordercall ] || [ "$word" = census ] || [ "$word" = totalseg ] || [ "$word" = realism ] || [ "$word" = autoanatomist ] || [ "$word" = morphometry ] || [ "$word" = literature ]; then
   [ $# -eq 2 ] || { echo "refusing: $word takes exactly one id"; exit 64; }
   case "$id" in ""|*[!a-z0-9_]*) echo "refusing: an id is lower-case letters, digits and _"; exit 64 ;; esac
   [ ${#id} -le 40 ] || { echo "refusing: an id is at most 40 characters"; exit 64; }
@@ -1429,6 +1435,43 @@ word_dropzip() {
   envs_ready || { echo "refusing: the environments are not ready; 'start' makes them first"; return 75; }
   submit dropzip batch DROPZIP_ID="$id" DROPZIP_RAW="$raw" -- dropzip.sbatch > /dev/null || return 1
   echo "submitted one job. Send dropzip $id again once it ends to read what it deleted."
+}
+
+prune_print() {  # prune_print REPORT: one report of the prune word, masked and cut as dropzip's is
+  echo "## $(basename "$1") ($(date -r "$1" '+%F %T'))"
+  head -n 100 "$1" | LC_ALL=C tr -cd '\11\12\40-\176' | masked | head -c 20000
+}
+word_prune() {
+  local list=$REPO/grid/prune/$id.txt base=$LOGS/PRUNE-$id busy one fetches=""
+  [ -f "$list" ] || { echo "refusing: $id is not a list of grid/prune/"; return 64; }
+  busy=$(live_of prune "prune:$id")
+  [ -z "$busy" ] || { echo "refusing: a step of prune $id is still queued or running (job $busy); send prune $id again once it ends"; return 75; }
+  # Never while a set it names is landing: a folder still being written changes under its plan.
+  for one in $(sed 's/#.*//' "$list"); do
+    fetches="$fetches $(live_of xr_fetch "fetch:$one") $(live_of "dp_$one") $(named_live "dp_$one" | tr '\n' ' ')"
+  done
+  [ -z "${fetches// /}" ] || { echo "refusing: a fetch of a set prune $id names is still queued or running (job$fetches)"; return 75; }
+  if [ -f "$base.done.md" ]; then
+    prune_print "$base.done.md"
+    rm -f "$base.done.md" "$base.plan.md" "$base.plan.json" "$base.shown"
+    return 0
+  fi
+  if [ -f "$base.plan.md" ] && [ ! -f "$base.shown" ]; then
+    # Printed once before anything is deleted, so what goes is seen before it goes.
+    prune_print "$base.plan.md"
+    : > "$base.shown"
+    echo "Send prune $id again to delete what this plan lists; a folder that changed since is kept."
+    return 0
+  fi
+  envs_ready || { echo "refusing: the environments are not ready; 'start' makes them first"; return 75; }
+  if [ -f "$base.shown" ] && [ -f "$base.plan.json" ]; then
+    submit prune batch PRUNE_LIST="$id" PRUNE_MODE=delete PRUNE_DATA="$DATA_ROOT" -- prune.sbatch > /dev/null || return 1
+    echo "submitted the deletion. Send prune $id again once it ends to read what it deleted."
+    return 0
+  fi
+  rm -f "$base.plan.md" "$base.plan.json" "$base.shown"
+  submit prune batch PRUNE_LIST="$id" PRUNE_MODE=plan PRUNE_DATA="$DATA_ROOT" -- prune.sbatch > /dev/null || return 1
+  echo "submitted the plan, which deletes nothing. Send prune $id again once it ends to read it."
 }
 
 word_unpack() {
@@ -3273,6 +3316,7 @@ case "$word" in
   explore) word_explore ;;
   dropzip) word_dropzip ;;
   unpack) word_unpack ;;
+  prune) word_prune ;;
   nodequota) word_nodequota ;;
   folders) word_folders ;;
   experiment) word_experiment ;;

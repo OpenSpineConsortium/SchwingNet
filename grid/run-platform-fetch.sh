@@ -44,7 +44,10 @@ done
 # docs/research/grid-pruning-2026-10-31.md), and their rows are gone so no chain fetches them again:
 # aws_stoic2021, idc_ldct_and_projection_data, idc_midrc_ricord_1b, idc_nsclc_radiomics, rsna_rspect_pe,
 # zenodo_medpelvis3d, zenodo_ts_task_hip_implant, zenodo_ts_task_liver_lesions,
-# zenodo_ts_task_pleural_effusion and zenodo_unitochest.
+# zenodo_ts_task_pleural_effusion and zenodo_unitochest. On 2026-10-31 01:33 UTC he chose to delete the
+# partly landed hf_abdomenatlas2_0_mini, whose sets AbdomenAtlas 3.0 Mini holds, and its row went too;
+# the full NLST and ReXGradient, deleted by the same choice (grid/prune/round2.txt), keep their rows,
+# since neither is ever fetched but by its own word.
 # id|route|size_gb (0 = not stated)|licence|access|args|extra environment (VAR=value, space-separated)
 # An hf-token line's args go to reacquire.py hf-get, whose --include is a glob (fnmatch, as huggingface_hub's
 # allow_patterns), never the regular expression the acq and zenodo routes read: "." there matches no file,
@@ -66,7 +69,6 @@ idc_cptac_lscc|idc|8.3|CC BY 4.0|open|cptac_lscc|
 idc_prostate_anatomical_edge_cases|idc|16.6|CC BY 4.0|open|prostate_anatomical_edge_cases|
 idc_nsclc_radiogenomics|idc|28|CC BY 3.0|open|nsclc_radiogenomics|
 zenodo_vsd_fullbody|acq|116.3|CC BY-NC-SA|open|zenodo --collection zenodo_vsd_fullbody --record 8270365 --include .|
-hf_abdomenatlas2_0_mini|acq|620.4|CC BY-NC-SA 4.0|open|hf --collection hf_abdomenatlas2_0_mini --repo AbdomenAtlas/AbdomenAtlas2.0Mini --include .|NOTE=the id map against 3.0 Mini is a later step
 idc_lidc_idri|idc|123.3|CC BY 3.0|open|lidc_idri|
 "
 # Granted gated sources: the token or link in a mode-0600 file the owner writes, read by the job.

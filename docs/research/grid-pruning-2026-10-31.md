@@ -37,3 +37,23 @@ idc_cptac_lscc (CTs with the spine in view and no masks, which may join gold 4 o
 cathaction, aariz_cephalograms and scidb_mtddh (X-ray sets that are not of the spine). The feed counts 9.9 TB of the volume
 as files outside the datasets (banks, renders, raw archives beside their unpacked copies, run outputs); none of it is
 named for deletion before a fresh read-only survey (grid/storage.sh survey in spine-datasets) lists it by folder.
+
+## Round 2: the folders the planner does not track (about 4.2 TB)
+
+On "continue pruning" (01:14 UTC) the thread read spine-datasets' survey of the volume (storage/survey.json on its
+branch storage-report, 2026-10-25), which splits the 17.56 TB into datasets 6.98 TB, untracked data 7.24 TB, other
+2.08 TB, runs and outputs 0.78 TB, masks 0.43 TB and jobs and logs 0.05 TB, and proposed four raw folders; the owner
+chose them at 01:33 UTC (issue #515). By the gate's status of 01:35 UTC no fetch was running.
+
+| set | size | why |
+| --- | ---: | --- |
+| idc_nlst | 3,169 GB | the full NLST, partly landed: chest low-dose CT, no full spine, not paired; nlst_pilot stays |
+| hf_abdomenatlas2_0_mini | 331 GB | partly landed; AbdomenAtlas 3.0 Mini, a gold 4 collection, aggregates the same public sets |
+| zenodo_unitochest | 162 GB | a second copy on the data root of a set retired in round 1 |
+| hf_rexgradient_160k | 156 GB | chest radiographs with no level truth |
+
+None of them is a set the planner can retire (it answers "not on the grid" or "not frozen"), so the gate word
+`prune round2` (grid/prune/round2.txt, tools/prune.py) plans them in one job, prints the plan, and deletes in a second
+job only the folders that still hold exactly what the plan recorded. The u251 folders (RNA-seq and methylation, about
+1.9 TB) are not this project's and were left to the owner; the old nnU-Net results (Dataset813, 279 GB) and
+results/ablate (202 GB) stay as records of the reported stack.
