@@ -35,6 +35,12 @@ The canal's width on the CT is within about a millimetre of Panjabi's at 13 of 1
 
 SPINEPS's subregions, which the census holds for autoPET and gold tier 4, were tried for the body (job 40908618, 60 studies): its corpus label on CT takes in more, not less, reading the neck's upper plate 10 to 15 mm and the lumbar plates 4 to 6 mm over Panjabi with scanimport's slab, and 2 to 4 with the plate rule. SPINEPS is trained on MRI; on CT its corpus is not the bone's outline, so segmenting again with it would not give the bodies.
 
+## The body's edges on the CT, and who the population is
+
+- The end plate's edges moved to the half-maximum between the bone's peak and the tissue outside it on the CT (the relative 50 per cent edge rule), row by row over the plate's front half, did not bring the widths closer (89 studies, job 40909784): the neck's upper plate fell from +4 to +6 mm to +2.5 to +4, while T7 to T12 rose to +3 to +5; the depths moved by under a millimetre. Dropping the cells that rise past the plate (the uncinate processes) changed the neck by 0.3 mm. Neither is in the engine.
+- The upper plate's width and depth split by age and sex over the 1,008 autoPET and TotalSegmentator adults the covariates join dates and sexes (job 40909969): people under 50 sit 0.1 to 3.4 mm under Panjabi from T4 to L5, people of 65 and over 1.3 to 5.6 mm over; women 0.3 to 3.1 under (T10 +1.1), men 2.1 to 6.5 over. The thoracolumbar gap that remains is who the population is, older and more often male than a dozen cadavers, not the reading; matching the population to Panjabi's own age and sex mix, which his papers give, is the published way to set them side by side (direct standardisation), and is not done here.
+- The CNS slide (spine-program #254, v18) draws the width at the lower end plate from C3, beside Panjabi's EPWl, since the upper plate's width takes in the uncinate processes in the neck, and the depth at the upper plate, beside his EPDu, since the lower plate's depth takes in the anterior lip; means alone.
+
 ## What 1 mm against Panjabi can and cannot mean
 
 - Panjabi's means come from 12 cadavers. Their 95 per cent margins (1.96 SEM) are 0.7 to 2.6 mm on these chords, so a population mean within 1 mm of his is a finer bar than his own means hold.
