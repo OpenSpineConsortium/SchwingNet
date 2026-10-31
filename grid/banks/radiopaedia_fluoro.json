@@ -1,0 +1,28 @@
+{
+  "id": "radiopaedia_fluoro",
+  "raw": "/rs/rs_grp_oschome/go2432/data/radiopaedia_fluoro/raw",
+  "bank": "/rs/rs_grp_oschome/go2432/data/radiopaedia_fluoro/bank",
+  "images": [
+    "*/*.jpg"
+  ],
+  "format": "jpg",
+  "person": {
+    "regex": "^(?P<case>[1-9][0-9]*)/"
+  },
+  "view": {
+    "lat_from_ap_deg": null,
+    "gantry_deg": null
+  },
+  "device": {
+    "make": null,
+    "model": null,
+    "detector": null
+  },
+  "modality": "rf",
+  "device_class": "mobile_c_arm",
+  "split": "train",
+  "labels": null,
+  "synthetic": false,
+  "px_mm": null,
+  "notes": "Radiopaedia fluoroscopy and angiographic series of the Spine cases under agreement 202610-9517, laid out by tools/radiopaedia_import.py as raw/<rID>/<sha256 prefix>.jpg; the view varies by image and is unread; levels only in the case text"
+}

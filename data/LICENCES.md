@@ -38,6 +38,8 @@ yes: the recipe takes the source now; after review: its class fits, and the reci
 | open_i_chest | unknown | rule | - | - | - | - |
 | padchest | agreement | rule | - | - | - | yes |
 | pengwin_task2_xrays | unknown | rule | - | - | - | - |
+| radiopaedia_fluoro | non-commercial | rule | - | - | yes | yes |
+| radiopaedia_xr | non-commercial | rule | - | - | yes | yes |
 | verse_2d_projections | unknown | rule | - | - | - | - |
 | vertxnet_nhanes2_labels | unknown | rule | - | - | - | - |
 | vfss2022 | unknown | rule | - | - | - | - |

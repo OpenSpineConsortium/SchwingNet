@@ -1,0 +1,6 @@
+# The owner's choice of 2026-10-31 01:33 UTC (issue #515): raw folders on the data root that neither
+# the gold tier nor the fluoroscopy work reads and that the storage planner does not track.
+idc_nlst
+hf_abdomenatlas2_0_mini
+zenodo_unitochest
+hf_rexgradient_160k
