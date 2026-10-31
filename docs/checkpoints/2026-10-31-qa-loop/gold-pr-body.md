@@ -1,5 +1,5 @@
 <!-- claude-projects-attribution: {"github_login":"Gregory-Schwing-MD-PhD"} -->
-_Requested by **greg** · [project thread](https://claude.ai/code/project/chan_016ZhceYRQMrRvrRUGLiSJoD?thread=cmsg_016ZhceYRQMrRvrRUGLiSJoDAMvg6vJrs93sb7Dcwr1tga)_
+_Requested by **greg** - [project thread](https://claude.ai/code/project/chan_016ZhceYRQMrRvrRUGLiSJoD?thread=cmsg_016ZhceYRQMrRvrRUGLiSJoDAMvg6vJrs93sb7Dcwr1tga)_
 
 Before: the QA loop asked its gates of phantoms and of C-ArmLSpine's pairs only. Nothing read gold tier 3's or gold tier 4's CTs, so nothing said whether the landmarks the loop chooses name the levels of real whole spines, whether the columns the latent prior draws span them, or whether the chosen landmarks show on radiographs cast from them. The owner asked at 03:24 UTC on 2026-10-31 to start on both tiers end to end once the loop worked, building the X-ray and evaluation parts.
 
