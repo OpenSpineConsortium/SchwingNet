@@ -47,7 +47,7 @@ NEW_SCRIPTS = ("gate.sh", "hpcw.sh", "box.sh", "bin/pixi", "bin/train-cpu-python
                "run-platform-fetch.sh", "sweep-driver.sbatch", "v1-version.sh", "realism.sbatch", "venv.sh",
                "drr-gap.sbatch", "drr-seg.sbatch", "morphometry.sbatch", "gold3-census.sbatch", "bordercall-complete.sbatch",
                "autoanatomist.sbatch", "autoanatomist2.sbatch", "morphometry-covariates.sbatch", "morphometry-prior.sbatch",
-               "totalseg-gold4.sbatch")
+               "morphometry-compare.sbatch", "totalseg-gold4.sbatch")
 ENVS = ("default", "train-cpu", "train-gpu", "telemetry")
 # The morphometry engine's code stamps: the merged bordercall ee495d5's, and 16f7b40's, which the sets'
 # first reports name (grid/gate.sh, MORPHOMETRY_RERUNS).
@@ -3142,6 +3142,45 @@ exec python3 "$@"
         self.assertEqual(again.returncode, 0, again.stdout + again.stderr)
         self.assertIn("from older code: fitting again", again.stdout)
         self.assertEqual(len(self.submitted()), 2)
+
+    def test_morphometry_compare_queues_one_cpu_job_from_git_and_prints_its_report(self):
+        refused = self.gate("morphometry", "compare")
+        self.assertEqual(refused.returncode, 2, refused.stdout)
+        self.assertIn("needs a set's kept rows", refused.stdout)
+        sys.path.insert(0, str(ROOT / "tests"))
+        import test_morphometry_compare as TC
+        root = TC.make_root(self.tmp / "go2432")
+        quiet = {"GIT_CONFIG_COUNT": "1", "GIT_CONFIG_KEY_0": "gc.auto", "GIT_CONFIG_VALUE_0": "0"}
+        git = ["git", "-C", str(self.repo), "-c", "user.name=t", "-c", "user.email=t@example.org"]
+        env = dict(os.environ, **quiet, GIT_CEILING_DIRECTORIES=str(self.tmp))
+        if not (self.repo / ".git").exists():
+            subprocess.run(["git", "init", "-q", str(self.repo)], env=env, check=True)
+        subprocess.run([*git, "add", "-A", "--", "grid/morphometry_compare.py"], env=env, check=True)
+        subprocess.run([*git, "commit", "-q", "-m", "the comparison"], env=env, check=True)
+        head = subprocess.run([*git, "rev-parse", "HEAD"], env=env, capture_output=True, text=True, check=True).stdout.strip()
+        done = self.gate("morphometry", "compare")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("submitted the morphometry compare job", done.stdout)
+        lines = self.submitted()
+        self.assertEqual(len(lines), 1, lines)
+        self.assertIn("--class batch --name morphometry_compare ", lines[0])
+        self.assertIn(f" COMPARE_COMMIT={head}", lines[0])
+        job = self.recorded()["morphometry_compare"]
+        self.live(job)
+        busy = self.gate("morphometry", "compare")
+        self.assertEqual(busy.returncode, 75, busy.stdout)
+        (self.fake / "queue").write_text("", encoding="utf-8")
+        env = dict(os.environ, SCHWINGNET=str(self.repo), LAB_VOLUME=str(self.tmp), COMPARE_COMMIT=head,
+                   COMPARE_PYTHON=sys.executable, MORPHOMETRY_ROOT=str(root), SLURM_JOB_ID="78")
+        ran = subprocess.run(["bash", str(self.repo / "grid" / "morphometry-compare.sbatch")], cwd=self.repo / "grid",
+                             env=env, capture_output=True, text=True, timeout=120)
+        self.assertIn("SN_COMPARE_RC=0", ran.stdout, ran.stderr)
+        self.assertTrue((root / "compare" / "78" / "compare.csv").is_file())
+        shown = self.gate("morphometry", "compare")
+        self.assertEqual(shown.returncode, 0, shown.stdout + shown.stderr)
+        self.assertIn("pedicle_width: 3 levels, 35 pairs", shown.stdout)
+        self.assertNotIn(str(self.tmp), shown.stdout)
+        self.assertEqual(len(self.submitted()), 1)
 
     def allow_morphometry_rerun(self, word):
         """The owner's word for one more measuring of a set, as a pull request commits it in grid/gate.sh."""

@@ -206,7 +206,11 @@
 #                   correlation prior (grid/prior/gold3_prior.py, grid/morphometry-prior.sbatch; greg, 2026-10-30), one CPU job
 #                   from git's copy of grid/prior at the gate's commit that fits per population how the body
 #                   and end-plate measures move together across levels and measures, the next send printing
-#                   logs/MORPHOMETRY-prior.md, aggregates alone, and a report from older code fitted again
+#                   logs/MORPHOMETRY-prior.md, aggregates alone, and a report from older code fitted again; or
+#                   compare, the rows of the reruns set beside the rows they replaced (grid/morphometry_compare.py,
+#                   grid/morphometry-compare.sbatch; the morphometry handoff of 2026-10-31), one CPU job from git's
+#                   copy of the tool at the gate's commit, the next send printing logs/MORPHOMETRY-compare.md,
+#                   aggregates alone, and a report from older code compared again
 #   realism <stage> one stage of the FluXray reproduction (docs/research/flux-realism/PREREG.md; the owner's
 #                   count of 2026-10-29 02:35 UTC, two GPU jobs): edit, then stats, each one GPU job that runs
 #                   the Metaflow flow flows/realism.py through flows/launch.py (grid/realism.sbatch) once its
@@ -2433,7 +2437,8 @@ word_morphometry() {  # bordercall's morphometry engine over one gold tier 3 set
     enhance|verse) ;;
     covariates) word_morphometry_covariates; return ;;
     prior) word_morphometry_prior; return ;;
-    *) echo "refusing: morphometry takes enhance or verse, covariates once both have run, or prior"; return 64 ;;
+    compare) word_morphometry_compare; return ;;
+    *) echo "refusing: morphometry takes enhance or verse, covariates once both have run, prior or compare"; return 64 ;;
   esac
   # The two sets write under their own folders and each holds the checkout by a line of its own, so
   # enhance and verse run side by side (greg, 2026-10-31); a set waits only for its own live job and for
@@ -2647,6 +2652,40 @@ word_morphometry_prior() {  # the gold tier 3 correlation prior fitted from both
   submit morphometry_prior batch PRIOR_COMMIT="$head" MORPHOMETRY_ROOT="$(morphometry_root)" -- morphometry-prior.sbatch > /dev/null || return 1
   rm -f "$sent"
   echo "submitted the morphometry prior job: one CPU job that reads the rows and writes the priors under the morphometry root. Send morphometry prior again once it ends to read its report, logs/MORPHOMETRY-prior.md."
+}
+word_morphometry_compare() {  # each set's new rows beside the kept rows they replaced (the morphometry handoff of 2026-10-31): one CPU job, its report printed on the next send
+  # As the prior's: a report from this commit is printed and queues nothing, one from older code is compared again.
+  local report=$LOGS/MORPHOMETRY-compare.md sent=$LOGS/MORPHOMETRY-compare.sent busy head
+  busy=$( { live_of morphometry_enhance; live_of morphometry_verse; live_of morphometry_compare; } | tr '
+' ' ')
+  [ -z "${busy// /}" ] || { echo "refusing: a morphometry job is still queued or running (job $busy); send morphometry compare again once it ends"; return 75; }
+  if [ -f "$report" ]; then
+    echo "## $(basename "$report") ($(date -r "$report" '+%F %T'))"
+    head -n 400 "$report" | LC_ALL=C tr -cd '	
+ -~' | report_shapes | masked | head -c 64000
+    began_on_older_code "$report" || return 0
+    mv "$report" "$LOGS/MORPHOMETRY-compare-$(bench_job_of "$report").md" || return 1
+    echo "  the report above is from older code: comparing again at $commit"
+  fi
+  if [ -f "$sent" ]; then
+    if [ -n "$(find "$sent" -mmin -180 2>/dev/null)" ]; then
+      echo "refusing: a morphometry compare job was submitted at $(cat "$sent") and no job id came back; it may still be queued under Slurm's name schwingnet-morphometry_compare. Send morphometry compare again in three hours, or once squeue shows it ended"
+      return 75
+    fi
+    rm -f "$sent"
+  fi
+  [ -f "$REPO/grid/morphometry_compare.py" ] && [ -f "$REPO/grid/morphometry-compare.sbatch" ] || { echo "refusing: no compare tool or job script at this commit"; return 2; }
+  [ -d "$(morphometry_root)/enhance/kept" ] || [ -d "$(morphometry_root)/verse/kept" ] || { echo "refusing: morphometry compare needs a set's kept rows beside its new ones (a rerun of enhance or verse keeps them)"; return 2; }
+  head=$(covariates_commit) || { echo "refusing: the gate cannot read the checkout's commit, which the job copies its code from; nothing was queued"; return 2; }
+  git -C "$REPO" cat-file -e "$head:grid/morphometry_compare.py" 2>/dev/null || { echo "refusing: commit ${head:0:7} holds no grid/morphometry_compare.py, which the job copies; nothing was queued"; return 2; }
+  hpcw_check morphometry_compare batch -- morphometry-compare.sbatch || return 1
+  echo "$(date -u '+%F %T') UTC at commit $commit" > "$sent" 2>/dev/null || {
+    echo "refusing: the gate cannot write logs/$(basename "$sent"), the marker that keeps a lost answer from queueing a second job; nothing was queued"
+    return 1
+  }
+  submit morphometry_compare batch COMPARE_COMMIT="$head" MORPHOMETRY_ROOT="$(morphometry_root)" -- morphometry-compare.sbatch > /dev/null || return 1
+  rm -f "$sent"
+  echo "submitted the morphometry compare job: one CPU job that reads both sides' rows and writes the aggregates under the morphometry root. Send morphometry compare again once it ends to read its report, logs/MORPHOMETRY-compare.md."
 }
 word_morphometry_covariates() {  # the morphometry rows joined with each person's sex and age (one CPU job on the owner's count): queued once, its report printed a page a send
   local report=$LOGS/MORPHOMETRY-covariates.md sent=$LOGS/MORPHOMETRY-covariates.sent busy job missing again="" lost="" before="" head part_job path queued previous
