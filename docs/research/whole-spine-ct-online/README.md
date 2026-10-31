@@ -75,3 +75,13 @@ The owner: "start with NMDID's metadata file, but i want to proceed in order of 
 5. autoPET longitudinal CT, 54 GB, after a person-overlap check against FDG-PET-CT-Lesions.
 
 Nothing above has been fetched.
+
+## 6. NMDID as a rolling pipeline, the owner's word of 2026-10-31 01:16 UTC
+
+The owner: "I ONLY HAVE 20 TB SO I WILL HAVE TO BATCH DOWNLOAD NMDID TRAIN ON THE DATA THEN DELETE SOME AND HAVE SOME BEING DOWNLOADED SO ITS A PIPELINE PROCESS FOR DOWNLOADING THE RAW VOLUMES SEGMENTING TRAINING AND THEN DELETING TO MAKE ROOM FOR NEW DATA". NMDID is over 50 TB, about 3 to 4 GB a person, so it never sits on the grid whole. The design, to be built as a launched flow once the committee approves and the owner gives the okay:
+
+- Batches by person, a few TB each (the size rule's room decides the batch, not a fixed number), with one batch downloading while the one before it is segmented and used, and at most two raw batches on disk at once.
+- Per batch: fetch the raw DICOM, check it, convert the series to NIfTI, segment it with the census's segmenters (SPINEPS, with TotalSegmentator for C2 and the sacrum as the owner allowed on 2026-10-30), run the rule 3 field test, and keep what is small and lasting: the masks, a spine crop of the CT (the column's bounding box with a margin, int16), the morphometry rows, the covariates from the metadata CSV, and the projections training uses. Only then delete the raw volumes.
+- Every kept file and every deleted raw file is recorded by NMDID's person id and sha256, so a deleted volume can be fetched again by id and checked, and a run can say exactly which persons it used.
+- Training reads the kept crops and projections, which stay on disk across batches, so later epochs still see the early batches; it does not have to train on raw volumes while they exist. A step that truly needs the full raw CT (a new segmenter, a new render) runs in the batch's window or re-fetches by id.
+- The latent-prior test reserve rule applies here as to the gold tier: a held-out set of NMDID persons is drawn once, from the metadata, before the first batch, and no training touches it.
