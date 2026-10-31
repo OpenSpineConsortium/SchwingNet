@@ -170,16 +170,31 @@
   "rule": "The levels from C2 to the sacrum an admitted study's release does not draw (admission.json, complete) are drawn by SPINEPS from the masks the census already holds on the grid, never re-run and never TotalSegmentator (the owner's science rule), kept as a machine arm of their own beside the release's masks, recorded by segmenter, version and sha256, never pooled with the release's masks and never raising a tier.",
   "state": "the grid arm is the gate word bordercall complete (grid/bordercall-complete.sbatch, tools/gold3_complete_grid.py, bordercall's holdings/fullspine_complete.py vendored under grid/bordercall/holdings/), one CPU job on the owner's count of 2026-10-29 15:22 UTC, sent once as job 40870822 on 2026-10-29 at 19:35 UTC from commit 5d7842d; it started on 2026-10-30 at 05:01 UTC on hao1 from commit 6b243e7, after the sweep 40870220, ended at 05:16 UTC with exit 0 (15 min 19 s), and its report logs/BORDERCALL-complete.md was read with the same word at 05:50 UTC (counts below); the container arm (SPINEPS 2.1.2, a cloud thread, SchwingNet #458) drew 13 of the 34 VerSe and TotalSegmentator studies of commit 5d7842d; ENHANCE.PET 1379 has no census mask and no fetched CT; the two arms are never pooled",
   "totalseg_arm": {
-   "state": "built 2026-10-30; the owner's count of 09:34 UTC is two jobs: fetch totalseg_weights sent at 09:34 UTC, totalseg complete to follow once its zips are whole",
+   "state": "ran 2026-10-30: fetch totalseg_weights (09:34 UTC), job 40882547 (15:55 UTC, failed on all 37 studies it ran: tools/profile.py shadowed the standard library's profile, fixed by #499) and the one rerun the owner allowed, job 40896342 (23:13 UTC at 45370ca, after #505's fixes), which ended 0 at 00:34 UTC on 2026-10-31; its report read with `totalseg complete` at 00:45 UTC",
    "owner_word": "2026-10-30 08:54 UTC: Add sacrum and c2 w total seg, which for C2 and the sacrum alone sets aside the rule never to run TotalSegmentator; 09:33 UTC: keep each release's segmentations consistent, MOOSE for ENHANCE.PET, TotalSegmentator for the VerSe and TotalSegmentator studies, the labels consistent",
-   "segmenter": "TotalSegmentator 2.18.0 (task total, roi_subset vertebrae_C2 sacrum) for verse and totalsegmentator; MOOSE 3.2.2 clin_ct_vertebrae for enhance_pet; each on the study's own CT",
+   "segmenter": "TotalSegmentator 2.18.0 (task total, roi_subset vertebrae_C2 sacrum vertebrae_S1, the sacrum written as one full mask of sacrum and S1, DEVIATIONS.md items 2 and 3) for verse and totalsegmentator; MOOSE 3.2.2 clin_ct_vertebrae for enhance_pet; each on the study's own CT",
    "label_ids": {"verse": {"C2": 2, "sacrum": 26}, "enhance_pet": {"C2": 2, "sacrum": 28}, "totalsegmentator": "one file per structure, value 1"},
    "deviations": "docs/research/gold3-ct/completion/DEVIATIONS.md",
    "asked_at_freeze": {"verse": 27, "totalsegmentator": 10, "enhance_pet": 1},
    "prereg": "docs/research/gold3-ct/completion/PREREG.md",
    "gate_word": "totalseg complete",
    "report": "logs/TOTALSEG-complete.md",
-   "where": "the lab volume's gold3-totalseg/ (ts/, arm/, records.jsonl)"
+   "where": "the lab volume's gold3-totalseg/ (ts/, arm/, records.jsonl)",
+   "job_40896342": {
+    "studies": {"asked": 38, "prepared": 38, "run_failed": 0, "in_error": 0},
+    "kept": {"C2": 4, "sacrum": 27, "studies": 28},
+    "refused": 20,
+    "by_member": {
+     "verse": {"sacrum_asked": 27, "sacrum_kept": 26, "C2_asked": 10, "C2_kept": 3},
+     "totalsegmentator": {"sacrum_asked": 5, "sacrum_kept": 1, "C2_asked": 8, "C2_kept": 0},
+     "enhance_pet": {"C2_asked": 1, "C2_kept": 1}
+    },
+    "kept_ids": {"C2": ["1379", "verse561", "verse588", "verse607"], "sacrum": ["every asked VerSe series but verse018", "s1606"]},
+    "refusals": "every C2 refused was drawn with 0 voxels; the sacrum refused for verse018 (4 voxels), s0102, s0437, s1329 (0) and s1593 (80)",
+    "bars": "H1 met: the sacrum in 26 of VerSe's 27 series against at least 24; H2 not met: C2 in 4 of the 19 studies that asked for it against at least 10 (PREREG.md section 4)",
+    "to_look_at": "s1606's kept sacrum is 434 voxels, 7.5 mm from its release's L4, with L4 and L5 listed as undrawn between them (RERUN-REVIEW.md item 7), so it may be a stray fragment and not the sacrum; every kept VerSe sacrum's centre lies below the release's lowest level, though its top reaches 15 to 51 mm above that level's foot",
+    "report": "logs/TOTALSEG-complete.md on the grid, read through symphony-template's branch grid, logs/job-schwingnet-totalseg-complete.json (request totalseg-read-0045)"
+   }
   },
   "job_40870822": {
    "asked": {"verse": 27, "totalsegmentator": 15, "enhance_pet": 1},
