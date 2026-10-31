@@ -216,6 +216,18 @@
 #                   queues nothing, a failed or unfinished one queued once more only once a fix has moved the
 #                   checkout, and any other only where AUTOANATOMIST_RERUNS carries the owner's word; a send while its
 #                   jobs last prints where each trial stands
+#   qaloop <plan>   the QA loop of a plan under grid/qaloop/ (the thread "Build self-propelling QA Metaflow
+#                   pipeline"; the owner's words of 2026-10-31, docs/research/qa-loop/PREREG.md): the auto-anatomist
+#                   trained round after round on the six column classes' phantoms, every round asking six gates, until
+#                   every gate passes, a gate lacks its data, no failing gate has a change left, or the rounds run out
+#                   (flows/qaloop.py through flows/launch.py from git's copy of the code, grid/qaloop.sbatch); queued as
+#                   a chain of GPU links on QALOOP_PARTITION, each afterany the one before, one for a smoke and
+#                   QALOOP_LINKS for a loop, each carrying the run on from the round its time limit cut, and a link
+#                   that finds the loop ended exiting at once; only while the frozen PREREG covers the plan's bytes
+#                   (exit 90), and a loop only where the data root holds C-ArmLSpine's pairs; a send while a link
+#                   lasts prints where each round stands; a later one prints logs/QALOOP-<plan>.md and, where its
+#                   chain did not end, queues the links that carry the same chain on at the chain's own commit, and
+#                   where it ended in failure, a new chain once a fix has moved the checkout
 #   literature <list>  one reading list's papers fetched onto the grid (the owner's word of 2026-10-27
 #                   23:00 UTC; grid/literature.sbatch, grid/literature_fetch.py, the list grid/literature/<list>.csv):
 #                   PMC's open-access copies, Elsevier's through its API with the key and institutional token
@@ -349,6 +361,15 @@ AUTOANATOMIST_RERUNS=""
 # compiler finding no configuration for 46 of 218 instructions on that card; each trial still names
 # its card (the report's GPU line, environment.json). DEVIATIONS.md beside the PREREG, item 1.
 AUTOANATOMIST_PARTITION=galhp
+# The QA loop's chains, <plan>/<chain>/ (grid/qaloop.sbatch reads the same default from the lab volume),
+# where a send while a link lasts reads each round's PROGRESS.txt.
+QALOOP_ROOT=${QALOOP_ROOT:-$VOLUME/go2432/qaloop}
+# The partition every link of the loop is sent to (word_qaloop): galhp's L40S cards, for the reason
+# AUTOANATOMIST_PARTITION gives, since the loop trains the same network under the same pins.
+QALOOP_PARTITION=galhp
+# The links a send of a loop plan queues, each a GPU job of 12 hours afterany the one before, so the
+# loop runs up to three days on one send; a smoke plan is one link.
+QALOOP_LINKS=6
 # The owner's word for one more join of the morphometry rows with sex and age, covariates:<job of the
 # report or the record it replaces>, or covariates:lost for a submission whose answer was lost, then
 # covariates:lost2 for the next such and on, each spent once (logs/MORPHOMETRY-covariates.lost records
@@ -394,18 +415,18 @@ TOTALSEG_RERUNS="complete:40882547"
 COVARIATES_PAGE_LINES=300
 LOGS=$REPO/grid/logs
 STATE=$LOGS/GATE_JOBS.txt
-WORDS="start status leaks v1 latency fetch explore dropzip unpack nodequota folders samples sweep bank experiment bench anomaly bordercall census totalseg realism autoanatomist morphometry literature stop cancel"
+WORDS="start status leaks v1 latency fetch explore dropzip unpack nodequota folders samples sweep bank experiment bench anomaly bordercall census totalseg realism autoanatomist qaloop morphometry literature stop cancel"
 ENVS="default train-cpu train-gpu telemetry"
 
 word=${1:-}
 id=${2:-}
 # Matched whole, so one argument holding two words ("v1 latency") is refused and never runs nothing.
 case "$word" in
-  start|status|leaks|v1|latency|fetch|explore|dropzip|unpack|nodequota|folders|samples|sweep|bank|experiment|bench|anomaly|bordercall|census|totalseg|realism|autoanatomist|morphometry|literature|stop|cancel) ;;
+  start|status|leaks|v1|latency|fetch|explore|dropzip|unpack|nodequota|folders|samples|sweep|bank|experiment|bench|anomaly|bordercall|census|totalseg|realism|autoanatomist|qaloop|morphometry|literature|stop|cancel) ;;
   "") echo "refusing: no word; one of: $WORDS"; exit 64 ;;
   *) echo "refusing: '$word' is not one of: $WORDS"; exit 64 ;;
 esac
-if [ "$word" = fetch ] || [ "$word" = explore ] || [ "$word" = dropzip ] || [ "$word" = unpack ] || [ "$word" = sweep ] || [ "$word" = bank ] || [ "$word" = bench ] || [ "$word" = anomaly ] || [ "$word" = bordercall ] || [ "$word" = census ] || [ "$word" = totalseg ] || [ "$word" = realism ] || [ "$word" = autoanatomist ] || [ "$word" = morphometry ] || [ "$word" = literature ]; then
+if [ "$word" = fetch ] || [ "$word" = explore ] || [ "$word" = dropzip ] || [ "$word" = unpack ] || [ "$word" = sweep ] || [ "$word" = bank ] || [ "$word" = bench ] || [ "$word" = anomaly ] || [ "$word" = bordercall ] || [ "$word" = census ] || [ "$word" = totalseg ] || [ "$word" = realism ] || [ "$word" = autoanatomist ] || [ "$word" = qaloop ] || [ "$word" = morphometry ] || [ "$word" = literature ]; then
   [ $# -eq 2 ] || { echo "refusing: $word takes exactly one id"; exit 64; }
   case "$id" in ""|*[!a-z0-9_]*) echo "refusing: an id is lower-case letters, digits and _"; exit 64 ;; esac
   [ ${#id} -le 40 ] || { echo "refusing: an id is at most 40 characters"; exit 64; }
@@ -2920,6 +2941,142 @@ word_autoanatomist() {  # one plan of the auto-anatomist screen, on the owner's 
   echo "submitted the plan $id: the trials' array $chain ($trials tasks, each on the first card of $AUTOANATOMIST_PARTITION that frees) and the join $join afterany it on a CPU node, in $AUTOANATOMIST_ROOT/$id/$chain. Send autoanatomist $id again once they end to read its report, logs/AUTOANATOMIST-$id.md."
 }
 
+# The QA loop (grid/qaloop.sbatch, flows/qaloop.py): a plan under grid/qaloop/, read by sed as json.dumps
+# with indent 2 writes it, so the login node runs no python.
+qaloop_field() {  # qaloop_field PLAN KEY: a top-level word of the plan, else nothing
+  sed -n "s/^  \"$2\": \"\([a-z0-9_]*\)\",\{0,1\}\$/\1/p" "$1" | head -n 1
+}
+qaloop_pairs_root() {  # qaloop_pairs_root PLAN: the folder under the data root the plan reads its real pairs from
+  sed -n 's/^    "root": "\([a-z0-9_]*\)",\{0,1\}$/\1/p' "$1" | head -n 1
+}
+qaloop_covered() {  # qaloop_covered PLAN NAME: status 0 where the loop's frozen PREREG covers the plan by its name and bytes; the refusal otherwise
+  local prereg entry frozen bytes want
+  prereg=$(flow_prereg qaloop)
+  case "$prereg" in
+    ""|/*|../*|*/../*) echo "refusing: flows/registry.txt names no PREREG inside the checkout for the QA loop, so no plan is covered; nothing was queued"; return 90 ;;
+  esac
+  frozen=$(awk 'NR == 1 && NF == 2 && ($2 == "PREREG.md" || $2 == "*PREREG.md") { print $1 }' "$REPO/$prereg.sha256" 2>/dev/null)
+  bytes=$(sha256sum < "$REPO/$prereg" 2>/dev/null | cut -c1-64)
+  if [ -z "$frozen" ] || [ "$frozen" != "$bytes" ]; then
+    echo "refusing: STOP: $prereg is not frozen as its PREREG.md.sha256 says (the Lab Recipe's freeze), so no loop runs under it; nothing was queued"
+    return 90
+  fi
+  entry=$(covers_entry "$REPO/$prereg" "$2")
+  if [ -z "$entry" ]; then
+    echo "refusing: $prereg does not cover the plan $2, which waits for a PREREG of its own, frozen before it runs; nothing was queued"
+    return 90
+  fi
+  case "$entry" in
+    *=*)
+      want=${entry#*=}
+      bytes=$(sha256sum < "$1" | cut -c1-64)
+      if [ "$want" != "$bytes" ]; then
+        echo "refusing: $prereg covers $2 as the bytes of sha256 ${want:0:16}, and grid/qaloop/$2.json's are ${bytes:0:16}: a plan changed since the freeze is another design, which waits for a PREREG of its own; nothing was queued"
+        return 90
+      fi ;;
+  esac
+}
+qaloop_live() {  # the plan's live links, space-separated
+  live_of "qaloop_$id" | tr '\n' ' ' | sed 's/ $//'
+}
+qaloop_progress() {  # qaloop_progress CHAIN: where each round of the chain stands, its PROGRESS.txt's last line, masked
+  local folder=$QALOOP_ROOT/$id/$1 file
+  if ! compgen -G "$folder/rounds/*/PROGRESS.txt" > /dev/null; then
+    echo "  no round of chain $1 has written its PROGRESS.txt yet: the first starts once its card and environment are ready"
+    return 0
+  fi
+  echo "  where each round of chain $1 stands, the last line of its PROGRESS.txt:"
+  for file in "$folder"/rounds/*/PROGRESS.txt; do
+    echo "    round $(basename "$(dirname "$file")"): $(tail -n 1 "$file")"
+  done | tail -n 12 | LC_ALL=C tr -cd '\11\12\40-\176' | masked
+}
+qaloop_queue() {  # qaloop_queue CHAIN COMMIT FIRST LINKS: links FIRST to LINKS of the chain, each afterany the one before; a new chain where CHAIN is empty
+  # The chain's id is the one line on stdout, which the caller reads; every other line goes to stderr,
+  # which the gate's own output carries (exec 2>&1 above).
+  local chain=$1 full=$2 first=$3 links=$4 link job after setup
+  local loop=(PLAN="$id" QALOOP_COMMIT="$full" QALOOP_ROOT="$QALOOP_ROOT" DATA_ROOT="$DATA_ROOT" QALOOP_LINKS="$links")
+  setup=$(setup_dependency) || return 1
+  [ -z "$setup" ] || echo "  the environments: after the setup job that rebuilds them (${setup#afterok:})" >&2
+  after=$setup
+  for ((link = first; link <= links; link++)); do
+    depend_on "$after" || return 1
+    job=$(submit "qaloop_$id" gpu "${loop[@]}" QALOOP_LINK="$link" ${chain:+QALOOP_CHAIN="$chain"} ${opts[@]+"${opts[@]}"} \
+      --partition "$QALOOP_PARTITION" --cpus 8 --mem 64G --time 12:00:00 --no-requeue -- qaloop.sbatch) || {
+      [ "$link" = "$first" ] && return 1
+      echo "  link $link was refused; the links queued before it stand, and the next send carries the chain on" >&2
+      echo "$chain"
+      return 0
+    }
+    if [ -z "$chain" ]; then
+      chain=$job
+      echo "$chain $full" > "$LOGS/QALOOP-$id.chain"
+      { echo "# qaloop $id: chain $chain queued, commit ${full:0:7}, $(date -u '+%F %T') UTC; no link of it has started yet"
+        echo "- queued: $links link(s) on $QALOOP_PARTITION, each afterany the one before"
+        echo "- folder: $QALOOP_ROOT/$id/$chain, where every link works"; } > "$LOGS/QALOOP-$id.md.part"
+    fi
+    after=afterany:$job
+  done
+  echo "$chain"
+}
+word_qaloop() {  # one plan of the QA loop: queued as a chain of links, its report printed on every later send, an unended chain carried on
+  local plan=$REPO/grid/qaloop/$id.json report=$LOGS/QALOOP-$id.md class links busy chain chain_commit full root last ended
+  [ -f "$plan" ] || { echo "refusing: no plan grid/qaloop/$id.json at commit $commit"; return 64; }
+  qaloop_covered "$plan" "$id" || return
+  class=$(qaloop_field "$plan" class)
+  case "$class" in
+    smoke) links=1 ;;
+    loop) links=$QALOOP_LINKS ;;
+    *) echo "refusing: the plan $id is of class '${class:-none}', and the loop runs a smoke or a loop; nothing was queued"; return 64 ;;
+  esac
+  read -r chain chain_commit < "$LOGS/QALOOP-$id.chain" 2>/dev/null
+  busy=$(qaloop_live)
+  if [ -n "$busy" ]; then
+    echo "refusing: the plan $id is still queued or running (job ${busy// /, job }); send qaloop $id again once its links end"
+    [ -z "${chain:-}" ] || qaloop_progress "$chain"
+    return 75
+  fi
+  if [ "$class" = loop ]; then
+    root=$(qaloop_pairs_root "$plan")
+    [ -n "$root" ] && [ -f "$DATA_ROOT/$root/levels.json" ] || {
+      echo "refusing: the plan $id reads C-ArmLSpine's pairs from $DATA_ROOT/${root:-<its pairs root>}, which holds no levels.json; nothing was queued"
+      return 2
+    }
+  fi
+  full=$(git -C "$REPO" rev-parse HEAD 2>/dev/null)
+  [[ $full =~ ^[0-9a-f]{40}$ ]] || { echo "refusing: the checkout's commit cannot be read, and every link copies the code at it"; return 2; }
+  launched_script qaloop.sbatch || {
+    echo "refusing: flows/registry.txt names grid/qaloop.sbatch as no flow's job script, and every GPU job starts through flows/launch.py; nothing was queued"
+    return 90
+  }
+  if [ -n "${chain:-}" ]; then
+    [ -f "$report" ] && { echo "## $(basename "$report") ($(date -r "$report" '+%F %T'))"; head -n 200 "$report"; } | LC_ALL=C tr -cd '\11\12\40-\176' | masked | head -c 30000
+    [ -f "$report" ] || { [ -f "$report.part" ] && { echo "## $(basename "$report") unfinished ($(date -r "$report.part" '+%F %T'))"; head -n 200 "$report.part"; } | LC_ALL=C tr -cd '\11\12\40-\176' | masked | head -c 30000; }
+    ended=$QALOOP_ROOT/$id/$chain/ENDED.json
+    if [ ! -f "$ended" ]; then
+      # The chain did not end: its run is carried on at the chain's own commit, so the launcher's key,
+      # which the code names, is the same and the run resumes at the round it was cut in.
+      [[ $chain_commit =~ ^[0-9a-f]{40}$ ]] || { echo "refusing: logs/QALOOP-$id.chain names no commit for chain $chain"; return 2; }
+      echo "  chain $chain did not end: queueing $links more link(s) that carry it on at its commit ${chain_commit:0:7}"
+      [ ! -f "$report" ] || mv "$report" "$report.part" || return 1
+      qaloop_queue "$chain" "$chain_commit" 1 "$links" > /dev/null || return 1
+      echo "submitted the links that carry chain $chain of the plan $id on, in $QALOOP_ROOT/$id/$chain. Send qaloop $id again once they end to read its report, logs/QALOOP-$id.md."
+      return 0
+    fi
+    last=$(tail -n 1 "$report" 2>/dev/null)
+    [[ "$last" =~ ^-\ exit\ 0\  ]] && return 0
+    if [ "$chain_commit" = "$full" ]; then
+      # The same code on the same plan answers the same way, so a chain that ended in failure is sent
+      # again only once a commit has changed what failed.
+      echo "  chain $chain ended in failure at the checkout's own commit ${full:0:7}: a new chain is queued once a commit changes what failed; nothing was queued"
+      return 0
+    fi
+    echo "  chain $chain ended in failure at ${chain_commit:0:7}, and the checkout has moved to ${full:0:7}: queueing a new chain"
+    mv "$report" "$LOGS/QALOOP-$id-$chain.md" 2>/dev/null
+  fi
+  chain=$(qaloop_queue "" "$full" 1 "$links") || return 1
+  echo "submitted the plan $id: chain $chain, $links GPU link(s) of 12 hours on $QALOOP_PARTITION, each afterany the one before, in $QALOOP_ROOT/$id/$chain. Send qaloop $id again once they end to read its report, logs/QALOOP-$id.md."
+}
+
 word_samples() {
   local busy said rc
   busy=$( { live_of samples_plan; live_of samples_scan; live_of samples_merge; } | tr '\n' ' ')
@@ -3293,6 +3450,7 @@ case "$word" in
   totalseg) word_totalseg ;;
   realism) word_realism ;;
   autoanatomist) word_autoanatomist ;;
+  qaloop) word_qaloop ;;
   morphometry) word_morphometry ;;
   literature) word_literature ;;
   samples) word_samples ;;

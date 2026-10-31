@@ -5081,6 +5081,252 @@ exit "${FAKE_RC:-0}"
         self.assertIn("- STOP: PREREG.md changed since the freeze", report)
         self.assertFalse((self.fake / "screen-python.log").exists())
 
+    # The QA loop (grid/gate.sh's word qaloop <plan>, grid/qaloop.sbatch, flows/qaloop.py), the thread
+    # "Build self-propelling QA Metaflow pipeline" of 2026-10-31.
+    def qaloop_ready(self):
+        """The checkout as a send of the loop reads it: the loop's frozen PREREG and its hash where
+        flows/registry.txt names them, a commit and the environments; the commit's full sha."""
+        folder = self.repo / "docs" / "research" / "qa-loop"
+        folder.mkdir(parents=True, exist_ok=True)
+        for name in ("PREREG.md", "PREREG.md.sha256"):
+            shutil.copy(ROOT / "docs" / "research" / "qa-loop" / name, folder / name)
+        self.git_repo()
+        self.environments_ready()
+        return self.qaloop_head()
+
+    def qaloop_head(self):
+        return subprocess.run(["git", "-C", str(self.repo), "rev-parse", "HEAD"], check=True, capture_output=True, text=True).stdout.strip()
+
+    def qaloop_moved(self):
+        """The checkout one commit on, as a fix leaves it; its full sha."""
+        subprocess.run(["git", "-c", "gc.auto=0", "-c", "maintenance.auto=false", "-c", "user.name=t", "-c", "user.email=t@t",
+                        "-C", str(self.repo), "commit", "-q", "--allow-empty", "-m", "a fix"], check=True)
+        return self.qaloop_head()
+
+    def qaloop_root(self):
+        return self.tmp / "go2432" / "qaloop"
+
+    def qaloop_pairs(self):
+        """C-ArmLSpine's pairs as the loop plan reads them, by their levels file."""
+        pairs = self.data / "carmlspine"
+        pairs.mkdir(parents=True, exist_ok=True)
+        (pairs / "levels.json").write_text("{}\n", encoding="utf-8")
+
+    def test_qaloop_refuses_a_plan_without_its_file_its_frozen_cover_its_class_its_flow_or_a_loops_pairs(self):
+        gate = (ROOT / "grid" / "gate.sh").read_text(encoding="utf-8")
+        # every link on galhp's L40S cards, as the auto-anatomist's trials, and six links of 12 hours a loop
+        self.assertIn("\nQALOOP_PARTITION=galhp\n", gate)
+        self.assertIn("\nQALOOP_LINKS=6\n", gate)
+        self.assertEqual(self.gate("qaloop").returncode, 64)
+        refused = self.gate("qaloop", "qa_nope")
+        self.assertEqual(refused.returncode, 64, refused.stdout)
+        self.assertIn("no plan grid/qaloop/qa_nope.json", refused.stdout)
+        # with no frozen PREREG in the checkout no plan is covered
+        refused = self.gate("qaloop", "qa_smoke")
+        self.assertEqual(refused.returncode, 90, refused.stdout)
+        self.assertIn("docs/research/qa-loop/PREREG.md is not frozen as its PREREG.md.sha256 says", refused.stdout)
+        self.qaloop_ready()
+        prereg = self.repo / "docs" / "research" / "qa-loop" / "PREREG.md"
+        frozen = prereg.read_text(encoding="utf-8")
+        prereg.write_text(frozen + "\nA line after the freeze.\n", encoding="utf-8")
+        refused = self.gate("qaloop", "qa_smoke")
+        self.assertEqual(refused.returncode, 90, refused.stdout)
+        self.assertIn("is not frozen as its PREREG.md.sha256 says", refused.stdout)
+        prereg.write_text(frozen, encoding="utf-8")
+        # a plan changed since the freeze is another design, and one the Covers line does not name waits for its own
+        plan = self.repo / "grid" / "qaloop" / "qa_smoke.json"
+        text = plan.read_text(encoding="utf-8")
+        self.assertIn('"rounds": 2,', text)
+        plan.write_text(text.replace('"rounds": 2,', '"rounds": 3,'), encoding="utf-8")
+        refused = self.gate("qaloop", "qa_smoke")
+        self.assertEqual(refused.returncode, 90, refused.stdout)
+        self.assertIn("a plan changed since the freeze is another design", refused.stdout)
+        plan.write_text(text, encoding="utf-8")
+        (self.repo / "grid" / "qaloop" / "qa_other.json").write_text(text, encoding="utf-8")
+        refused = self.gate("qaloop", "qa_other")
+        self.assertEqual(refused.returncode, 90, refused.stdout)
+        self.assertIn("does not cover the plan qa_other", refused.stdout)
+        # a covered plan of neither class the loop runs is refused
+        covered = frozen.replace("Covers: qa_smoke=", "Covers: qa_odd, qa_smoke=", 1)
+        self.assertNotEqual(covered, frozen)
+        prereg.write_text(covered, encoding="utf-8")
+        (prereg.parent / "PREREG.md.sha256").write_text(f"{hashlib.sha256(covered.encode()).hexdigest()}  PREREG.md\n", encoding="utf-8")
+        (self.repo / "grid" / "qaloop" / "qa_odd.json").write_text(text.replace('"class": "smoke"', '"class": "sweep"'), encoding="utf-8")
+        refused = self.gate("qaloop", "qa_odd")
+        self.assertEqual(refused.returncode, 64, refused.stdout)
+        self.assertIn("the plan qa_odd is of class 'sweep', and the loop runs a smoke or a loop", refused.stdout)
+        # the frozen copy again
+        for name in ("PREREG.md", "PREREG.md.sha256"):
+            shutil.copy(ROOT / "docs" / "research" / "qa-loop" / name, prereg.parent / name)
+        # the loop reads C-ArmLSpine's pairs, so it waits for their levels; the smoke runs on stand-ins without them
+        refused = self.gate("qaloop", "qa_loop")
+        self.assertEqual(refused.returncode, 2, refused.stdout)
+        self.assertIn(f"reads C-ArmLSpine's pairs from {self.data}/carmlspine, which holds no levels.json", refused.stdout)
+        # every GPU job starts through flows/launch.py, so a registry that names another script for the loop queues nothing
+        registry = self.repo / "flows" / "registry.txt"
+        lines = registry.read_text(encoding="utf-8")
+        self.assertIn(" qaloop.sbatch ", lines)
+        registry.write_text(lines.replace(" qaloop.sbatch ", " qaloop-other.sbatch "), encoding="utf-8")
+        refused = self.gate("qaloop", "qa_smoke")
+        self.assertEqual(refused.returncode, 90, refused.stdout)
+        self.assertIn("flows/registry.txt names grid/qaloop.sbatch as no flow's job script", refused.stdout)
+        self.assertEqual(self.submitted(), [])
+        self.assertFalse((self.repo / "grid" / "logs" / "QALOOP-qa_smoke.chain").exists())
+
+    def test_qaloop_queues_the_smoke_as_one_link_shows_its_rounds_carries_an_unended_chain_on_and_prints_its_report(self):
+        full = self.qaloop_ready()
+        root = self.qaloop_root()
+        done = self.gate("qaloop", "qa_smoke")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        lines = self.submitted()
+        self.assertEqual(len(lines), 1, lines)
+        for said in ("--class gpu --name qaloop_qa_smoke --partition galhp --cpus 8 --mem 64G --time 12:00:00 --no-requeue qaloop.sbatch |",
+                     " PLAN=qa_smoke ", f" DATA_ROOT={self.data} ", f" QALOOP_COMMIT={full} ", f" QALOOP_ROOT={root} ",
+                     " QALOOP_LINKS=1 ", " QALOOP_LINK=1 "):
+            self.assertIn(said, lines[0])
+        # the first link names no chain: its own job id is the chain's
+        self.assertTrue(lines[0].endswith(" QALOOP_CHAIN="), lines[0])
+        chain = self.recorded()["qaloop_qa_smoke"]
+        self.assertIn(f"submitted the plan qa_smoke: chain {chain}, 1 GPU link(s) of 12 hours on galhp, each afterany the one before, "
+                      f"in {root}/qa_smoke/{chain}.", done.stdout)
+        logs = self.repo / "grid" / "logs"
+        self.assertEqual((logs / "QALOOP-qa_smoke.chain").read_text(encoding="utf-8"), f"{chain} {full}\n")
+        part = logs / "QALOOP-qa_smoke.md.part"
+        self.assertTrue(part.read_text(encoding="utf-8").startswith(f"# qaloop qa_smoke: chain {chain} queued, commit {full[:7]},"))
+        # while a link lasts a send queues nothing and says where each round stands, masked
+        self.live(chain)
+        busy = self.gate("qaloop", "qa_smoke")
+        self.assertEqual(busy.returncode, 75, busy.stdout)
+        self.assertIn(f"the plan qa_smoke is still queued or running (job {chain})", busy.stdout)
+        self.assertIn(f"no round of chain {chain} has written its PROGRESS.txt yet", busy.stdout)
+        progress = root / "qa_smoke" / chain / "rounds" / "000" / "PROGRESS.txt"
+        progress.parent.mkdir(parents=True)
+        progress.write_text("     2.0s train: 25 steps\n   106.3s gate fingerprint: fail at enhance_pet:1541\n", encoding="utf-8")
+        busy = self.gate("qaloop", "qa_smoke")
+        self.assertEqual(busy.returncode, 75, busy.stdout)
+        self.assertIn("round 000:    106.3s gate fingerprint: fail at enhance_pet:<withheld>", busy.stdout)
+        self.assertNotIn("1541", busy.stdout)
+        self.assertEqual(len(self.submitted()), 1)
+        (self.fake / "queue").write_text("", encoding="utf-8")
+        # a chain whose links ran out before its end is carried on at its own commit, not the checkout's,
+        # so the launcher's key is the same and the run resumes at the round its time limit cut
+        moved = self.qaloop_moved()
+        self.assertNotEqual(moved, full)
+        carried = self.gate("qaloop", "qa_smoke")
+        self.assertEqual(carried.returncode, 0, carried.stdout + carried.stderr)
+        self.assertIn("## QALOOP-qa_smoke.md unfinished", carried.stdout)
+        self.assertIn(f"chain {chain} did not end: queueing 1 more link(s) that carry it on at its commit {full[:7]}", carried.stdout)
+        lines = self.submitted()
+        self.assertEqual(len(lines), 2, lines)
+        for said in (f" QALOOP_COMMIT={full} ", " QALOOP_LINKS=1 ", " QALOOP_LINK=1 "):
+            self.assertIn(said, lines[1])
+        self.assertTrue(lines[1].endswith(f" QALOOP_CHAIN={chain}"), lines[1])
+        self.assertEqual((logs / "QALOOP-qa_smoke.chain").read_text(encoding="utf-8"), f"{chain} {full}\n")
+        # the chain's end leaves ENDED.json and the report, which every later send prints, queueing nothing
+        (root / "qa_smoke" / chain / "ENDED.json").write_text('{"loop": "met", "verdict": 0}\n', encoding="utf-8")
+        report = logs / "QALOOP-qa_smoke.md"
+        part.rename(report)
+        with report.open("a", encoding="utf-8") as out:
+            out.write("- the loop ended met after 2 rounds\n- exit 0 at 2026-10-31 05:00:00 UTC\n")
+        for _ in range(2):
+            shown = self.gate("qaloop", "qa_smoke")
+            self.assertEqual(shown.returncode, 0, shown.stdout)
+            self.assertIn("## QALOOP-qa_smoke.md (", shown.stdout)
+            self.assertIn("- the loop ended met after 2 rounds", shown.stdout)
+        self.assertEqual(len(self.submitted()), 2)
+
+    def test_qaloop_queues_a_loop_as_six_links_each_afterany_the_one_before(self):
+        full = self.qaloop_ready()
+        self.qaloop_pairs()
+        done = self.gate("qaloop", "qa_loop")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        lines = self.submitted()
+        self.assertEqual(len(lines), 6, lines)
+        for link, line in enumerate(lines, start=1):
+            for said in ("--class gpu --name qaloop_qa_loop ", " PLAN=qa_loop ", f" QALOOP_COMMIT={full} ", " QALOOP_LINKS=6 ",
+                         f" QALOOP_LINK={link} ", "--partition galhp --cpus 8 --mem 64G --time 12:00:00 --no-requeue qaloop.sbatch |"):
+                self.assertIn(said, line)
+            if link == 1:
+                self.assertNotIn("--dependency", line)
+                self.assertTrue(line.endswith(" QALOOP_CHAIN="), line)
+            else:
+                self.assertIn(f"--dependency=afterany:{99 + link} --kill-on-invalid-dep=yes", line)
+                self.assertTrue(line.endswith(" QALOOP_CHAIN=101"), line)
+        self.assertIn("submitted the plan qa_loop: chain 101, 6 GPU link(s) of 12 hours on galhp", done.stdout)
+        self.assertEqual((self.repo / "grid" / "logs" / "QALOOP-qa_loop.chain").read_text(encoding="utf-8"), f"101 {full}\n")
+        self.live(*range(101, 107))
+        busy = self.gate("qaloop", "qa_loop")
+        self.assertEqual(busy.returncode, 75, busy.stdout)
+        self.assertEqual(len(self.submitted()), 6)
+
+    def test_qaloop_waits_for_the_setup_job_and_still_reads_its_chain_from_the_first_link(self):
+        self.qaloop_ready()
+        shutil.rmtree(self.repo / ".pixi")
+        done = self.gate("qaloop", "qa_smoke")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        setup, link = self.submitted()
+        self.assertIn("--class batch --name setup ", setup)
+        self.assertIn("--name qaloop_qa_smoke --dependency=afterok:101 --kill-on-invalid-dep=yes", link)
+        # the setup's note reaches the send's output, not the chain's id
+        self.assertIn("the environments: after the setup job that rebuilds them (101)", done.stdout)
+        self.assertIn("submitted the plan qa_smoke: chain 102,", done.stdout)
+        self.assertTrue((self.repo / "grid" / "logs" / "QALOOP-qa_smoke.chain").read_text(encoding="utf-8").startswith("102 "))
+
+    def test_qaloop_keeps_the_links_queued_before_a_refused_one_and_the_next_send_carries_the_chain_on(self):
+        self.qaloop_ready()
+        self.qaloop_pairs()
+        logs = self.repo / "grid" / "logs"
+        # a first link refused queues no chain at all
+        (self.fake / "refuse").write_text("QALOOP_LINK=1 ", encoding="utf-8")
+        refused = self.gate("qaloop", "qa_loop")
+        self.assertEqual(refused.returncode, 1, refused.stdout)
+        self.assertEqual(self.submitted(), [])
+        self.assertFalse((logs / "QALOOP-qa_loop.chain").exists())
+        # a later link refused leaves the links before it standing and the chain recorded
+        (self.fake / "refuse").write_text("QALOOP_LINK=3 ", encoding="utf-8")
+        done = self.gate("qaloop", "qa_loop")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertEqual(len(self.submitted()), 2)
+        self.assertIn("link 3 was refused; the links queued before it stand, and the next send carries the chain on", done.stdout)
+        self.assertIn("submitted the plan qa_loop: chain 101,", done.stdout)
+        self.assertTrue((logs / "QALOOP-qa_loop.chain").read_text(encoding="utf-8").startswith("101 "))
+        (self.fake / "refuse").write_text("", encoding="utf-8")
+        carried = self.gate("qaloop", "qa_loop")
+        self.assertEqual(carried.returncode, 0, carried.stdout + carried.stderr)
+        self.assertIn("chain 101 did not end: queueing 6 more link(s)", carried.stdout)
+        lines = self.submitted()
+        self.assertEqual(len(lines), 8, lines)
+        self.assertTrue(all(line.endswith(" QALOOP_CHAIN=101") for line in lines[2:]), lines)
+        self.assertIn("--dependency=afterany:103 ", lines[3])
+
+    def test_qaloop_sends_a_chain_that_ended_in_failure_again_only_once_the_checkout_moves(self):
+        full = self.qaloop_ready()
+        logs = self.repo / "grid" / "logs"
+        logs.mkdir(parents=True, exist_ok=True)
+        (logs / "QALOOP-qa_smoke.chain").write_text(f"4242 {full}\n", encoding="utf-8")
+        ended = self.qaloop_root() / "qa_smoke" / "4242" / "ENDED.json"
+        ended.parent.mkdir(parents=True)
+        ended.write_text('{"loop": "stopped", "verdict": 1}\n', encoding="utf-8")
+        report = logs / "QALOOP-qa_smoke.md"
+        report.write_text(f"# qaloop qa_smoke: chain 4242 on node, commit {full[:7]}, 2026-10-31 04:00:00 UTC\n"
+                          "- the loop stopped after 1 round\n- exit 1 at 2026-10-31 05:00:00 UTC\n", encoding="utf-8")
+        # the same code on the same plan answers the same way, so nothing is queued at the chain's own commit
+        kept = self.gate("qaloop", "qa_smoke")
+        self.assertEqual(kept.returncode, 0, kept.stdout)
+        self.assertIn("- the loop stopped after 1 round", kept.stdout)
+        self.assertIn(f"chain 4242 ended in failure at the checkout's own commit {full[:7]}", kept.stdout)
+        self.assertEqual(self.submitted(), [])
+        moved = self.qaloop_moved()
+        again = self.gate("qaloop", "qa_smoke")
+        self.assertEqual(again.returncode, 0, again.stdout + again.stderr)
+        self.assertIn(f"chain 4242 ended in failure at {full[:7]}, and the checkout has moved to {moved[:7]}: queueing a new chain", again.stdout)
+        lines = self.submitted()
+        self.assertEqual(len(lines), 1, lines)
+        self.assertIn(f" QALOOP_COMMIT={moved} ", lines[0])
+        self.assertTrue((logs / "QALOOP-qa_smoke-4242.md").exists())
+        self.assertFalse(report.exists())
+        self.assertEqual((logs / "QALOOP-qa_smoke.chain").read_text(encoding="utf-8"), f"101 {moved}\n")
+
     def test_select_is_refused_without_the_frozen_holdout(self):
         (self.repo / "data" / "splits" / "anomaly-holdout.json").unlink()
         self.environments_ready()

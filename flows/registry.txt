@@ -21,3 +21,4 @@ realism     RealismFlow     REALISM_RC     realism.sbatch            docs/resear
 totalseg    TotalsegFlow    TOTALSEG_RC    totalseg-complete.sbatch  docs/research/gold3-ct/completion/PREREG.md
 autoanatomist  AutoanatomistFlow  AUTOANATOMIST_RC  autoanatomist.sbatch      docs/research/autoanatomist-screen/PREREG.md
 autoanatomist2 Autoanatomist2Flow AUTOANATOMIST_RC autoanatomist2.sbatch    docs/research/autoanatomist-screen2/PREREG.md
+qaloop      QaloopFlow      QALOOP_RC      qaloop.sbatch             docs/research/qa-loop/PREREG.md

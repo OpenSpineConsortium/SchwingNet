@@ -137,6 +137,20 @@ Metaflow's own resume rather than by anything written around it.
   so its runs are held to a PREREG of their own while the first screen's stays frozen; the same parts,
   words, folders and report (grid word `autoanatomist <plan>` for a plan AUTOANATOMIST2_PLANS names,
   grid/autoanatomist2.sbatch). tests/test_autoanatomist_flow.py runs its smoke through the launcher.
+- `qaloop.py`, QaloopFlow: the QA loop (docs/research/qa-loop/PREREG.md), the owner's ask of
+  2026-10-31 for a pipeline that propels itself until its quality checkpoints are met, a plan of
+  grid/qaloop/ (grid word `qaloop <plan>`, grid/qaloop.sbatch). start holds the run to the PREREG
+  and the plan's bytes; round runs one round of tools/qaloop_round.py, which trains the
+  auto-anatomist further on the six column classes' phantoms and asks six gates (convergence, the
+  anomaly classes decoded and encoded, the landmark fingerprint, its presence on C-ArmLSpine's real
+  frames, real naming and latency), and the controller of tools/qaloop_gates.py decides again, with
+  one change for each failing gate, or done; again is round itself, Metaflow's recursive switch, so
+  the loop is one run that a later job of the same words resumes at the round a time limit cut;
+  end writes RECORD.json, SUMMARY.md, ENDED.json and the report (`tools/report.py --study
+  qa-loop`). Each chain works in <out>/<plan>/<chain>/, each round in rounds/<n>/. The rounds
+  measure each block's bytes on disk and peak memory per unit and size the next round by them; that
+  is the loop's only bound on the data it grows. tests/test_qaloop.py holds the gates and the
+  controller, and the smoke ran end to end through the launcher on CPU in about four minutes.
 
 Every flow's end step sets an int artifact `verdict`, 0 when all went well and 1 otherwise.
 
@@ -157,8 +171,9 @@ the DRR domain-gap study, `bench flexray_drr_gap`, and the step that makes its M
 flexray_drr_seg` (both below), the gold tier 3 completion's TotalSegmentator arm, `totalseg complete`
 (TotalsegFlow, above), version 1's run, `start` and `v1` (V1Flow, above), a requested
 experiment, `experiment <issue>` (ExperimentFlow, above), the latency word's three network
-parts, `latency` (LatencyFlow, above), and the auto-anatomist screen, `autoanatomist <plan>`
-(AutoanatomistFlow, above). These words of grid/gate.sh still submit a
+parts, `latency` (LatencyFlow, above), the auto-anatomist screen, `autoanatomist <plan>`
+(AutoanatomistFlow, above), and the QA loop, `qaloop <plan>` (QaloopFlow, above). These words of
+grid/gate.sh still submit a
 plain job that trains or runs a network, each to be moved onto a flow listed in registry.txt, one
 pull request each, under a PREREG of its own:
 
