@@ -593,7 +593,7 @@ class GateTest(unittest.TestCase):
         self.assertEqual(self.submitted(), [])
 
     def test_ct_rate_and_an_open_chain_source_are_never_a_fetch_word(self):
-        for name in ("hf_ct_rate", "aws_stoic2021"):
+        for name in ("hf_ct_rate", "idc_spine_mets_ct_seg"):
             self.assertEqual(self.gate_at_home("fetch", name).returncode, 64, name)
         self.assertEqual(self.submitted(), [])
 
@@ -2441,7 +2441,7 @@ esac
         (self.repo / "tools" / "gold3_complete_grid.py").write_text("", encoding="utf-8")
         waits = self.gate("bordercall", "complete")
         self.assertEqual(waits.returncode, 0, waits.stdout + waits.stderr)
-        self.assertIn(f"afterany:{job}", waits.stdout)
+        self.assertNotIn(f"afterany:{job}", waits.stdout)
         (self.fake / "queue").write_text("", encoding="utf-8")
         # a job that ended with no report is not queued again: a second one waits for the owner's word
         again = self.gate("totalseg", "complete")
@@ -2917,12 +2917,12 @@ esac
         self.live(900)
         done = self.gate("realism", "edit")
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
-        self.assertIn("--dependency=afterany:900 ", self.line_of("realism.sbatch")[0])
+        self.assertNotIn("afterany:900", self.line_of("realism.sbatch")[0])
         job = self.recorded()["realism_edit"]
         self.live(job)
         done = self.gate("bench", "flexray_carmlspine")
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
-        self.assertIn(f"afterany:{job}", self.line_of("bench.sbatch")[0])
+        self.assertNotIn(f"afterany:{job}", self.line_of("bench.sbatch")[0])
 
     def test_an_unfinished_realism_report_is_printed_and_queues_nothing_until_a_fix_moves_the_checkout(self):
         # a job ended past its own trap leaves only the .part: the next send must not queue a GPU job
@@ -3034,13 +3034,12 @@ esac
         self.assertIn("--time 24:00:00", lines[0])
         self.assertIn("morphometry.sbatch", lines[0])
         self.assertIn("submitted the morphometry job for enhance", done.stdout)
-        # one job at a time: the other set waits while this one is live
+        # a set waits for its own live job; the other set runs beside it (greg, 2026-10-31)
         job = self.recorded()["morphometry_enhance"]
         self.live(job)
-        for which in ("enhance", "verse"):
-            refused = self.gate("morphometry", which)
-            self.assertEqual(refused.returncode, 75, refused.stdout)
-            self.assertIn(f"job {job}", refused.stdout)
+        refused = self.gate("morphometry", "enhance")
+        self.assertEqual(refused.returncode, 75, refused.stdout)
+        self.assertIn(f"job {job}", refused.stdout)
         (self.fake / "queue").write_text("", encoding="utf-8")
         logs = self.repo / "grid" / "logs"
         report = logs / "MORPHOMETRY-enhance.md"
@@ -3488,10 +3487,10 @@ exec python3 "$@"
         for name in self.MORPHOMETRY_REUSED:
             self.assertEqual((out / name).read_text(encoding="utf-8"), "job 4242\n", name)
         self.assertFalse((logs / "MORPHOMETRY-enhance.sent").exists())
-        # while it is live every morphometry word waits, the join's among them
+        # while it is live the same set and the join wait; the other set does not
         job = self.recorded()["morphometry_enhance"]
         self.live(job)
-        for which in ("enhance", "verse", "covariates"):
+        for which in ("enhance", "covariates"):
             refused = self.gate("morphometry", which)
             self.assertEqual(refused.returncode, 75, refused.stdout)
             self.assertIn(f"job {job}", refused.stdout)
@@ -3740,6 +3739,34 @@ exec python3 "$@"
         self.assertIn(f"MORPHOMETRY_RERUNS=enhance:{self.recorded()['morphometry_enhance']} in grid/gate.sh", refused.stdout)
         self.assertEqual(len(self.submitted()), 2)
 
+    def test_the_hold_keeps_a_line_for_each_live_run_and_goes_with_the_last(self):
+        # several runs hold one commit side by side (greg, 2026-10-31): a word drops the lines of runs
+        # Slurm no longer holds and keeps the rest, and the file goes once none is left
+        logs = self.repo / "grid" / "logs"
+        logs.mkdir(parents=True, exist_ok=True)
+        hold = logs / "HOLD"
+        hold.write_text("101 aaaaaaa\n102 aaaaaaa\n103 aaaaaaa\n", encoding="utf-8")
+        self.live(102, 103)
+        shown = self.gate("status")
+        self.assertEqual(hold.read_text(encoding="utf-8"), "102 aaaaaaa\n103 aaaaaaa\n")
+        self.assertIn("job 102, job 103", shown.stdout)
+        self.live()
+        self.gate("status")
+        self.assertFalse(hold.exists())
+
+    def test_each_driver_adds_and_drops_only_its_own_line_of_the_hold(self):
+        # the lines every driver uses, run as two jobs: the later one ending first leaves the earlier one's line
+        for name in ("morphometry.sbatch", "v1-driver.sbatch", "bench.sbatch", "totalseg-complete.sbatch", "census.sbatch"):
+            text = (GRID / name).read_text(encoding="utf-8")
+            take = next(line.strip() for line in text.splitlines() if '>> "$HOLD"' in line)
+            drop = next(line.strip() for line in text.splitlines() if line.strip().startswith("unhold()"))
+            hold = self.tmp / f"{name}.HOLD"
+            script = (f'HOLD={hold}; started_at=abc\n{drop}\n'
+                      f'SLURM_JOB_ID=1; {take}\nSLURM_JOB_ID=2; {take}\n'
+                      'SLURM_JOB_ID=2; unhold\ncat "$HOLD"; echo ---\nSLURM_JOB_ID=1; unhold\n[ -e "$HOLD" ] && echo left || echo gone\n')
+            out = subprocess.run(["bash", "-c", script], capture_output=True, text=True)
+            self.assertEqual(out.stdout, "1 abc\n---\ngone\n", name + out.stderr)
+
     def test_a_morphometry_job_whose_answer_was_lost_is_waited_for_while_slurm_holds_it(self):
         # The gate's list never names a job whose answer was lost, so Slurm's name for it, and once it runs
         # the part it writes, find it: every morphometry word waits for it, a run that holds the checkout
@@ -3754,25 +3781,25 @@ exec python3 "$@"
         self.allow_morphometry_rerun("enhance:lost")
         # queued under hpcworker's name for it, before it has written anything
         (self.fake / "queue").write_text("101 schwingnet-morphometry_enhance\n", encoding="utf-8")
-        for which in ("enhance", "verse", "covariates"):
+        for which in ("enhance", "covariates"):
             busy = self.gate("morphometry", which)
             self.assertEqual(busy.returncode, 75, busy.stdout)
-            self.assertIn("(job 101 )", busy.stdout)
+            self.assertIn("(job 101 ", busy.stdout)
         (self.repo / "tools" / "gold3_complete_grid.py").write_text("", encoding="utf-8")
         matcher = self.repo / "grid" / "bordercall" / "holdings" / "fullspine_complete.py"
         matcher.parent.mkdir(parents=True, exist_ok=True)
         matcher.touch()
         holds = self.gate("bordercall", "complete")
         self.assertEqual(holds.returncode, 0, holds.stdout + holds.stderr)
-        self.assertIn("the checkout: after the live runs that hold it (afterany:101)", holds.stdout)
+        self.assertNotIn("afterany:101", holds.stdout)
         # running, under whatever name Slurm shows it by, the part it writes names it
         (self.fake / "queue").write_text("101\n", encoding="utf-8")
         part = logs / "MORPHOMETRY-enhance.md.part"
         part.write_text("# morphometry enhance: job 101 on node, commit 0000000, 2026-10-30 16:00:00 UTC\n", encoding="utf-8")
-        for which in ("enhance", "verse", "covariates"):
+        for which in ("enhance", "covariates"):
             busy = self.gate("morphometry", which)
             self.assertEqual(busy.returncode, 75, busy.stdout)
-            self.assertIn("(job 101 )", busy.stdout)
+            self.assertIn("(job 101 ", busy.stdout)
         self.assertFalse((logs / "MORPHOMETRY-enhance.lost").exists())
         self.assertEqual(len(self.line_of("morphometry.sbatch")), 1)
         # once it has ended the owner's word for it queues one more, its part kept under its job
@@ -4191,7 +4218,7 @@ exec python3 "$@"
         matcher.touch()
         holds = self.gate("bordercall", "complete")
         self.assertEqual(holds.returncode, 0, holds.stdout + holds.stderr)
-        self.assertIn("the checkout: after the live runs that hold it (afterany:4200)", holds.stdout)
+        self.assertNotIn("afterany:4200", holds.stdout)
         self.assertNotIn(f"afterany:{job}", holds.stdout)
         (self.fake / "queue").write_text("", encoding="utf-8")
         # a job that ended with no report is not queued again: a second one waits for the owner's word
@@ -5821,13 +5848,14 @@ exit "${FAKE_RC:-0}"
         self.live(900)
         done = self.gate("bench", "flexray_carmlspine")
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
-        self.assertIn("--dependency=afterany:900 ", self.line_of("bench.sbatch")[0])
-        self.assertIn("the checkout: after the live runs that hold it (afterany:900)", done.stdout)
+        # each run holds the checkout by a line of its own, so none waits for another (greg, 2026-10-31)
+        self.assertNotIn("--dependency", self.line_of("bench.sbatch")[0])
+        self.assertNotIn("the checkout: after the live runs", done.stdout)
         job = self.recorded()["bench_flexray_carmlspine"]
         self.live(job)
         done = self.gate("v1")
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
-        self.assertIn(f"--dependency=afterany:{job} ", self.line_of("v1-driver.sbatch")[0])
+        self.assertNotIn(f"afterany:{job}", self.line_of("v1-driver.sbatch")[0])
 
     def test_bench_with_stale_environments_queues_one_setup_job_that_every_bench_waits_on(self):
         self.launched_for_the_test("bench.sbatch")
@@ -7745,8 +7773,7 @@ exit "${FAKE_RC:-0}"
         jobs = self.recorded()
         sweep = self.line_of("sweep-driver.sbatch")[0]
         self.assertTrue(sweep.startswith("--class gpu --name sweep "), sweep)
-        self.assertIn(f"--dependency=afterok:{jobs['setup']},afterok:{jobs['weights']},afterok:700,afterany:701,afterany:702,"
-                      "afterany:704 ", sweep)
+        self.assertIn(f"--dependency=afterok:{jobs['setup']},afterok:{jobs['weights']},afterok:700 ", sweep)
         self.assertIn("--kill-on-invalid-dep=yes", sweep)
         self.assertIn(" --no-requeue sweep-driver.sbatch", sweep)
         # the X-ray chain's catalog follows a fetch of days and is never waited on
@@ -7789,7 +7816,7 @@ exit "${FAKE_RC:-0}"
         self.assertEqual(self.submitted(), [])
         done = self.gate("sweep", "trials")
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
-        self.assertIn("--dependency=afterany:800 ", self.line_of("sweep-driver.sbatch")[0])
+        self.assertNotIn("afterany:800", self.line_of("sweep-driver.sbatch")[0])
 
     def test_a_real_plan_with_no_catalog_to_come_is_refused_and_queues_nothing(self):
         self.plan("real", "v1")
@@ -7830,7 +7857,7 @@ exit "${FAKE_RC:-0}"
         self.live(900)
         done = self.gate("v1")
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
-        self.assertIn("--dependency=afterany:900 ", self.line_of("v1-driver.sbatch")[0])
+        self.assertNotIn("afterany:900", self.line_of("v1-driver.sbatch")[0])
 
     def test_an_experiment_run_and_the_runs_beside_it_each_wait_for_the_others_that_hold_the_checkout(self):
         # experiment-driver.sbatch writes and clears grid/logs/HOLD as v1-driver and sweep-driver do,
@@ -7848,10 +7875,10 @@ exit "${FAKE_RC:-0}"
         self.live(600)
         done = self.gate("sweep", "synthetic")
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
-        self.assertIn("--dependency=afterany:600 ", self.line_of("sweep-driver.sbatch")[0])
+        self.assertNotIn("afterany:600", self.line_of("sweep-driver.sbatch")[0])
         done = self.gate("v1")
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
-        self.assertIn("--dependency=afterany:600 ", self.line_of("v1-driver.sbatch")[0])
+        self.assertNotIn("afterany:600", self.line_of("v1-driver.sbatch")[0])
         # an experiment sent while a sweep, a version 1 run and another experiment are live
         self.state_line(601, "sweep:real", "sweep")
         self.state_line(602, "v1", "v1_driver")
@@ -7859,8 +7886,8 @@ exit "${FAKE_RC:-0}"
         done = self.experiment("experiment", "251", requests=requests)
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
         line = self.line_of("experiment-driver.sbatch")[0]
-        self.assertIn("--dependency=afterany:600,afterany:601,afterany:602 ", line)
-        self.assertIn("the checkout: after the live runs that hold it", done.stdout)
+        self.assertNotIn("afterany:60", line)
+        self.assertNotIn("the checkout: after the live runs that hold it", done.stdout)
         # none live: no wait at all
         self.live()
         done = self.experiment("experiment", "250", requests=requests)

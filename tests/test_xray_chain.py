@@ -456,18 +456,18 @@ class SlurmScriptsTest(unittest.TestCase):
     def test_the_platform_chain_keeps_ct_rate_and_nlst_apart(self):
         code, out = self.dry_run("run-platform-fetch.sh")
         self.assertEqual(code, 0, out)
-        self.assertIn("aws_stoic2021: job DRY_dp_fetch_aws_stoic2021", out)
-        self.assertIn("--after DRY_dp_fetch_aws_stoic2021:any -- platform-fetch.sbatch", out)
+        self.assertIn("idc_spine_mets_ct_seg: job DRY_dp_fetch_idc_spine_mets_ct_seg", out)
+        self.assertIn("--after DRY_dp_fetch_idc_spine_mets_ct_seg:any -- platform-fetch.sbatch", out)
         self.assertNotIn("ID=hf_ct_rate ROUTE=hf-token", out.split("Not submitted")[0])
         self.assertIn("ID=hf_ct_rate", out.split("Not submitted")[1])
         self.assertNotIn("idc_nlst", out)
-        self.assertNotIn("rsna_rspect_pe: job", out)
+        self.assertNotIn("rsna_ratic_abdominal_trauma: job", out)
         # a gated source whose token or link file is not in place is left out, the rest still go in
         code, out = self.dry_run("run-platform-fetch.sh", "--gated")
         self.assertEqual(code, 0, out)
-        self.assertIn("rsna_rspect_pe: left out: there is no ~/.fluorocap/credentials.env", out)
-        self.assertNotIn("rsna_rspect_pe: job", out)
-        self.assertIn("aws_stoic2021: job", out)
+        self.assertIn("rsna_ratic_abdominal_trauma: left out: there is no ~/.rsna/ratic_link", out)
+        self.assertNotIn("rsna_ratic_abdominal_trauma: job", out)
+        self.assertIn("idc_spine_mets_ct_seg: job", out)
         for path in (".fluorocap/credentials.env", ".hf/token.env", ".rsna/ratic_link", ".redivis/token.env",
                      ".zenodo/token.env"):
             secret = self.home / path
@@ -475,7 +475,7 @@ class SlurmScriptsTest(unittest.TestCase):
             secret.write_text("KEY=value\n", encoding="utf-8")
             secret.chmod(0o600)
         code, out = self.dry_run("run-platform-fetch.sh", "--gated")
-        self.assertIn("rsna_rspect_pe: job", out)
+        self.assertIn("rsna_ratic_abdominal_trauma: job", out)
         self.assertNotIn("left out", out)
 
     def test_the_budgets_read_the_room_under_the_quota_not_the_pool(self):
@@ -538,7 +538,7 @@ class SlurmScriptsTest(unittest.TestCase):
         self.assertEqual(code, 0, out)
         self.assertIn("what the running fetches owe not read (squeue did not answer)", out)
         # the platform script only reports it, since its jobs decide when they start
-        code, out = self.dry_run("run-platform-fetch.sh", "--only", "aws_stoic2021", volume=volume,
+        code, out = self.dry_run("run-platform-fetch.sh", "--only", "idc_spine_mets_ct_seg", volume=volume,
                                  FAKE_SQUEUE_FAILS="1")
         self.assertEqual(code, 0, out)
         self.assertIn("what the running fetches owe not read (squeue did not answer)", out)
@@ -550,11 +550,11 @@ class SlurmScriptsTest(unittest.TestCase):
         env = dict(os.environ, SCHWINGNET=str(repo), HOME=str(self.home), HPCWORKER=str(ROOT / "tests" / "fakes" / "hpcworker"),
                    HPCW_LOG=str(log), **volume.env())
         env.pop("HPCW_DRY", None)
-        done = subprocess.run(["bash", str(repo / "grid" / "run-platform-fetch.sh"), "--only", "aws_stoic2021,zenodo_lumos"],
+        done = subprocess.run(["bash", str(repo / "grid" / "run-platform-fetch.sh"), "--only", "idc_spine_mets_ct_seg,zenodo_lumos"],
                               env=env, capture_output=True, text=True, timeout=60)
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
-        self.assertIn("aws_stoic2021: job 101", done.stdout)
-        self.assertEqual((volume.data / "aws_stoic2021" / "meta" / "QUEUED").read_text(encoding="utf-8").split()[0], "101")
+        self.assertIn("idc_spine_mets_ct_seg: job 101", done.stdout)
+        self.assertEqual((volume.data / "idc_spine_mets_ct_seg" / "meta" / "QUEUED").read_text(encoding="utf-8").split()[0], "101")
         self.assertEqual((volume.data / "zenodo_lumos" / "meta" / "QUEUED").read_text(encoding="utf-8").split()[0], "102")
 
     def test_the_xray_chain_holds_the_size_check_until_its_chain_is_recorded(self):
