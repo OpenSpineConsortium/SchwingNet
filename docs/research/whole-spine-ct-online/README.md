@@ -64,11 +64,14 @@ Checked 2026-10-31 through each site's page where the container reached it; TCIA
 
 Not whole spine, so left out: CT-RATE, INSPECT, LIDC and NLST (chest), Merlin, AMOS, RSNA abdominal trauma, KiTS, FLARE and the other abdomen sets (no C2), RSNA cervical (no sacrum), HECKTOR and the head-and-neck PET/CT sets.
 
-## 5. What to fetch first, if the owner says so
+## 5. The order to fetch, the owner's word of 2026-10-31 01:10 UTC
 
-1. NMDID's metadata CSV first (registration only, no image): it gives the per-person covariates for all 15,000 and lets a research request name the inclusion rule; the images then go to the grid under the size rule, a few TB at a time.
-2. autoPET longitudinal CT, 54 GB, after a person-overlap check against FDG-PET-CT-Lesions.
+The owner: "start with NMDID's metadata file, but i want to proceed in order of decreasing size then starting with NMDID after I give you the okay". So the metadata comes first, and the image fetches go largest first, each only after his okay:
+
+1. NMDID's metadata CSV, now (registration only, no image): the per-person covariates for all 15,000, which also let the research request name its inclusion rule. The site refuses this container and wants an institutional log-in, so the owner registers and downloads it; nmdid-request.md beside this file holds the steps and a draft of the research request.
+2. NMDID's images, over 50 TB, after the owner's okay and the committee's approval, to the grid under the size rule, a few TB at a time.
 3. The IDC remainder of section 3, about 155 GB, through the existing reacquire route.
 4. CADS's CT-TRI and VISCERAL, 123 GB, after registration.
+5. autoPET longitudinal CT, 54 GB, after a person-overlap check against FDG-PET-CT-Lesions.
 
-Nothing above was fetched; each needs the owner's word, and NMDID's registration and research request are his to sign.
+Nothing above has been fetched.
