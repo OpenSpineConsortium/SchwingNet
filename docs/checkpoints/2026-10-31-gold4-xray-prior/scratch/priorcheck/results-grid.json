@@ -1,0 +1,5463 @@
+{
+ "a_sep": {
+  "n693": {
+   "pearson_same_level_widths": {
+    "mean": 0.3115,
+    "sd": 0.0169
+   },
+   "pearson_same_level_depths": {
+    "mean": 0.4901,
+    "sd": 0.0149
+   },
+   "pearson_same_level_width_depth_upper": {
+    "mean": 0.1803,
+    "sd": 0.0141
+   },
+   "pearson_same_level_hpost_mean": {
+    "mean": 0.0396,
+    "sd": 0.0121
+   },
+   "pearson_same_level_wd4_mean": {
+    "mean": 0.2177,
+    "sd": 0.0079
+   },
+   "pearson_disc_widths": {
+    "mean": 0.1542,
+    "sd": 0.0177
+   },
+   "pearson_disc_depths": {
+    "mean": 0.2551,
+    "sd": 0.0146
+   },
+   "pearson_lag1_upperW_to_next_lowerW": {
+    "mean": 0.1551,
+    "sd": 0.0168
+   },
+   "pearson_lag1_cross_wd4_not_facing": {
+    "mean": 0.0933,
+    "sd": 0.0078
+   },
+   "pearson_lag5_cross_wd4": {
+    "mean": 0.0825,
+    "sd": 0.0088
+   },
+   "pearson_lag1_same": {
+    "mean": 0.5138,
+    "sd": 0.005
+   },
+   "pearson_lag5_same": {
+    "mean": 0.3733,
+    "sd": 0.0069
+   },
+   "pearson_same_level_widths_cervical": {
+    "mean": 0.3201,
+    "sd": 0.0143
+   },
+   "pearson_same_level_widths_T1L5": {
+    "mean": 0.309,
+    "sd": 0.0208
+   },
+   "spearman_same_level_widths": {
+    "mean": 0.3113,
+    "sd": 0.0159
+   },
+   "spearman_same_level_depths": {
+    "mean": 0.4902,
+    "sd": 0.0157
+   },
+   "spearman_same_level_width_depth_upper": {
+    "mean": 0.1804,
+    "sd": 0.0139
+   },
+   "spearman_same_level_hpost_mean": {
+    "mean": 0.0391,
+    "sd": 0.0122
+   },
+   "spearman_same_level_wd4_mean": {
+    "mean": 0.2176,
+    "sd": 0.0074
+   },
+   "spearman_disc_widths": {
+    "mean": 0.1536,
+    "sd": 0.0172
+   },
+   "spearman_disc_depths": {
+    "mean": 0.2555,
+    "sd": 0.0157
+   },
+   "spearman_lag1_upperW_to_next_lowerW": {
+    "mean": 0.1548,
+    "sd": 0.0167
+   },
+   "spearman_lag1_cross_wd4_not_facing": {
+    "mean": 0.093,
+    "sd": 0.0081
+   },
+   "spearman_lag5_cross_wd4": {
+    "mean": 0.0823,
+    "sd": 0.009
+   },
+   "spearman_lag1_same": {
+    "mean": 0.5128,
+    "sd": 0.0045
+   },
+   "spearman_lag5_same": {
+    "mean": 0.3729,
+    "sd": 0.0062
+   },
+   "spearman_same_level_widths_cervical": {
+    "mean": 0.3204,
+    "sd": 0.0134
+   },
+   "spearman_same_level_widths_T1L5": {
+    "mean": 0.3087,
+    "sd": 0.0199
+   },
+   "kron_R_measure_widths": {
+    "mean": 0.3023,
+    "sd": 0.0061
+   },
+   "kron_R_measure_depths": {
+    "mean": 0.4624,
+    "sd": 0.006
+   },
+   "kron_R_measure_wd_upper": {
+    "mean": 0.1702,
+    "sd": 0.0077
+   },
+   "kron_lag1": {
+    "mean": 0.4884,
+    "sd": 0.0042
+   },
+   "misfit_same_level_widths": {
+    "mean": 0.0092,
+    "sd": 0.0137
+   },
+   "misfit_same_level_depths": {
+    "mean": 0.0277,
+    "sd": 0.012
+   },
+   "misfit_same_level_wd4_mean": {
+    "mean": 0.0115,
+    "sd": 0.0063
+   },
+   "misfit_disc_widths": {
+    "mean": 0.0066,
+    "sd": 0.0171
+   },
+   "misfit_disc_depths": {
+    "mean": 0.0293,
+    "sd": 0.0131
+   },
+   "misfit_lag1_cross_wd4_not_facing": {
+    "mean": 0.0097,
+    "sd": 0.0076
+   },
+   "misfit_lag5_cross_wd4": {
+    "mean": 0.0093,
+    "sd": 0.0085
+   },
+   "misfit_lag1_same": {
+    "mean": 0.0254,
+    "sd": 0.002
+   },
+   "pearson_cerv_lumbar_cross_measure": {
+    "mean": 0.0378,
+    "sd": 0.0047
+   },
+   "misfit_cerv_lumbar_cross_measure": {
+    "mean": 0.0019,
+    "sd": 0.0044
+   },
+   "copula_R_measure_widths": {
+    "mean": 0.3011,
+    "sd": 0.0063
+   },
+   "copula_R_measure_depths": {
+    "mean": 0.4605,
+    "sd": 0.0063
+   },
+   "copula_lag1": {
+    "mean": 0.4871,
+    "sd": 0.0043
+   },
+   "T1L5_minus_C3L5_widths": {
+    "mean": -0.0012,
+    "sd": 0.0039
+   },
+   "T1L5_minus_C3L5_wd_upper": {
+    "mean": -0.0006,
+    "sd": 0.0038
+   },
+   "cervical_fit_R_measure_widths": {
+    "mean": 0.3052,
+    "sd": 0.0151
+   }
+  },
+  "n67": {
+   "pearson_same_level_widths": {
+    "mean": 0.3294,
+    "sd": 0.0431
+   },
+   "pearson_same_level_depths": {
+    "mean": 0.4876,
+    "sd": 0.0317
+   },
+   "pearson_same_level_width_depth_upper": {
+    "mean": 0.1828,
+    "sd": 0.0488
+   },
+   "pearson_same_level_hpost_mean": {
+    "mean": 0.0429,
+    "sd": 0.0372
+   },
+   "pearson_same_level_wd4_mean": {
+    "mean": 0.22,
+    "sd": 0.0289
+   },
+   "pearson_disc_widths": {
+    "mean": 0.1766,
+    "sd": 0.0507
+   },
+   "pearson_disc_depths": {
+    "mean": 0.2521,
+    "sd": 0.0373
+   },
+   "pearson_lag1_upperW_to_next_lowerW": {
+    "mean": 0.1804,
+    "sd": 0.0514
+   },
+   "pearson_lag1_cross_wd4_not_facing": {
+    "mean": 0.0939,
+    "sd": 0.0346
+   },
+   "pearson_lag5_cross_wd4": {
+    "mean": 0.0845,
+    "sd": 0.0357
+   },
+   "pearson_lag1_same": {
+    "mean": 0.5112,
+    "sd": 0.0151
+   },
+   "pearson_lag5_same": {
+    "mean": 0.3742,
+    "sd": 0.0192
+   },
+   "pearson_same_level_widths_cervical": {
+    "mean": 0.3162,
+    "sd": 0.0616
+   },
+   "pearson_same_level_widths_T1L5": {
+    "mean": 0.3333,
+    "sd": 0.0522
+   },
+   "spearman_same_level_widths": {
+    "mean": 0.3277,
+    "sd": 0.0439
+   },
+   "spearman_same_level_depths": {
+    "mean": 0.4843,
+    "sd": 0.0338
+   },
+   "spearman_same_level_width_depth_upper": {
+    "mean": 0.1827,
+    "sd": 0.0482
+   },
+   "spearman_same_level_hpost_mean": {
+    "mean": 0.0433,
+    "sd": 0.0375
+   },
+   "spearman_same_level_wd4_mean": {
+    "mean": 0.2188,
+    "sd": 0.0306
+   },
+   "spearman_disc_widths": {
+    "mean": 0.1763,
+    "sd": 0.0484
+   },
+   "spearman_disc_depths": {
+    "mean": 0.2521,
+    "sd": 0.0396
+   },
+   "spearman_lag1_upperW_to_next_lowerW": {
+    "mean": 0.1779,
+    "sd": 0.0521
+   },
+   "spearman_lag1_cross_wd4_not_facing": {
+    "mean": 0.0935,
+    "sd": 0.0362
+   },
+   "spearman_lag5_cross_wd4": {
+    "mean": 0.0851,
+    "sd": 0.0364
+   },
+   "spearman_lag1_same": {
+    "mean": 0.507,
+    "sd": 0.0156
+   },
+   "spearman_lag5_same": {
+    "mean": 0.3711,
+    "sd": 0.0213
+   },
+   "spearman_same_level_widths_cervical": {
+    "mean": 0.3135,
+    "sd": 0.0643
+   },
+   "spearman_same_level_widths_T1L5": {
+    "mean": 0.3319,
+    "sd": 0.0534
+   },
+   "kron_R_measure_widths": {
+    "mean": 0.3065,
+    "sd": 0.0223
+   },
+   "kron_R_measure_depths": {
+    "mean": 0.4596,
+    "sd": 0.018
+   },
+   "kron_R_measure_wd_upper": {
+    "mean": 0.1747,
+    "sd": 0.0229
+   },
+   "kron_lag1": {
+    "mean": 0.4853,
+    "sd": 0.0124
+   },
+   "misfit_same_level_widths": {
+    "mean": 0.023,
+    "sd": 0.0403
+   },
+   "misfit_same_level_depths": {
+    "mean": 0.0279,
+    "sd": 0.0326
+   },
+   "misfit_same_level_wd4_mean": {
+    "mean": 0.0112,
+    "sd": 0.0262
+   },
+   "misfit_disc_widths": {
+    "mean": 0.0278,
+    "sd": 0.0511
+   },
+   "misfit_disc_depths": {
+    "mean": 0.029,
+    "sd": 0.0381
+   },
+   "misfit_lag1_cross_wd4_not_facing": {
+    "mean": 0.0095,
+    "sd": 0.0333
+   },
+   "misfit_lag5_cross_wd4": {
+    "mean": 0.0103,
+    "sd": 0.035
+   },
+   "misfit_lag1_same": {
+    "mean": 0.0259,
+    "sd": 0.0068
+   },
+   "pearson_cerv_lumbar_cross_measure": {
+    "mean": 0.0344,
+    "sd": 0.0339
+   },
+   "misfit_cerv_lumbar_cross_measure": {
+    "mean": -0.0016,
+    "sd": 0.0326
+   },
+   "copula_R_measure_widths": {
+    "mean": 0.2967,
+    "sd": 0.0219
+   },
+   "copula_R_measure_depths": {
+    "mean": 0.443,
+    "sd": 0.0184
+   },
+   "copula_lag1": {
+    "mean": 0.4752,
+    "sd": 0.0123
+   },
+   "T1L5_minus_C3L5_widths": {
+    "mean": 0.0035,
+    "sd": 0.0135
+   },
+   "T1L5_minus_C3L5_wd_upper": {
+    "mean": -0.0012,
+    "sd": 0.0165
+   },
+   "cervical_fit_R_measure_widths": {
+    "mean": 0.2932,
+    "sd": 0.0564
+   }
+  }
+ },
+ "b_a15_c0": {
+  "n693": {
+   "pearson_same_level_widths": {
+    "mean": 0.15,
+    "sd": 0.0143
+   },
+   "pearson_same_level_depths": {
+    "mean": 0.1502,
+    "sd": 0.014
+   },
+   "pearson_same_level_width_depth_upper": {
+    "mean": 0.1545,
+    "sd": 0.0164
+   },
+   "pearson_same_level_hpost_mean": {
+    "mean": -0.0009,
+    "sd": 0.0101
+   },
+   "pearson_same_level_wd4_mean": {
+    "mean": 0.1513,
+    "sd": 0.0106
+   },
+   "pearson_disc_widths": {
+    "mean": 0.1509,
+    "sd": 0.0147
+   },
+   "pearson_disc_depths": {
+    "mean": 0.1504,
+    "sd": 0.015
+   },
+   "pearson_lag1_upperW_to_next_lowerW": {
+    "mean": 0.1528,
+    "sd": 0.0141
+   },
+   "pearson_lag1_cross_wd4_not_facing": {
+    "mean": 0.1505,
+    "sd": 0.011
+   },
+   "pearson_lag5_cross_wd4": {
+    "mean": 0.1515,
+    "sd": 0.0111
+   },
+   "pearson_lag1_same": {
+    "mean": 0.4612,
+    "sd": 0.0051
+   },
+   "pearson_lag5_same": {
+    "mean": 0.3224,
+    "sd": 0.0062
+   },
+   "pearson_same_level_widths_cervical": {
+    "mean": 0.1439,
+    "sd": 0.021
+   },
+   "pearson_same_level_widths_T1L5": {
+    "mean": 0.1518,
+    "sd": 0.0151
+   },
+   "spearman_same_level_widths": {
+    "mean": 0.1507,
+    "sd": 0.0142
+   },
+   "spearman_same_level_depths": {
+    "mean": 0.15,
+    "sd": 0.0148
+   },
+   "spearman_same_level_width_depth_upper": {
+    "mean": 0.1546,
+    "sd": 0.0156
+   },
+   "spearman_same_level_hpost_mean": {
+    "mean": -0.001,
+    "sd": 0.0109
+   },
+   "spearman_same_level_wd4_mean": {
+    "mean": 0.1515,
+    "sd": 0.0101
+   },
+   "spearman_disc_widths": {
+    "mean": 0.1503,
+    "sd": 0.015
+   },
+   "spearman_disc_depths": {
+    "mean": 0.1505,
+    "sd": 0.0141
+   },
+   "spearman_lag1_upperW_to_next_lowerW": {
+    "mean": 0.1535,
+    "sd": 0.0142
+   },
+   "spearman_lag1_cross_wd4_not_facing": {
+    "mean": 0.1503,
+    "sd": 0.0103
+   },
+   "spearman_lag5_cross_wd4": {
+    "mean": 0.1513,
+    "sd": 0.0108
+   },
+   "spearman_lag1_same": {
+    "mean": 0.4606,
+    "sd": 0.0052
+   },
+   "spearman_lag5_same": {
+    "mean": 0.3216,
+    "sd": 0.0063
+   },
+   "spearman_same_level_widths_cervical": {
+    "mean": 0.1467,
+    "sd": 0.0211
+   },
+   "spearman_same_level_widths_T1L5": {
+    "mean": 0.1519,
+    "sd": 0.0152
+   },
+   "kron_R_measure_widths": {
+    "mean": 0.0155,
+    "sd": 0.0069
+   },
+   "kron_R_measure_depths": {
+    "mean": 0.0182,
+    "sd": 0.0083
+   },
+   "kron_R_measure_wd_upper": {
+    "mean": 0.0223,
+    "sd": 0.008
+   },
+   "kron_lag1": {
+    "mean": 0.439,
+    "sd": 0.0049
+   },
+   "misfit_same_level_widths": {
+    "mean": 0.1345,
+    "sd": 0.012
+   },
+   "misfit_same_level_depths": {
+    "mean": 0.132,
+    "sd": 0.0129
+   },
+   "misfit_same_level_wd4_mean": {
+    "mean": 0.1316,
+    "sd": 0.0094
+   },
+   "misfit_disc_widths": {
+    "mean": 0.1441,
+    "sd": 0.0141
+   },
+   "misfit_disc_depths": {
+    "mean": 0.1423,
+    "sd": 0.0146
+   },
+   "misfit_lag1_cross_wd4_not_facing": {
+    "mean": 0.1416,
+    "sd": 0.0105
+   },
+   "misfit_lag5_cross_wd4": {
+    "mean": 0.1455,
+    "sd": 0.0107
+   },
+   "misfit_lag1_same": {
+    "mean": 0.0221,
+    "sd": 0.0008
+   },
+   "pearson_cerv_lumbar_cross_measure": {
+    "mean": 0.1505,
+    "sd": 0.0102
+   },
+   "misfit_cerv_lumbar_cross_measure": {
+    "mean": 0.1449,
+    "sd": 0.0099
+   },
+   "copula_R_measure_widths": {
+    "mean": 0.0155,
+    "sd": 0.0069
+   },
+   "copula_R_measure_depths": {
+    "mean": 0.0184,
+    "sd": 0.0082
+   },
+   "copula_lag1": {
+    "mean": 0.4379,
+    "sd": 0.0049
+   },
+   "T1L5_minus_C3L5_widths": {
+    "mean": 0.0057,
+    "sd": 0.0047
+   },
+   "T1L5_minus_C3L5_wd_upper": {
+    "mean": 0.0047,
+    "sd": 0.0036
+   },
+   "cervical_fit_R_measure_widths": {
+    "mean": 0.0498,
+    "sd": 0.0215
+   }
+  },
+  "n67": {
+   "pearson_same_level_widths": {
+    "mean": 0.1362,
+    "sd": 0.0476
+   },
+   "pearson_same_level_depths": {
+    "mean": 0.1528,
+    "sd": 0.0553
+   },
+   "pearson_same_level_width_depth_upper": {
+    "mean": 0.1467,
+    "sd": 0.047
+   },
+   "pearson_same_level_hpost_mean": {
+    "mean": -0.0051,
+    "sd": 0.0314
+   },
+   "pearson_same_level_wd4_mean": {
+    "mean": 0.1453,
+    "sd": 0.0366
+   },
+   "pearson_disc_widths": {
+    "mean": 0.1352,
+    "sd": 0.0499
+   },
+   "pearson_disc_depths": {
+    "mean": 0.1563,
+    "sd": 0.0546
+   },
+   "pearson_lag1_upperW_to_next_lowerW": {
+    "mean": 0.1317,
+    "sd": 0.0463
+   },
+   "pearson_lag1_cross_wd4_not_facing": {
+    "mean": 0.1467,
+    "sd": 0.0364
+   },
+   "pearson_lag5_cross_wd4": {
+    "mean": 0.147,
+    "sd": 0.0368
+   },
+   "pearson_lag1_same": {
+    "mean": 0.4592,
+    "sd": 0.023
+   },
+   "pearson_lag5_same": {
+    "mean": 0.318,
+    "sd": 0.0273
+   },
+   "pearson_same_level_widths_cervical": {
+    "mean": 0.1252,
+    "sd": 0.0797
+   },
+   "pearson_same_level_widths_T1L5": {
+    "mean": 0.1394,
+    "sd": 0.0504
+   },
+   "spearman_same_level_widths": {
+    "mean": 0.1344,
+    "sd": 0.0466
+   },
+   "spearman_same_level_depths": {
+    "mean": 0.1511,
+    "sd": 0.0567
+   },
+   "spearman_same_level_width_depth_upper": {
+    "mean": 0.1455,
+    "sd": 0.0466
+   },
+   "spearman_same_level_hpost_mean": {
+    "mean": -0.0046,
+    "sd": 0.0316
+   },
+   "spearman_same_level_wd4_mean": {
+    "mean": 0.1438,
+    "sd": 0.0365
+   },
+   "spearman_disc_widths": {
+    "mean": 0.1316,
+    "sd": 0.0495
+   },
+   "spearman_disc_depths": {
+    "mean": 0.1541,
+    "sd": 0.0551
+   },
+   "spearman_lag1_upperW_to_next_lowerW": {
+    "mean": 0.1285,
+    "sd": 0.0446
+   },
+   "spearman_lag1_cross_wd4_not_facing": {
+    "mean": 0.1446,
+    "sd": 0.0366
+   },
+   "spearman_lag5_cross_wd4": {
+    "mean": 0.145,
+    "sd": 0.037
+   },
+   "spearman_lag1_same": {
+    "mean": 0.4542,
+    "sd": 0.0232
+   },
+   "spearman_lag5_same": {
+    "mean": 0.3145,
+    "sd": 0.028
+   },
+   "spearman_same_level_widths_cervical": {
+    "mean": 0.1244,
+    "sd": 0.0726
+   },
+   "spearman_same_level_widths_T1L5": {
+    "mean": 0.1373,
+    "sd": 0.0515
+   },
+   "kron_R_measure_widths": {
+    "mean": 0.0156,
+    "sd": 0.0263
+   },
+   "kron_R_measure_depths": {
+    "mean": 0.0195,
+    "sd": 0.0293
+   },
+   "kron_R_measure_wd_upper": {
+    "mean": 0.0168,
+    "sd": 0.0277
+   },
+   "kron_lag1": {
+    "mean": 0.4393,
+    "sd": 0.0225
+   },
+   "misfit_same_level_widths": {
+    "mean": 0.1206,
+    "sd": 0.0419
+   },
+   "misfit_same_level_depths": {
+    "mean": 0.1333,
+    "sd": 0.0505
+   },
+   "misfit_same_level_wd4_mean": {
+    "mean": 0.1288,
+    "sd": 0.0321
+   },
+   "misfit_disc_widths": {
+    "mean": 0.1285,
+    "sd": 0.0488
+   },
+   "misfit_disc_depths": {
+    "mean": 0.1478,
+    "sd": 0.0532
+   },
+   "misfit_lag1_cross_wd4_not_facing": {
+    "mean": 0.1395,
+    "sd": 0.0343
+   },
+   "misfit_lag5_cross_wd4": {
+    "mean": 0.142,
+    "sd": 0.0357
+   },
+   "misfit_lag1_same": {
+    "mean": 0.0199,
+    "sd": 0.0038
+   },
+   "pearson_cerv_lumbar_cross_measure": {
+    "mean": 0.1446,
+    "sd": 0.0363
+   },
+   "misfit_cerv_lumbar_cross_measure": {
+    "mean": 0.14,
+    "sd": 0.0347
+   },
+   "copula_R_measure_widths": {
+    "mean": 0.0156,
+    "sd": 0.0263
+   },
+   "copula_R_measure_depths": {
+    "mean": 0.018,
+    "sd": 0.0284
+   },
+   "copula_lag1": {
+    "mean": 0.4312,
+    "sd": 0.0223
+   },
+   "T1L5_minus_C3L5_widths": {
+    "mean": 0.0045,
+    "sd": 0.0144
+   },
+   "T1L5_minus_C3L5_wd_upper": {
+    "mean": 0.0063,
+    "sd": 0.0131
+   },
+   "cervical_fit_R_measure_widths": {
+    "mean": 0.0516,
+    "sd": 0.0553
+   }
+  }
+ },
+ "b_a15_c2": {
+  "n693": {
+   "pearson_same_level_widths": {
+    "mean": 0.3508,
+    "sd": 0.014
+   },
+   "pearson_same_level_depths": {
+    "mean": 0.351,
+    "sd": 0.0125
+   },
+   "pearson_same_level_width_depth_upper": {
+    "mean": 0.3548,
+    "sd": 0.0139
+   },
+   "pearson_same_level_hpost_mean": {
+    "mean": -0.0011,
+    "sd": 0.0098
+   },
+   "pearson_same_level_wd4_mean": {
+    "mean": 0.3517,
+    "sd": 0.0095
+   },
+   "pearson_disc_widths": {
+    "mean": 0.1524,
+    "sd": 0.0144
+   },
+   "pearson_disc_depths": {
+    "mean": 0.1492,
+    "sd": 0.0142
+   },
+   "pearson_lag1_upperW_to_next_lowerW": {
+    "mean": 0.1522,
+    "sd": 0.0135
+   },
+   "pearson_lag1_cross_wd4_not_facing": {
+    "mean": 0.1507,
+    "sd": 0.0115
+   },
+   "pearson_lag5_cross_wd4": {
+    "mean": 0.1518,
+    "sd": 0.0122
+   },
+   "pearson_lag1_same": {
+    "mean": 0.4611,
+    "sd": 0.0051
+   },
+   "pearson_lag5_same": {
+    "mean": 0.3225,
+    "sd": 0.0069
+   },
+   "pearson_same_level_widths_cervical": {
+    "mean": 0.3436,
+    "sd": 0.0192
+   },
+   "pearson_same_level_widths_T1L5": {
+    "mean": 0.353,
+    "sd": 0.0148
+   },
+   "spearman_same_level_widths": {
+    "mean": 0.3519,
+    "sd": 0.0143
+   },
+   "spearman_same_level_depths": {
+    "mean": 0.3499,
+    "sd": 0.0122
+   },
+   "spearman_same_level_width_depth_upper": {
+    "mean": 0.3546,
+    "sd": 0.0131
+   },
+   "spearman_same_level_hpost_mean": {
+    "mean": -0.0013,
+    "sd": 0.0103
+   },
+   "spearman_same_level_wd4_mean": {
+    "mean": 0.3518,
+    "sd": 0.009
+   },
+   "spearman_disc_widths": {
+    "mean": 0.1523,
+    "sd": 0.0153
+   },
+   "spearman_disc_depths": {
+    "mean": 0.1494,
+    "sd": 0.0137
+   },
+   "spearman_lag1_upperW_to_next_lowerW": {
+    "mean": 0.1535,
+    "sd": 0.0136
+   },
+   "spearman_lag1_cross_wd4_not_facing": {
+    "mean": 0.1508,
+    "sd": 0.011
+   },
+   "spearman_lag5_cross_wd4": {
+    "mean": 0.152,
+    "sd": 0.0121
+   },
+   "spearman_lag1_same": {
+    "mean": 0.4606,
+    "sd": 0.0054
+   },
+   "spearman_lag5_same": {
+    "mean": 0.322,
+    "sd": 0.0071
+   },
+   "spearman_same_level_widths_cervical": {
+    "mean": 0.3469,
+    "sd": 0.0212
+   },
+   "spearman_same_level_widths_T1L5": {
+    "mean": 0.3533,
+    "sd": 0.0152
+   },
+   "kron_R_measure_widths": {
+    "mean": 0.3321,
+    "sd": 0.008
+   },
+   "kron_R_measure_depths": {
+    "mean": 0.3347,
+    "sd": 0.0063
+   },
+   "kron_R_measure_wd_upper": {
+    "mean": 0.3379,
+    "sd": 0.0071
+   },
+   "kron_lag1": {
+    "mean": 0.4567,
+    "sd": 0.0041
+   },
+   "misfit_same_level_widths": {
+    "mean": 0.0188,
+    "sd": 0.0103
+   },
+   "misfit_same_level_depths": {
+    "mean": 0.0163,
+    "sd": 0.0115
+   },
+   "misfit_same_level_wd4_mean": {
+    "mean": 0.0164,
+    "sd": 0.0081
+   },
+   "misfit_disc_widths": {
+    "mean": 0.0008,
+    "sd": 0.0133
+   },
+   "misfit_disc_depths": {
+    "mean": -0.0037,
+    "sd": 0.014
+   },
+   "misfit_lag1_cross_wd4_not_facing": {
+    "mean": -0.0026,
+    "sd": 0.0108
+   },
+   "misfit_lag5_cross_wd4": {
+    "mean": 0.0533,
+    "sd": 0.0116
+   },
+   "misfit_lag1_same": {
+    "mean": 0.0044,
+    "sd": 0.0029
+   },
+   "pearson_cerv_lumbar_cross_measure": {
+    "mean": 0.1514,
+    "sd": 0.0129
+   },
+   "misfit_cerv_lumbar_cross_measure": {
+    "mean": 0.0615,
+    "sd": 0.0125
+   },
+   "copula_R_measure_widths": {
+    "mean": 0.3307,
+    "sd": 0.0076
+   },
+   "copula_R_measure_depths": {
+    "mean": 0.3333,
+    "sd": 0.0064
+   },
+   "copula_lag1": {
+    "mean": 0.4553,
+    "sd": 0.0041
+   },
+   "T1L5_minus_C3L5_widths": {
+    "mean": 0.0031,
+    "sd": 0.0039
+   },
+   "T1L5_minus_C3L5_wd_upper": {
+    "mean": 0.002,
+    "sd": 0.0035
+   },
+   "cervical_fit_R_measure_widths": {
+    "mean": 0.3389,
+    "sd": 0.0162
+   }
+  },
+  "n67": {
+   "pearson_same_level_widths": {
+    "mean": 0.3356,
+    "sd": 0.0412
+   },
+   "pearson_same_level_depths": {
+    "mean": 0.3527,
+    "sd": 0.0489
+   },
+   "pearson_same_level_width_depth_upper": {
+    "mean": 0.3455,
+    "sd": 0.0385
+   },
+   "pearson_same_level_hpost_mean": {
+    "mean": -0.0022,
+    "sd": 0.0308
+   },
+   "pearson_same_level_wd4_mean": {
+    "mean": 0.3456,
+    "sd": 0.0303
+   },
+   "pearson_disc_widths": {
+    "mean": 0.1334,
+    "sd": 0.0497
+   },
+   "pearson_disc_depths": {
+    "mean": 0.1568,
+    "sd": 0.0533
+   },
+   "pearson_lag1_upperW_to_next_lowerW": {
+    "mean": 0.129,
+    "sd": 0.0496
+   },
+   "pearson_lag1_cross_wd4_not_facing": {
+    "mean": 0.1454,
+    "sd": 0.0387
+   },
+   "pearson_lag5_cross_wd4": {
+    "mean": 0.1445,
+    "sd": 0.0392
+   },
+   "pearson_lag1_same": {
+    "mean": 0.4571,
+    "sd": 0.0226
+   },
+   "pearson_lag5_same": {
+    "mean": 0.3148,
+    "sd": 0.0281
+   },
+   "pearson_same_level_widths_cervical": {
+    "mean": 0.3245,
+    "sd": 0.0736
+   },
+   "pearson_same_level_widths_T1L5": {
+    "mean": 0.3388,
+    "sd": 0.0445
+   },
+   "spearman_same_level_widths": {
+    "mean": 0.3313,
+    "sd": 0.0419
+   },
+   "spearman_same_level_depths": {
+    "mean": 0.3499,
+    "sd": 0.0484
+   },
+   "spearman_same_level_width_depth_upper": {
+    "mean": 0.3415,
+    "sd": 0.0428
+   },
+   "spearman_same_level_hpost_mean": {
+    "mean": -0.0031,
+    "sd": 0.0299
+   },
+   "spearman_same_level_wd4_mean": {
+    "mean": 0.342,
+    "sd": 0.0307
+   },
+   "spearman_disc_widths": {
+    "mean": 0.1289,
+    "sd": 0.0491
+   },
+   "spearman_disc_depths": {
+    "mean": 0.1549,
+    "sd": 0.0549
+   },
+   "spearman_lag1_upperW_to_next_lowerW": {
+    "mean": 0.1254,
+    "sd": 0.0479
+   },
+   "spearman_lag1_cross_wd4_not_facing": {
+    "mean": 0.1433,
+    "sd": 0.0386
+   },
+   "spearman_lag5_cross_wd4": {
+    "mean": 0.1426,
+    "sd": 0.0391
+   },
+   "spearman_lag1_same": {
+    "mean": 0.4522,
+    "sd": 0.0221
+   },
+   "spearman_lag5_same": {
+    "mean": 0.3112,
+    "sd": 0.0292
+   },
+   "spearman_same_level_widths_cervical": {
+    "mean": 0.322,
+    "sd": 0.0698
+   },
+   "spearman_same_level_widths_T1L5": {
+    "mean": 0.334,
+    "sd": 0.0469
+   },
+   "kron_R_measure_widths": {
+    "mean": 0.3345,
+    "sd": 0.0228
+   },
+   "kron_R_measure_depths": {
+    "mean": 0.3351,
+    "sd": 0.0218
+   },
+   "kron_R_measure_wd_upper": {
+    "mean": 0.3343,
+    "sd": 0.0219
+   },
+   "kron_lag1": {
+    "mean": 0.4552,
+    "sd": 0.0173
+   },
+   "misfit_same_level_widths": {
+    "mean": 0.001,
+    "sd": 0.0399
+   },
+   "misfit_same_level_depths": {
+    "mean": 0.0177,
+    "sd": 0.0405
+   },
+   "misfit_same_level_wd4_mean": {
+    "mean": 0.011,
+    "sd": 0.0268
+   },
+   "misfit_disc_widths": {
+    "mean": -0.0187,
+    "sd": 0.051
+   },
+   "misfit_disc_depths": {
+    "mean": 0.0044,
+    "sd": 0.0477
+   },
+   "misfit_lag1_cross_wd4_not_facing": {
+    "mean": -0.0069,
+    "sd": 0.0365
+   },
+   "misfit_lag5_cross_wd4": {
+    "mean": 0.0474,
+    "sd": 0.0372
+   },
+   "misfit_lag1_same": {
+    "mean": 0.0019,
+    "sd": 0.0106
+   },
+   "pearson_cerv_lumbar_cross_measure": {
+    "mean": 0.144,
+    "sd": 0.0385
+   },
+   "misfit_cerv_lumbar_cross_measure": {
+    "mean": 0.0545,
+    "sd": 0.037
+   },
+   "copula_R_measure_widths": {
+    "mean": 0.3239,
+    "sd": 0.0222
+   },
+   "copula_R_measure_depths": {
+    "mean": 0.3256,
+    "sd": 0.0201
+   },
+   "copula_lag1": {
+    "mean": 0.445,
+    "sd": 0.0167
+   },
+   "T1L5_minus_C3L5_widths": {
+    "mean": 0.0025,
+    "sd": 0.0139
+   },
+   "T1L5_minus_C3L5_wd_upper": {
+    "mean": 0.0023,
+    "sd": 0.0113
+   },
+   "cervical_fit_R_measure_widths": {
+    "mean": 0.3399,
+    "sd": 0.0513
+   }
+  }
+ },
+ "b_a15_c4": {
+  "n693": {
+   "pearson_same_level_widths": {
+    "mean": 0.5517,
+    "sd": 0.0132
+   },
+   "pearson_same_level_depths": {
+    "mean": 0.5501,
+    "sd": 0.0097
+   },
+   "pearson_same_level_width_depth_upper": {
+    "mean": 0.5537,
+    "sd": 0.0112
+   },
+   "pearson_same_level_hpost_mean": {
+    "mean": -0.0015,
+    "sd": 0.0103
+   },
+   "pearson_same_level_wd4_mean": {
+    "mean": 0.551,
+    "sd": 0.0079
+   },
+   "pearson_disc_widths": {
+    "mean": 0.152,
+    "sd": 0.0157
+   },
+   "pearson_disc_depths": {
+    "mean": 0.1484,
+    "sd": 0.0154
+   },
+   "pearson_lag1_upperW_to_next_lowerW": {
+    "mean": 0.1516,
+    "sd": 0.0132
+   },
+   "pearson_lag1_cross_wd4_not_facing": {
+    "mean": 0.1505,
+    "sd": 0.0118
+   },
+   "pearson_lag5_cross_wd4": {
+    "mean": 0.1518,
+    "sd": 0.0126
+   },
+   "pearson_lag1_same": {
+    "mean": 0.4609,
+    "sd": 0.0054
+   },
+   "pearson_lag5_same": {
+    "mean": 0.3223,
+    "sd": 0.0076
+   },
+   "pearson_same_level_widths_cervical": {
+    "mean": 0.5453,
+    "sd": 0.0175
+   },
+   "pearson_same_level_widths_T1L5": {
+    "mean": 0.5535,
+    "sd": 0.0138
+   },
+   "spearman_same_level_widths": {
+    "mean": 0.5523,
+    "sd": 0.014
+   },
+   "spearman_same_level_depths": {
+    "mean": 0.5495,
+    "sd": 0.0092
+   },
+   "spearman_same_level_width_depth_upper": {
+    "mean": 0.5537,
+    "sd": 0.0111
+   },
+   "spearman_same_level_hpost_mean": {
+    "mean": -0.002,
+    "sd": 0.0108
+   },
+   "spearman_same_level_wd4_mean": {
+    "mean": 0.5511,
+    "sd": 0.0075
+   },
+   "spearman_disc_widths": {
+    "mean": 0.1522,
+    "sd": 0.0166
+   },
+   "spearman_disc_depths": {
+    "mean": 0.1477,
+    "sd": 0.0146
+   },
+   "spearman_lag1_upperW_to_next_lowerW": {
+    "mean": 0.1534,
+    "sd": 0.014
+   },
+   "spearman_lag1_cross_wd4_not_facing": {
+    "mean": 0.1509,
+    "sd": 0.011
+   },
+   "spearman_lag5_cross_wd4": {
+    "mean": 0.1522,
+    "sd": 0.0121
+   },
+   "spearman_lag1_same": {
+    "mean": 0.4605,
+    "sd": 0.0053
+   },
+   "spearman_lag5_same": {
+    "mean": 0.3222,
+    "sd": 0.0074
+   },
+   "spearman_same_level_widths_cervical": {
+    "mean": 0.5462,
+    "sd": 0.0184
+   },
+   "spearman_same_level_widths_T1L5": {
+    "mean": 0.5541,
+    "sd": 0.0147
+   },
+   "kron_R_measure_widths": {
+    "mean": 0.6877,
+    "sd": 0.0044
+   },
+   "kron_R_measure_depths": {
+    "mean": 0.6882,
+    "sd": 0.0023
+   },
+   "kron_R_measure_wd_upper": {
+    "mean": 0.6899,
+    "sd": 0.0031
+   },
+   "kron_lag1": {
+    "mean": 0.6238,
+    "sd": 0.0035
+   },
+   "misfit_same_level_widths": {
+    "mean": -0.1361,
+    "sd": 0.0107
+   },
+   "misfit_same_level_depths": {
+    "mean": -0.1381,
+    "sd": 0.0095
+   },
+   "misfit_same_level_wd4_mean": {
+    "mean": -0.1374,
+    "sd": 0.0073
+   },
+   "misfit_disc_widths": {
+    "mean": -0.277,
+    "sd": 0.0156
+   },
+   "misfit_disc_depths": {
+    "mean": -0.281,
+    "sd": 0.0161
+   },
+   "misfit_lag1_cross_wd4_not_facing": {
+    "mean": -0.2791,
+    "sd": 0.0126
+   },
+   "misfit_lag5_cross_wd4": {
+    "mean": -0.1098,
+    "sd": 0.0145
+   },
+   "misfit_lag1_same": {
+    "mean": -0.1629,
+    "sd": 0.005
+   },
+   "pearson_cerv_lumbar_cross_measure": {
+    "mean": 0.1514,
+    "sd": 0.0144
+   },
+   "misfit_cerv_lumbar_cross_measure": {
+    "mean": -0.0845,
+    "sd": 0.0168
+   },
+   "copula_R_measure_widths": {
+    "mean": 0.6839,
+    "sd": 0.0045
+   },
+   "copula_R_measure_depths": {
+    "mean": 0.6844,
+    "sd": 0.0023
+   },
+   "copula_lag1": {
+    "mean": 0.62,
+    "sd": 0.0035
+   },
+   "T1L5_minus_C3L5_widths": {
+    "mean": -0.0011,
+    "sd": 0.0025
+   },
+   "T1L5_minus_C3L5_wd_upper": {
+    "mean": -0.0014,
+    "sd": 0.0015
+   },
+   "cervical_fit_R_measure_widths": {
+    "mean": 0.6706,
+    "sd": 0.0076
+   }
+  },
+  "n67": {
+   "pearson_same_level_widths": {
+    "mean": 0.5357,
+    "sd": 0.0382
+   },
+   "pearson_same_level_depths": {
+    "mean": 0.553,
+    "sd": 0.0444
+   },
+   "pearson_same_level_width_depth_upper": {
+    "mean": 0.5468,
+    "sd": 0.0316
+   },
+   "pearson_same_level_hpost_mean": {
+    "mean": -0.0004,
+    "sd": 0.0302
+   },
+   "pearson_same_level_wd4_mean": {
+    "mean": 0.5472,
+    "sd": 0.025
+   },
+   "pearson_disc_widths": {
+    "mean": 0.1335,
+    "sd": 0.048
+   },
+   "pearson_disc_depths": {
+    "mean": 0.1548,
+    "sd": 0.0535
+   },
+   "pearson_lag1_upperW_to_next_lowerW": {
+    "mean": 0.1335,
+    "sd": 0.0503
+   },
+   "pearson_lag1_cross_wd4_not_facing": {
+    "mean": 0.1467,
+    "sd": 0.0389
+   },
+   "pearson_lag5_cross_wd4": {
+    "mean": 0.1435,
+    "sd": 0.043
+   },
+   "pearson_lag1_same": {
+    "mean": 0.4562,
+    "sd": 0.0232
+   },
+   "pearson_lag5_same": {
+    "mean": 0.3119,
+    "sd": 0.0319
+   },
+   "pearson_same_level_widths_cervical": {
+    "mean": 0.5313,
+    "sd": 0.0537
+   },
+   "pearson_same_level_widths_T1L5": {
+    "mean": 0.537,
+    "sd": 0.0431
+   },
+   "spearman_same_level_widths": {
+    "mean": 0.53,
+    "sd": 0.0395
+   },
+   "spearman_same_level_depths": {
+    "mean": 0.5491,
+    "sd": 0.046
+   },
+   "spearman_same_level_width_depth_upper": {
+    "mean": 0.542,
+    "sd": 0.0362
+   },
+   "spearman_same_level_hpost_mean": {
+    "mean": -0.0023,
+    "sd": 0.0282
+   },
+   "spearman_same_level_wd4_mean": {
+    "mean": 0.5419,
+    "sd": 0.0261
+   },
+   "spearman_disc_widths": {
+    "mean": 0.1302,
+    "sd": 0.0464
+   },
+   "spearman_disc_depths": {
+    "mean": 0.1546,
+    "sd": 0.055
+   },
+   "spearman_lag1_upperW_to_next_lowerW": {
+    "mean": 0.1332,
+    "sd": 0.0495
+   },
+   "spearman_lag1_cross_wd4_not_facing": {
+    "mean": 0.1452,
+    "sd": 0.0388
+   },
+   "spearman_lag5_cross_wd4": {
+    "mean": 0.1415,
+    "sd": 0.043
+   },
+   "spearman_lag1_same": {
+    "mean": 0.4518,
+    "sd": 0.0238
+   },
+   "spearman_lag5_same": {
+    "mean": 0.3093,
+    "sd": 0.0339
+   },
+   "spearman_same_level_widths_cervical": {
+    "mean": 0.5268,
+    "sd": 0.0545
+   },
+   "spearman_same_level_widths_T1L5": {
+    "mean": 0.531,
+    "sd": 0.0449
+   },
+   "kron_R_measure_widths": {
+    "mean": 0.6849,
+    "sd": 0.0137
+   },
+   "kron_R_measure_depths": {
+    "mean": 0.6871,
+    "sd": 0.0122
+   },
+   "kron_R_measure_wd_upper": {
+    "mean": 0.6874,
+    "sd": 0.0114
+   },
+   "kron_lag1": {
+    "mean": 0.6183,
+    "sd": 0.0149
+   },
+   "misfit_same_level_widths": {
+    "mean": -0.1492,
+    "sd": 0.0357
+   },
+   "misfit_same_level_depths": {
+    "mean": -0.1341,
+    "sd": 0.04
+   },
+   "misfit_same_level_wd4_mean": {
+    "mean": -0.1391,
+    "sd": 0.0226
+   },
+   "misfit_disc_widths": {
+    "mean": -0.29,
+    "sd": 0.0497
+   },
+   "misfit_disc_depths": {
+    "mean": -0.27,
+    "sd": 0.0512
+   },
+   "misfit_lag1_cross_wd4_not_facing": {
+    "mean": -0.2777,
+    "sd": 0.0386
+   },
+   "misfit_lag5_cross_wd4": {
+    "mean": -0.112,
+    "sd": 0.0442
+   },
+   "misfit_lag1_same": {
+    "mean": -0.1622,
+    "sd": 0.0176
+   },
+   "pearson_cerv_lumbar_cross_measure": {
+    "mean": 0.1433,
+    "sd": 0.0399
+   },
+   "misfit_cerv_lumbar_cross_measure": {
+    "mean": -0.0894,
+    "sd": 0.046
+   },
+   "copula_R_measure_widths": {
+    "mean": 0.6584,
+    "sd": 0.0145
+   },
+   "copula_R_measure_depths": {
+    "mean": 0.6615,
+    "sd": 0.012
+   },
+   "copula_lag1": {
+    "mean": 0.5918,
+    "sd": 0.0155
+   },
+   "T1L5_minus_C3L5_widths": {
+    "mean": -0.0014,
+    "sd": 0.0077
+   },
+   "T1L5_minus_C3L5_wd_upper": {
+    "mean": -0.0004,
+    "sd": 0.0072
+   },
+   "cervical_fit_R_measure_widths": {
+    "mean": 0.6665,
+    "sd": 0.0298
+   }
+  }
+ },
+ "c_a15_c2_k2": {
+  "n693": {
+   "pearson_same_level_widths": {
+    "mean": 0.3508,
+    "sd": 0.0122
+   },
+   "pearson_same_level_depths": {
+    "mean": 0.3521,
+    "sd": 0.0136
+   },
+   "pearson_same_level_width_depth_upper": {
+    "mean": 0.3469,
+    "sd": 0.0131
+   },
+   "pearson_same_level_hpost_mean": {
+    "mean": -0.0002,
+    "sd": 0.0094
+   },
+   "pearson_same_level_wd4_mean": {
+    "mean": 0.3499,
+    "sd": 0.0081
+   },
+   "pearson_disc_widths": {
+    "mean": 0.3502,
+    "sd": 0.0121
+   },
+   "pearson_disc_depths": {
+    "mean": 0.3489,
+    "sd": 0.0152
+   },
+   "pearson_lag1_upperW_to_next_lowerW": {
+    "mean": 0.1498,
+    "sd": 0.0141
+   },
+   "pearson_lag1_cross_wd4_not_facing": {
+    "mean": 0.1484,
+    "sd": 0.0108
+   },
+   "pearson_lag5_cross_wd4": {
+    "mean": 0.1486,
+    "sd": 0.0112
+   },
+   "pearson_lag1_same": {
+    "mean": 0.4612,
+    "sd": 0.0075
+   },
+   "pearson_lag5_same": {
+    "mean": 0.3186,
+    "sd": 0.0087
+   },
+   "pearson_same_level_widths_cervical": {
+    "mean": 0.3505,
+    "sd": 0.0229
+   },
+   "pearson_same_level_widths_T1L5": {
+    "mean": 0.3509,
+    "sd": 0.0117
+   },
+   "spearman_same_level_widths": {
+    "mean": 0.3505,
+    "sd": 0.0133
+   },
+   "spearman_same_level_depths": {
+    "mean": 0.3516,
+    "sd": 0.0141
+   },
+   "spearman_same_level_width_depth_upper": {
+    "mean": 0.3472,
+    "sd": 0.0137
+   },
+   "spearman_same_level_hpost_mean": {
+    "mean": 0.0004,
+    "sd": 0.0099
+   },
+   "spearman_same_level_wd4_mean": {
+    "mean": 0.3496,
+    "sd": 0.0085
+   },
+   "spearman_disc_widths": {
+    "mean": 0.3497,
+    "sd": 0.0125
+   },
+   "spearman_disc_depths": {
+    "mean": 0.3487,
+    "sd": 0.0158
+   },
+   "spearman_lag1_upperW_to_next_lowerW": {
+    "mean": 0.1491,
+    "sd": 0.0152
+   },
+   "spearman_lag1_cross_wd4_not_facing": {
+    "mean": 0.1485,
+    "sd": 0.0113
+   },
+   "spearman_lag5_cross_wd4": {
+    "mean": 0.1489,
+    "sd": 0.0115
+   },
+   "spearman_lag1_same": {
+    "mean": 0.4614,
+    "sd": 0.0076
+   },
+   "spearman_lag5_same": {
+    "mean": 0.3192,
+    "sd": 0.0088
+   },
+   "spearman_same_level_widths_cervical": {
+    "mean": 0.3491,
+    "sd": 0.0255
+   },
+   "spearman_same_level_widths_T1L5": {
+    "mean": 0.3509,
+    "sd": 0.0127
+   },
+   "kron_R_measure_widths": {
+    "mean": 0.2697,
+    "sd": 0.0072
+   },
+   "kron_R_measure_depths": {
+    "mean": 0.273,
+    "sd": 0.0066
+   },
+   "kron_R_measure_wd_upper": {
+    "mean": 0.3318,
+    "sd": 0.0083
+   },
+   "kron_lag1": {
+    "mean": 0.4448,
+    "sd": 0.0061
+   },
+   "misfit_same_level_widths": {
+    "mean": 0.0811,
+    "sd": 0.0108
+   },
+   "misfit_same_level_depths": {
+    "mean": 0.0791,
+    "sd": 0.012
+   },
+   "misfit_same_level_wd4_mean": {
+    "mean": 0.0376,
+    "sd": 0.0078
+   },
+   "misfit_disc_widths": {
+    "mean": 0.2302,
+    "sd": 0.012
+   },
+   "misfit_disc_depths": {
+    "mean": 0.2275,
+    "sd": 0.0147
+   },
+   "misfit_lag1_cross_wd4_not_facing": {
+    "mean": 0.0058,
+    "sd": 0.0096
+   },
+   "misfit_lag5_cross_wd4": {
+    "mean": 0.0577,
+    "sd": 0.0106
+   },
+   "misfit_lag1_same": {
+    "mean": 0.0164,
+    "sd": 0.0029
+   },
+   "pearson_cerv_lumbar_cross_measure": {
+    "mean": 0.1496,
+    "sd": 0.0125
+   },
+   "misfit_cerv_lumbar_cross_measure": {
+    "mean": 0.0659,
+    "sd": 0.0114
+   },
+   "copula_R_measure_widths": {
+    "mean": 0.2689,
+    "sd": 0.0072
+   },
+   "copula_R_measure_depths": {
+    "mean": 0.272,
+    "sd": 0.0064
+   },
+   "copula_lag1": {
+    "mean": 0.4435,
+    "sd": 0.0059
+   },
+   "T1L5_minus_C3L5_widths": {
+    "mean": 0.0021,
+    "sd": 0.0037
+   },
+   "T1L5_minus_C3L5_wd_upper": {
+    "mean": 0.0011,
+    "sd": 0.0031
+   },
+   "cervical_fit_R_measure_widths": {
+    "mean": 0.2793,
+    "sd": 0.0154
+   }
+  },
+  "n67": {
+   "pearson_same_level_widths": {
+    "mean": 0.3567,
+    "sd": 0.0374
+   },
+   "pearson_same_level_depths": {
+    "mean": 0.3546,
+    "sd": 0.0415
+   },
+   "pearson_same_level_width_depth_upper": {
+    "mean": 0.3615,
+    "sd": 0.0461
+   },
+   "pearson_same_level_hpost_mean": {
+    "mean": -0.0063,
+    "sd": 0.0314
+   },
+   "pearson_same_level_wd4_mean": {
+    "mean": 0.355,
+    "sd": 0.0265
+   },
+   "pearson_disc_widths": {
+    "mean": 0.3603,
+    "sd": 0.0364
+   },
+   "pearson_disc_depths": {
+    "mean": 0.3557,
+    "sd": 0.0441
+   },
+   "pearson_lag1_upperW_to_next_lowerW": {
+    "mean": 0.16,
+    "sd": 0.0441
+   },
+   "pearson_lag1_cross_wd4_not_facing": {
+    "mean": 0.1579,
+    "sd": 0.0357
+   },
+   "pearson_lag5_cross_wd4": {
+    "mean": 0.1572,
+    "sd": 0.0339
+   },
+   "pearson_lag1_same": {
+    "mean": 0.4603,
+    "sd": 0.0211
+   },
+   "pearson_lag5_same": {
+    "mean": 0.3184,
+    "sd": 0.0285
+   },
+   "pearson_same_level_widths_cervical": {
+    "mean": 0.3618,
+    "sd": 0.0636
+   },
+   "pearson_same_level_widths_T1L5": {
+    "mean": 0.3552,
+    "sd": 0.0381
+   },
+   "spearman_same_level_widths": {
+    "mean": 0.3537,
+    "sd": 0.0397
+   },
+   "spearman_same_level_depths": {
+    "mean": 0.3536,
+    "sd": 0.0407
+   },
+   "spearman_same_level_width_depth_upper": {
+    "mean": 0.3586,
+    "sd": 0.0456
+   },
+   "spearman_same_level_hpost_mean": {
+    "mean": -0.0042,
+    "sd": 0.0307
+   },
+   "spearman_same_level_wd4_mean": {
+    "mean": 0.352,
+    "sd": 0.0255
+   },
+   "spearman_disc_widths": {
+    "mean": 0.3587,
+    "sd": 0.0375
+   },
+   "spearman_disc_depths": {
+    "mean": 0.3553,
+    "sd": 0.0416
+   },
+   "spearman_lag1_upperW_to_next_lowerW": {
+    "mean": 0.156,
+    "sd": 0.0444
+   },
+   "spearman_lag1_cross_wd4_not_facing": {
+    "mean": 0.1562,
+    "sd": 0.0342
+   },
+   "spearman_lag5_cross_wd4": {
+    "mean": 0.1551,
+    "sd": 0.0322
+   },
+   "spearman_lag1_same": {
+    "mean": 0.4567,
+    "sd": 0.0219
+   },
+   "spearman_lag5_same": {
+    "mean": 0.3166,
+    "sd": 0.0287
+   },
+   "spearman_same_level_widths_cervical": {
+    "mean": 0.3638,
+    "sd": 0.0671
+   },
+   "spearman_same_level_widths_T1L5": {
+    "mean": 0.3507,
+    "sd": 0.0398
+   },
+   "kron_R_measure_widths": {
+    "mean": 0.2666,
+    "sd": 0.0244
+   },
+   "kron_R_measure_depths": {
+    "mean": 0.2703,
+    "sd": 0.0221
+   },
+   "kron_R_measure_wd_upper": {
+    "mean": 0.332,
+    "sd": 0.0237
+   },
+   "kron_lag1": {
+    "mean": 0.4416,
+    "sd": 0.0161
+   },
+   "misfit_same_level_widths": {
+    "mean": 0.0901,
+    "sd": 0.0285
+   },
+   "misfit_same_level_depths": {
+    "mean": 0.0843,
+    "sd": 0.0369
+   },
+   "misfit_same_level_wd4_mean": {
+    "mean": 0.0452,
+    "sd": 0.0249
+   },
+   "misfit_disc_widths": {
+    "mean": 0.2425,
+    "sd": 0.0325
+   },
+   "misfit_disc_depths": {
+    "mean": 0.2365,
+    "sd": 0.0422
+   },
+   "misfit_lag1_cross_wd4_not_facing": {
+    "mean": 0.0175,
+    "sd": 0.0337
+   },
+   "misfit_lag5_cross_wd4": {
+    "mean": 0.0677,
+    "sd": 0.032
+   },
+   "misfit_lag1_same": {
+    "mean": 0.0187,
+    "sd": 0.0105
+   },
+   "pearson_cerv_lumbar_cross_measure": {
+    "mean": 0.159,
+    "sd": 0.0406
+   },
+   "misfit_cerv_lumbar_cross_measure": {
+    "mean": 0.0759,
+    "sd": 0.0399
+   },
+   "copula_R_measure_widths": {
+    "mean": 0.2607,
+    "sd": 0.0253
+   },
+   "copula_R_measure_depths": {
+    "mean": 0.263,
+    "sd": 0.0225
+   },
+   "copula_lag1": {
+    "mean": 0.4318,
+    "sd": 0.0163
+   },
+   "T1L5_minus_C3L5_widths": {
+    "mean": 0.0015,
+    "sd": 0.0116
+   },
+   "T1L5_minus_C3L5_wd_upper": {
+    "mean": -0.0007,
+    "sd": 0.0121
+   },
+   "cervical_fit_R_measure_widths": {
+    "mean": 0.282,
+    "sd": 0.0441
+   }
+  }
+ },
+ "d_cell5": {
+  "n693": {
+   "pearson_same_level_widths": {
+    "mean": 0.1564,
+    "sd": 0.0124
+   },
+   "pearson_same_level_depths": {
+    "mean": 0.1573,
+    "sd": 0.0117
+   },
+   "pearson_same_level_width_depth_upper": {
+    "mean": 0.1575,
+    "sd": 0.0116
+   },
+   "pearson_same_level_hpost_mean": {
+    "mean": 0.0003,
+    "sd": 0.0064
+   },
+   "pearson_same_level_wd4_mean": {
+    "mean": 0.1568,
+    "sd": 0.0061
+   },
+   "pearson_disc_widths": {
+    "mean": 0.0686,
+    "sd": 0.0132
+   },
+   "pearson_disc_depths": {
+    "mean": 0.0631,
+    "sd": 0.0124
+   },
+   "pearson_lag1_upperW_to_next_lowerW": {
+    "mean": 0.0689,
+    "sd": 0.0115
+   },
+   "pearson_lag1_cross_wd4_not_facing": {
+    "mean": 0.0663,
+    "sd": 0.007
+   },
+   "pearson_lag5_cross_wd4": {
+    "mean": 0.0671,
+    "sd": 0.0062
+   },
+   "pearson_lag1_same": {
+    "mean": 0.2073,
+    "sd": 0.0069
+   },
+   "pearson_lag5_same": {
+    "mean": 0.1444,
+    "sd": 0.0059
+   },
+   "pearson_same_level_widths_cervical": {
+    "mean": 0.1581,
+    "sd": 0.0244
+   },
+   "pearson_same_level_widths_T1L5": {
+    "mean": 0.1559,
+    "sd": 0.0124
+   },
+   "spearman_same_level_widths": {
+    "mean": 0.3016,
+    "sd": 0.0149
+   },
+   "spearman_same_level_depths": {
+    "mean": 0.299,
+    "sd": 0.0128
+   },
+   "spearman_same_level_width_depth_upper": {
+    "mean": 0.3,
+    "sd": 0.0133
+   },
+   "spearman_same_level_hpost_mean": {
+    "mean": 0.0016,
+    "sd": 0.0098
+   },
+   "spearman_same_level_wd4_mean": {
+    "mean": 0.3003,
+    "sd": 0.0085
+   },
+   "spearman_disc_widths": {
+    "mean": 0.1283,
+    "sd": 0.0158
+   },
+   "spearman_disc_depths": {
+    "mean": 0.1244,
+    "sd": 0.0166
+   },
+   "spearman_lag1_upperW_to_next_lowerW": {
+    "mean": 0.1294,
+    "sd": 0.0156
+   },
+   "spearman_lag1_cross_wd4_not_facing": {
+    "mean": 0.127,
+    "sd": 0.0112
+   },
+   "spearman_lag5_cross_wd4": {
+    "mean": 0.1293,
+    "sd": 0.0103
+   },
+   "spearman_lag1_same": {
+    "mean": 0.3973,
+    "sd": 0.0079
+   },
+   "spearman_lag5_same": {
+    "mean": 0.2766,
+    "sd": 0.0069
+   },
+   "spearman_same_level_widths_cervical": {
+    "mean": 0.3031,
+    "sd": 0.0207
+   },
+   "spearman_same_level_widths_T1L5": {
+    "mean": 0.3011,
+    "sd": 0.0158
+   },
+   "kron_R_measure_widths": {
+    "mean": 0.1139,
+    "sd": 0.008
+   },
+   "kron_R_measure_depths": {
+    "mean": 0.1169,
+    "sd": 0.0099
+   },
+   "kron_R_measure_wd_upper": {
+    "mean": 0.1168,
+    "sd": 0.0088
+   },
+   "kron_lag1": {
+    "mean": 0.19,
+    "sd": 0.0057
+   },
+   "misfit_same_level_widths": {
+    "mean": 0.0425,
+    "sd": 0.0073
+   },
+   "misfit_same_level_depths": {
+    "mean": 0.0404,
+    "sd": 0.0058
+   },
+   "misfit_same_level_wd4_mean": {
+    "mean": 0.0411,
+    "sd": 0.0047
+   },
+   "misfit_disc_widths": {
+    "mean": 0.0469,
+    "sd": 0.0126
+   },
+   "misfit_disc_depths": {
+    "mean": 0.0409,
+    "sd": 0.012
+   },
+   "misfit_lag1_cross_wd4_not_facing": {
+    "mean": 0.0443,
+    "sd": 0.0066
+   },
+   "misfit_lag5_cross_wd4": {
+    "mean": 0.0523,
+    "sd": 0.0061
+   },
+   "misfit_lag1_same": {
+    "mean": 0.0173,
+    "sd": 0.0015
+   },
+   "pearson_cerv_lumbar_cross_measure": {
+    "mean": 0.0663,
+    "sd": 0.0084
+   },
+   "misfit_cerv_lumbar_cross_measure": {
+    "mean": 0.0525,
+    "sd": 0.0081
+   },
+   "copula_R_measure_widths": {
+    "mean": 0.2179,
+    "sd": 0.0088
+   },
+   "copula_R_measure_depths": {
+    "mean": 0.2193,
+    "sd": 0.0079
+   },
+   "copula_lag1": {
+    "mean": 0.3308,
+    "sd": 0.0056
+   },
+   "T1L5_minus_C3L5_widths": {
+    "mean": 0.0025,
+    "sd": 0.0055
+   },
+   "T1L5_minus_C3L5_wd_upper": {
+    "mean": 0.0033,
+    "sd": 0.005
+   },
+   "cervical_fit_R_measure_widths": {
+    "mean": 0.1319,
+    "sd": 0.0232
+   }
+  },
+  "n67": {
+   "pearson_same_level_widths": {
+    "mean": 0.1923,
+    "sd": 0.0357
+   },
+   "pearson_same_level_depths": {
+    "mean": 0.1764,
+    "sd": 0.0325
+   },
+   "pearson_same_level_width_depth_upper": {
+    "mean": 0.1826,
+    "sd": 0.0273
+   },
+   "pearson_same_level_hpost_mean": {
+    "mean": 0.0013,
+    "sd": 0.0208
+   },
+   "pearson_same_level_wd4_mean": {
+    "mean": 0.1828,
+    "sd": 0.0173
+   },
+   "pearson_disc_widths": {
+    "mean": 0.0866,
+    "sd": 0.0335
+   },
+   "pearson_disc_depths": {
+    "mean": 0.0764,
+    "sd": 0.0298
+   },
+   "pearson_lag1_upperW_to_next_lowerW": {
+    "mean": 0.092,
+    "sd": 0.0341
+   },
+   "pearson_lag1_cross_wd4_not_facing": {
+    "mean": 0.076,
+    "sd": 0.0165
+   },
+   "pearson_lag5_cross_wd4": {
+    "mean": 0.0775,
+    "sd": 0.0185
+   },
+   "pearson_lag1_same": {
+    "mean": 0.241,
+    "sd": 0.017
+   },
+   "pearson_lag5_same": {
+    "mean": 0.1654,
+    "sd": 0.0197
+   },
+   "pearson_same_level_widths_cervical": {
+    "mean": 0.1796,
+    "sd": 0.0639
+   },
+   "pearson_same_level_widths_T1L5": {
+    "mean": 0.196,
+    "sd": 0.0402
+   },
+   "spearman_same_level_widths": {
+    "mean": 0.3114,
+    "sd": 0.0368
+   },
+   "spearman_same_level_depths": {
+    "mean": 0.2906,
+    "sd": 0.0378
+   },
+   "spearman_same_level_width_depth_upper": {
+    "mean": 0.3002,
+    "sd": 0.039
+   },
+   "spearman_same_level_hpost_mean": {
+    "mean": 0.0015,
+    "sd": 0.0312
+   },
+   "spearman_same_level_wd4_mean": {
+    "mean": 0.2991,
+    "sd": 0.0222
+   },
+   "spearman_disc_widths": {
+    "mean": 0.1358,
+    "sd": 0.0417
+   },
+   "spearman_disc_depths": {
+    "mean": 0.1199,
+    "sd": 0.0409
+   },
+   "spearman_lag1_upperW_to_next_lowerW": {
+    "mean": 0.1395,
+    "sd": 0.0419
+   },
+   "spearman_lag1_cross_wd4_not_facing": {
+    "mean": 0.1246,
+    "sd": 0.0271
+   },
+   "spearman_lag5_cross_wd4": {
+    "mean": 0.126,
+    "sd": 0.0286
+   },
+   "spearman_lag1_same": {
+    "mean": 0.3953,
+    "sd": 0.0187
+   },
+   "spearman_lag5_same": {
+    "mean": 0.2712,
+    "sd": 0.0236
+   },
+   "spearman_same_level_widths_cervical": {
+    "mean": 0.3123,
+    "sd": 0.0611
+   },
+   "spearman_same_level_widths_T1L5": {
+    "mean": 0.3112,
+    "sd": 0.0431
+   },
+   "kron_R_measure_widths": {
+    "mean": 0.1436,
+    "sd": 0.0287
+   },
+   "kron_R_measure_depths": {
+    "mean": 0.1342,
+    "sd": 0.0258
+   },
+   "kron_R_measure_wd_upper": {
+    "mean": 0.1396,
+    "sd": 0.0247
+   },
+   "kron_lag1": {
+    "mean": 0.2228,
+    "sd": 0.0155
+   },
+   "misfit_same_level_widths": {
+    "mean": 0.0487,
+    "sd": 0.0224
+   },
+   "misfit_same_level_depths": {
+    "mean": 0.0423,
+    "sd": 0.0175
+   },
+   "misfit_same_level_wd4_mean": {
+    "mean": 0.043,
+    "sd": 0.0118
+   },
+   "misfit_disc_widths": {
+    "mean": 0.0546,
+    "sd": 0.033
+   },
+   "misfit_disc_depths": {
+    "mean": 0.0464,
+    "sd": 0.0293
+   },
+   "misfit_lag1_cross_wd4_not_facing": {
+    "mean": 0.0447,
+    "sd": 0.0154
+   },
+   "misfit_lag5_cross_wd4": {
+    "mean": 0.0569,
+    "sd": 0.0178
+   },
+   "misfit_lag1_same": {
+    "mean": 0.0182,
+    "sd": 0.0037
+   },
+   "pearson_cerv_lumbar_cross_measure": {
+    "mean": 0.0798,
+    "sd": 0.0216
+   },
+   "misfit_cerv_lumbar_cross_measure": {
+    "mean": 0.0601,
+    "sd": 0.02
+   },
+   "copula_R_measure_widths": {
+    "mean": 0.2349,
+    "sd": 0.0238
+   },
+   "copula_R_measure_depths": {
+    "mean": 0.2263,
+    "sd": 0.022
+   },
+   "copula_lag1": {
+    "mean": 0.3412,
+    "sd": 0.0142
+   },
+   "T1L5_minus_C3L5_widths": {
+    "mean": 0.0072,
+    "sd": 0.0172
+   },
+   "T1L5_minus_C3L5_wd_upper": {
+    "mean": 0.002,
+    "sd": 0.0148
+   },
+   "cervical_fit_R_measure_widths": {
+    "mean": 0.1514,
+    "sd": 0.0642
+   }
+  }
+ },
+ "d_t3": {
+  "n693": {
+   "pearson_same_level_widths": {
+    "mean": 0.3551,
+    "sd": 0.0125
+   },
+   "pearson_same_level_depths": {
+    "mean": 0.3538,
+    "sd": 0.0139
+   },
+   "pearson_same_level_width_depth_upper": {
+    "mean": 0.3518,
+    "sd": 0.0104
+   },
+   "pearson_same_level_hpost_mean": {
+    "mean": 0.0,
+    "sd": 0.0121
+   },
+   "pearson_same_level_wd4_mean": {
+    "mean": 0.3527,
+    "sd": 0.0076
+   },
+   "pearson_disc_widths": {
+    "mean": 0.1523,
+    "sd": 0.0139
+   },
+   "pearson_disc_depths": {
+    "mean": 0.1497,
+    "sd": 0.0155
+   },
+   "pearson_lag1_upperW_to_next_lowerW": {
+    "mean": 0.1538,
+    "sd": 0.0143
+   },
+   "pearson_lag1_cross_wd4_not_facing": {
+    "mean": 0.1507,
+    "sd": 0.0092
+   },
+   "pearson_lag5_cross_wd4": {
+    "mean": 0.1508,
+    "sd": 0.0088
+   },
+   "pearson_lag1_same": {
+    "mean": 0.4661,
+    "sd": 0.0086
+   },
+   "pearson_lag5_same": {
+    "mean": 0.3237,
+    "sd": 0.0081
+   },
+   "pearson_same_level_widths_cervical": {
+    "mean": 0.3536,
+    "sd": 0.0229
+   },
+   "pearson_same_level_widths_T1L5": {
+    "mean": 0.3556,
+    "sd": 0.0119
+   },
+   "spearman_same_level_widths": {
+    "mean": 0.3694,
+    "sd": 0.0125
+   },
+   "spearman_same_level_depths": {
+    "mean": 0.3692,
+    "sd": 0.0135
+   },
+   "spearman_same_level_width_depth_upper": {
+    "mean": 0.3666,
+    "sd": 0.0104
+   },
+   "spearman_same_level_hpost_mean": {
+    "mean": 0.0003,
+    "sd": 0.0131
+   },
+   "spearman_same_level_wd4_mean": {
+    "mean": 0.3678,
+    "sd": 0.0067
+   },
+   "spearman_disc_widths": {
+    "mean": 0.1579,
+    "sd": 0.0153
+   },
+   "spearman_disc_depths": {
+    "mean": 0.1559,
+    "sd": 0.0162
+   },
+   "spearman_lag1_upperW_to_next_lowerW": {
+    "mean": 0.1592,
+    "sd": 0.015
+   },
+   "spearman_lag1_cross_wd4_not_facing": {
+    "mean": 0.1567,
+    "sd": 0.0087
+   },
+   "spearman_lag5_cross_wd4": {
+    "mean": 0.1574,
+    "sd": 0.0085
+   },
+   "spearman_lag1_same": {
+    "mean": 0.4981,
+    "sd": 0.0079
+   },
+   "spearman_lag5_same": {
+    "mean": 0.3449,
+    "sd": 0.0084
+   },
+   "spearman_same_level_widths_cervical": {
+    "mean": 0.3675,
+    "sd": 0.0224
+   },
+   "spearman_same_level_widths_T1L5": {
+    "mean": 0.37,
+    "sd": 0.0112
+   },
+   "kron_R_measure_widths": {
+    "mean": 0.3395,
+    "sd": 0.0064
+   },
+   "kron_R_measure_depths": {
+    "mean": 0.3405,
+    "sd": 0.0079
+   },
+   "kron_R_measure_wd_upper": {
+    "mean": 0.3399,
+    "sd": 0.0069
+   },
+   "kron_lag1": {
+    "mean": 0.462,
+    "sd": 0.0072
+   },
+   "misfit_same_level_widths": {
+    "mean": 0.0156,
+    "sd": 0.0101
+   },
+   "misfit_same_level_depths": {
+    "mean": 0.0133,
+    "sd": 0.011
+   },
+   "misfit_same_level_wd4_mean": {
+    "mean": 0.0136,
+    "sd": 0.0057
+   },
+   "misfit_disc_widths": {
+    "mean": -0.0045,
+    "sd": 0.0128
+   },
+   "misfit_disc_depths": {
+    "mean": -0.0076,
+    "sd": 0.0138
+   },
+   "misfit_lag1_cross_wd4_not_facing": {
+    "mean": -0.006,
+    "sd": 0.0077
+   },
+   "misfit_lag5_cross_wd4": {
+    "mean": 0.0507,
+    "sd": 0.0075
+   },
+   "misfit_lag1_same": {
+    "mean": 0.0041,
+    "sd": 0.0029
+   },
+   "pearson_cerv_lumbar_cross_measure": {
+    "mean": 0.1502,
+    "sd": 0.0103
+   },
+   "misfit_cerv_lumbar_cross_measure": {
+    "mean": 0.0585,
+    "sd": 0.009
+   },
+   "copula_R_measure_widths": {
+    "mean": 0.3511,
+    "sd": 0.0059
+   },
+   "copula_R_measure_depths": {
+    "mean": 0.3525,
+    "sd": 0.0074
+   },
+   "copula_lag1": {
+    "mean": 0.4789,
+    "sd": 0.0059
+   },
+   "T1L5_minus_C3L5_widths": {
+    "mean": 0.0016,
+    "sd": 0.0045
+   },
+   "T1L5_minus_C3L5_wd_upper": {
+    "mean": 0.0013,
+    "sd": 0.0031
+   },
+   "cervical_fit_R_measure_widths": {
+    "mean": 0.3502,
+    "sd": 0.0155
+   }
+  },
+  "n67": {
+   "pearson_same_level_widths": {
+    "mean": 0.3619,
+    "sd": 0.034
+   },
+   "pearson_same_level_depths": {
+    "mean": 0.36,
+    "sd": 0.0516
+   },
+   "pearson_same_level_width_depth_upper": {
+    "mean": 0.3528,
+    "sd": 0.0373
+   },
+   "pearson_same_level_hpost_mean": {
+    "mean": 0.0057,
+    "sd": 0.0266
+   },
+   "pearson_same_level_wd4_mean": {
+    "mean": 0.3588,
+    "sd": 0.0307
+   },
+   "pearson_disc_widths": {
+    "mean": 0.1557,
+    "sd": 0.0413
+   },
+   "pearson_disc_depths": {
+    "mean": 0.162,
+    "sd": 0.0615
+   },
+   "pearson_lag1_upperW_to_next_lowerW": {
+    "mean": 0.1613,
+    "sd": 0.0425
+   },
+   "pearson_lag1_cross_wd4_not_facing": {
+    "mean": 0.157,
+    "sd": 0.0385
+   },
+   "pearson_lag5_cross_wd4": {
+    "mean": 0.1554,
+    "sd": 0.0417
+   },
+   "pearson_lag1_same": {
+    "mean": 0.4729,
+    "sd": 0.0227
+   },
+   "pearson_lag5_same": {
+    "mean": 0.3267,
+    "sd": 0.0273
+   },
+   "pearson_same_level_widths_cervical": {
+    "mean": 0.3635,
+    "sd": 0.0585
+   },
+   "pearson_same_level_widths_T1L5": {
+    "mean": 0.3614,
+    "sd": 0.0376
+   },
+   "spearman_same_level_widths": {
+    "mean": 0.3728,
+    "sd": 0.036
+   },
+   "spearman_same_level_depths": {
+    "mean": 0.3672,
+    "sd": 0.0524
+   },
+   "spearman_same_level_width_depth_upper": {
+    "mean": 0.3607,
+    "sd": 0.038
+   },
+   "spearman_same_level_hpost_mean": {
+    "mean": 0.0059,
+    "sd": 0.0292
+   },
+   "spearman_same_level_wd4_mean": {
+    "mean": 0.3677,
+    "sd": 0.0308
+   },
+   "spearman_disc_widths": {
+    "mean": 0.1626,
+    "sd": 0.0427
+   },
+   "spearman_disc_depths": {
+    "mean": 0.1669,
+    "sd": 0.0612
+   },
+   "spearman_lag1_upperW_to_next_lowerW": {
+    "mean": 0.1679,
+    "sd": 0.0453
+   },
+   "spearman_lag1_cross_wd4_not_facing": {
+    "mean": 0.1629,
+    "sd": 0.039
+   },
+   "spearman_lag5_cross_wd4": {
+    "mean": 0.1607,
+    "sd": 0.0415
+   },
+   "spearman_lag1_same": {
+    "mean": 0.4943,
+    "sd": 0.0221
+   },
+   "spearman_lag5_same": {
+    "mean": 0.342,
+    "sd": 0.0261
+   },
+   "spearman_same_level_widths_cervical": {
+    "mean": 0.3658,
+    "sd": 0.062
+   },
+   "spearman_same_level_widths_T1L5": {
+    "mean": 0.3749,
+    "sd": 0.0382
+   },
+   "kron_R_measure_widths": {
+    "mean": 0.3511,
+    "sd": 0.0209
+   },
+   "kron_R_measure_depths": {
+    "mean": 0.3483,
+    "sd": 0.0217
+   },
+   "kron_R_measure_wd_upper": {
+    "mean": 0.3453,
+    "sd": 0.0232
+   },
+   "kron_lag1": {
+    "mean": 0.4701,
+    "sd": 0.0198
+   },
+   "misfit_same_level_widths": {
+    "mean": 0.0108,
+    "sd": 0.0318
+   },
+   "misfit_same_level_depths": {
+    "mean": 0.0117,
+    "sd": 0.0475
+   },
+   "misfit_same_level_wd4_mean": {
+    "mean": 0.0109,
+    "sd": 0.0295
+   },
+   "misfit_disc_widths": {
+    "mean": -0.0094,
+    "sd": 0.0414
+   },
+   "misfit_disc_depths": {
+    "mean": -0.0017,
+    "sd": 0.0607
+   },
+   "misfit_lag1_cross_wd4_not_facing": {
+    "mean": -0.0063,
+    "sd": 0.0383
+   },
+   "misfit_lag5_cross_wd4": {
+    "mean": 0.0514,
+    "sd": 0.0411
+   },
+   "misfit_lag1_same": {
+    "mean": 0.0028,
+    "sd": 0.0126
+   },
+   "pearson_cerv_lumbar_cross_measure": {
+    "mean": 0.1575,
+    "sd": 0.0341
+   },
+   "misfit_cerv_lumbar_cross_measure": {
+    "mean": 0.0625,
+    "sd": 0.0344
+   },
+   "copula_R_measure_widths": {
+    "mean": 0.3507,
+    "sd": 0.02
+   },
+   "copula_R_measure_depths": {
+    "mean": 0.3477,
+    "sd": 0.0192
+   },
+   "copula_lag1": {
+    "mean": 0.4745,
+    "sd": 0.0182
+   },
+   "T1L5_minus_C3L5_widths": {
+    "mean": -0.0,
+    "sd": 0.0119
+   },
+   "T1L5_minus_C3L5_wd_upper": {
+    "mean": -0.0016,
+    "sd": 0.013
+   },
+   "cervical_fit_R_measure_widths": {
+    "mean": 0.3708,
+    "sd": 0.0441
+   }
+  }
+ },
+ "e_size_0.200": {
+  "n693": {
+   "pearson_same_level_widths": {
+    "mean": 0.4326,
+    "sd": 0.0126
+   },
+   "pearson_same_level_depths": {
+    "mean": 0.5737,
+    "sd": 0.0138
+   },
+   "pearson_same_level_width_depth_upper": {
+    "mean": 0.3269,
+    "sd": 0.0121
+   },
+   "pearson_same_level_hpost_mean": {
+    "mean": 0.2057,
+    "sd": 0.0143
+   },
+   "pearson_same_level_wd4_mean": {
+    "mean": 0.353,
+    "sd": 0.0095
+   },
+   "pearson_disc_widths": {
+    "mean": 0.3031,
+    "sd": 0.0142
+   },
+   "pearson_disc_depths": {
+    "mean": 0.3617,
+    "sd": 0.0167
+   },
+   "pearson_lag1_upperW_to_next_lowerW": {
+    "mean": 0.3034,
+    "sd": 0.0144
+   },
+   "pearson_lag1_cross_wd4_not_facing": {
+    "mean": 0.255,
+    "sd": 0.0106
+   },
+   "pearson_lag5_cross_wd4": {
+    "mean": 0.2431,
+    "sd": 0.0121
+   },
+   "pearson_lag1_same": {
+    "mean": 0.5486,
+    "sd": 0.0072
+   },
+   "pearson_lag5_same": {
+    "mean": 0.4208,
+    "sd": 0.0086
+   },
+   "pearson_same_level_widths_cervical": {
+    "mean": 0.4294,
+    "sd": 0.0181
+   },
+   "pearson_same_level_widths_T1L5": {
+    "mean": 0.4335,
+    "sd": 0.0125
+   },
+   "spearman_same_level_widths": {
+    "mean": 0.4316,
+    "sd": 0.0142
+   },
+   "spearman_same_level_depths": {
+    "mean": 0.5735,
+    "sd": 0.0153
+   },
+   "spearman_same_level_width_depth_upper": {
+    "mean": 0.3266,
+    "sd": 0.0115
+   },
+   "spearman_same_level_hpost_mean": {
+    "mean": 0.206,
+    "sd": 0.0164
+   },
+   "spearman_same_level_wd4_mean": {
+    "mean": 0.3524,
+    "sd": 0.0095
+   },
+   "spearman_disc_widths": {
+    "mean": 0.3019,
+    "sd": 0.0148
+   },
+   "spearman_disc_depths": {
+    "mean": 0.3623,
+    "sd": 0.0193
+   },
+   "spearman_lag1_upperW_to_next_lowerW": {
+    "mean": 0.302,
+    "sd": 0.0157
+   },
+   "spearman_lag1_cross_wd4_not_facing": {
+    "mean": 0.2541,
+    "sd": 0.0104
+   },
+   "spearman_lag5_cross_wd4": {
+    "mean": 0.2429,
+    "sd": 0.0122
+   },
+   "spearman_lag1_same": {
+    "mean": 0.548,
+    "sd": 0.0078
+   },
+   "spearman_lag5_same": {
+    "mean": 0.4207,
+    "sd": 0.0092
+   },
+   "spearman_same_level_widths_cervical": {
+    "mean": 0.4285,
+    "sd": 0.0189
+   },
+   "spearman_same_level_widths_T1L5": {
+    "mean": 0.4326,
+    "sd": 0.0145
+   },
+   "kron_R_measure_widths": {
+    "mean": 0.2984,
+    "sd": 0.0059
+   },
+   "kron_R_measure_depths": {
+    "mean": 0.4622,
+    "sd": 0.0071
+   },
+   "kron_R_measure_wd_upper": {
+    "mean": 0.1747,
+    "sd": 0.0058
+   },
+   "kron_lag1": {
+    "mean": 0.4879,
+    "sd": 0.0058
+   },
+   "misfit_same_level_widths": {
+    "mean": 0.1342,
+    "sd": 0.0098
+   },
+   "misfit_same_level_depths": {
+    "mean": 0.1115,
+    "sd": 0.0098
+   },
+   "misfit_same_level_wd4_mean": {
+    "mean": 0.1466,
+    "sd": 0.0088
+   },
+   "misfit_disc_widths": {
+    "mean": 0.1575,
+    "sd": 0.0126
+   },
+   "misfit_disc_depths": {
+    "mean": 0.1362,
+    "sd": 0.0144
+   },
+   "misfit_lag1_cross_wd4_not_facing": {
+    "mean": 0.1713,
+    "sd": 0.0102
+   },
+   "misfit_lag5_cross_wd4": {
+    "mean": 0.1694,
+    "sd": 0.0115
+   },
+   "misfit_lag1_same": {
+    "mean": 0.0607,
+    "sd": 0.0025
+   },
+   "pearson_cerv_lumbar_cross_measure": {
+    "mean": 0.2134,
+    "sd": 0.0134
+   },
+   "misfit_cerv_lumbar_cross_measure": {
+    "mean": 0.177,
+    "sd": 0.0117
+   },
+   "copula_R_measure_widths": {
+    "mean": 0.2972,
+    "sd": 0.0058
+   },
+   "copula_R_measure_depths": {
+    "mean": 0.4604,
+    "sd": 0.0074
+   },
+   "copula_lag1": {
+    "mean": 0.4866,
+    "sd": 0.0059
+   },
+   "T1L5_minus_C3L5_widths": {
+    "mean": 0.0006,
+    "sd": 0.0033
+   },
+   "T1L5_minus_C3L5_wd_upper": {
+    "mean": -0.0025,
+    "sd": 0.0035
+   },
+   "cervical_fit_R_measure_widths": {
+    "mean": 0.3443,
+    "sd": 0.015
+   }
+  },
+  "n67": {
+   "pearson_same_level_widths": {
+    "mean": 0.4467,
+    "sd": 0.0397
+   },
+   "pearson_same_level_depths": {
+    "mean": 0.5804,
+    "sd": 0.0334
+   },
+   "pearson_same_level_width_depth_upper": {
+    "mean": 0.3145,
+    "sd": 0.0597
+   },
+   "pearson_same_level_hpost_mean": {
+    "mean": 0.2008,
+    "sd": 0.0522
+   },
+   "pearson_same_level_wd4_mean": {
+    "mean": 0.3541,
+    "sd": 0.0398
+   },
+   "pearson_disc_widths": {
+    "mean": 0.3123,
+    "sd": 0.046
+   },
+   "pearson_disc_depths": {
+    "mean": 0.3684,
+    "sd": 0.0468
+   },
+   "pearson_lag1_upperW_to_next_lowerW": {
+    "mean": 0.3133,
+    "sd": 0.047
+   },
+   "pearson_lag1_cross_wd4_not_facing": {
+    "mean": 0.2561,
+    "sd": 0.0467
+   },
+   "pearson_lag5_cross_wd4": {
+    "mean": 0.2458,
+    "sd": 0.044
+   },
+   "pearson_lag1_same": {
+    "mean": 0.547,
+    "sd": 0.0227
+   },
+   "pearson_lag5_same": {
+    "mean": 0.419,
+    "sd": 0.0312
+   },
+   "pearson_same_level_widths_cervical": {
+    "mean": 0.4355,
+    "sd": 0.0494
+   },
+   "pearson_same_level_widths_T1L5": {
+    "mean": 0.4499,
+    "sd": 0.0458
+   },
+   "spearman_same_level_widths": {
+    "mean": 0.4437,
+    "sd": 0.0388
+   },
+   "spearman_same_level_depths": {
+    "mean": 0.5753,
+    "sd": 0.0373
+   },
+   "spearman_same_level_width_depth_upper": {
+    "mean": 0.3107,
+    "sd": 0.0645
+   },
+   "spearman_same_level_hpost_mean": {
+    "mean": 0.1992,
+    "sd": 0.0526
+   },
+   "spearman_same_level_wd4_mean": {
+    "mean": 0.3508,
+    "sd": 0.0404
+   },
+   "spearman_disc_widths": {
+    "mean": 0.3091,
+    "sd": 0.0464
+   },
+   "spearman_disc_depths": {
+    "mean": 0.3659,
+    "sd": 0.0496
+   },
+   "spearman_lag1_upperW_to_next_lowerW": {
+    "mean": 0.3109,
+    "sd": 0.0458
+   },
+   "spearman_lag1_cross_wd4_not_facing": {
+    "mean": 0.2545,
+    "sd": 0.0472
+   },
+   "spearman_lag5_cross_wd4": {
+    "mean": 0.2442,
+    "sd": 0.0449
+   },
+   "spearman_lag1_same": {
+    "mean": 0.5437,
+    "sd": 0.0232
+   },
+   "spearman_lag5_same": {
+    "mean": 0.4168,
+    "sd": 0.0305
+   },
+   "spearman_same_level_widths_cervical": {
+    "mean": 0.431,
+    "sd": 0.0498
+   },
+   "spearman_same_level_widths_T1L5": {
+    "mean": 0.4475,
+    "sd": 0.0447
+   },
+   "kron_R_measure_widths": {
+    "mean": 0.3073,
+    "sd": 0.0246
+   },
+   "kron_R_measure_depths": {
+    "mean": 0.4664,
+    "sd": 0.019
+   },
+   "kron_R_measure_wd_upper": {
+    "mean": 0.1649,
+    "sd": 0.0197
+   },
+   "kron_lag1": {
+    "mean": 0.4858,
+    "sd": 0.0166
+   },
+   "misfit_same_level_widths": {
+    "mean": 0.1393,
+    "sd": 0.038
+   },
+   "misfit_same_level_depths": {
+    "mean": 0.114,
+    "sd": 0.0346
+   },
+   "misfit_same_level_wd4_mean": {
+    "mean": 0.147,
+    "sd": 0.0366
+   },
+   "misfit_disc_widths": {
+    "mean": 0.1629,
+    "sd": 0.0447
+   },
+   "misfit_disc_depths": {
+    "mean": 0.1418,
+    "sd": 0.0446
+   },
+   "misfit_lag1_cross_wd4_not_facing": {
+    "mean": 0.1729,
+    "sd": 0.0437
+   },
+   "misfit_lag5_cross_wd4": {
+    "mean": 0.1721,
+    "sd": 0.0403
+   },
+   "misfit_lag1_same": {
+    "mean": 0.0612,
+    "sd": 0.0079
+   },
+   "pearson_cerv_lumbar_cross_measure": {
+    "mean": 0.2098,
+    "sd": 0.0414
+   },
+   "misfit_cerv_lumbar_cross_measure": {
+    "mean": 0.174,
+    "sd": 0.0374
+   },
+   "copula_R_measure_widths": {
+    "mean": 0.2974,
+    "sd": 0.0235
+   },
+   "copula_R_measure_depths": {
+    "mean": 0.4522,
+    "sd": 0.0199
+   },
+   "copula_lag1": {
+    "mean": 0.4771,
+    "sd": 0.0167
+   },
+   "T1L5_minus_C3L5_widths": {
+    "mean": 0.0005,
+    "sd": 0.0137
+   },
+   "T1L5_minus_C3L5_wd_upper": {
+    "mean": -0.0027,
+    "sd": 0.0113
+   },
+   "cervical_fit_R_measure_widths": {
+    "mean": 0.353,
+    "sd": 0.0464
+   }
+  }
+ },
+ "e_noise_0.200": {
+  "n693": {
+   "pearson_same_level_widths": {
+    "mean": 0.4238,
+    "sd": 0.0148
+   },
+   "pearson_same_level_depths": {
+    "mean": 0.663,
+    "sd": 0.0078
+   },
+   "pearson_same_level_width_depth_upper": {
+    "mean": 0.248,
+    "sd": 0.0132
+   },
+   "pearson_same_level_hpost_mean": {
+    "mean": 0.0536,
+    "sd": 0.0122
+   },
+   "pearson_same_level_wd4_mean": {
+    "mean": 0.2955,
+    "sd": 0.0076
+   },
+   "pearson_disc_widths": {
+    "mean": 0.2881,
+    "sd": 0.0147
+   },
+   "pearson_disc_depths": {
+    "mean": 0.4595,
+    "sd": 0.0121
+   },
+   "pearson_lag1_upperW_to_next_lowerW": {
+    "mean": 0.289,
+    "sd": 0.014
+   },
+   "pearson_lag1_cross_wd4_not_facing": {
+    "mean": 0.1701,
+    "sd": 0.0088
+   },
+   "pearson_lag5_cross_wd4": {
+    "mean": 0.1481,
+    "sd": 0.0086
+   },
+   "pearson_lag1_same": {
+    "mean": 0.5518,
+    "sd": 0.0048
+   },
+   "pearson_lag5_same": {
+    "mean": 0.4032,
+    "sd": 0.0063
+   },
+   "pearson_same_level_widths_cervical": {
+    "mean": 0.4309,
+    "sd": 0.0173
+   },
+   "pearson_same_level_widths_T1L5": {
+    "mean": 0.4217,
+    "sd": 0.0168
+   },
+   "spearman_same_level_widths": {
+    "mean": 0.4237,
+    "sd": 0.0155
+   },
+   "spearman_same_level_depths": {
+    "mean": 0.6624,
+    "sd": 0.009
+   },
+   "spearman_same_level_width_depth_upper": {
+    "mean": 0.2478,
+    "sd": 0.0132
+   },
+   "spearman_same_level_hpost_mean": {
+    "mean": 0.0537,
+    "sd": 0.0128
+   },
+   "spearman_same_level_wd4_mean": {
+    "mean": 0.2953,
+    "sd": 0.0074
+   },
+   "spearman_disc_widths": {
+    "mean": 0.2884,
+    "sd": 0.0148
+   },
+   "spearman_disc_depths": {
+    "mean": 0.4581,
+    "sd": 0.0129
+   },
+   "spearman_lag1_upperW_to_next_lowerW": {
+    "mean": 0.29,
+    "sd": 0.0152
+   },
+   "spearman_lag1_cross_wd4_not_facing": {
+    "mean": 0.1698,
+    "sd": 0.0084
+   },
+   "spearman_lag5_cross_wd4": {
+    "mean": 0.1478,
+    "sd": 0.009
+   },
+   "spearman_lag1_same": {
+    "mean": 0.551,
+    "sd": 0.0046
+   },
+   "spearman_lag5_same": {
+    "mean": 0.4025,
+    "sd": 0.0061
+   },
+   "spearman_same_level_widths_cervical": {
+    "mean": 0.4288,
+    "sd": 0.0153
+   },
+   "spearman_same_level_widths_T1L5": {
+    "mean": 0.4222,
+    "sd": 0.018
+   },
+   "kron_R_measure_widths": {
+    "mean": 0.3018,
+    "sd": 0.0077
+   },
+   "kron_R_measure_depths": {
+    "mean": 0.4613,
+    "sd": 0.0047
+   },
+   "kron_R_measure_wd_upper": {
+    "mean": 0.1721,
+    "sd": 0.0063
+   },
+   "kron_lag1": {
+    "mean": 0.4873,
+    "sd": 0.004
+   },
+   "misfit_same_level_widths": {
+    "mean": 0.122,
+    "sd": 0.0115
+   },
+   "misfit_same_level_depths": {
+    "mean": 0.2017,
+    "sd": 0.0069
+   },
+   "misfit_same_level_wd4_mean": {
+    "mean": 0.0892,
+    "sd": 0.007
+   },
+   "misfit_disc_widths": {
+    "mean": 0.1411,
+    "sd": 0.0131
+   },
+   "misfit_disc_depths": {
+    "mean": 0.2347,
+    "sd": 0.0111
+   },
+   "misfit_lag1_cross_wd4_not_facing": {
+    "mean": 0.0866,
+    "sd": 0.0088
+   },
+   "misfit_lag5_cross_wd4": {
+    "mean": 0.0746,
+    "sd": 0.0087
+   },
+   "misfit_lag1_same": {
+    "mean": 0.0645,
+    "sd": 0.0015
+   },
+   "pearson_cerv_lumbar_cross_measure": {
+    "mean": 0.0744,
+    "sd": 0.0062
+   },
+   "misfit_cerv_lumbar_cross_measure": {
+    "mean": 0.0382,
+    "sd": 0.0062
+   },
+   "copula_R_measure_widths": {
+    "mean": 0.3005,
+    "sd": 0.0077
+   },
+   "copula_R_measure_depths": {
+    "mean": 0.4597,
+    "sd": 0.005
+   },
+   "copula_lag1": {
+    "mean": 0.486,
+    "sd": 0.004
+   },
+   "T1L5_minus_C3L5_widths": {
+    "mean": -0.0254,
+    "sd": 0.0032
+   },
+   "T1L5_minus_C3L5_wd_upper": {
+    "mean": -0.0152,
+    "sd": 0.0031
+   },
+   "cervical_fit_R_measure_widths": {
+    "mean": 0.3867,
+    "sd": 0.0122
+   }
+  },
+  "n67": {
+   "pearson_same_level_widths": {
+    "mean": 0.4351,
+    "sd": 0.0389
+   },
+   "pearson_same_level_depths": {
+    "mean": 0.6582,
+    "sd": 0.027
+   },
+   "pearson_same_level_width_depth_upper": {
+    "mean": 0.2452,
+    "sd": 0.0594
+   },
+   "pearson_same_level_hpost_mean": {
+    "mean": 0.0619,
+    "sd": 0.0408
+   },
+   "pearson_same_level_wd4_mean": {
+    "mean": 0.2946,
+    "sd": 0.0405
+   },
+   "pearson_disc_widths": {
+    "mean": 0.3032,
+    "sd": 0.0417
+   },
+   "pearson_disc_depths": {
+    "mean": 0.4544,
+    "sd": 0.0397
+   },
+   "pearson_lag1_upperW_to_next_lowerW": {
+    "mean": 0.3024,
+    "sd": 0.0445
+   },
+   "pearson_lag1_cross_wd4_not_facing": {
+    "mean": 0.169,
+    "sd": 0.0474
+   },
+   "pearson_lag5_cross_wd4": {
+    "mean": 0.1462,
+    "sd": 0.0435
+   },
+   "pearson_lag1_same": {
+    "mean": 0.5491,
+    "sd": 0.0167
+   },
+   "pearson_lag5_same": {
+    "mean": 0.4007,
+    "sd": 0.0204
+   },
+   "pearson_same_level_widths_cervical": {
+    "mean": 0.4358,
+    "sd": 0.0645
+   },
+   "pearson_same_level_widths_T1L5": {
+    "mean": 0.4349,
+    "sd": 0.0432
+   },
+   "spearman_same_level_widths": {
+    "mean": 0.4328,
+    "sd": 0.0404
+   },
+   "spearman_same_level_depths": {
+    "mean": 0.6533,
+    "sd": 0.0273
+   },
+   "spearman_same_level_width_depth_upper": {
+    "mean": 0.2426,
+    "sd": 0.0578
+   },
+   "spearman_same_level_hpost_mean": {
+    "mean": 0.0616,
+    "sd": 0.0429
+   },
+   "spearman_same_level_wd4_mean": {
+    "mean": 0.2922,
+    "sd": 0.0414
+   },
+   "spearman_disc_widths": {
+    "mean": 0.3,
+    "sd": 0.0418
+   },
+   "spearman_disc_depths": {
+    "mean": 0.4518,
+    "sd": 0.041
+   },
+   "spearman_lag1_upperW_to_next_lowerW": {
+    "mean": 0.3023,
+    "sd": 0.0447
+   },
+   "spearman_lag1_cross_wd4_not_facing": {
+    "mean": 0.1677,
+    "sd": 0.0484
+   },
+   "spearman_lag5_cross_wd4": {
+    "mean": 0.1457,
+    "sd": 0.0438
+   },
+   "spearman_lag1_same": {
+    "mean": 0.5448,
+    "sd": 0.0171
+   },
+   "spearman_lag5_same": {
+    "mean": 0.3984,
+    "sd": 0.0221
+   },
+   "spearman_same_level_widths_cervical": {
+    "mean": 0.4346,
+    "sd": 0.0655
+   },
+   "spearman_same_level_widths_T1L5": {
+    "mean": 0.4323,
+    "sd": 0.0472
+   },
+   "kron_R_measure_widths": {
+    "mean": 0.2997,
+    "sd": 0.022
+   },
+   "kron_R_measure_depths": {
+    "mean": 0.4624,
+    "sd": 0.021
+   },
+   "kron_R_measure_wd_upper": {
+    "mean": 0.1721,
+    "sd": 0.0266
+   },
+   "kron_lag1": {
+    "mean": 0.4852,
+    "sd": 0.0142
+   },
+   "misfit_same_level_widths": {
+    "mean": 0.1353,
+    "sd": 0.0336
+   },
+   "misfit_same_level_depths": {
+    "mean": 0.1958,
+    "sd": 0.0231
+   },
+   "misfit_same_level_wd4_mean": {
+    "mean": 0.0882,
+    "sd": 0.0328
+   },
+   "misfit_disc_widths": {
+    "mean": 0.1577,
+    "sd": 0.0409
+   },
+   "misfit_disc_depths": {
+    "mean": 0.2301,
+    "sd": 0.0361
+   },
+   "misfit_lag1_cross_wd4_not_facing": {
+    "mean": 0.0857,
+    "sd": 0.0426
+   },
+   "misfit_lag5_cross_wd4": {
+    "mean": 0.0729,
+    "sd": 0.0408
+   },
+   "misfit_lag1_same": {
+    "mean": 0.0639,
+    "sd": 0.0064
+   },
+   "pearson_cerv_lumbar_cross_measure": {
+    "mean": 0.0714,
+    "sd": 0.0372
+   },
+   "misfit_cerv_lumbar_cross_measure": {
+    "mean": 0.0349,
+    "sd": 0.0352
+   },
+   "copula_R_measure_widths": {
+    "mean": 0.2913,
+    "sd": 0.0216
+   },
+   "copula_R_measure_depths": {
+    "mean": 0.4498,
+    "sd": 0.0208
+   },
+   "copula_lag1": {
+    "mean": 0.4768,
+    "sd": 0.014
+   },
+   "T1L5_minus_C3L5_widths": {
+    "mean": -0.0255,
+    "sd": 0.015
+   },
+   "T1L5_minus_C3L5_wd_upper": {
+    "mean": -0.0105,
+    "sd": 0.016
+   },
+   "cervical_fit_R_measure_widths": {
+    "mean": 0.3878,
+    "sd": 0.057
+   }
+  }
+ },
+ "e_vertebra_wd_0.200": {
+  "n693": {
+   "pearson_same_level_widths": {
+    "mean": 0.1547,
+    "sd": 0.0157
+   },
+   "pearson_same_level_depths": {
+    "mean": 0.3611,
+    "sd": 0.0124
+   },
+   "pearson_same_level_width_depth_upper": {
+    "mean": -0.013,
+    "sd": 0.0143
+   },
+   "pearson_same_level_hpost_mean": {
+    "mean": 0.0511,
+    "sd": 0.0042
+   },
+   "pearson_same_level_wd4_mean": {
+    "mean": 0.028,
+    "sd": 0.0048
+   },
+   "pearson_disc_widths": {
+    "mean": -0.0246,
+    "sd": 0.0161
+   },
+   "pearson_disc_depths": {
+    "mean": 0.0952,
+    "sd": 0.0122
+   },
+   "pearson_lag1_upperW_to_next_lowerW": {
+    "mean": -0.026,
+    "sd": 0.0175
+   },
+   "pearson_lag1_cross_wd4_not_facing": {
+    "mean": -0.1283,
+    "sd": 0.0054
+   },
+   "pearson_lag5_cross_wd4": {
+    "mean": -0.0733,
+    "sd": 0.0039
+   },
+   "pearson_lag1_same": {
+    "mean": 0.4712,
+    "sd": 0.0044
+   },
+   "pearson_lag5_same": {
+    "mean": 0.3429,
+    "sd": 0.0055
+   },
+   "pearson_same_level_widths_cervical": {
+    "mean": 0.1457,
+    "sd": 0.0144
+   },
+   "pearson_same_level_widths_T1L5": {
+    "mean": 0.1573,
+    "sd": 0.0188
+   },
+   "spearman_same_level_widths": {
+    "mean": 0.154,
+    "sd": 0.016
+   },
+   "spearman_same_level_depths": {
+    "mean": 0.3614,
+    "sd": 0.0118
+   },
+   "spearman_same_level_width_depth_upper": {
+    "mean": -0.013,
+    "sd": 0.0131
+   },
+   "spearman_same_level_hpost_mean": {
+    "mean": 0.0512,
+    "sd": 0.0052
+   },
+   "spearman_same_level_wd4_mean": {
+    "mean": 0.0283,
+    "sd": 0.0046
+   },
+   "spearman_disc_widths": {
+    "mean": -0.0246,
+    "sd": 0.0157
+   },
+   "spearman_disc_depths": {
+    "mean": 0.0957,
+    "sd": 0.0125
+   },
+   "spearman_lag1_upperW_to_next_lowerW": {
+    "mean": -0.026,
+    "sd": 0.0177
+   },
+   "spearman_lag1_cross_wd4_not_facing": {
+    "mean": -0.1279,
+    "sd": 0.0053
+   },
+   "spearman_lag5_cross_wd4": {
+    "mean": -0.0732,
+    "sd": 0.0039
+   },
+   "spearman_lag1_same": {
+    "mean": 0.4707,
+    "sd": 0.0042
+   },
+   "spearman_lag5_same": {
+    "mean": 0.3425,
+    "sd": 0.0051
+   },
+   "spearman_same_level_widths_cervical": {
+    "mean": 0.144,
+    "sd": 0.0167
+   },
+   "spearman_same_level_widths_T1L5": {
+    "mean": 0.157,
+    "sd": 0.0189
+   },
+   "kron_R_measure_widths": {
+    "mean": 0.2999,
+    "sd": 0.0072
+   },
+   "kron_R_measure_depths": {
+    "mean": 0.4605,
+    "sd": 0.0059
+   },
+   "kron_R_measure_wd_upper": {
+    "mean": 0.1713,
+    "sd": 0.0053
+   },
+   "kron_lag1": {
+    "mean": 0.4874,
+    "sd": 0.0042
+   },
+   "misfit_same_level_widths": {
+    "mean": -0.1452,
+    "sd": 0.0132
+   },
+   "misfit_same_level_depths": {
+    "mean": -0.0994,
+    "sd": 0.01
+   },
+   "misfit_same_level_wd4_mean": {
+    "mean": -0.1773,
+    "sd": 0.0049
+   },
+   "misfit_disc_widths": {
+    "mean": -0.1708,
+    "sd": 0.0157
+   },
+   "misfit_disc_depths": {
+    "mean": -0.1293,
+    "sd": 0.0121
+   },
+   "misfit_lag1_cross_wd4_not_facing": {
+    "mean": -0.2113,
+    "sd": 0.006
+   },
+   "misfit_lag5_cross_wd4": {
+    "mean": -0.1461,
+    "sd": 0.0047
+   },
+   "misfit_lag1_same": {
+    "mean": -0.0162,
+    "sd": 0.002
+   },
+   "pearson_cerv_lumbar_cross_measure": {
+    "mean": -0.0344,
+    "sd": 0.0038
+   },
+   "misfit_cerv_lumbar_cross_measure": {
+    "mean": -0.0697,
+    "sd": 0.0049
+   },
+   "copula_R_measure_widths": {
+    "mean": 0.2981,
+    "sd": 0.0071
+   },
+   "copula_R_measure_depths": {
+    "mean": 0.4584,
+    "sd": 0.0063
+   },
+   "copula_lag1": {
+    "mean": 0.4859,
+    "sd": 0.0042
+   },
+   "T1L5_minus_C3L5_widths": {
+    "mean": 0.0311,
+    "sd": 0.0027
+   },
+   "T1L5_minus_C3L5_wd_upper": {
+    "mean": 0.0346,
+    "sd": 0.0044
+   },
+   "cervical_fit_R_measure_widths": {
+    "mean": 0.1796,
+    "sd": 0.0124
+   }
+  },
+  "n67": {
+   "pearson_same_level_widths": {
+    "mean": 0.1401,
+    "sd": 0.0562
+   },
+   "pearson_same_level_depths": {
+    "mean": 0.3699,
+    "sd": 0.0457
+   },
+   "pearson_same_level_width_depth_upper": {
+    "mean": -0.0226,
+    "sd": 0.0494
+   },
+   "pearson_same_level_hpost_mean": {
+    "mean": 0.0467,
+    "sd": 0.0162
+   },
+   "pearson_same_level_wd4_mean": {
+    "mean": 0.0234,
+    "sd": 0.018
+   },
+   "pearson_disc_widths": {
+    "mean": -0.0356,
+    "sd": 0.0595
+   },
+   "pearson_disc_depths": {
+    "mean": 0.1049,
+    "sd": 0.0422
+   },
+   "pearson_lag1_upperW_to_next_lowerW": {
+    "mean": -0.041,
+    "sd": 0.0591
+   },
+   "pearson_lag1_cross_wd4_not_facing": {
+    "mean": -0.1297,
+    "sd": 0.0173
+   },
+   "pearson_lag5_cross_wd4": {
+    "mean": -0.0753,
+    "sd": 0.0157
+   },
+   "pearson_lag1_same": {
+    "mean": 0.4694,
+    "sd": 0.016
+   },
+   "pearson_lag5_same": {
+    "mean": 0.3434,
+    "sd": 0.0181
+   },
+   "pearson_same_level_widths_cervical": {
+    "mean": 0.1444,
+    "sd": 0.059
+   },
+   "pearson_same_level_widths_T1L5": {
+    "mean": 0.1388,
+    "sd": 0.068
+   },
+   "spearman_same_level_widths": {
+    "mean": 0.1361,
+    "sd": 0.057
+   },
+   "spearman_same_level_depths": {
+    "mean": 0.3669,
+    "sd": 0.0478
+   },
+   "spearman_same_level_width_depth_upper": {
+    "mean": -0.0229,
+    "sd": 0.0494
+   },
+   "spearman_same_level_hpost_mean": {
+    "mean": 0.0465,
+    "sd": 0.0171
+   },
+   "spearman_same_level_wd4_mean": {
+    "mean": 0.0226,
+    "sd": 0.0192
+   },
+   "spearman_disc_widths": {
+    "mean": -0.0373,
+    "sd": 0.059
+   },
+   "spearman_disc_depths": {
+    "mean": 0.1052,
+    "sd": 0.0428
+   },
+   "spearman_lag1_upperW_to_next_lowerW": {
+    "mean": -0.0433,
+    "sd": 0.0582
+   },
+   "spearman_lag1_cross_wd4_not_facing": {
+    "mean": -0.1295,
+    "sd": 0.0184
+   },
+   "spearman_lag5_cross_wd4": {
+    "mean": -0.0756,
+    "sd": 0.017
+   },
+   "spearman_lag1_same": {
+    "mean": 0.4664,
+    "sd": 0.0158
+   },
+   "spearman_lag5_same": {
+    "mean": 0.3407,
+    "sd": 0.0192
+   },
+   "spearman_same_level_widths_cervical": {
+    "mean": 0.1417,
+    "sd": 0.064
+   },
+   "spearman_same_level_widths_T1L5": {
+    "mean": 0.1344,
+    "sd": 0.0699
+   },
+   "kron_R_measure_widths": {
+    "mean": 0.2996,
+    "sd": 0.0216
+   },
+   "kron_R_measure_depths": {
+    "mean": 0.4595,
+    "sd": 0.0248
+   },
+   "kron_R_measure_wd_upper": {
+    "mean": 0.1601,
+    "sd": 0.0272
+   },
+   "kron_lag1": {
+    "mean": 0.4852,
+    "sd": 0.0137
+   },
+   "misfit_same_level_widths": {
+    "mean": -0.1595,
+    "sd": 0.0476
+   },
+   "misfit_same_level_depths": {
+    "mean": -0.0896,
+    "sd": 0.0325
+   },
+   "misfit_same_level_wd4_mean": {
+    "mean": -0.177,
+    "sd": 0.0138
+   },
+   "misfit_disc_widths": {
+    "mean": -0.181,
+    "sd": 0.0556
+   },
+   "misfit_disc_depths": {
+    "mean": -0.1182,
+    "sd": 0.037
+   },
+   "misfit_lag1_cross_wd4_not_facing": {
+    "mean": -0.2097,
+    "sd": 0.0168
+   },
+   "misfit_lag5_cross_wd4": {
+    "mean": -0.1465,
+    "sd": 0.0179
+   },
+   "misfit_lag1_same": {
+    "mean": -0.0158,
+    "sd": 0.0067
+   },
+   "pearson_cerv_lumbar_cross_measure": {
+    "mean": -0.0356,
+    "sd": 0.0131
+   },
+   "misfit_cerv_lumbar_cross_measure": {
+    "mean": -0.0703,
+    "sd": 0.0178
+   },
+   "copula_R_measure_widths": {
+    "mean": 0.2892,
+    "sd": 0.0221
+   },
+   "copula_R_measure_depths": {
+    "mean": 0.4447,
+    "sd": 0.0257
+   },
+   "copula_lag1": {
+    "mean": 0.4751,
+    "sd": 0.0139
+   },
+   "T1L5_minus_C3L5_widths": {
+    "mean": 0.0292,
+    "sd": 0.0151
+   },
+   "T1L5_minus_C3L5_wd_upper": {
+    "mean": 0.0357,
+    "sd": 0.014
+   },
+   "cervical_fit_R_measure_widths": {
+    "mean": 0.1817,
+    "sd": 0.0513
+   }
+  }
+ },
+ "e_disc_0.100": {
+  "n693": {
+   "pearson_same_level_widths": {
+    "mean": 0.396,
+    "sd": 0.0136
+   },
+   "pearson_same_level_depths": {
+    "mean": 0.5969,
+    "sd": 0.0099
+   },
+   "pearson_same_level_width_depth_upper": {
+    "mean": 0.2047,
+    "sd": 0.0118
+   },
+   "pearson_same_level_hpost_mean": {
+    "mean": 0.0455,
+    "sd": 0.0118
+   },
+   "pearson_same_level_wd4_mean": {
+    "mean": 0.26,
+    "sd": 0.0071
+   },
+   "pearson_disc_widths": {
+    "mean": 0.3375,
+    "sd": 0.0157
+   },
+   "pearson_disc_depths": {
+    "mean": 0.4658,
+    "sd": 0.0108
+   },
+   "pearson_lag1_upperW_to_next_lowerW": {
+    "mean": 0.237,
+    "sd": 0.0159
+   },
+   "pearson_lag1_cross_wd4_not_facing": {
+    "mean": 0.1289,
+    "sd": 0.0081
+   },
+   "pearson_lag5_cross_wd4": {
+    "mean": 0.1119,
+    "sd": 0.0084
+   },
+   "pearson_lag1_same": {
+    "mean": 0.5492,
+    "sd": 0.005
+   },
+   "pearson_lag5_same": {
+    "mean": 0.3843,
+    "sd": 0.0077
+   },
+   "pearson_same_level_widths_cervical": {
+    "mean": 0.3944,
+    "sd": 0.0146
+   },
+   "pearson_same_level_widths_T1L5": {
+    "mean": 0.3965,
+    "sd": 0.0183
+   },
+   "spearman_same_level_widths": {
+    "mean": 0.3946,
+    "sd": 0.0147
+   },
+   "spearman_same_level_depths": {
+    "mean": 0.5965,
+    "sd": 0.0103
+   },
+   "spearman_same_level_width_depth_upper": {
+    "mean": 0.2042,
+    "sd": 0.0119
+   },
+   "spearman_same_level_hpost_mean": {
+    "mean": 0.0448,
+    "sd": 0.0118
+   },
+   "spearman_same_level_wd4_mean": {
+    "mean": 0.2594,
+    "sd": 0.0069
+   },
+   "spearman_disc_widths": {
+    "mean": 0.3362,
+    "sd": 0.0161
+   },
+   "spearman_disc_depths": {
+    "mean": 0.4651,
+    "sd": 0.0122
+   },
+   "spearman_lag1_upperW_to_next_lowerW": {
+    "mean": 0.2357,
+    "sd": 0.0173
+   },
+   "spearman_lag1_cross_wd4_not_facing": {
+    "mean": 0.1287,
+    "sd": 0.008
+   },
+   "spearman_lag5_cross_wd4": {
+    "mean": 0.1118,
+    "sd": 0.0085
+   },
+   "spearman_lag1_same": {
+    "mean": 0.5487,
+    "sd": 0.0052
+   },
+   "spearman_lag5_same": {
+    "mean": 0.3842,
+    "sd": 0.0076
+   },
+   "spearman_same_level_widths_cervical": {
+    "mean": 0.3926,
+    "sd": 0.0114
+   },
+   "spearman_same_level_widths_T1L5": {
+    "mean": 0.3952,
+    "sd": 0.0201
+   },
+   "kron_R_measure_widths": {
+    "mean": 0.3006,
+    "sd": 0.0055
+   },
+   "kron_R_measure_depths": {
+    "mean": 0.4627,
+    "sd": 0.0069
+   },
+   "kron_R_measure_wd_upper": {
+    "mean": 0.174,
+    "sd": 0.0065
+   },
+   "kron_lag1": {
+    "mean": 0.4882,
+    "sd": 0.0049
+   },
+   "misfit_same_level_widths": {
+    "mean": 0.0954,
+    "sd": 0.0124
+   },
+   "misfit_same_level_depths": {
+    "mean": 0.1342,
+    "sd": 0.0074
+   },
+   "misfit_same_level_wd4_mean": {
+    "mean": 0.0529,
+    "sd": 0.0061
+   },
+   "misfit_disc_widths": {
+    "mean": 0.1907,
+    "sd": 0.0156
+   },
+   "misfit_disc_depths": {
+    "mean": 0.2399,
+    "sd": 0.0095
+   },
+   "misfit_lag1_cross_wd4_not_facing": {
+    "mean": 0.0449,
+    "sd": 0.0077
+   },
+   "misfit_lag5_cross_wd4": {
+    "mean": 0.0384,
+    "sd": 0.0084
+   },
+   "misfit_lag1_same": {
+    "mean": 0.061,
+    "sd": 0.0018
+   },
+   "pearson_cerv_lumbar_cross_measure": {
+    "mean": 0.0554,
+    "sd": 0.0093
+   },
+   "misfit_cerv_lumbar_cross_measure": {
+    "mean": 0.0192,
+    "sd": 0.0088
+   },
+   "copula_R_measure_widths": {
+    "mean": 0.2996,
+    "sd": 0.0054
+   },
+   "copula_R_measure_depths": {
+    "mean": 0.4611,
+    "sd": 0.0069
+   },
+   "copula_lag1": {
+    "mean": 0.4871,
+    "sd": 0.005
+   },
+   "T1L5_minus_C3L5_widths": {
+    "mean": -0.013,
+    "sd": 0.005
+   },
+   "T1L5_minus_C3L5_wd_upper": {
+    "mean": -0.0039,
+    "sd": 0.004
+   },
+   "cervical_fit_R_measure_widths": {
+    "mean": 0.342,
+    "sd": 0.015
+   }
+  },
+  "n67": {
+   "pearson_same_level_widths": {
+    "mean": 0.4098,
+    "sd": 0.0395
+   },
+   "pearson_same_level_depths": {
+    "mean": 0.5911,
+    "sd": 0.0338
+   },
+   "pearson_same_level_width_depth_upper": {
+    "mean": 0.2014,
+    "sd": 0.0577
+   },
+   "pearson_same_level_hpost_mean": {
+    "mean": 0.0487,
+    "sd": 0.0388
+   },
+   "pearson_same_level_wd4_mean": {
+    "mean": 0.2596,
+    "sd": 0.0352
+   },
+   "pearson_disc_widths": {
+    "mean": 0.357,
+    "sd": 0.0391
+   },
+   "pearson_disc_depths": {
+    "mean": 0.4587,
+    "sd": 0.0343
+   },
+   "pearson_lag1_upperW_to_next_lowerW": {
+    "mean": 0.2562,
+    "sd": 0.0401
+   },
+   "pearson_lag1_cross_wd4_not_facing": {
+    "mean": 0.129,
+    "sd": 0.0412
+   },
+   "pearson_lag5_cross_wd4": {
+    "mean": 0.1115,
+    "sd": 0.0396
+   },
+   "pearson_lag1_same": {
+    "mean": 0.5481,
+    "sd": 0.0149
+   },
+   "pearson_lag5_same": {
+    "mean": 0.3842,
+    "sd": 0.0203
+   },
+   "pearson_same_level_widths_cervical": {
+    "mean": 0.4104,
+    "sd": 0.0505
+   },
+   "pearson_same_level_widths_T1L5": {
+    "mean": 0.4097,
+    "sd": 0.0458
+   },
+   "spearman_same_level_widths": {
+    "mean": 0.4085,
+    "sd": 0.0373
+   },
+   "spearman_same_level_depths": {
+    "mean": 0.5871,
+    "sd": 0.0351
+   },
+   "spearman_same_level_width_depth_upper": {
+    "mean": 0.1996,
+    "sd": 0.0568
+   },
+   "spearman_same_level_hpost_mean": {
+    "mean": 0.0489,
+    "sd": 0.0403
+   },
+   "spearman_same_level_wd4_mean": {
+    "mean": 0.2584,
+    "sd": 0.0365
+   },
+   "spearman_disc_widths": {
+    "mean": 0.3544,
+    "sd": 0.0397
+   },
+   "spearman_disc_depths": {
+    "mean": 0.4562,
+    "sd": 0.0365
+   },
+   "spearman_lag1_upperW_to_next_lowerW": {
+    "mean": 0.2564,
+    "sd": 0.0412
+   },
+   "spearman_lag1_cross_wd4_not_facing": {
+    "mean": 0.129,
+    "sd": 0.0425
+   },
+   "spearman_lag5_cross_wd4": {
+    "mean": 0.1123,
+    "sd": 0.0399
+   },
+   "spearman_lag1_same": {
+    "mean": 0.5439,
+    "sd": 0.015
+   },
+   "spearman_lag5_same": {
+    "mean": 0.3812,
+    "sd": 0.0206
+   },
+   "spearman_same_level_widths_cervical": {
+    "mean": 0.408,
+    "sd": 0.0501
+   },
+   "spearman_same_level_widths_T1L5": {
+    "mean": 0.4087,
+    "sd": 0.0447
+   },
+   "kron_R_measure_widths": {
+    "mean": 0.3009,
+    "sd": 0.0231
+   },
+   "kron_R_measure_depths": {
+    "mean": 0.4638,
+    "sd": 0.019
+   },
+   "kron_R_measure_wd_upper": {
+    "mean": 0.1722,
+    "sd": 0.0275
+   },
+   "kron_lag1": {
+    "mean": 0.4873,
+    "sd": 0.014
+   },
+   "misfit_same_level_widths": {
+    "mean": 0.1089,
+    "sd": 0.033
+   },
+   "misfit_same_level_depths": {
+    "mean": 0.1273,
+    "sd": 0.0235
+   },
+   "misfit_same_level_wd4_mean": {
+    "mean": 0.0524,
+    "sd": 0.0305
+   },
+   "misfit_disc_widths": {
+    "mean": 0.2105,
+    "sd": 0.036
+   },
+   "misfit_disc_depths": {
+    "mean": 0.2327,
+    "sd": 0.0296
+   },
+   "misfit_lag1_cross_wd4_not_facing": {
+    "mean": 0.0451,
+    "sd": 0.0383
+   },
+   "misfit_lag5_cross_wd4": {
+    "mean": 0.0378,
+    "sd": 0.0385
+   },
+   "misfit_lag1_same": {
+    "mean": 0.0608,
+    "sd": 0.0054
+   },
+   "pearson_cerv_lumbar_cross_measure": {
+    "mean": 0.0628,
+    "sd": 0.0296
+   },
+   "misfit_cerv_lumbar_cross_measure": {
+    "mean": 0.0254,
+    "sd": 0.0285
+   },
+   "copula_R_measure_widths": {
+    "mean": 0.2943,
+    "sd": 0.0219
+   },
+   "copula_R_measure_depths": {
+    "mean": 0.4504,
+    "sd": 0.0191
+   },
+   "copula_lag1": {
+    "mean": 0.4788,
+    "sd": 0.0135
+   },
+   "T1L5_minus_C3L5_widths": {
+    "mean": -0.0153,
+    "sd": 0.0139
+   },
+   "T1L5_minus_C3L5_wd_upper": {
+    "mean": -0.0014,
+    "sd": 0.0126
+   },
+   "cervical_fit_R_measure_widths": {
+    "mean": 0.3479,
+    "sd": 0.0435
+   }
+  }
+ },
+ "e_regional": {
+  "n693": {
+   "pearson_same_level_widths": {
+    "mean": 0.3084,
+    "sd": 0.0101
+   },
+   "pearson_same_level_depths": {
+    "mean": 0.4893,
+    "sd": 0.0134
+   },
+   "pearson_same_level_width_depth_upper": {
+    "mean": 0.184,
+    "sd": 0.0117
+   },
+   "pearson_same_level_hpost_mean": {
+    "mean": 0.0438,
+    "sd": 0.0102
+   },
+   "pearson_same_level_wd4_mean": {
+    "mean": 0.2185,
+    "sd": 0.0078
+   },
+   "pearson_disc_widths": {
+    "mean": 0.1307,
+    "sd": 0.0101
+   },
+   "pearson_disc_depths": {
+    "mean": 0.2526,
+    "sd": 0.0126
+   },
+   "pearson_lag1_upperW_to_next_lowerW": {
+    "mean": 0.1301,
+    "sd": 0.0135
+   },
+   "pearson_lag1_cross_wd4_not_facing": {
+    "mean": 0.0978,
+    "sd": 0.0097
+   },
+   "pearson_lag5_cross_wd4": {
+    "mean": 0.0838,
+    "sd": 0.0101
+   },
+   "pearson_lag1_same": {
+    "mean": 0.5131,
+    "sd": 0.0043
+   },
+   "pearson_lag5_same": {
+    "mean": 0.3746,
+    "sd": 0.0071
+   },
+   "pearson_same_level_widths_cervical": {
+    "mean": 0.7765,
+    "sd": 0.0068
+   },
+   "pearson_same_level_widths_T1L5": {
+    "mean": 0.1707,
+    "sd": 0.0129
+   },
+   "spearman_same_level_widths": {
+    "mean": 0.3075,
+    "sd": 0.0112
+   },
+   "spearman_same_level_depths": {
+    "mean": 0.4893,
+    "sd": 0.014
+   },
+   "spearman_same_level_width_depth_upper": {
+    "mean": 0.1833,
+    "sd": 0.011
+   },
+   "spearman_same_level_hpost_mean": {
+    "mean": 0.044,
+    "sd": 0.0102
+   },
+   "spearman_same_level_wd4_mean": {
+    "mean": 0.2185,
+    "sd": 0.0079
+   },
+   "spearman_disc_widths": {
+    "mean": 0.1301,
+    "sd": 0.0106
+   },
+   "spearman_disc_depths": {
+    "mean": 0.2518,
+    "sd": 0.0139
+   },
+   "spearman_lag1_upperW_to_next_lowerW": {
+    "mean": 0.1292,
+    "sd": 0.0139
+   },
+   "spearman_lag1_cross_wd4_not_facing": {
+    "mean": 0.0974,
+    "sd": 0.0095
+   },
+   "spearman_lag5_cross_wd4": {
+    "mean": 0.0835,
+    "sd": 0.01
+   },
+   "spearman_lag1_same": {
+    "mean": 0.5117,
+    "sd": 0.0042
+   },
+   "spearman_lag5_same": {
+    "mean": 0.3739,
+    "sd": 0.0073
+   },
+   "spearman_same_level_widths_cervical": {
+    "mean": 0.7746,
+    "sd": 0.0088
+   },
+   "spearman_same_level_widths_T1L5": {
+    "mean": 0.1701,
+    "sd": 0.0145
+   },
+   "kron_R_measure_widths": {
+    "mean": 0.2996,
+    "sd": 0.0057
+   },
+   "kron_R_measure_depths": {
+    "mean": 0.4621,
+    "sd": 0.0059
+   },
+   "kron_R_measure_wd_upper": {
+    "mean": 0.1735,
+    "sd": 0.0058
+   },
+   "kron_lag1": {
+    "mean": 0.487,
+    "sd": 0.0035
+   },
+   "misfit_same_level_widths": {
+    "mean": 0.0088,
+    "sd": 0.0085
+   },
+   "misfit_same_level_depths": {
+    "mean": 0.0272,
+    "sd": 0.01
+   },
+   "misfit_same_level_wd4_mean": {
+    "mean": 0.0115,
+    "sd": 0.0077
+   },
+   "misfit_disc_widths": {
+    "mean": -0.0152,
+    "sd": 0.0098
+   },
+   "misfit_disc_depths": {
+    "mean": 0.0275,
+    "sd": 0.0119
+   },
+   "misfit_lag1_cross_wd4_not_facing": {
+    "mean": 0.0139,
+    "sd": 0.0101
+   },
+   "misfit_lag5_cross_wd4": {
+    "mean": 0.0102,
+    "sd": 0.0102
+   },
+   "misfit_lag1_same": {
+    "mean": 0.0261,
+    "sd": 0.0019
+   },
+   "pearson_cerv_lumbar_cross_measure": {
+    "mean": 0.0424,
+    "sd": 0.0095
+   },
+   "misfit_cerv_lumbar_cross_measure": {
+    "mean": 0.0065,
+    "sd": 0.0094
+   },
+   "copula_R_measure_widths": {
+    "mean": 0.2982,
+    "sd": 0.0058
+   },
+   "copula_R_measure_depths": {
+    "mean": 0.4603,
+    "sd": 0.0059
+   },
+   "copula_lag1": {
+    "mean": 0.4858,
+    "sd": 0.0036
+   },
+   "T1L5_minus_C3L5_widths": {
+    "mean": -0.1367,
+    "sd": 0.0033
+   },
+   "T1L5_minus_C3L5_wd_upper": {
+    "mean": 0.0775,
+    "sd": 0.0045
+   },
+   "cervical_fit_R_measure_widths": {
+    "mean": 0.7385,
+    "sd": 0.0058
+   }
+  },
+  "n67": {
+   "pearson_same_level_widths": {
+    "mean": 0.3175,
+    "sd": 0.0465
+   },
+   "pearson_same_level_depths": {
+    "mean": 0.4898,
+    "sd": 0.0398
+   },
+   "pearson_same_level_width_depth_upper": {
+    "mean": 0.1851,
+    "sd": 0.0556
+   },
+   "pearson_same_level_hpost_mean": {
+    "mean": 0.0345,
+    "sd": 0.026
+   },
+   "pearson_same_level_wd4_mean": {
+    "mean": 0.2141,
+    "sd": 0.0351
+   },
+   "pearson_disc_widths": {
+    "mean": 0.1383,
+    "sd": 0.0478
+   },
+   "pearson_disc_depths": {
+    "mean": 0.259,
+    "sd": 0.0428
+   },
+   "pearson_lag1_upperW_to_next_lowerW": {
+    "mean": 0.1381,
+    "sd": 0.0532
+   },
+   "pearson_lag1_cross_wd4_not_facing": {
+    "mean": 0.096,
+    "sd": 0.0385
+   },
+   "pearson_lag5_cross_wd4": {
+    "mean": 0.0845,
+    "sd": 0.0383
+   },
+   "pearson_lag1_same": {
+    "mean": 0.5122,
+    "sd": 0.0144
+   },
+   "pearson_lag5_same": {
+    "mean": 0.3739,
+    "sd": 0.0197
+   },
+   "pearson_same_level_widths_cervical": {
+    "mean": 0.7757,
+    "sd": 0.0249
+   },
+   "pearson_same_level_widths_T1L5": {
+    "mean": 0.1828,
+    "sd": 0.0602
+   },
+   "spearman_same_level_widths": {
+    "mean": 0.3181,
+    "sd": 0.0463
+   },
+   "spearman_same_level_depths": {
+    "mean": 0.4877,
+    "sd": 0.0408
+   },
+   "spearman_same_level_width_depth_upper": {
+    "mean": 0.1837,
+    "sd": 0.0564
+   },
+   "spearman_same_level_hpost_mean": {
+    "mean": 0.0337,
+    "sd": 0.0274
+   },
+   "spearman_same_level_wd4_mean": {
+    "mean": 0.2134,
+    "sd": 0.0355
+   },
+   "spearman_disc_widths": {
+    "mean": 0.1398,
+    "sd": 0.0493
+   },
+   "spearman_disc_depths": {
+    "mean": 0.2571,
+    "sd": 0.0449
+   },
+   "spearman_lag1_upperW_to_next_lowerW": {
+    "mean": 0.1392,
+    "sd": 0.0555
+   },
+   "spearman_lag1_cross_wd4_not_facing": {
+    "mean": 0.0959,
+    "sd": 0.0383
+   },
+   "spearman_lag5_cross_wd4": {
+    "mean": 0.0856,
+    "sd": 0.0386
+   },
+   "spearman_lag1_same": {
+    "mean": 0.5094,
+    "sd": 0.0169
+   },
+   "spearman_lag5_same": {
+    "mean": 0.3722,
+    "sd": 0.0214
+   },
+   "spearman_same_level_widths_cervical": {
+    "mean": 0.7693,
+    "sd": 0.0283
+   },
+   "spearman_same_level_widths_T1L5": {
+    "mean": 0.1853,
+    "sd": 0.0609
+   },
+   "kron_R_measure_widths": {
+    "mean": 0.3057,
+    "sd": 0.0277
+   },
+   "kron_R_measure_depths": {
+    "mean": 0.4568,
+    "sd": 0.0199
+   },
+   "kron_R_measure_wd_upper": {
+    "mean": 0.1698,
+    "sd": 0.0246
+   },
+   "kron_lag1": {
+    "mean": 0.4858,
+    "sd": 0.0126
+   },
+   "misfit_same_level_widths": {
+    "mean": 0.0118,
+    "sd": 0.0404
+   },
+   "misfit_same_level_depths": {
+    "mean": 0.033,
+    "sd": 0.032
+   },
+   "misfit_same_level_wd4_mean": {
+    "mean": 0.0106,
+    "sd": 0.0279
+   },
+   "misfit_disc_widths": {
+    "mean": -0.0102,
+    "sd": 0.0467
+   },
+   "misfit_disc_depths": {
+    "mean": 0.037,
+    "sd": 0.0379
+   },
+   "misfit_lag1_cross_wd4_not_facing": {
+    "mean": 0.0144,
+    "sd": 0.0352
+   },
+   "misfit_lag5_cross_wd4": {
+    "mean": 0.0122,
+    "sd": 0.0356
+   },
+   "misfit_lag1_same": {
+    "mean": 0.0264,
+    "sd": 0.0062
+   },
+   "pearson_cerv_lumbar_cross_measure": {
+    "mean": 0.0474,
+    "sd": 0.0258
+   },
+   "misfit_cerv_lumbar_cross_measure": {
+    "mean": 0.0121,
+    "sd": 0.0243
+   },
+   "copula_R_measure_widths": {
+    "mean": 0.2986,
+    "sd": 0.0262
+   },
+   "copula_R_measure_depths": {
+    "mean": 0.4443,
+    "sd": 0.019
+   },
+   "copula_lag1": {
+    "mean": 0.477,
+    "sd": 0.0126
+   },
+   "T1L5_minus_C3L5_widths": {
+    "mean": -0.1354,
+    "sd": 0.0126
+   },
+   "T1L5_minus_C3L5_wd_upper": {
+    "mean": 0.079,
+    "sd": 0.0149
+   },
+   "cervical_fit_R_measure_widths": {
+    "mean": 0.7387,
+    "sd": 0.0216
+   }
+  }
+ },
+ "e_regional+size_0.20": {
+  "n693": {
+   "pearson_same_level_widths": {
+    "mean": 0.4316,
+    "sd": 0.015
+   },
+   "pearson_same_level_depths": {
+    "mean": 0.5726,
+    "sd": 0.0105
+   },
+   "pearson_same_level_width_depth_upper": {
+    "mean": 0.3246,
+    "sd": 0.0132
+   },
+   "pearson_same_level_hpost_mean": {
+    "mean": 0.2088,
+    "sd": 0.0145
+   },
+   "pearson_same_level_wd4_mean": {
+    "mean": 0.3507,
+    "sd": 0.0115
+   },
+   "pearson_disc_widths": {
+    "mean": 0.2765,
+    "sd": 0.0158
+   },
+   "pearson_disc_depths": {
+    "mean": 0.3577,
+    "sd": 0.0143
+   },
+   "pearson_lag1_upperW_to_next_lowerW": {
+    "mean": 0.2748,
+    "sd": 0.0164
+   },
+   "pearson_lag1_cross_wd4_not_facing": {
+    "mean": 0.2568,
+    "sd": 0.0117
+   },
+   "pearson_lag5_cross_wd4": {
+    "mean": 0.244,
+    "sd": 0.0122
+   },
+   "pearson_lag1_same": {
+    "mean": 0.5473,
+    "sd": 0.0056
+   },
+   "pearson_lag5_same": {
+    "mean": 0.4204,
+    "sd": 0.0077
+   },
+   "pearson_same_level_widths_cervical": {
+    "mean": 0.8208,
+    "sd": 0.0074
+   },
+   "pearson_same_level_widths_T1L5": {
+    "mean": 0.3172,
+    "sd": 0.0186
+   },
+   "spearman_same_level_widths": {
+    "mean": 0.4314,
+    "sd": 0.0156
+   },
+   "spearman_same_level_depths": {
+    "mean": 0.5725,
+    "sd": 0.0116
+   },
+   "spearman_same_level_width_depth_upper": {
+    "mean": 0.3241,
+    "sd": 0.0141
+   },
+   "spearman_same_level_hpost_mean": {
+    "mean": 0.2085,
+    "sd": 0.0156
+   },
+   "spearman_same_level_wd4_mean": {
+    "mean": 0.3502,
+    "sd": 0.0115
+   },
+   "spearman_disc_widths": {
+    "mean": 0.2761,
+    "sd": 0.0162
+   },
+   "spearman_disc_depths": {
+    "mean": 0.3571,
+    "sd": 0.0153
+   },
+   "spearman_lag1_upperW_to_next_lowerW": {
+    "mean": 0.2745,
+    "sd": 0.0167
+   },
+   "spearman_lag1_cross_wd4_not_facing": {
+    "mean": 0.2565,
+    "sd": 0.0114
+   },
+   "spearman_lag5_cross_wd4": {
+    "mean": 0.2441,
+    "sd": 0.0126
+   },
+   "spearman_lag1_same": {
+    "mean": 0.547,
+    "sd": 0.0061
+   },
+   "spearman_lag5_same": {
+    "mean": 0.4204,
+    "sd": 0.0081
+   },
+   "spearman_same_level_widths_cervical": {
+    "mean": 0.82,
+    "sd": 0.0075
+   },
+   "spearman_same_level_widths_T1L5": {
+    "mean": 0.3171,
+    "sd": 0.0194
+   },
+   "kron_R_measure_widths": {
+    "mean": 0.3016,
+    "sd": 0.0087
+   },
+   "kron_R_measure_depths": {
+    "mean": 0.4617,
+    "sd": 0.0065
+   },
+   "kron_R_measure_wd_upper": {
+    "mean": 0.1745,
+    "sd": 0.0061
+   },
+   "kron_lag1": {
+    "mean": 0.4871,
+    "sd": 0.0042
+   },
+   "misfit_same_level_widths": {
+    "mean": 0.1301,
+    "sd": 0.0125
+   },
+   "misfit_same_level_depths": {
+    "mean": 0.1109,
+    "sd": 0.0103
+   },
+   "misfit_same_level_wd4_mean": {
+    "mean": 0.1434,
+    "sd": 0.0088
+   },
+   "misfit_disc_widths": {
+    "mean": 0.1296,
+    "sd": 0.0147
+   },
+   "misfit_disc_depths": {
+    "mean": 0.1328,
+    "sd": 0.0138
+   },
+   "misfit_lag1_cross_wd4_not_facing": {
+    "mean": 0.1728,
+    "sd": 0.0101
+   },
+   "misfit_lag5_cross_wd4": {
+    "mean": 0.1701,
+    "sd": 0.0108
+   },
+   "misfit_lag1_same": {
+    "mean": 0.0602,
+    "sd": 0.0024
+   },
+   "pearson_cerv_lumbar_cross_measure": {
+    "mean": 0.2069,
+    "sd": 0.0082
+   },
+   "misfit_cerv_lumbar_cross_measure": {
+    "mean": 0.171,
+    "sd": 0.0068
+   },
+   "copula_R_measure_widths": {
+    "mean": 0.3007,
+    "sd": 0.0084
+   },
+   "copula_R_measure_depths": {
+    "mean": 0.4597,
+    "sd": 0.0068
+   },
+   "copula_lag1": {
+    "mean": 0.4859,
+    "sd": 0.0041
+   },
+   "T1L5_minus_C3L5_widths": {
+    "mean": -0.1376,
+    "sd": 0.0028
+   },
+   "T1L5_minus_C3L5_wd_upper": {
+    "mean": 0.0772,
+    "sd": 0.005
+   },
+   "cervical_fit_R_measure_widths": {
+    "mean": 0.7617,
+    "sd": 0.0069
+   }
+  },
+  "n67": {
+   "pearson_same_level_widths": {
+    "mean": 0.4375,
+    "sd": 0.0467
+   },
+   "pearson_same_level_depths": {
+    "mean": 0.575,
+    "sd": 0.0394
+   },
+   "pearson_same_level_width_depth_upper": {
+    "mean": 0.3153,
+    "sd": 0.0449
+   },
+   "pearson_same_level_hpost_mean": {
+    "mean": 0.2045,
+    "sd": 0.0414
+   },
+   "pearson_same_level_wd4_mean": {
+    "mean": 0.3512,
+    "sd": 0.0378
+   },
+   "pearson_disc_widths": {
+    "mean": 0.2892,
+    "sd": 0.0504
+   },
+   "pearson_disc_depths": {
+    "mean": 0.358,
+    "sd": 0.052
+   },
+   "pearson_lag1_upperW_to_next_lowerW": {
+    "mean": 0.2851,
+    "sd": 0.056
+   },
+   "pearson_lag1_cross_wd4_not_facing": {
+    "mean": 0.2576,
+    "sd": 0.0446
+   },
+   "pearson_lag5_cross_wd4": {
+    "mean": 0.2463,
+    "sd": 0.0463
+   },
+   "pearson_lag1_same": {
+    "mean": 0.5465,
+    "sd": 0.0226
+   },
+   "pearson_lag5_same": {
+    "mean": 0.4207,
+    "sd": 0.0317
+   },
+   "pearson_same_level_widths_cervical": {
+    "mean": 0.8209,
+    "sd": 0.0191
+   },
+   "pearson_same_level_widths_T1L5": {
+    "mean": 0.3247,
+    "sd": 0.0577
+   },
+   "spearman_same_level_widths": {
+    "mean": 0.4315,
+    "sd": 0.0482
+   },
+   "spearman_same_level_depths": {
+    "mean": 0.5699,
+    "sd": 0.0402
+   },
+   "spearman_same_level_width_depth_upper": {
+    "mean": 0.3088,
+    "sd": 0.0455
+   },
+   "spearman_same_level_hpost_mean": {
+    "mean": 0.2044,
+    "sd": 0.0425
+   },
+   "spearman_same_level_wd4_mean": {
+    "mean": 0.3466,
+    "sd": 0.0387
+   },
+   "spearman_disc_widths": {
+    "mean": 0.2851,
+    "sd": 0.0517
+   },
+   "spearman_disc_depths": {
+    "mean": 0.3566,
+    "sd": 0.0534
+   },
+   "spearman_lag1_upperW_to_next_lowerW": {
+    "mean": 0.2813,
+    "sd": 0.0566
+   },
+   "spearman_lag1_cross_wd4_not_facing": {
+    "mean": 0.2547,
+    "sd": 0.0448
+   },
+   "spearman_lag5_cross_wd4": {
+    "mean": 0.2458,
+    "sd": 0.0472
+   },
+   "spearman_lag1_same": {
+    "mean": 0.5422,
+    "sd": 0.0235
+   },
+   "spearman_lag5_same": {
+    "mean": 0.4189,
+    "sd": 0.0329
+   },
+   "spearman_same_level_widths_cervical": {
+    "mean": 0.8128,
+    "sd": 0.0234
+   },
+   "spearman_same_level_widths_T1L5": {
+    "mean": 0.3193,
+    "sd": 0.0595
+   },
+   "kron_R_measure_widths": {
+    "mean": 0.2994,
+    "sd": 0.0228
+   },
+   "kron_R_measure_depths": {
+    "mean": 0.4591,
+    "sd": 0.0229
+   },
+   "kron_R_measure_wd_upper": {
+    "mean": 0.1706,
+    "sd": 0.0238
+   },
+   "kron_lag1": {
+    "mean": 0.4866,
+    "sd": 0.0168
+   },
+   "misfit_same_level_widths": {
+    "mean": 0.1381,
+    "sd": 0.0388
+   },
+   "misfit_same_level_depths": {
+    "mean": 0.1159,
+    "sd": 0.0373
+   },
+   "misfit_same_level_wd4_mean": {
+    "mean": 0.145,
+    "sd": 0.0358
+   },
+   "misfit_disc_widths": {
+    "mean": 0.1434,
+    "sd": 0.046
+   },
+   "misfit_disc_depths": {
+    "mean": 0.1346,
+    "sd": 0.0481
+   },
+   "misfit_lag1_cross_wd4_not_facing": {
+    "mean": 0.1742,
+    "sd": 0.0421
+   },
+   "misfit_lag5_cross_wd4": {
+    "mean": 0.1726,
+    "sd": 0.0425
+   },
+   "misfit_lag1_same": {
+    "mean": 0.0599,
+    "sd": 0.0083
+   },
+   "pearson_cerv_lumbar_cross_measure": {
+    "mean": 0.205,
+    "sd": 0.0462
+   },
+   "misfit_cerv_lumbar_cross_measure": {
+    "mean": 0.17,
+    "sd": 0.0412
+   },
+   "copula_R_measure_widths": {
+    "mean": 0.2916,
+    "sd": 0.0239
+   },
+   "copula_R_measure_depths": {
+    "mean": 0.4453,
+    "sd": 0.0222
+   },
+   "copula_lag1": {
+    "mean": 0.4782,
+    "sd": 0.0168
+   },
+   "T1L5_minus_C3L5_widths": {
+    "mean": -0.1369,
+    "sd": 0.0093
+   },
+   "T1L5_minus_C3L5_wd_upper": {
+    "mean": 0.0776,
+    "sd": 0.0125
+   },
+   "cervical_fit_R_measure_widths": {
+    "mean": 0.7612,
+    "sd": 0.0173
+   }
+  }
+ },
+ "e_regional+disc_0.10": {
+  "n693": {
+   "pearson_same_level_widths": {
+    "mean": 0.3808,
+    "sd": 0.0111
+   },
+   "pearson_same_level_depths": {
+    "mean": 0.5948,
+    "sd": 0.0092
+   },
+   "pearson_same_level_width_depth_upper": {
+    "mean": 0.2174,
+    "sd": 0.0126
+   },
+   "pearson_same_level_hpost_mean": {
+    "mean": 0.042,
+    "sd": 0.0111
+   },
+   "pearson_same_level_wd4_mean": {
+    "mean": 0.2625,
+    "sd": 0.0077
+   },
+   "pearson_disc_widths": {
+    "mean": 0.3002,
+    "sd": 0.0135
+   },
+   "pearson_disc_depths": {
+    "mean": 0.4671,
+    "sd": 0.0128
+   },
+   "pearson_lag1_upperW_to_next_lowerW": {
+    "mean": 0.1998,
+    "sd": 0.0126
+   },
+   "pearson_lag1_cross_wd4_not_facing": {
+    "mean": 0.1398,
+    "sd": 0.0083
+   },
+   "pearson_lag5_cross_wd4": {
+    "mean": 0.1197,
+    "sd": 0.0095
+   },
+   "pearson_lag1_same": {
+    "mean": 0.5494,
+    "sd": 0.0046
+   },
+   "pearson_lag5_same": {
+    "mean": 0.3867,
+    "sd": 0.009
+   },
+   "pearson_same_level_widths_cervical": {
+    "mean": 0.8324,
+    "sd": 0.0054
+   },
+   "pearson_same_level_widths_T1L5": {
+    "mean": 0.2479,
+    "sd": 0.0136
+   },
+   "spearman_same_level_widths": {
+    "mean": 0.3806,
+    "sd": 0.0109
+   },
+   "spearman_same_level_depths": {
+    "mean": 0.5933,
+    "sd": 0.011
+   },
+   "spearman_same_level_width_depth_upper": {
+    "mean": 0.2161,
+    "sd": 0.0115
+   },
+   "spearman_same_level_hpost_mean": {
+    "mean": 0.0423,
+    "sd": 0.0115
+   },
+   "spearman_same_level_wd4_mean": {
+    "mean": 0.262,
+    "sd": 0.0079
+   },
+   "spearman_disc_widths": {
+    "mean": 0.3011,
+    "sd": 0.014
+   },
+   "spearman_disc_depths": {
+    "mean": 0.4655,
+    "sd": 0.014
+   },
+   "spearman_lag1_upperW_to_next_lowerW": {
+    "mean": 0.1997,
+    "sd": 0.0135
+   },
+   "spearman_lag1_cross_wd4_not_facing": {
+    "mean": 0.1393,
+    "sd": 0.0086
+   },
+   "spearman_lag5_cross_wd4": {
+    "mean": 0.12,
+    "sd": 0.01
+   },
+   "spearman_lag1_same": {
+    "mean": 0.5486,
+    "sd": 0.0046
+   },
+   "spearman_lag5_same": {
+    "mean": 0.3866,
+    "sd": 0.0087
+   },
+   "spearman_same_level_widths_cervical": {
+    "mean": 0.8316,
+    "sd": 0.0068
+   },
+   "spearman_same_level_widths_T1L5": {
+    "mean": 0.248,
+    "sd": 0.0134
+   },
+   "kron_R_measure_widths": {
+    "mean": 0.2991,
+    "sd": 0.0061
+   },
+   "kron_R_measure_depths": {
+    "mean": 0.4618,
+    "sd": 0.0035
+   },
+   "kron_R_measure_wd_upper": {
+    "mean": 0.1725,
+    "sd": 0.0071
+   },
+   "kron_lag1": {
+    "mean": 0.4884,
+    "sd": 0.0043
+   },
+   "misfit_same_level_widths": {
+    "mean": 0.0817,
+    "sd": 0.01
+   },
+   "misfit_same_level_depths": {
+    "mean": 0.133,
+    "sd": 0.0095
+   },
+   "misfit_same_level_wd4_mean": {
+    "mean": 0.0572,
+    "sd": 0.0069
+   },
+   "misfit_disc_widths": {
+    "mean": 0.1541,
+    "sd": 0.0136
+   },
+   "misfit_disc_depths": {
+    "mean": 0.2415,
+    "sd": 0.0129
+   },
+   "misfit_lag1_cross_wd4_not_facing": {
+    "mean": 0.0566,
+    "sd": 0.0083
+   },
+   "misfit_lag5_cross_wd4": {
+    "mean": 0.0464,
+    "sd": 0.0091
+   },
+   "misfit_lag1_same": {
+    "mean": 0.0609,
+    "sd": 0.0018
+   },
+   "pearson_cerv_lumbar_cross_measure": {
+    "mean": 0.0599,
+    "sd": 0.0108
+   },
+   "misfit_cerv_lumbar_cross_measure": {
+    "mean": 0.0242,
+    "sd": 0.0103
+   },
+   "copula_R_measure_widths": {
+    "mean": 0.2983,
+    "sd": 0.0059
+   },
+   "copula_R_measure_depths": {
+    "mean": 0.46,
+    "sd": 0.0035
+   },
+   "copula_lag1": {
+    "mean": 0.4873,
+    "sd": 0.0043
+   },
+   "T1L5_minus_C3L5_widths": {
+    "mean": -0.1358,
+    "sd": 0.0031
+   },
+   "T1L5_minus_C3L5_wd_upper": {
+    "mean": 0.0761,
+    "sd": 0.004
+   },
+   "cervical_fit_R_measure_widths": {
+    "mean": 0.7531,
+    "sd": 0.0063
+   }
+  },
+  "n67": {
+   "pearson_same_level_widths": {
+    "mean": 0.3917,
+    "sd": 0.0448
+   },
+   "pearson_same_level_depths": {
+    "mean": 0.5884,
+    "sd": 0.0287
+   },
+   "pearson_same_level_width_depth_upper": {
+    "mean": 0.2166,
+    "sd": 0.0545
+   },
+   "pearson_same_level_hpost_mean": {
+    "mean": 0.0387,
+    "sd": 0.0384
+   },
+   "pearson_same_level_wd4_mean": {
+    "mean": 0.2622,
+    "sd": 0.0329
+   },
+   "pearson_disc_widths": {
+    "mean": 0.3126,
+    "sd": 0.0483
+   },
+   "pearson_disc_depths": {
+    "mean": 0.4598,
+    "sd": 0.0349
+   },
+   "pearson_lag1_upperW_to_next_lowerW": {
+    "mean": 0.2142,
+    "sd": 0.0476
+   },
+   "pearson_lag1_cross_wd4_not_facing": {
+    "mean": 0.1382,
+    "sd": 0.04
+   },
+   "pearson_lag5_cross_wd4": {
+    "mean": 0.1204,
+    "sd": 0.0388
+   },
+   "pearson_lag1_same": {
+    "mean": 0.5471,
+    "sd": 0.0133
+   },
+   "pearson_lag5_same": {
+    "mean": 0.387,
+    "sd": 0.0213
+   },
+   "pearson_same_level_widths_cervical": {
+    "mean": 0.8326,
+    "sd": 0.0162
+   },
+   "pearson_same_level_widths_T1L5": {
+    "mean": 0.262,
+    "sd": 0.0578
+   },
+   "spearman_same_level_widths": {
+    "mean": 0.39,
+    "sd": 0.0447
+   },
+   "spearman_same_level_depths": {
+    "mean": 0.5839,
+    "sd": 0.0344
+   },
+   "spearman_same_level_width_depth_upper": {
+    "mean": 0.213,
+    "sd": 0.0561
+   },
+   "spearman_same_level_hpost_mean": {
+    "mean": 0.0391,
+    "sd": 0.0395
+   },
+   "spearman_same_level_wd4_mean": {
+    "mean": 0.2599,
+    "sd": 0.0344
+   },
+   "spearman_disc_widths": {
+    "mean": 0.3111,
+    "sd": 0.0482
+   },
+   "spearman_disc_depths": {
+    "mean": 0.4566,
+    "sd": 0.0362
+   },
+   "spearman_lag1_upperW_to_next_lowerW": {
+    "mean": 0.2122,
+    "sd": 0.0464
+   },
+   "spearman_lag1_cross_wd4_not_facing": {
+    "mean": 0.1363,
+    "sd": 0.0415
+   },
+   "spearman_lag5_cross_wd4": {
+    "mean": 0.1194,
+    "sd": 0.0391
+   },
+   "spearman_lag1_same": {
+    "mean": 0.5431,
+    "sd": 0.0139
+   },
+   "spearman_lag5_same": {
+    "mean": 0.3846,
+    "sd": 0.0215
+   },
+   "spearman_same_level_widths_cervical": {
+    "mean": 0.8269,
+    "sd": 0.0194
+   },
+   "spearman_same_level_widths_T1L5": {
+    "mean": 0.2615,
+    "sd": 0.0572
+   },
+   "kron_R_measure_widths": {
+    "mean": 0.2991,
+    "sd": 0.0235
+   },
+   "kron_R_measure_depths": {
+    "mean": 0.4576,
+    "sd": 0.0199
+   },
+   "kron_R_measure_wd_upper": {
+    "mean": 0.1789,
+    "sd": 0.0218
+   },
+   "kron_lag1": {
+    "mean": 0.4872,
+    "sd": 0.0127
+   },
+   "misfit_same_level_widths": {
+    "mean": 0.0926,
+    "sd": 0.0388
+   },
+   "misfit_same_level_depths": {
+    "mean": 0.1308,
+    "sd": 0.0312
+   },
+   "misfit_same_level_wd4_mean": {
+    "mean": 0.0546,
+    "sd": 0.0307
+   },
+   "misfit_disc_widths": {
+    "mean": 0.1669,
+    "sd": 0.0457
+   },
+   "misfit_disc_depths": {
+    "mean": 0.2368,
+    "sd": 0.0365
+   },
+   "misfit_lag1_cross_wd4_not_facing": {
+    "mean": 0.0537,
+    "sd": 0.0389
+   },
+   "misfit_lag5_cross_wd4": {
+    "mean": 0.0461,
+    "sd": 0.0375
+   },
+   "misfit_lag1_same": {
+    "mean": 0.0599,
+    "sd": 0.0056
+   },
+   "pearson_cerv_lumbar_cross_measure": {
+    "mean": 0.0585,
+    "sd": 0.0294
+   },
+   "misfit_cerv_lumbar_cross_measure": {
+    "mean": 0.0216,
+    "sd": 0.0279
+   },
+   "copula_R_measure_widths": {
+    "mean": 0.2942,
+    "sd": 0.0243
+   },
+   "copula_R_measure_depths": {
+    "mean": 0.4462,
+    "sd": 0.0201
+   },
+   "copula_lag1": {
+    "mean": 0.4792,
+    "sd": 0.0129
+   },
+   "T1L5_minus_C3L5_widths": {
+    "mean": -0.1354,
+    "sd": 0.0108
+   },
+   "T1L5_minus_C3L5_wd_upper": {
+    "mean": 0.0775,
+    "sd": 0.0132
+   },
+   "cervical_fit_R_measure_widths": {
+    "mean": 0.7546,
+    "sd": 0.0164
+   }
+  }
+ },
+ "_seconds": 243.0
+}

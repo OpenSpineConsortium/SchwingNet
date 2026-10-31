@@ -1,0 +1,38 @@
+{
+ "widths": {
+  "sim_mean": -0.0002,
+  "sim_sd": 0.0131,
+  "observed": 0.002,
+  "z": 0.2
+ },
+ "depths": {
+  "sim_mean": -0.0004,
+  "sim_sd": 0.0135,
+  "observed": 0.008,
+  "z": 0.6
+ },
+ "width_depth_upper": {
+  "sim_mean": -0.0003,
+  "sim_sd": 0.015,
+  "observed": 0.08,
+  "z": 5.4
+ },
+ "width_depth_lower": {
+  "sim_mean": 0.0002,
+  "sim_sd": 0.0149,
+  "observed": 0.076,
+  "z": 5.1
+ },
+ "upperW_lowerD": {
+  "sim_mean": 0.0005,
+  "sim_sd": 0.0146,
+  "observed": 0.118,
+  "z": 8.0
+ },
+ "upperD_lowerW": {
+  "sim_mean": -0.0004,
+  "sim_sd": 0.014,
+  "observed": 0.079,
+  "z": 5.7
+ }
+}

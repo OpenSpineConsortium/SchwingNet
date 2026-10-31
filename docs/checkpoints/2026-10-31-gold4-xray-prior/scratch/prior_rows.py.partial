@@ -1,0 +1,338 @@
+"""Who the gold tier 3 prior and its check may read, and the check's lines that need no numpy.
+
+The fit (gold3_prior.py) and its check (prior_check.py) read the same studies, and this module, standard
+library only, says which: Split drops every study the admission refuses, every person of the latent-prior
+evaluation's test reserve and every study with an L6, a T13 or no L5 row, each counted under its first
+reason in that order, and cuts the rest into a fit part and a held part by a hash of the unit (a repeat
+group is one unit). The test reserve is parsed with the rows file and dropped before any statistic is
+computed or any line is written; every reader the check adds (study_rows, study_facts) passes over a
+study that is not kept before it reads anything else of its row.
+
+The check's lines start "<population> C3..L5 check: " and are held to the shapes the gate prints
+unchanged (check_line): at most 194 characters, no path, quote, long number, long hex run, DICOM word or
+credential word, and nothing grid/report-shapes.awk or grid/redact.sed would withhold or rewrite, so a
+line that breaks a rule raises and its section prints a fault line instead. The fault and not-run lines
+come from here too, so they print where numpy does not import.
+"""
+from __future__ import annotations
+
+import csv
+import hashlib
+import json
+import math
+import re
+from collections import Counter, namedtuple
+from pathlib import Path
+
+HELD_SHARE = 0.2
+VERSE_SERIES = re.compile(r"(verse\d+|gl\d+)", re.IGNORECASE)
+TOTALSEG_SUBJECT = re.compile(r"s\d{4}")
+ADMISSION_MEMBER = {"enhance_pet": "enhance_pet", "verse": "verse", "totalsegmentator": "totalsegmentator"}
+FACTS = ("gold3-ct", "enhance-pet", "facts.jsonl")
+CLASS_ORDER = ("at most 1.5 mm", "2.5 mm", "2.8 mm", "3 mm", "5 mm", "no spacing row")
+LINE_CHARS = 194                     # 196 with the "- " the sbatch adds
+LONGEST_HEAD = len("totalsegmentator C3..L5 check: ")
+NAME_CHARS = 21
+STAMP = re.compile(r"[0-9a-f]{16}")
+REASONS = ("not_admitted", "reserved", "l6", "t13", "no_l5")
+ANOMALIES = ("l6", "t13", "no_l5")
+
+Kept = namedtuple("Kept", "index raw sid person unit")
+
+
+def study_id(population: str, raw: str) -> str:
+    """The admission's id of a rows file's study, as tools/gold3_covariates.py reads it."""
+    if population == "enhance_pet":
+        return raw.zfill(4) if raw.isdigit() else raw
+    pattern = VERSE_SERIES if population == "verse" else TOTALSEG_SUBJECT
+    found = pattern.search(raw)
+    if not found:
+        return raw
+    return found.group(1).lower() if population == "verse" else found.group(0)
+
+
+def person_of(population: str, sid: str, verse_patients: dict) -> str:
+    if population == "verse":
+        return "verse:" + verse_patients.get(sid, sid)
+    return "%s:%s" % (population, sid)
+
+
+def admitted(records: Path, member: str) -> set:
+    data = json.loads((records / "gold3-ct" / "admission.json").read_text())
+    return {s["id"] for s in data["studies"] if s["member"] == member and s["verdict"] == "admitted"}
+
+
+def verse_patients(records: Path) -> dict:
+    data = json.loads((records / "gold3-ct" / "verse" / "series.json").read_text())
+    return {s["series"].lower(): s["patient"] for s in data["series"]}
+
+
+def reserve_persons(records: Path) -> set:
+    return {p["person"] for p in json.loads((records / "splits" / "latent-prior-test-reserve.json").read_text())}
+
+
+def unit_map(records: Path) -> dict:
+    units = {}
+    for g in json.loads((records / "splits" / "latent-prior-repeat-groups.json").read_text()):
+        for p in g["persons"]:
+            units[p] = g["unit"]
+    return units
+
+
+def held_out(unit: str) -> bool:
+    h = int(hashlib.sha256(("gold3-prior:" + unit).encode()).hexdigest()[:8], 16)
+    return h / 0xFFFFFFFF < HELD_SHARE
+
+
+def anomaly_sets(path) -> tuple:
+    """(studies with an L6 row, with a T13 row, with an L5 row) of one rows file, by raw id."""
+    l6, t13, with_l5 = set(), set(), set()
+    with open(path, newline="") as f:
+        for row in csv.DictReader(f):
+            level = row["level"]
+            if level == "L6":
+                l6.add(row["study"])
+            elif level == "T13":
+                t13.add(row["study"])
+            elif level == "L5":
+                with_l5.add(row["study"])
+    return l6, t13, with_l5
+
+
+class Split:
+    """Who of one population's studies the prior and its check may read, from the records."""
+
+    def __init__(self, population: str, rows: Path, records: Path):
+        self.population = population
+        self.allowed = admitted(records, ADMISSION_MEMBER[population])
+        self.patients = verse_patients(records) if population == "verse" else {}
+        self.reserve = reserve_persons(records)
+        self.units = unit_map(records)
+        self.l6, self.t13, self.with_l5 = anomaly_sets(rows)
+
+    def reason(self, raw: str, sid: str, person: str) -> str:
+        """The first reason a study is kept out, or "" for a study the prior may read."""
+        if sid not in self.allowed:
+            return "not_admitted"
+        if person in self.reserve:
+            return "reserved"
+        if raw in self.l6:
+            return "l6"
+        if raw in self.t13:
+            return "t13"
+        if raw not in self.with_l5:
+            return "no_l5"
+        return ""
+
+    def __call__(self, raw_ids: list) -> tuple:
+        """(fit [Kept], held [Kept], counts) for read_rows' raw ids, in their order; counts holds
+        read, not_admitted, reserved, anomalous and anomalous by reason (l6, t13, no_l5), each study
+        counted once, under its first reason in the order not admitted, reserve, L6, T13, no L5."""
+        fit, held = [], []
+        counts = dict(read=len(raw_ids), anomalous=0, **{r: 0 for r in REASONS})
+        for i, raw in enumerate(raw_ids):
+            sid = study_id(self.population, raw)
+            person = person_of(self.population, sid, self.patients)
+            why = self.reason(raw, sid, person)
+            if why:
+                counts[why] += 1
+                counts["anomalous"] += why in ANOMALIES
+                continue
+            unit = self.units.get(person, person)
+            (held if held_out(unit) else fit).append(Kept(i, raw, sid, person, unit))
+        return fit, held, counts
+
+
+def study_rows(path, kept_raw: set, keys: set):
+    """(raw, level, key, value, note) of the kept studies' rows with one of keys; any other study's
+    row is passed over before its key, level or value is read."""
+    with open(path, newline="") as f:
+        reader = csv.reader(f)
+        header = next(reader, [])
+        at = {name: i for i, name in enumerate(header)}
+        study, level, key, value, note = (at.get(k) for k in ("study", "level", "key", "value", "note"))
+        if None in (study, level, key, value):
+            return
+        width = max(study, level, key, value)
+        for row in reader:
+            if len(row) <= study or row[study] not in kept_raw:
+                continue
+            if len(row) <= width or row[key] not in keys:
+                continue
+            yield row[study], row[level], row[key], row[value], row[note] if note is not None and note < len(row) else ""
+
+
+def study_facts(records: Path, population: str, kept_sids: set) -> dict:
+    """{sid: (site, model, kernel)} of the kept enhance_pet studies, plain names; {} otherwise. A line
+    whose id is not a kept study is passed over once its id is read; the first line of an id counts."""
+    if population != "enhance_pet":
+        return {}
+    facts = {}
+    with open(Path(records).joinpath(*FACTS), encoding="utf-8") as f:
+        for line in f:
+            record = parsed(line)
+            sid = record.get("id")
+            if not isinstance(sid, str) or sid not in kept_sids or sid in facts:
+                continue
+            scanner = record.get("scanner") if isinstance(record.get("scanner"), dict) else {}
+            facts[sid] = (plain_name(record.get("site")), plain_name(scanner.get("model")), plain_name(scanner.get("kernel")))
+    return facts
+
+
+def parsed(line: str) -> dict:
+    try:
+        record = json.loads(line)
+    except ValueError:
+        return {}
+    return record if isinstance(record, dict) else {}
+
+
+def protocol_class(slice_mm) -> str:
+    """The protocol class of a study by its slice_mm row's value, the head-foot spacing in mm."""
+    try:
+        v = float(slice_mm)
+    except (TypeError, ValueError):
+        return "no spacing row"
+    if not math.isfinite(v) or v <= 0:
+        return "no spacing row"
+    for top, name in ((1.5, "at most 1.5 mm"), (2.6, "2.5 mm"), (2.9, "2.8 mm"), (3.5, "3 mm")):
+        if v <= top:
+            return name
+    return "5 mm"
+
+
+def plain_name(text, width: int = NAME_CHARS) -> str:
+    """A name from free text: runs of anything but letters and digits become "-", the ends trimmed,
+    cut at width; "unnamed" when nothing is left or the name would break a line's shape rule."""
+    text = "" if text is None else str(text)
+    name = re.sub(r"[^A-Za-z0-9]+", "-", text).strip("-")[:width].strip("-")
+    return name if name and not shape_problem(name) else "unnamed"
+
+
+def stamp_of(note) -> str:
+    """The stamp when the note is 16 lowercase hex characters, else ""."""
+    note = note if isinstance(note, str) else ""
+    return note if STAMP.fullmatch(note) else ""
+
+
+# The shapes the gate's filters (grid/shape-words.awk, grid/report-shapes.awk, grid/redact.sed) would
+# withhold, mask or judge, and the markers after which report-shapes.awk judges a reason.
+BANNED_WORDS = ("patient", "institution", "operators", "physician", "accession", "stationname", "deviceserial",
+                "instanceuid", "studydate", "seriesdate", "acquisitiondate", "contentdate", "studytime", "studyid",
+                "invalid value for vr", "bearer", "basic", "token", "secret", "credential", "password", "passwd",
+                "pwd", "apikey", "api_key", "api-key", "authorization", "cookie")
+MARKERS = ("FAILED", "refused:", "why:", "(first ", "=", "holds more than")
+SHAPES = (("a colon with no space after it", re.compile(r":(?! )")),
+          ("a slash", re.compile(r"[/\\]")),
+          ("a quote", re.compile(r"[\"'`]")),
+          ("five digits in a row", re.compile(r"[0-9]{5}")),
+          ("a DICOM tag", re.compile(r"\([0-9A-Fa-f]{4}, ?[0-9A-Fa-f]{4}\)")),
+          ("a UID", re.compile(r"[0-9]+(\.[0-9]+){4,}")),
+          ("a token's prefix", re.compile(r"\b(ghp_|gho_|ghs_|ghu_|ghr_|github_pat_|glpat-|xox[abprs]-|sk-)[A-Za-z0-9_-]{8,}")),
+          ("a token's prefix", re.compile(r"\bhf_[A-Za-z0-9]{20,}")),
+          ("a key's prefix", re.compile(r"\b(AKIA|ASIA)[0-9A-Z]{16}\b")))
+HEX_RUN = re.compile(r"[0-9a-fA-F]{8,}")
+
+
+def shape_problem(text: str, stamp_allowed: bool = False) -> str:
+    """The first shape rule text breaks, or "" when it breaks none."""
+    if any(not (32 <= ord(c) <= 126) for c in text):
+        return "a character outside printable ASCII"
+    lowered = text.lower()
+    for word in BANNED_WORDS:
+        if word in lowered:
+            return "the word " + word
+    for marker in MARKERS:
+        if marker in text:
+            return "the marker " + marker
+    for name, shape in SHAPES:
+        if shape.search(text):
+            return name
+    runs = HEX_RUN.findall(text)
+    if runs and not (stamp_allowed and len(runs) == 1 and STAMP.fullmatch(runs[0])):
+        return "a run of eight hex characters"
+    return ""
+
+
+def check_head(population: str) -> str:
+    return "%s C3..L5 check: " % population
+
+
+def check_line(head: str, text: str) -> str:
+    """head and text as one line, or ValueError when the line breaks a shape rule; one 16-hex stamp
+    is allowed in S0's line that starts "rows at"."""
+    line = head + text
+    if len(line) > LINE_CHARS:
+        raise ValueError("a check line of %d characters" % len(line))
+    problem = shape_problem(line, stamp_allowed=text.startswith("rows at "))
+    if problem:
+        raise ValueError("a check line with %s" % problem)
+    return line
+
+
+def error_kind(exc) -> str:
+    """The exception's class name when it is a plain identifier of at most 40 characters that breaks
+    no shape rule, else Exception."""
+    name = type(exc).__name__
+    if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]{0,39}", name) and not shape_problem(name):
+        return name
+    return "Exception"
+
+
+def fault_text(section: str, exc, kind: str = "") -> str:
+    return "fault at %s, an error of the kind %s" % (section, kind or error_kind(exc))
+
+
+def counts_line(head: str, counts: dict, fit: int, held: int) -> str:
+    return ("%s studies %d, not admitted %d, test reserve %d, L6 or T13 or no L5 %d (L6 %d, T13 %d, no L5 %d), "
+            "fit %d, held %d" % (head, counts["read"], counts["not_admitted"], counts["reserved"], counts["anomalous"],
+                                 counts["l6"], counts["t13"], counts["no_l5"], fit, held))
+
+
+def stamp_line(stamps: list, whole_fit: int, fit: int, whole_held: int, held: int, refit: float) -> str:
+    """S0's first line: the code stamps of the kept fit studies' rows ("" where a study's note is not
+    16 hex or it has no code row, written "not 16 hex"), the counts and the refit's largest difference."""
+    tally = Counter(s or "not 16 hex" for s in stamps)
+    common, on = sorted(tally.items(), key=lambda kv: (-kv[1], kv[0]))[0] if tally else ("not 16 hex", 0)
+    difference = "%.0e" % refit if math.isfinite(refit) else "none"
+    if len(tally) <= 1:
+        return ("rows at one code stamp %s; whole fit spines %d of %d kept, whole held %d of %d; refit against the "
+                "fitted prior, largest difference %s" % (common, whole_fit, fit, whole_held, held, difference))
+    return ("rows at %d code stamps, the commonest %s on %d of %d kept fit studies; whole fit spines %d, whole held %d; "
+            "refit against the prior %s" % (len(tally), common, on, fit, whole_fit, whole_held, difference))
+
+
+def ranked(values) -> list:
+    """(name, count) by count, the most first, ties by name."""
+    return sorted(Counter(values).items(), key=lambda kv: (-kv[1], kv[0]))
+
+
+def class_line(name: str, n: int, facts: list, room: int = LINE_CHARS - LONGEST_HEAD) -> str:
+    """S11's line for one protocol class: its sites by count and its commonest model and kernel, from
+    facts [(site, model, kernel)] of its whole fit spines; [] for a population with no facts. Sites
+    past what fits the room are counted together."""
+    if not facts:
+        return "class %s, %d whole fit spines: sites, models and kernels are read for enhance_pet alone" % (name, n)
+    sites, models, kernels = ranked(f[0] for f in facts), ranked(f[1] for f in facts), ranked(f[2] for f in facts)
+    tail = "; models %d, top %s %d; kernels %d, top %s %d" % (len(models), models[0][0], models[0][1],
+                                                              len(kernels), kernels[0][0], kernels[0][1])
+    text = ""
+    for shown in range(len(sites), 0, -1):
+        items = ["%s %d" % s for s in sites[:shown]]
+        rest = sites[shown:]
+        if rest:
+            items.append("%d more sites %d" % (len(rest), sum(c for _, c in rest)))
+        text = "class %s, %d spines: %s%s" % (name, n, ", ".join(items), tail)
+        if len(text) <= room:
+            break
+    return text
+
+
+def units_line(sizes: list, kinds: list) -> str:
+    """S8's first line: the repeat units holding two whole fit spines or more, by size, and by kind
+    (autopet, all autoPET at 2.5 mm; mixed, more than one protocol class; other)."""
+    by_size = Counter(min(s, 6) for s in sizes)
+    parts = ["%d of %s" % (by_size[k], "more" if k == 6 else k) for k in sorted(by_size)]
+    kind = Counter(kinds)
+    return ("repeat units in the fit part: %d holding %d spines (%s); %d all autoPET 2.5 mm, %d of mixed classes, %d other"
+            % (len(sizes), sum(sizes), ", ".join(parts), kind["autopet"], kind["mixed"], kind["other"]))
