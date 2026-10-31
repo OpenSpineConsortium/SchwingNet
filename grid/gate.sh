@@ -362,9 +362,9 @@ AUTOANATOMIST_PARTITION=galhp
 # MORPHOMETRY_RERUNS names or the two name different code stamps (covariates_inputs_missing). Its
 # report supersedes job 40878978's pedicle, interpedicular, disc and foramen lines, which the merged
 # engine reads anew (docs/research/gold3-ct/README.md, section 7a).
-# Held: the owner stopped this count until his resynthesis (2026-10-30, "My count of 14:33 UTC ... is
-# held"), so the word is not committed; a pull request on his word writes covariates:40878978 back.
-COVARIATES_RERUNS=""
+# The owner held this count until a resynthesis (2026-10-30), then at 23:56 UTC asked for it to be
+# written and the count sent (docs/research/morphometry-resynthesis.md), so the word is back.
+COVARIATES_RERUNS="covariates:40878978"
 # The owner's word for one more measuring of a morphometry set, <set>:<job of the report or the record
 # it replaces>, or <set>:lost for a submission whose answer was lost, then <set>:lost2 and on, each spent
 # once (logs/MORPHOMETRY-<set>.lost records them); one word, one more job (word_morphometry). The report
@@ -377,9 +377,9 @@ COVARIATES_RERUNS=""
 # merged engine, now bordercall 9c85de1 with morphoview's lines (code stamp 1cee7ea83e4c28db with
 # --lines; ee495d5's was a56adf14a9e98b15, where both reports name the 81e732f142d3aa16 of bordercall
 # 16f7b40), then the join once more (COVARIATES_RERUNS).
-# Held with the join's word above, until the owner's resynthesis: a pull request on his word writes
-# enhance:40872077 verse:40877151 back.
-MORPHOMETRY_RERUNS=""
+# Held with the join's word above until the resynthesis, written on the owner's word of 2026-10-30
+# 23:56 UTC (docs/research/morphometry-resynthesis.md).
+MORPHOMETRY_RERUNS="enhance:40872077 verse:40877151"
 # The owner's word for one more totalseg complete job, complete:<job of the report or the record it
 # replaces>, or complete:lost for a submission whose answer was lost; one word, one more job (word_totalseg). complete:40882547 is his tap of 2026-10-30 16:49 UTC
 # on "Fix and rerun (one GPU job)": the first job failed on every study it ran, before any segmenter

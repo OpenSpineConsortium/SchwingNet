@@ -3180,14 +3180,12 @@ exec python3 "$@"
             path.write_text(f"job {job}\n", encoding="utf-8")
         return out
 
-    def test_the_owners_count_of_three_is_held_and_walks_once_committed(self):
-        # the owner's choice of 2026-10-30 14:33 UTC, "Three: enhance, verse, covariates", is held until his
-        # resynthesis, so neither word is committed; written back, as his word's pull request will, it walks
+    def test_the_owners_count_of_three_is_committed_and_walks(self):
+        # the owner's choice of 2026-10-30 14:33 UTC, "Three: enhance, verse, covariates", held until the
+        # resynthesis and written back on his word of 23:56 UTC, walks with the words as committed
         text = (GRID / "gate.sh").read_text(encoding="utf-8")
-        self.assertRegex(text, r'(?m)^MORPHOMETRY_RERUNS=""$')
-        self.assertRegex(text, r'(?m)^COVARIATES_RERUNS=""$')
-        self.allow_morphometry_rerun("enhance:40872077 verse:40877151")
-        self.allow_covariates_rerun("covariates:40878978")
+        self.assertRegex(text, r'(?m)^MORPHOMETRY_RERUNS="enhance:40872077 verse:40877151"$')
+        self.assertRegex(text, r'(?m)^COVARIATES_RERUNS="covariates:40878978"$')
         # walked with the real job numbers: each set's first report, on the older engine, is kept and the set
         # queued once more, the report of the job that follows only printing; then the join once more,
         # checked against the first join's table, and its report too only prints
