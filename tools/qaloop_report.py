@@ -26,6 +26,11 @@ PREREG = ROOT / "docs" / "research" / "qa-loop" / "PREREG.md"
 # The pre-registration the design answers restate, by its sha256: PREREG.md as frozen, the digest
 # PREREG.md.sha256 beside it holds (tests/test_qaloop_report.py holds the two together).
 DESIGN = "c588988049e1c983ee551f9d5c1177f0b8c7db8083bf2dfd73bea6a656e9da55"
+# Every frozen PREREG a chain may run under, by its sha256, with its path: the loop's own, and the loop
+# with a transformer encoder (docs/research/qa-loop-transformer/PREREG.md, the kind qaloop_tx), which
+# adopts the loop's sections 1 to 6 word for word, so the answers restate both alike.
+DESIGNS = {DESIGN: "docs/research/qa-loop/PREREG.md",
+           "f796b662183d027080776b2c2deb33d2eec096c82df44ea56baaf1525af2b066": "docs/research/qa-loop-transformer/PREREG.md"}
 LICENCES = ROOT / "data" / "licences.json"
 SOURCE = "carmlspine"
 # PREREG.md section 6's known limits, one restatement each in the section's order;
@@ -157,14 +162,19 @@ def design_gap(run):
     """Why the design's words do not hold for this chain, or empty where its record names the frozen
     design."""
     named = run["record"].get("prereg_sha256")
-    return "" if named == DESIGN else (f"RECORD.json names PREREG sha256 {str(named)[:16]}, not the frozen "
-                                       f"{DESIGN[:16]}: the chain ran another design, which this report does not restate")
+    return "" if named in DESIGNS else (f"RECORD.json names PREREG sha256 {str(named)[:16]}, not the frozen "
+                                        f"{DESIGN[:16]}: the chain ran another design, which this report does not restate")
+
+
+def design_of(run):
+    """The sha256 of the frozen design the chain's record names, once design_gap holds it is one."""
+    return str(run["record"].get("prereg_sha256"))
 
 
 def restated(run, text):
     """An answer that restates the frozen design, for a chain that ran it."""
     gap = design_gap(run)
-    return missing(gap) if gap else met(f"{text} (PREREG.md, sha256 {DESIGN[:16]})")
+    return missing(gap) if gap else met(f"{text} (PREREG.md, sha256 {design_of(run)[:16]})")
 
 
 def plan(run):
@@ -475,7 +485,7 @@ def fact_limitations(run):
 
 def fact_protocol(run):
     gap = design_gap(run)
-    return missing(gap) if gap else met(f"{PREREG.relative_to(ROOT).as_posix()}, frozen, sha256 {DESIGN[:16]}, its Covers "
+    return missing(gap) if gap else met(f"{DESIGNS[design_of(run)]}, frozen, sha256 {design_of(run)[:16]}, its Covers "
                                         f"line naming the plan by its bytes ({str(run['record'].get('prereg_part'))})")
 
 

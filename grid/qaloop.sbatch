@@ -36,8 +36,12 @@ REPO=${SCHWINGNET:-$HOME/SchwingNet}
 DATA=${DATA_ROOT:-/rs/rs_grp_oschome/go2432/data}
 LAB=${LAB_VOLUME:-/rs/rs_grp_oschome}
 ROOT=${QALOOP_ROOT:-$LAB/go2432/qaloop}
-KIND=qaloop
-STUDY_DIR=docs/research/qa-loop
+KIND=${QALOOP_KIND:-qaloop}
+case "$KIND" in
+  qaloop) STUDY_DIR=docs/research/qa-loop FLOW_CLASS=QaloopFlow ;;
+  qaloop_tx) STUDY_DIR=docs/research/qa-loop-transformer FLOW_CLASS=QaloopTxFlow ;;
+  *) echo "qaloop: QALOOP_KIND is qaloop or qaloop_tx, not $KIND; nothing ran"; echo "SN_QALOOP_RC=64"; exit 64 ;;
+esac
 QALOOP_PIN="jax[cuda12]==0.10.2 flax==0.12.8 optax==0.2.8 orbax-checkpoint==0.12.8 numpy==2.4.6 scipy==1.17.1 nibabel==5.3.2 xarray==2025.6.1 pandas==2.3.2"
 # What every link runs, copied at the gate's commit: the tools and the packages they import, the
 # vendored auto-anatomist package and phantom, the flows and the launcher with their registry, the
@@ -46,6 +50,7 @@ QALOOP_PIN="jax[cuda12]==0.10.2 flax==0.12.8 optax==0.2.8 orbax-checkpoint==0.12
 # filter, and the pre-registration with its hash.
 CODE_PATHS=(tools src vendor flows data/splits data/reporting data/licences.json pixi.toml pixi.lock
   grid/box.sh grid/venv.sh grid/redact.sed grid/qaloop.sbatch grid/autoanatomist grid/qaloop
+  docs/research/qa-loop/PREREG.md docs/research/qa-loop/PREREG.md.sha256
   "$STUDY_DIR/PREREG.md" "$STUDY_DIR/PREREG.md.sha256")
 # The copy's record of its commit and files (tools/run_code.py and flows/launch.py, COPY_RECORD).
 COPY_RECORD=COPY.txt
@@ -199,13 +204,13 @@ flow_said() {  # the launcher's decision, then the flow's own lines, the last 30
   decision=$(grep -m 1 '"decision":' "$LAUNCH_LOG" 2>/dev/null)
   report "launcher: ${decision:-it printed no decision line} (exit $LAUNCH_RC)"
   # Metaflow's runtime heads each line a task prints with its time and [run/step/task (pid N)].
-  sed -n 's/^\([^[]*\[[^]]*\] \)\{0,1\}QaloopFlow: //p' "$LAUNCH_LOG" 2>/dev/null | tail -n 30 | while IFS= read -r line; do report "$line"; done
+  sed -n "s/^\\([^[]*\\[[^]]*\\] \\)\\{0,1\\}$FLOW_CLASS: //p" "$LAUNCH_LOG" 2>/dev/null | tail -n 30 | while IFS= read -r line; do report "$line"; done
 }
 page_of() {  # where the run's progress page lies, from the datastore the decision names and the run the last line names
   local root id
   root=$(grep -m 1 '"decision":' "$LAUNCH_LOG" 2>/dev/null | sed -n 's/.*"root": *"\([^"]*\)".*/\1/p')
-  id=$(grep '"successful":' "$LAUNCH_LOG" 2>/dev/null | tail -n 1 | sed -n 's/.*"run": *"QaloopFlow\/\([0-9A-Za-z_-]*\)".*/\1/p')
-  echo "${root:-(the datastore the launcher names)}/progress/QaloopFlow/${id:-<run>}/index.html"
+  id=$(grep '"successful":' "$LAUNCH_LOG" 2>/dev/null | tail -n 1 | sed -n "s/.*\"run\": *\"$FLOW_CLASS\\/\\([0-9A-Za-z_-]*\\)\".*/\\1/p")
+  echo "${root:-(the datastore the launcher names)}/progress/$FLOW_CLASS/${id:-<run>}/index.html"
 }
 rounds_said() {  # each round's last line of progress so far, for a link the time limit cut
   local file

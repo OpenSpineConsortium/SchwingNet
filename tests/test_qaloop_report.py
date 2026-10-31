@@ -138,6 +138,19 @@ class ReportTest(unittest.TestCase):
         self.assertEqual(self.module.DESIGN, frozen)
         self.assertEqual(self.module.DESIGN, sha256_of(self.module.PREREG))
 
+    def test_every_design_is_one_frozen_and_the_transformers_chain_is_reported_under_its_own(self):
+        for sha, path in self.module.DESIGNS.items():
+            frozen = (ROOT / (path + ".sha256")).read_text(encoding="utf-8").split()[0]
+            self.assertEqual(sha, frozen, path)
+            self.assertEqual(sha, sha256_of(ROOT / path), path)
+        tx = next(sha for sha, path in self.module.DESIGNS.items() if "qa-loop-transformer" in path)
+        write_chain(self.folder, tx)
+        wrote = report("write", self.folder)
+        self.assertEqual(wrote.returncode, 0, wrote.stdout + wrote.stderr)
+        text = "".join(p.read_text(encoding="utf-8") for p in self.folder.rglob("*.md"))
+        self.assertIn("docs/research/qa-loop-transformer/PREREG.md, frozen, sha256 " + tx[:16], text)
+        self.assertNotIn("the chain ran another design", text)
+
     def test_a_chain_is_written_and_checked_current_with_its_rounds_quoted(self):
         write_chain(self.folder, self.module.DESIGN)
         wrote = report("write", self.folder)

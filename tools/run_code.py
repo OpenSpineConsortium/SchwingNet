@@ -30,7 +30,7 @@ is a sweep's state folder, tools/block_sweep.py's with the rows it starts; `swee
 flows/, named by the launcher's key (schwingnet.pipeline.run_key), `v1` the version 1 run of
 tools/flow.py as a launched flow, `experiment` one requested combination of it, `latency` one job
 of the latency word on a run's checkpoint, the last two the DRR domain-gap study's parts and its
-MOOSE masks; `realism`, `totalseg`, `autoanatomist`, `autoanatomist2`, `gold4_totalseg` and `qaloop`
+MOOSE masks; `realism`, `totalseg`, `autoanatomist`, `autoanatomist2`, `gold4_totalseg`, `qaloop` and `qaloop_tx`
 are flows of flows/ too, the FluXray reproduction's stages, the gold tier 3 completion's
 TotalSegmentator arm, the auto-anatomist screens' trials and joins, TotalSegmentator's tasks and
 merge on the gold tier 4 CTs, and the QA loop's rounds.
@@ -131,6 +131,9 @@ KINDS["autoanatomist2"] = (*KINDS["autoanatomist"], "flows/autoanatomist2.py")
 KINDS["qaloop"] = ("flows/qaloop.py", "flows/stage.py", "flows/stage_registry.py", "tools/qaloop_round.py",
                    "tools/qaloop_gates.py", "tools/qaloop_samples.py", "grid/autoanatomist/", "data/splits/rule.json",
                    "data/splits/test-persons.json")
+# The QA loop with a transformer encoder (docs/research/qa-loop-transformer/PREREG.md) runs the loop's
+# flow under a kind of its own, so it reaches every file the loop does and its own flow file.
+KINDS["qaloop_tx"] = (*KINDS["qaloop"], "flows/qaloop_tx.py")
 
 NAMES_THE_RUN = "names the run: the files it lists are the digest, so a change to the lists changes the digest by itself"
 LAUNCHES = "starts or carries on the flow's run, which it names by this digest, and computes nothing the run keeps"
@@ -200,6 +203,7 @@ LEFT_OUT["qaloop"] = {**STAGE_PAGE_LEFT_OUT,
                      "tools/report.py": "writes and checks the loop's CLAIM 2024 and REFORMS report from the record in its end "
                      "step, after every round; it computes nothing a round or a decision comes from",
                      "tools/wandb_log.py": ROW_LEFT_OUT["tools/wandb_log.py"]}
+LEFT_OUT["qaloop_tx"] = LEFT_OUT["qaloop"]
 
 
 class RunCodeError(Exception):
