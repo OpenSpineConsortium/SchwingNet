@@ -175,7 +175,7 @@ driver() {
   echo "# totalseg complete: job ${SLURM_JOB_ID:-none} on $(hostname), commit ${started_at:0:7}, $(date -u '+%F %T') UTC" > "$REPORT.part"
   [ -n "$started_at" ] || { report "FAILED: the checkout at $REPO names no commit"; finish 2; }
   HOLD=$REPO/grid/logs/HOLD
-  echo "${SLURM_JOB_ID:-$$} $started_at" > "$HOLD"
+  { flock -w 60 9 2>/dev/null || :; echo "${SLURM_JOB_ID:-$$} $started_at" >> "$HOLD"; } 9>>"$HOLD.lock"
   trap unhold EXIT
   # Cut short, the job writes no report; the run it began is resumed by the next send of the word.
   trap 'launcher_stop; exit 143' TERM
@@ -221,6 +221,6 @@ driver() {
     *) finish "$said" ;;
   esac
 }
-unhold() { [ "$(awk '{ print $1; exit }' "$HOLD" 2>/dev/null)" != "${SLURM_JOB_ID:-$$}" ] || rm -f "$HOLD"; }
+unhold() { { flock -w 60 9 2>/dev/null || :; [ ! -f "$HOLD" ] || { awk -v me="${SLURM_JOB_ID:-$$}" '$1 != me' "$HOLD" > "$HOLD.tmp"; if [ -s "$HOLD.tmp" ]; then mv -f "$HOLD.tmp" "$HOLD"; else rm -f "$HOLD" "$HOLD.tmp"; fi; }; } 9>>"$HOLD.lock"; }
 
 if [ -n "$BODY" ]; then body; else driver; fi
