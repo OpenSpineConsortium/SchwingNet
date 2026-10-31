@@ -1,0 +1,2706 @@
+{
+ "e_noise_0.100": {
+  "name": "e_noise_0.100",
+  "note": "",
+  "true_clean": {
+   "same_level_widths": 0.3543,
+   "same_level_depths": 0.5451,
+   "same_level_width_depth_upper": 0.2037,
+   "same_level_width_depth_lower": 0.1483,
+   "same_level_upperW_lowerD": 0.1283,
+   "same_level_upperD_lowerW": 0.0812,
+   "same_level_hpost_mean": 0.0447,
+   "same_level_wd4_mean": 0.2435,
+   "lag_same_measure": [
+    0.5255,
+    0.4659,
+    0.4244,
+    0.3989,
+    0.3825
+   ],
+   "lag_same_measure_wd4": [
+    0.5255,
+    0.4659,
+    0.4244,
+    0.3989,
+    0.3825
+   ],
+   "lag_same_measure_hpost": [
+    0.5255,
+    0.4659,
+    0.4244,
+    0.3989,
+    0.3825
+   ],
+   "lag1_cross_measure_all": 0.0958,
+   "lag1_cross_wd4_not_facing": 0.1181,
+   "disc_widths": 0.2069,
+   "disc_depths": 0.3183,
+   "lag1_upperW_to_next_lowerW": 0.2069,
+   "lag5_cross_wd4": 0.1035
+  },
+  "fit_limit": {
+   "R_measure_widths": 0.301,
+   "R_measure_depths": 0.463,
+   "R_measure_width_depth_upper": 0.173,
+   "R_measure_width_depth_lower": 0.126,
+   "R_measure_upperW_lowerD": 0.109,
+   "R_measure_upperD_lowerW": 0.069,
+   "R_measure_hpost_mean": 0.038,
+   "R_measure_wd4_mean": 0.2068,
+   "R_level_lag": [
+    0.4869,
+    0.4317,
+    0.3933,
+    0.3696,
+    0.3544
+   ],
+   "implied_disc_widths": 0.1466,
+   "implied_lag1_cross_all": 0.0678
+  },
+  "kl_gap_nats_per_spine": 0.3361,
+  "gain_over_assumed_limit": 14.3516,
+  "fit_limit_T1L5": {
+   "R_measure_widths": 0.2937,
+   "R_measure_depths": 0.4517,
+   "R_measure_width_depth_upper": 0.1688,
+   "R_level_lag": [
+    0.5445,
+    0.5063,
+    0.4759,
+    0.4508,
+    0.4338
+   ]
+  },
+  "meta": {
+   "kind": "noise",
+   "theta": 0.1,
+   "max_feasible_theta": 0.211
+  }
+ },
+ "e_noise_0.200": {
+  "name": "e_noise_0.200",
+  "note": "",
+  "true_clean": {
+   "same_level_widths": 0.4295,
+   "same_level_depths": 0.6607,
+   "same_level_width_depth_upper": 0.2469,
+   "same_level_width_depth_lower": 0.1798,
+   "same_level_upperW_lowerD": 0.1555,
+   "same_level_upperD_lowerW": 0.0985,
+   "same_level_hpost_mean": 0.0542,
+   "same_level_wd4_mean": 0.2951,
+   "lag_same_measure": [
+    0.5515,
+    0.489,
+    0.4454,
+    0.4186,
+    0.4014
+   ],
+   "lag_same_measure_wd4": [
+    0.5515,
+    0.489,
+    0.4454,
+    0.4186,
+    0.4014
+   ],
+   "lag_same_measure_hpost": [
+    0.5515,
+    0.489,
+    0.4454,
+    0.4186,
+    0.4014
+   ],
+   "lag1_cross_measure_all": 0.137,
+   "lag1_cross_wd4_not_facing": 0.169,
+   "disc_widths": 0.2961,
+   "disc_depths": 0.4555,
+   "lag1_upperW_to_next_lowerW": 0.2961,
+   "lag5_cross_wd4": 0.1481
+  },
+  "fit_limit": {
+   "R_measure_widths": 0.301,
+   "R_measure_depths": 0.463,
+   "R_measure_width_depth_upper": 0.173,
+   "R_measure_width_depth_lower": 0.126,
+   "R_measure_upperW_lowerD": 0.109,
+   "R_measure_upperD_lowerW": 0.069,
+   "R_measure_hpost_mean": 0.038,
+   "R_measure_wd4_mean": 0.2068,
+   "R_level_lag": [
+    0.4869,
+    0.4317,
+    0.3933,
+    0.3696,
+    0.3544
+   ],
+   "implied_disc_widths": 0.1466,
+   "implied_lag1_cross_all": 0.0678
+  },
+  "kl_gap_nats_per_spine": 1.6797,
+  "gain_over_assumed_limit": 15.682,
+  "fit_limit_T1L5": {
+   "R_measure_widths": 0.2768,
+   "R_measure_depths": 0.4257,
+   "R_measure_width_depth_upper": 0.1591,
+   "R_level_lag": [
+    0.5486,
+    0.5101,
+    0.4795,
+    0.4542,
+    0.437
+   ]
+  },
+  "meta": {
+   "kind": "noise",
+   "theta": 0.2,
+   "max_feasible_theta": 0.211
+  }
+ },
+ "e_size_0.100": {
+  "name": "e_size_0.100",
+  "note": "",
+  "true_clean": {
+   "same_level_widths": 0.3745,
+   "same_level_depths": 0.5306,
+   "same_level_width_depth_upper": 0.2511,
+   "same_level_width_depth_lower": 0.2058,
+   "same_level_upperW_lowerD": 0.1894,
+   "same_level_upperD_lowerW": 0.1508,
+   "same_level_hpost_mean": 0.121,
+   "same_level_wd4_mean": 0.2837,
+   "lag_same_measure": [
+    0.5298,
+    0.4737,
+    0.4347,
+    0.4106,
+    0.3952
+   ],
+   "lag_same_measure_wd4": [
+    0.5298,
+    0.4737,
+    0.4347,
+    0.4106,
+    0.3952
+   ],
+   "lag_same_measure_hpost": [
+    0.5298,
+    0.4737,
+    0.4347,
+    0.4106,
+    0.3952
+   ],
+   "lag1_cross_measure_all": 0.1566,
+   "lag1_cross_wd4_not_facing": 0.1716,
+   "disc_widths": 0.2311,
+   "disc_depths": 0.3056,
+   "lag1_upperW_to_next_lowerW": 0.2311,
+   "lag5_cross_wd4": 0.1603
+  },
+  "fit_limit": {
+   "R_measure_widths": 0.301,
+   "R_measure_depths": 0.463,
+   "R_measure_width_depth_upper": 0.173,
+   "R_measure_width_depth_lower": 0.126,
+   "R_measure_upperW_lowerD": 0.109,
+   "R_measure_upperD_lowerW": 0.069,
+   "R_measure_hpost_mean": 0.038,
+   "R_measure_wd4_mean": 0.2068,
+   "R_level_lag": [
+    0.4869,
+    0.4317,
+    0.3933,
+    0.3696,
+    0.3544
+   ],
+   "implied_disc_widths": 0.1466,
+   "implied_lag1_cross_all": 0.0678
+  },
+  "kl_gap_nats_per_spine": 0.4702,
+  "gain_over_assumed_limit": 13.7936,
+  "fit_limit_T1L5": {
+   "R_measure_widths": 0.3003,
+   "R_measure_depths": 0.4625,
+   "R_measure_width_depth_upper": 0.1722,
+   "R_level_lag": [
+    0.5441,
+    0.506,
+    0.4756,
+    0.4505,
+    0.4335
+   ]
+  },
+  "meta": {
+   "kind": "size",
+   "theta": 0.1,
+   "max_feasible_theta": 0.373
+  }
+ },
+ "e_size_0.200": {
+  "name": "e_size_0.200",
+  "note": "",
+  "true_clean": {
+   "same_level_widths": 0.4335,
+   "same_level_depths": 0.5749,
+   "same_level_width_depth_upper": 0.3217,
+   "same_level_width_depth_lower": 0.2807,
+   "same_level_upperW_lowerD": 0.2659,
+   "same_level_upperD_lowerW": 0.2309,
+   "same_level_hpost_mean": 0.2039,
+   "same_level_wd4_mean": 0.3513,
+   "lag_same_measure": [
+    0.5474,
+    0.4935,
+    0.4559,
+    0.4328,
+    0.418
+   ],
+   "lag_same_measure_wd4": [
+    0.5474,
+    0.4935,
+    0.4559,
+    0.4328,
+    0.418
+   ],
+   "lag_same_measure_hpost": [
+    0.5474,
+    0.4935,
+    0.4559,
+    0.4328,
+    0.418
+   ],
+   "lag1_cross_measure_all": 0.2401,
+   "lag1_cross_wd4_not_facing": 0.2524,
+   "disc_widths": 0.3014,
+   "disc_depths": 0.3628,
+   "lag1_upperW_to_next_lowerW": 0.3014,
+   "lag5_cross_wd4": 0.2412
+  },
+  "fit_limit": {
+   "R_measure_widths": 0.301,
+   "R_measure_depths": 0.463,
+   "R_measure_width_depth_upper": 0.173,
+   "R_measure_width_depth_lower": 0.126,
+   "R_measure_upperW_lowerD": 0.109,
+   "R_measure_upperD_lowerW": 0.069,
+   "R_measure_hpost_mean": 0.038,
+   "R_measure_wd4_mean": 0.2068,
+   "R_level_lag": [
+    0.4869,
+    0.4317,
+    0.3933,
+    0.3696,
+    0.3544
+   ],
+   "implied_disc_widths": 0.1466,
+   "implied_lag1_cross_all": 0.0678
+  },
+  "kl_gap_nats_per_spine": 1.289,
+  "gain_over_assumed_limit": 13.9022,
+  "fit_limit_T1L5": {
+   "R_measure_widths": 0.2995,
+   "R_measure_depths": 0.4619,
+   "R_measure_width_depth_upper": 0.1712,
+   "R_level_lag": [
+    0.5444,
+    0.5062,
+    0.4759,
+    0.4508,
+    0.4339
+   ]
+  },
+  "meta": {
+   "kind": "size",
+   "theta": 0.2,
+   "max_feasible_theta": 0.373
+  }
+ },
+ "e_size_0.365": {
+  "name": "e_size_0.365",
+  "note": "",
+  "true_clean": {
+   "same_level_widths": 0.5344,
+   "same_level_depths": 0.6507,
+   "same_level_width_depth_upper": 0.4426,
+   "same_level_width_depth_lower": 0.4089,
+   "same_level_upperW_lowerD": 0.3967,
+   "same_level_upperD_lowerW": 0.368,
+   "same_level_hpost_mean": 0.3458,
+   "same_level_wd4_mean": 0.4669,
+   "lag_same_measure": [
+    0.5777,
+    0.5273,
+    0.4923,
+    0.4706,
+    0.4568
+   ],
+   "lag_same_measure_wd4": [
+    0.5777,
+    0.5273,
+    0.4923,
+    0.4706,
+    0.4568
+   ],
+   "lag_same_measure_hpost": [
+    0.5777,
+    0.5273,
+    0.4923,
+    0.4706,
+    0.4568
+   ],
+   "lag1_cross_measure_all": 0.3829,
+   "lag1_cross_wd4_not_facing": 0.3907,
+   "disc_widths": 0.4217,
+   "disc_depths": 0.4607,
+   "lag1_upperW_to_next_lowerW": 0.4217,
+   "lag5_cross_wd4": 0.3797
+  },
+  "fit_limit": {
+   "R_measure_widths": 0.301,
+   "R_measure_depths": 0.463,
+   "R_measure_width_depth_upper": 0.173,
+   "R_measure_width_depth_lower": 0.126,
+   "R_measure_upperW_lowerD": 0.109,
+   "R_measure_upperD_lowerW": 0.069,
+   "R_measure_hpost_mean": 0.038,
+   "R_measure_wd4_mean": 0.2068,
+   "R_level_lag": [
+    0.4869,
+    0.4317,
+    0.3933,
+    0.3696,
+    0.3544
+   ],
+   "implied_disc_widths": 0.1466,
+   "implied_lag1_cross_all": 0.0678
+  },
+  "kl_gap_nats_per_spine": 7.6133,
+  "gain_over_assumed_limit": 14.0881,
+  "fit_limit_T1L5": {
+   "R_measure_widths": 0.2977,
+   "R_measure_depths": 0.4605,
+   "R_measure_width_depth_upper": 0.1691,
+   "R_level_lag": [
+    0.5456,
+    0.5075,
+    0.4773,
+    0.4522,
+    0.4353
+   ]
+  },
+  "meta": {
+   "kind": "size",
+   "theta": 0.365,
+   "max_feasible_theta": 0.373
+  }
+ },
+ "e_size_wd_0.100": {
+  "name": "e_size_wd_0.100",
+  "note": "",
+  "true_clean": {
+   "same_level_widths": 0.3741,
+   "same_level_depths": 0.5304,
+   "same_level_width_depth_upper": 0.2507,
+   "same_level_width_depth_lower": 0.2054,
+   "same_level_upperW_lowerD": 0.189,
+   "same_level_upperD_lowerW": 0.1504,
+   "same_level_hpost_mean": 0.0399,
+   "same_level_wd4_mean": 0.2833,
+   "lag_same_measure": [
+    0.5259,
+    0.4696,
+    0.4305,
+    0.4063,
+    0.3909
+   ],
+   "lag_same_measure_wd4": [
+    0.5459,
+    0.4896,
+    0.4505,
+    0.4263,
+    0.4109
+   ],
+   "lag_same_measure_hpost": [
+    0.4459,
+    0.3896,
+    0.3505,
+    0.3263,
+    0.3109
+   ],
+   "lag1_cross_measure_all": 0.1224,
+   "lag1_cross_wd4_not_facing": 0.1741,
+   "disc_widths": 0.2358,
+   "disc_depths": 0.3132,
+   "lag1_upperW_to_next_lowerW": 0.2358,
+   "lag5_cross_wd4": 0.1633
+  },
+  "fit_limit": {
+   "R_measure_widths": 0.301,
+   "R_measure_depths": 0.463,
+   "R_measure_width_depth_upper": 0.173,
+   "R_measure_width_depth_lower": 0.126,
+   "R_measure_upperW_lowerD": 0.109,
+   "R_measure_upperD_lowerW": 0.069,
+   "R_measure_hpost_mean": 0.038,
+   "R_measure_wd4_mean": 0.2068,
+   "R_level_lag": [
+    0.4869,
+    0.4317,
+    0.3933,
+    0.3696,
+    0.3544
+   ],
+   "implied_disc_widths": 0.1466,
+   "implied_lag1_cross_all": 0.0678
+  },
+  "kl_gap_nats_per_spine": 0.5383,
+  "gain_over_assumed_limit": 13.7041,
+  "fit_limit_T1L5": {
+   "R_measure_widths": 0.3003,
+   "R_measure_depths": 0.4625,
+   "R_measure_width_depth_upper": 0.1722,
+   "R_level_lag": [
+    0.5443,
+    0.5061,
+    0.4757,
+    0.4506,
+    0.4337
+   ]
+  },
+  "meta": {
+   "kind": "size_wd",
+   "theta": 0.1,
+   "max_feasible_theta": 0.431
+  }
+ },
+ "e_size_wd_0.200": {
+  "name": "e_size_wd_0.200",
+  "note": "",
+  "true_clean": {
+   "same_level_widths": 0.4323,
+   "same_level_depths": 0.574,
+   "same_level_width_depth_upper": 0.3203,
+   "same_level_width_depth_lower": 0.2792,
+   "same_level_upperW_lowerD": 0.2644,
+   "same_level_upperD_lowerW": 0.2294,
+   "same_level_hpost_mean": 0.0392,
+   "same_level_wd4_mean": 0.3499,
+   "lag_same_measure": [
+    0.5358,
+    0.4816,
+    0.4439,
+    0.4206,
+    0.4057
+   ],
+   "lag_same_measure_wd4": [
+    0.5758,
+    0.5216,
+    0.4839,
+    0.4606,
+    0.4457
+   ],
+   "lag_same_measure_hpost": [
+    0.3758,
+    0.3216,
+    0.2839,
+    0.2606,
+    0.2457
+   ],
+   "lag1_cross_measure_all": 0.1696,
+   "lag1_cross_wd4_not_facing": 0.256,
+   "disc_widths": 0.3091,
+   "disc_depths": 0.3757,
+   "lag1_upperW_to_next_lowerW": 0.3091,
+   "lag5_cross_wd4": 0.2461
+  },
+  "fit_limit": {
+   "R_measure_widths": 0.301,
+   "R_measure_depths": 0.463,
+   "R_measure_width_depth_upper": 0.173,
+   "R_measure_width_depth_lower": 0.126,
+   "R_measure_upperW_lowerD": 0.109,
+   "R_measure_upperD_lowerW": 0.069,
+   "R_measure_hpost_mean": 0.038,
+   "R_measure_wd4_mean": 0.2068,
+   "R_level_lag": [
+    0.4869,
+    0.4317,
+    0.3933,
+    0.3696,
+    0.3544
+   ],
+   "implied_disc_widths": 0.1466,
+   "implied_lag1_cross_all": 0.0678
+  },
+  "kl_gap_nats_per_spine": 1.5006,
+  "gain_over_assumed_limit": 13.6023,
+  "fit_limit_T1L5": {
+   "R_measure_widths": 0.2995,
+   "R_measure_depths": 0.4619,
+   "R_measure_width_depth_upper": 0.1712,
+   "R_level_lag": [
+    0.5449,
+    0.5068,
+    0.4764,
+    0.4513,
+    0.4343
+   ]
+  },
+  "meta": {
+   "kind": "size_wd",
+   "theta": 0.2,
+   "max_feasible_theta": 0.431
+  }
+ },
+ "e_size_wd_0.422": {
+  "name": "e_size_wd_0.422",
+  "note": "",
+  "true_clean": {
+   "same_level_widths": 0.5667,
+   "same_level_depths": 0.6748,
+   "same_level_width_depth_upper": 0.4812,
+   "same_level_width_depth_lower": 0.4498,
+   "same_level_upperW_lowerD": 0.4385,
+   "same_level_upperD_lowerW": 0.4118,
+   "same_level_hpost_mean": 0.0353,
+   "same_level_wd4_mean": 0.5038,
+   "lag_same_measure": [
+    0.5505,
+    0.5013,
+    0.467,
+    0.4459,
+    0.4324
+   ],
+   "lag_same_measure_wd4": [
+    0.6349,
+    0.5857,
+    0.5514,
+    0.5303,
+    0.5168
+   ],
+   "lag_same_measure_hpost": [
+    0.2129,
+    0.1637,
+    0.1294,
+    0.1083,
+    0.0948
+   ],
+   "lag1_cross_measure_all": 0.2765,
+   "lag1_cross_wd4_not_facing": 0.4435,
+   "disc_widths": 0.4753,
+   "disc_depths": 0.5151,
+   "lag1_upperW_to_next_lowerW": 0.4753,
+   "lag5_cross_wd4": 0.4354
+  },
+  "fit_limit": {
+   "R_measure_widths": 0.301,
+   "R_measure_depths": 0.463,
+   "R_measure_width_depth_upper": 0.173,
+   "R_measure_width_depth_lower": 0.126,
+   "R_measure_upperW_lowerD": 0.109,
+   "R_measure_upperD_lowerW": 0.069,
+   "R_measure_hpost_mean": 0.038,
+   "R_measure_wd4_mean": 0.2068,
+   "R_level_lag": [
+    0.4869,
+    0.4317,
+    0.3933,
+    0.3696,
+    0.3544
+   ],
+   "implied_disc_widths": 0.1466,
+   "implied_lag1_cross_all": 0.0678
+  },
+  "kl_gap_nats_per_spine": 8.7714,
+  "gain_over_assumed_limit": 13.0793,
+  "fit_limit_T1L5": {
+   "R_measure_widths": 0.2969,
+   "R_measure_depths": 0.4599,
+   "R_measure_width_depth_upper": 0.1681,
+   "R_level_lag": [
+    0.5475,
+    0.5094,
+    0.4791,
+    0.454,
+    0.4371
+   ]
+  },
+  "meta": {
+   "kind": "size_wd",
+   "theta": 0.422,
+   "max_feasible_theta": 0.431
+  }
+ },
+ "e_vertebra_0.100": {
+  "name": "e_vertebra_0.100",
+  "note": "",
+  "true_clean": {
+   "same_level_widths": 0.2464,
+   "same_level_depths": 0.4345,
+   "same_level_width_depth_upper": 0.0978,
+   "same_level_width_depth_lower": 0.0432,
+   "same_level_upperW_lowerD": 0.0234,
+   "same_level_upperD_lowerW": -0.023,
+   "same_level_hpost_mean": -0.059,
+   "same_level_wd4_mean": 0.1371,
+   "lag_same_measure": [
+    0.4922,
+    0.4364,
+    0.3975,
+    0.3735,
+    0.3582
+   ],
+   "lag_same_measure_wd4": [
+    0.4922,
+    0.4364,
+    0.3975,
+    0.3735,
+    0.3582
+   ],
+   "lag_same_measure_hpost": [
+    0.4922,
+    0.4364,
+    0.3975,
+    0.3735,
+    0.3582
+   ],
+   "lag1_cross_measure_all": -0.0226,
+   "lag1_cross_wd4_not_facing": -0.002,
+   "disc_widths": 0.0801,
+   "disc_depths": 0.1829,
+   "lag1_upperW_to_next_lowerW": 0.0801,
+   "lag5_cross_wd4": 0.0147
+  },
+  "fit_limit": {
+   "R_measure_widths": 0.301,
+   "R_measure_depths": 0.463,
+   "R_measure_width_depth_upper": 0.173,
+   "R_measure_width_depth_lower": 0.126,
+   "R_measure_upperW_lowerD": 0.109,
+   "R_measure_upperD_lowerW": 0.069,
+   "R_measure_hpost_mean": 0.038,
+   "R_measure_wd4_mean": 0.2068,
+   "R_level_lag": [
+    0.4869,
+    0.4317,
+    0.3933,
+    0.3696,
+    0.3544
+   ],
+   "implied_disc_widths": 0.1466,
+   "implied_lag1_cross_all": 0.0678
+  },
+  "kl_gap_nats_per_spine": 0.5884,
+  "gain_over_assumed_limit": 12.6441,
+  "fit_limit_T1L5": {
+   "R_measure_widths": 0.314,
+   "R_measure_depths": 0.4728,
+   "R_measure_width_depth_upper": 0.1886,
+   "R_level_lag": [
+    0.546,
+    0.5077,
+    0.4772,
+    0.452,
+    0.435
+   ]
+  },
+  "meta": {
+   "kind": "vertebra",
+   "theta": 0.1,
+   "max_feasible_theta": 0.172
+  }
+ },
+ "e_vertebra_wd_0.100": {
+  "name": "e_vertebra_wd_0.100",
+  "note": "",
+  "true_clean": {
+   "same_level_widths": 0.2457,
+   "same_level_depths": 0.434,
+   "same_level_width_depth_upper": 0.097,
+   "same_level_width_depth_lower": 0.0424,
+   "same_level_upperW_lowerD": 0.0226,
+   "same_level_upperD_lowerW": -0.0239,
+   "same_level_hpost_mean": 0.0442,
+   "same_level_wd4_mean": 0.1363,
+   "lag_same_measure": [
+    0.4944,
+    0.4383,
+    0.3993,
+    0.3752,
+    0.3599
+   ],
+   "lag_same_measure_wd4": [
+    0.4944,
+    0.4383,
+    0.3993,
+    0.3752,
+    0.3599
+   ],
+   "lag_same_measure_hpost": [
+    0.4944,
+    0.4383,
+    0.3993,
+    0.3752,
+    0.3599
+   ],
+   "lag1_cross_measure_all": 0.0217,
+   "lag1_cross_wd4_not_facing": -0.0024,
+   "disc_widths": 0.0801,
+   "disc_depths": 0.1835,
+   "lag1_upperW_to_next_lowerW": 0.0801,
+   "lag5_cross_wd4": 0.0145
+  },
+  "fit_limit": {
+   "R_measure_widths": 0.301,
+   "R_measure_depths": 0.463,
+   "R_measure_width_depth_upper": 0.173,
+   "R_measure_width_depth_lower": 0.126,
+   "R_measure_upperW_lowerD": 0.109,
+   "R_measure_upperD_lowerW": 0.069,
+   "R_measure_hpost_mean": 0.038,
+   "R_measure_wd4_mean": 0.2068,
+   "R_level_lag": [
+    0.4869,
+    0.4317,
+    0.3933,
+    0.3696,
+    0.3544
+   ],
+   "implied_disc_widths": 0.1466,
+   "implied_lag1_cross_all": 0.0678
+  },
+  "kl_gap_nats_per_spine": 0.3575,
+  "gain_over_assumed_limit": 12.7579,
+  "fit_limit_T1L5": {
+   "R_measure_widths": 0.3141,
+   "R_measure_depths": 0.4728,
+   "R_measure_width_depth_upper": 0.1887,
+   "R_level_lag": [
+    0.5452,
+    0.5069,
+    0.4765,
+    0.4513,
+    0.4343
+   ]
+  },
+  "meta": {
+   "kind": "vertebra_wd",
+   "theta": 0.1,
+   "max_feasible_theta": 0.234
+  }
+ },
+ "e_vertebra_wd_0.200": {
+  "name": "e_vertebra_wd_0.200",
+  "note": "",
+  "true_clean": {
+   "same_level_widths": 0.1525,
+   "same_level_depths": 0.364,
+   "same_level_width_depth_upper": -0.0147,
+   "same_level_width_depth_lower": -0.0761,
+   "same_level_upperW_lowerD": -0.0983,
+   "same_level_upperD_lowerW": -0.1505,
+   "same_level_hpost_mean": 0.0496,
+   "same_level_wd4_mean": 0.0295,
+   "lag_same_measure": [
+    0.4706,
+    0.4172,
+    0.3801,
+    0.3572,
+    0.3425
+   ],
+   "lag_same_measure_wd4": [
+    0.4706,
+    0.4172,
+    0.3801,
+    0.3572,
+    0.3425
+   ],
+   "lag_same_measure_hpost": [
+    0.4706,
+    0.4172,
+    0.3801,
+    0.3572,
+    0.3425
+   ],
+   "lag1_cross_measure_all": -0.0485,
+   "lag1_cross_wd4_not_facing": -0.1272,
+   "disc_widths": -0.028,
+   "disc_depths": 0.0965,
+   "lag1_upperW_to_next_lowerW": -0.028,
+   "lag5_cross_wd4": -0.073
+  },
+  "fit_limit": {
+   "R_measure_widths": 0.301,
+   "R_measure_depths": 0.463,
+   "R_measure_width_depth_upper": 0.173,
+   "R_measure_width_depth_lower": 0.126,
+   "R_measure_upperW_lowerD": 0.109,
+   "R_measure_upperD_lowerW": 0.069,
+   "R_measure_hpost_mean": 0.038,
+   "R_measure_wd4_mean": 0.2068,
+   "R_level_lag": [
+    0.4869,
+    0.4317,
+    0.3933,
+    0.3696,
+    0.3544
+   ],
+   "implied_disc_widths": 0.1466,
+   "implied_lag1_cross_all": 0.0678
+  },
+  "kl_gap_nats_per_spine": 1.6453,
+  "gain_over_assumed_limit": 11.5381,
+  "fit_limit_T1L5": {
+   "R_measure_widths": 0.331,
+   "R_measure_depths": 0.4855,
+   "R_measure_width_depth_upper": 0.2089,
+   "R_level_lag": [
+    0.5496,
+    0.511,
+    0.4803,
+    0.455,
+    0.4378
+   ]
+  },
+  "meta": {
+   "kind": "vertebra_wd",
+   "theta": 0.2,
+   "max_feasible_theta": 0.234
+  }
+ },
+ "e_disc_0.100": {
+  "name": "e_disc_0.100",
+  "note": "",
+  "true_clean": {
+   "same_level_widths": 0.403,
+   "same_level_depths": 0.5947,
+   "same_level_width_depth_upper": 0.2047,
+   "same_level_width_depth_lower": 0.1491,
+   "same_level_upperW_lowerD": 0.129,
+   "same_level_upperD_lowerW": 0.0816,
+   "same_level_hpost_mean": 0.045,
+   "same_level_wd4_mean": 0.2604,
+   "lag_same_measure": [
+    0.5484,
+    0.4673,
+    0.4257,
+    0.4,
+    0.3836
+   ],
+   "lag_same_measure_wd4": [
+    0.5484,
+    0.4673,
+    0.4257,
+    0.4,
+    0.3836
+   ],
+   "lag_same_measure_hpost": [
+    0.5484,
+    0.4673,
+    0.4257,
+    0.4,
+    0.3836
+   ],
+   "lag1_cross_measure_all": 0.1161,
+   "lag1_cross_wd4_not_facing": 0.1296,
+   "disc_widths": 0.3456,
+   "disc_depths": 0.4624,
+   "lag1_upperW_to_next_lowerW": 0.2456,
+   "lag5_cross_wd4": 0.111
+  },
+  "fit_limit": {
+   "R_measure_widths": 0.301,
+   "R_measure_depths": 0.463,
+   "R_measure_width_depth_upper": 0.173,
+   "R_measure_width_depth_lower": 0.126,
+   "R_measure_upperW_lowerD": 0.109,
+   "R_measure_upperD_lowerW": 0.069,
+   "R_measure_hpost_mean": 0.038,
+   "R_measure_wd4_mean": 0.2068,
+   "R_level_lag": [
+    0.4869,
+    0.4317,
+    0.3933,
+    0.3696,
+    0.3544
+   ],
+   "implied_disc_widths": 0.1466,
+   "implied_lag1_cross_all": 0.0678
+  },
+  "kl_gap_nats_per_spine": 2.4918,
+  "gain_over_assumed_limit": 15.1964,
+  "fit_limit_T1L5": {
+   "R_measure_widths": 0.2872,
+   "R_measure_depths": 0.445,
+   "R_measure_width_depth_upper": 0.1685,
+   "R_level_lag": [
+    0.5461,
+    0.5066,
+    0.4762,
+    0.4511,
+    0.4341
+   ]
+  },
+  "meta": {
+   "kind": "disc",
+   "theta": 0.1,
+   "max_feasible_theta": 0.167
+  }
+ },
+ "e_disc_0.163": {
+  "name": "e_disc_0.163",
+  "note": "",
+  "true_clean": {
+   "same_level_widths": 0.4933,
+   "same_level_depths": 0.71,
+   "same_level_width_depth_upper": 0.2314,
+   "same_level_width_depth_lower": 0.1685,
+   "same_level_upperW_lowerD": 0.1458,
+   "same_level_upperD_lowerW": 0.0923,
+   "same_level_hpost_mean": 0.0508,
+   "same_level_wd4_mean": 0.3069,
+   "lag_same_measure": [
+    0.5834,
+    0.4836,
+    0.4406,
+    0.414,
+    0.3971
+   ],
+   "lag_same_measure_wd4": [
+    0.5834,
+    0.4836,
+    0.4406,
+    0.414,
+    0.3971
+   ],
+   "lag_same_measure_hpost": [
+    0.5834,
+    0.4836,
+    0.4406,
+    0.414,
+    0.3971
+   ],
+   "lag1_cross_measure_all": 0.1588,
+   "lag1_cross_wd4_not_facing": 0.1728,
+   "disc_widths": 0.5068,
+   "disc_depths": 0.6578,
+   "lag1_upperW_to_next_lowerW": 0.3438,
+   "lag5_cross_wd4": 0.1456
+  },
+  "fit_limit": {
+   "R_measure_widths": 0.301,
+   "R_measure_depths": 0.463,
+   "R_measure_width_depth_upper": 0.173,
+   "R_measure_width_depth_lower": 0.126,
+   "R_measure_upperW_lowerD": 0.109,
+   "R_measure_upperD_lowerW": 0.069,
+   "R_measure_hpost_mean": 0.038,
+   "R_measure_wd4_mean": 0.2068,
+   "R_level_lag": [
+    0.4869,
+    0.4317,
+    0.3933,
+    0.3696,
+    0.3544
+   ],
+   "implied_disc_widths": 0.1466,
+   "implied_lag1_cross_all": 0.0678
+  },
+  "kl_gap_nats_per_spine": 11.5865,
+  "gain_over_assumed_limit": 16.7339,
+  "fit_limit_T1L5": {
+   "R_measure_widths": 0.2625,
+   "R_measure_depths": 0.4138,
+   "R_measure_width_depth_upper": 0.1616,
+   "R_level_lag": [
+    0.555,
+    0.5107,
+    0.4801,
+    0.4547,
+    0.4376
+   ]
+  },
+  "meta": {
+   "kind": "disc",
+   "theta": 0.163,
+   "max_feasible_theta": 0.167
+  }
+ },
+ "e_cervical_widths_0.100": {
+  "name": "e_cervical_widths_0.100",
+  "note": "",
+  "true_clean": {
+   "same_level_widths": 0.3435,
+   "same_level_depths": 0.5447,
+   "same_level_width_depth_upper": 0.2035,
+   "same_level_width_depth_lower": 0.1482,
+   "same_level_upperW_lowerD": 0.1282,
+   "same_level_upperD_lowerW": 0.0812,
+   "same_level_hpost_mean": 0.0447,
+   "same_level_wd4_mean": 0.2416,
+   "lag_same_measure": [
+    0.5241,
+    0.4649,
+    0.4237,
+    0.3982,
+    0.3819
+   ],
+   "lag_same_measure_wd4": [
+    0.5241,
+    0.4649,
+    0.4237,
+    0.3982,
+    0.3819
+   ],
+   "lag_same_measure_hpost": [
+    0.5241,
+    0.4649,
+    0.4237,
+    0.3982,
+    0.3819
+   ],
+   "lag1_cross_measure_all": 0.0935,
+   "lag1_cross_wd4_not_facing": 0.1158,
+   "disc_widths": 0.1868,
+   "disc_depths": 0.3172,
+   "lag1_upperW_to_next_lowerW": 0.1868,
+   "lag5_cross_wd4": 0.1009
+  },
+  "fit_limit": {
+   "R_measure_widths": 0.301,
+   "R_measure_depths": 0.463,
+   "R_measure_width_depth_upper": 0.173,
+   "R_measure_width_depth_lower": 0.126,
+   "R_measure_upperW_lowerD": 0.109,
+   "R_measure_upperD_lowerW": 0.069,
+   "R_measure_hpost_mean": 0.038,
+   "R_measure_wd4_mean": 0.2068,
+   "R_level_lag": [
+    0.4869,
+    0.4317,
+    0.3933,
+    0.3696,
+    0.3544
+   ],
+   "implied_disc_widths": 0.1466,
+   "implied_lag1_cross_all": 0.0678
+  },
+  "kl_gap_nats_per_spine": 0.3904,
+  "gain_over_assumed_limit": 14.3284,
+  "fit_limit_T1L5": {
+   "R_measure_widths": 0.2659,
+   "R_measure_depths": 0.4515,
+   "R_measure_width_depth_upper": 0.1687,
+   "R_level_lag": [
+    0.5448,
+    0.5066,
+    0.4761,
+    0.451,
+    0.434
+   ]
+  },
+  "meta": {
+   "kind": "cervical_widths",
+   "theta": 0.1,
+   "max_feasible_theta": 0.214
+  }
+ },
+ "e_cervical_widths_0.200": {
+  "name": "e_cervical_widths_0.200",
+  "note": "",
+  "true_clean": {
+   "same_level_widths": 0.3872,
+   "same_level_depths": 0.6561,
+   "same_level_width_depth_upper": 0.2451,
+   "same_level_width_depth_lower": 0.1785,
+   "same_level_upperW_lowerD": 0.1545,
+   "same_level_upperD_lowerW": 0.0978,
+   "same_level_hpost_mean": 0.0538,
+   "same_level_wd4_mean": 0.2865,
+   "lag_same_measure": [
+    0.5464,
+    0.4851,
+    0.4422,
+    0.4156,
+    0.3986
+   ],
+   "lag_same_measure_wd4": [
+    0.5464,
+    0.4851,
+    0.4422,
+    0.4156,
+    0.3986
+   ],
+   "lag_same_measure_hpost": [
+    0.5464,
+    0.4851,
+    0.4422,
+    0.4156,
+    0.3986
+   ],
+   "lag1_cross_measure_all": 0.129,
+   "lag1_cross_wd4_not_facing": 0.1605,
+   "disc_widths": 0.2334,
+   "disc_depths": 0.4481,
+   "lag1_upperW_to_next_lowerW": 0.2334,
+   "lag5_cross_wd4": 0.139
+  },
+  "fit_limit": {
+   "R_measure_widths": 0.301,
+   "R_measure_depths": 0.463,
+   "R_measure_width_depth_upper": 0.173,
+   "R_measure_width_depth_lower": 0.126,
+   "R_measure_upperW_lowerD": 0.109,
+   "R_measure_upperD_lowerW": 0.069,
+   "R_measure_hpost_mean": 0.038,
+   "R_measure_wd4_mean": 0.2068,
+   "R_level_lag": [
+    0.4869,
+    0.4317,
+    0.3933,
+    0.3696,
+    0.3544
+   ],
+   "implied_disc_widths": 0.1466,
+   "implied_lag1_cross_all": 0.0678
+  },
+  "kl_gap_nats_per_spine": 1.8289,
+  "gain_over_assumed_limit": 15.5138,
+  "fit_limit_T1L5": {
+   "R_measure_widths": 0.2212,
+   "R_measure_depths": 0.4246,
+   "R_measure_width_depth_upper": 0.1587,
+   "R_level_lag": [
+    0.5499,
+    0.5113,
+    0.4806,
+    0.4552,
+    0.438
+   ]
+  },
+  "meta": {
+   "kind": "cervical_widths",
+   "theta": 0.2,
+   "max_feasible_theta": 0.214
+  }
+ },
+ "e_regional": {
+  "name": "e_regional",
+  "note": "",
+  "true_clean": {
+   "same_level_widths": 0.3102,
+   "same_level_depths": 0.4863,
+   "same_level_width_depth_upper": 0.1872,
+   "same_level_width_depth_lower": 0.1351,
+   "same_level_upperW_lowerD": 0.1177,
+   "same_level_upperD_lowerW": 0.0762,
+   "same_level_hpost_mean": 0.0395,
+   "same_level_wd4_mean": 0.2188,
+   "lag_same_measure": [
+    0.5126,
+    0.4546,
+    0.4142,
+    0.3893,
+    0.3735
+   ],
+   "lag_same_measure_wd4": [
+    0.5125,
+    0.4544,
+    0.414,
+    0.389,
+    0.3731
+   ],
+   "lag_same_measure_hpost": [
+    0.5129,
+    0.4552,
+    0.4152,
+    0.3906,
+    0.3751
+   ],
+   "lag1_cross_measure_all": 0.0756,
+   "lag1_cross_wd4_not_facing": 0.0986,
+   "disc_widths": 0.1322,
+   "disc_depths": 0.2461,
+   "lag1_upperW_to_next_lowerW": 0.1323,
+   "lag5_cross_wd4": 0.0845
+  },
+  "fit_limit": {
+   "R_measure_widths": 0.301,
+   "R_measure_depths": 0.463,
+   "R_measure_width_depth_upper": 0.173,
+   "R_measure_width_depth_lower": 0.126,
+   "R_measure_upperW_lowerD": 0.109,
+   "R_measure_upperD_lowerW": 0.069,
+   "R_measure_hpost_mean": 0.038,
+   "R_measure_wd4_mean": 0.2068,
+   "R_level_lag": [
+    0.4869,
+    0.4317,
+    0.3933,
+    0.3696,
+    0.3544
+   ],
+   "implied_disc_widths": 0.1466,
+   "implied_lag1_cross_all": 0.0678
+  },
+  "kl_gap_nats_per_spine": 2.0715,
+  "gain_over_assumed_limit": 13.6404,
+  "fit_limit_T1L5": {
+   "R_measure_widths": 0.164,
+   "R_measure_depths": 0.446,
+   "R_measure_width_depth_upper": 0.25,
+   "R_level_lag": [
+    0.5441,
+    0.5059,
+    0.4755,
+    0.4504,
+    0.4334
+   ]
+  },
+  "meta": {
+   "kind": "regional",
+   "ok": true,
+   "b_cervical": [
+    [
+     1.0,
+     -0.071,
+     0.778,
+     -0.026,
+     0.14
+    ],
+    [
+     -0.071,
+     1.0,
+     -0.08,
+     0.543,
+     -0.003
+    ],
+    [
+     0.778,
+     -0.08,
+     1.0,
+     0.029,
+     0.125
+    ],
+    [
+     -0.026,
+     0.543,
+     0.029,
+     1.0,
+     0.013
+    ],
+    [
+     0.14,
+     -0.003,
+     0.125,
+     0.013,
+     1.0
+    ]
+   ],
+   "b_thoracolumbar": [
+    [
+     1.0,
+     0.263,
+     0.173,
+     0.16,
+     -0.074
+    ],
+    [
+     0.263,
+     1.0,
+     0.122,
+     0.469,
+     0.048
+    ],
+    [
+     0.173,
+     0.122,
+     1.0,
+     0.166,
+     0.083
+    ],
+    [
+     0.16,
+     0.469,
+     0.166,
+     1.0,
+     0.065
+    ],
+    [
+     -0.074,
+     0.048,
+     0.083,
+     0.065,
+     1.0
+    ]
+   ]
+  }
+ },
+ "e_regional+size_0.10": {
+  "name": "e_regional+size_0.10",
+  "note": "",
+  "true_clean": {
+   "same_level_widths": 0.3698,
+   "same_level_depths": 0.5297,
+   "same_level_width_depth_upper": 0.2543,
+   "same_level_width_depth_lower": 0.2072,
+   "same_level_upperW_lowerD": 0.1912,
+   "same_level_upperD_lowerW": 0.153,
+   "same_level_hpost_mean": 0.1204,
+   "same_level_wd4_mean": 0.2842,
+   "lag_same_measure": [
+    0.5297,
+    0.4737,
+    0.4347,
+    0.4108,
+    0.3956
+   ],
+   "lag_same_measure_wd4": [
+    0.5296,
+    0.4736,
+    0.4346,
+    0.4106,
+    0.3953
+   ],
+   "lag_same_measure_hpost": [
+    0.5298,
+    0.4741,
+    0.4354,
+    0.4116,
+    0.3966
+   ],
+   "lag1_cross_measure_all": 0.1571,
+   "lag1_cross_wd4_not_facing": 0.1771,
+   "disc_widths": 0.2025,
+   "disc_depths": 0.3021,
+   "lag1_upperW_to_next_lowerW": 0.2026,
+   "lag5_cross_wd4": 0.163
+  },
+  "fit_limit": {
+   "R_measure_widths": 0.301,
+   "R_measure_depths": 0.463,
+   "R_measure_width_depth_upper": 0.173,
+   "R_measure_width_depth_lower": 0.126,
+   "R_measure_upperW_lowerD": 0.109,
+   "R_measure_upperD_lowerW": 0.069,
+   "R_measure_hpost_mean": 0.038,
+   "R_measure_wd4_mean": 0.2068,
+   "R_level_lag": [
+    0.4869,
+    0.4317,
+    0.3933,
+    0.3696,
+    0.3544
+   ],
+   "implied_disc_widths": 0.1466,
+   "implied_lag1_cross_all": 0.0678
+  },
+  "kl_gap_nats_per_spine": 2.4318,
+  "gain_over_assumed_limit": 13.7735,
+  "fit_limit_T1L5": {
+   "R_measure_widths": 0.164,
+   "R_measure_depths": 0.446,
+   "R_measure_width_depth_upper": 0.25,
+   "R_level_lag": [
+    0.545,
+    0.5068,
+    0.4765,
+    0.4515,
+    0.4346
+   ]
+  },
+  "meta": {
+   "kind": "regional+size",
+   "theta": 0.1,
+   "b_cervical": [
+    [
+     1.0,
+     -0.1,
+     0.778,
+     -0.052,
+     0.123
+    ],
+    [
+     -0.1,
+     1.0,
+     -0.108,
+     0.534,
+     -0.027
+    ],
+    [
+     0.778,
+     -0.108,
+     1.0,
+     0.005,
+     0.106
+    ],
+    [
+     -0.052,
+     0.534,
+     0.005,
+     1.0,
+     -0.01
+    ],
+    [
+     0.123,
+     -0.027,
+     0.106,
+     -0.01,
+     1.0
+    ]
+   ],
+   "b_thoracolumbar": [
+    [
+     1.0,
+     0.251,
+     0.159,
+     0.146,
+     -0.091
+    ],
+    [
+     0.251,
+     1.0,
+     0.108,
+     0.461,
+     0.033
+    ],
+    [
+     0.159,
+     0.108,
+     1.0,
+     0.153,
+     0.068
+    ],
+    [
+     0.146,
+     0.461,
+     0.153,
+     1.0,
+     0.05
+    ],
+    [
+     -0.091,
+     0.033,
+     0.068,
+     0.05,
+     1.0
+    ]
+   ]
+  }
+ },
+ "e_regional+size_0.20": {
+  "name": "e_regional+size_0.20",
+  "note": "",
+  "true_clean": {
+   "same_level_widths": 0.4307,
+   "same_level_depths": 0.5742,
+   "same_level_width_depth_upper": 0.3232,
+   "same_level_width_depth_lower": 0.2812,
+   "same_level_upperW_lowerD": 0.2665,
+   "same_level_upperD_lowerW": 0.2318,
+   "same_level_hpost_mean": 0.2032,
+   "same_level_wd4_mean": 0.3513,
+   "lag_same_measure": [
+    0.5471,
+    0.4932,
+    0.4558,
+    0.4328,
+    0.4182
+   ],
+   "lag_same_measure_wd4": [
+    0.5471,
+    0.4932,
+    0.4557,
+    0.4327,
+    0.4181
+   ],
+   "lag_same_measure_hpost": [
+    0.5472,
+    0.4934,
+    0.4561,
+    0.4331,
+    0.4185
+   ],
+   "lag1_cross_measure_all": 0.2406,
+   "lag1_cross_wd4_not_facing": 0.2576,
+   "disc_widths": 0.2744,
+   "disc_depths": 0.3595,
+   "lag1_upperW_to_next_lowerW": 0.2744,
+   "lag5_cross_wd4": 0.2435
+  },
+  "fit_limit": {
+   "R_measure_widths": 0.301,
+   "R_measure_depths": 0.463,
+   "R_measure_width_depth_upper": 0.173,
+   "R_measure_width_depth_lower": 0.126,
+   "R_measure_upperW_lowerD": 0.109,
+   "R_measure_upperD_lowerW": 0.069,
+   "R_measure_hpost_mean": 0.038,
+   "R_measure_wd4_mean": 0.2068,
+   "R_level_lag": [
+    0.4869,
+    0.4317,
+    0.3933,
+    0.3696,
+    0.3544
+   ],
+   "implied_disc_widths": 0.1466,
+   "implied_lag1_cross_all": 0.0678
+  },
+  "kl_gap_nats_per_spine": 3.3055,
+  "gain_over_assumed_limit": 13.909,
+  "fit_limit_T1L5": {
+   "R_measure_widths": 0.164,
+   "R_measure_depths": 0.446,
+   "R_measure_width_depth_upper": 0.25,
+   "R_level_lag": [
+    0.5459,
+    0.5079,
+    0.4777,
+    0.4527,
+    0.4358
+   ]
+  },
+  "meta": {
+   "kind": "regional+size",
+   "theta": 0.2,
+   "b_cervical": [
+    [
+     1.0,
+     -0.132,
+     0.777,
+     -0.081,
+     0.104
+    ],
+    [
+     -0.132,
+     1.0,
+     -0.139,
+     0.523,
+     -0.053
+    ],
+    [
+     0.777,
+     -0.139,
+     1.0,
+     -0.023,
+     0.085
+    ],
+    [
+     -0.081,
+     0.523,
+     -0.023,
+     1.0,
+     -0.036
+    ],
+    [
+     0.104,
+     -0.053,
+     0.085,
+     -0.036,
+     1.0
+    ]
+   ],
+   "b_thoracolumbar": [
+    [
+     1.0,
+     0.238,
+     0.145,
+     0.131,
+     -0.11
+    ],
+    [
+     0.238,
+     1.0,
+     0.092,
+     0.451,
+     0.016
+    ],
+    [
+     0.145,
+     0.092,
+     1.0,
+     0.138,
+     0.052
+    ],
+    [
+     0.131,
+     0.451,
+     0.138,
+     1.0,
+     0.034
+    ],
+    [
+     -0.11,
+     0.016,
+     0.052,
+     0.034,
+     1.0
+    ]
+   ]
+  }
+ },
+ "e_regional+disc_0.10": {
+  "name": "e_regional+disc_0.10",
+  "note": "",
+  "true_clean": {
+   "same_level_widths": 0.3871,
+   "same_level_depths": 0.5946,
+   "same_level_width_depth_upper": 0.218,
+   "same_level_width_depth_lower": 0.1553,
+   "same_level_upperW_lowerD": 0.1365,
+   "same_level_upperD_lowerW": 0.0904,
+   "same_level_hpost_mean": 0.0437,
+   "same_level_wd4_mean": 0.2636,
+   "lag_same_measure": [
+    0.5482,
+    0.4673,
+    0.4258,
+    0.4004,
+    0.3842
+   ],
+   "lag_same_measure_wd4": [
+    0.5481,
+    0.467,
+    0.4255,
+    0.3999,
+    0.3836
+   ],
+   "lag_same_measure_hpost": [
+    0.5488,
+    0.4683,
+    0.4274,
+    0.4025,
+    0.3869
+   ],
+   "lag1_cross_measure_all": 0.1186,
+   "lag1_cross_wd4_not_facing": 0.1403,
+   "disc_widths": 0.3072,
+   "disc_depths": 0.4633,
+   "lag1_upperW_to_next_lowerW": 0.2074,
+   "lag5_cross_wd4": 0.119
+  },
+  "fit_limit": {
+   "R_measure_widths": 0.301,
+   "R_measure_depths": 0.463,
+   "R_measure_width_depth_upper": 0.173,
+   "R_measure_width_depth_lower": 0.126,
+   "R_measure_upperW_lowerD": 0.109,
+   "R_measure_upperD_lowerW": 0.069,
+   "R_measure_hpost_mean": 0.038,
+   "R_measure_wd4_mean": 0.2068,
+   "R_level_lag": [
+    0.4869,
+    0.4317,
+    0.3933,
+    0.3696,
+    0.3544
+   ],
+   "implied_disc_widths": 0.1466,
+   "implied_lag1_cross_all": 0.0678
+  },
+  "kl_gap_nats_per_spine": 4.849,
+  "gain_over_assumed_limit": 15.0817,
+  "fit_limit_T1L5": {
+   "R_measure_widths": 0.164,
+   "R_measure_depths": 0.446,
+   "R_measure_width_depth_upper": 0.25,
+   "R_level_lag": [
+    0.5496,
+    0.5066,
+    0.4762,
+    0.451,
+    0.434
+   ]
+  },
+  "meta": {
+   "kind": "regional+disc",
+   "theta": 0.1,
+   "b_cervical": [
+    [
+     1.0,
+     -0.082,
+     0.928,
+     -0.031,
+     0.163
+    ],
+    [
+     -0.082,
+     1.0,
+     -0.091,
+     0.647,
+     -0.003
+    ],
+    [
+     0.928,
+     -0.091,
+     1.0,
+     0.034,
+     0.142
+    ],
+    [
+     -0.031,
+     0.647,
+     0.034,
+     1.0,
+     0.016
+    ],
+    [
+     0.163,
+     -0.003,
+     0.142,
+     0.016,
+     1.0
+    ]
+   ],
+   "b_thoracolumbar": [
+    [
+     1.0,
+     0.338,
+     0.284,
+     0.205,
+     -0.095
+    ],
+    [
+     0.338,
+     1.0,
+     0.157,
+     0.665,
+     0.062
+    ],
+    [
+     0.284,
+     0.157,
+     1.0,
+     0.213,
+     0.107
+    ],
+    [
+     0.205,
+     0.665,
+     0.213,
+     1.0,
+     0.084
+    ],
+    [
+     -0.095,
+     0.062,
+     0.107,
+     0.084,
+     1.0
+    ]
+   ]
+  }
+ },
+ "e_regional+noise_0.10": {
+  "name": "e_regional+noise_0.10",
+  "note": "",
+  "true_clean": {
+   "same_level_widths": 0.3368,
+   "same_level_depths": 0.5435,
+   "same_level_width_depth_upper": 0.2169,
+   "same_level_width_depth_lower": 0.1544,
+   "same_level_upperW_lowerD": 0.1358,
+   "same_level_upperD_lowerW": 0.0899,
+   "same_level_hpost_mean": 0.0435,
+   "same_level_wd4_mean": 0.2462,
+   "lag_same_measure": [
+    0.5252,
+    0.4657,
+    0.4244,
+    0.399,
+    0.3829
+   ],
+   "lag_same_measure_wd4": [
+    0.5251,
+    0.4655,
+    0.424,
+    0.3985,
+    0.3822
+   ],
+   "lag_same_measure_hpost": [
+    0.5257,
+    0.4668,
+    0.426,
+    0.4011,
+    0.3855
+   ],
+   "lag1_cross_measure_all": 0.0975,
+   "lag1_cross_wd4_not_facing": 0.1278,
+   "disc_widths": 0.1664,
+   "disc_depths": 0.3162,
+   "lag1_upperW_to_next_lowerW": 0.1666,
+   "lag5_cross_wd4": 0.1102
+  },
+  "fit_limit": {
+   "R_measure_widths": 0.301,
+   "R_measure_depths": 0.463,
+   "R_measure_width_depth_upper": 0.173,
+   "R_measure_width_depth_lower": 0.126,
+   "R_measure_upperW_lowerD": 0.109,
+   "R_measure_upperD_lowerW": 0.069,
+   "R_measure_hpost_mean": 0.038,
+   "R_measure_wd4_mean": 0.2068,
+   "R_level_lag": [
+    0.4869,
+    0.4317,
+    0.3933,
+    0.3696,
+    0.3544
+   ],
+   "implied_disc_widths": 0.1466,
+   "implied_lag1_cross_all": 0.0678
+  },
+  "kl_gap_nats_per_spine": 2.3705,
+  "gain_over_assumed_limit": 14.2281,
+  "fit_limit_T1L5": {
+   "R_measure_widths": 0.164,
+   "R_measure_depths": 0.446,
+   "R_measure_width_depth_upper": 0.25,
+   "R_level_lag": [
+    0.5444,
+    0.5062,
+    0.4758,
+    0.4507,
+    0.4337
+   ]
+  },
+  "meta": {
+   "kind": "regional+noise",
+   "theta": 0.1,
+   "b_cervical": [
+    [
+     1.0,
+     -0.079,
+     0.9,
+     -0.028,
+     0.161
+    ],
+    [
+     -0.079,
+     1.0,
+     -0.089,
+     0.626,
+     -0.002
+    ],
+    [
+     0.9,
+     -0.089,
+     1.0,
+     0.035,
+     0.142
+    ],
+    [
+     -0.028,
+     0.626,
+     0.035,
+     1.0,
+     0.016
+    ],
+    [
+     0.161,
+     -0.002,
+     0.142,
+     0.016,
+     1.0
+    ]
+   ],
+   "b_thoracolumbar": [
+    [
+     1.0,
+     0.335,
+     0.22,
+     0.204,
+     -0.094
+    ],
+    [
+     0.335,
+     1.0,
+     0.155,
+     0.598,
+     0.062
+    ],
+    [
+     0.22,
+     0.155,
+     1.0,
+     0.212,
+     0.106
+    ],
+    [
+     0.204,
+     0.598,
+     0.212,
+     1.0,
+     0.083
+    ],
+    [
+     -0.094,
+     0.062,
+     0.106,
+     0.083,
+     1.0
+    ]
+   ]
+  }
+ },
+ "e_regional+vertebra_wd_0.10": {
+  "name": "e_regional+vertebra_wd_0.10",
+  "note": "",
+  "true_clean": {
+   "same_level_widths": 0.2278,
+   "same_level_depths": 0.4312,
+   "same_level_width_depth_upper": 0.1074,
+   "same_level_width_depth_lower": 0.0465,
+   "same_level_upperW_lowerD": 0.0281,
+   "same_level_upperD_lowerW": -0.0174,
+   "same_level_hpost_mean": 0.0429,
+   "same_level_wd4_mean": 0.1373,
+   "lag_same_measure": [
+    0.4941,
+    0.438,
+    0.399,
+    0.3751,
+    0.3598
+   ],
+   "lag_same_measure_wd4": [
+    0.494,
+    0.4378,
+    0.3987,
+    0.3747,
+    0.3593
+   ],
+   "lag_same_measure_hpost": [
+    0.4945,
+    0.4388,
+    0.4002,
+    0.3766,
+    0.3617
+   ],
+   "lag1_cross_measure_all": 0.02,
+   "lag1_cross_wd4_not_facing": 0.0011,
+   "disc_widths": 0.0373,
+   "disc_depths": 0.176,
+   "lag1_upperW_to_next_lowerW": 0.0374,
+   "lag5_cross_wd4": 0.0132
+  },
+  "fit_limit": {
+   "R_measure_widths": 0.301,
+   "R_measure_depths": 0.463,
+   "R_measure_width_depth_upper": 0.173,
+   "R_measure_width_depth_lower": 0.126,
+   "R_measure_upperW_lowerD": 0.109,
+   "R_measure_upperD_lowerW": 0.069,
+   "R_measure_hpost_mean": 0.038,
+   "R_measure_wd4_mean": 0.2068,
+   "R_level_lag": [
+    0.4869,
+    0.4317,
+    0.3933,
+    0.3696,
+    0.3544
+   ],
+   "implied_disc_widths": 0.1466,
+   "implied_lag1_cross_all": 0.0678
+  },
+  "kl_gap_nats_per_spine": 2.2767,
+  "gain_over_assumed_limit": 12.6595,
+  "fit_limit_T1L5": {
+   "R_measure_widths": 0.164,
+   "R_measure_depths": 0.446,
+   "R_measure_width_depth_upper": 0.25,
+   "R_level_lag": [
+    0.5434,
+    0.5053,
+    0.475,
+    0.4499,
+    0.4329
+   ]
+  },
+  "meta": {
+   "kind": "regional+vertebra_wd",
+   "theta": 0.1,
+   "b_cervical": [
+    [
+     1.0,
+     -0.229,
+     0.744,
+     -0.179,
+     0.161
+    ],
+    [
+     -0.229,
+     1.0,
+     -0.24,
+     0.476,
+     -0.003
+    ],
+    [
+     0.744,
+     -0.24,
+     1.0,
+     -0.116,
+     0.143
+    ],
+    [
+     -0.179,
+     0.476,
+     -0.116,
+     1.0,
+     0.015
+    ],
+    [
+     0.161,
+     -0.003,
+     0.143,
+     0.015,
+     1.0
+    ]
+   ],
+   "b_thoracolumbar": [
+    [
+     1.0,
+     0.078,
+     -0.035,
+     -0.051,
+     -0.092
+    ],
+    [
+     0.078,
+     1.0,
+     -0.098,
+     0.336,
+     0.061
+    ],
+    [
+     -0.035,
+     -0.098,
+     1.0,
+     -0.043,
+     0.104
+    ],
+    [
+     -0.051,
+     0.336,
+     -0.043,
+     1.0,
+     0.082
+    ],
+    [
+     -0.092,
+     0.061,
+     0.104,
+     0.082,
+     1.0
+    ]
+   ]
+  }
+ },
+ "_feasible": {
+  "noise": 0.211,
+  "size": 0.373,
+  "size_wd": 0.431,
+  "vertebra": 0.172,
+  "vertebra_wd": 0.234,
+  "disc": 0.167,
+  "cervical_widths": 0.214
+ },
+ "tuned": {
+  "tuned_a20.00": {
+   "name": "tuned_a20.00",
+   "note": "{\"a2\": 0.0, \"b2\": 0.5625, \"phi\": 0.6245, \"floor\": 0.5574, \"gw2\": 0.1256, \"gd2\": 0.2312, \"c2\": 0.0778, \"k2\": 0.0356}",
+   "true_clean": {
+    "same_level_widths": 0.2033,
+    "same_level_depths": 0.309,
+    "same_level_width_depth_upper": 0.0778,
+    "same_level_width_depth_lower": 0.0778,
+    "same_level_upperW_lowerD": 0.0778,
+    "same_level_upperD_lowerW": 0.0778,
+    "same_level_hpost_mean": 0.0,
+    "same_level_wd4_mean": 0.1372,
+    "lag_same_measure": [
+     0.469,
+     0.4107,
+     0.3742,
+     0.3514,
+     0.3372
+    ],
+    "lag_same_measure_wd4": [
+     0.469,
+     0.4107,
+     0.3742,
+     0.3514,
+     0.3372
+    ],
+    "lag_same_measure_hpost": [
+     0.469,
+     0.4107,
+     0.3742,
+     0.3514,
+     0.3372
+    ],
+    "lag1_cross_measure_all": 0.0036,
+    "lag1_cross_wd4_not_facing": 0.0,
+    "disc_widths": 0.0356,
+    "disc_depths": 0.0356,
+    "lag1_upperW_to_next_lowerW": 0.0,
+    "lag5_cross_wd4": 0.0
+   },
+   "fit_limit": {
+    "R_measure_widths": 0.301,
+    "R_measure_depths": 0.463,
+    "R_measure_width_depth_upper": 0.1193,
+    "R_measure_width_depth_lower": 0.1193,
+    "R_measure_upperW_lowerD": 0.1193,
+    "R_measure_upperD_lowerW": 0.1193,
+    "R_measure_hpost_mean": 0.0,
+    "R_measure_wd4_mean": 0.2068,
+    "R_level_lag": [
+     0.4869,
+     0.4317,
+     0.3934,
+     0.3694,
+     0.3545
+    ],
+    "implied_disc_widths": 0.1466,
+    "implied_lag1_cross_all": 0.0604
+   },
+   "kl_gap_nats_per_spine": 0.4777,
+   "gain_over_assumed_limit": 7.3844,
+   "fit_limit_T1L5": {
+    "R_measure_widths": 0.2992,
+    "R_measure_depths": 0.4603,
+    "R_measure_width_depth_upper": 0.1186,
+    "R_level_lag": [
+     0.4866,
+     0.4314,
+     0.3931,
+     0.3692,
+     0.3542
+    ]
+   },
+   "params": {
+    "a2": 0.0,
+    "b2": 0.5625,
+    "phi": 0.6245,
+    "floor": 0.5574,
+    "gw2": 0.1256,
+    "gd2": 0.2312,
+    "c2": 0.0778,
+    "k2": 0.0356
+   },
+   "loss": 0.0176
+  },
+  "tuned_a20.10": {
+   "name": "tuned_a20.10",
+   "note": "{\"a2\": 0.1, \"b2\": 0.4976, \"phi\": 0.6248, \"floor\": 0.52, \"gw2\": 0.1177, \"gd2\": 0.2167, \"c2\": 0.0665, \"k2\": 0.0332}",
+   "true_clean": {
+    "same_level_widths": 0.2841,
+    "same_level_depths": 0.3832,
+    "same_level_width_depth_upper": 0.1665,
+    "same_level_width_depth_lower": 0.1665,
+    "same_level_upperW_lowerD": 0.1665,
+    "same_level_upperD_lowerW": 0.1665,
+    "same_level_hpost_mean": 0.0,
+    "same_level_wd4_mean": 0.2222,
+    "lag_same_measure": [
+     0.488,
+     0.432,
+     0.397,
+     0.3751,
+     0.3615
+    ],
+    "lag_same_measure_wd4": [
+     0.508,
+     0.452,
+     0.417,
+     0.3951,
+     0.3815
+    ],
+    "lag_same_measure_hpost": [
+     0.408,
+     0.352,
+     0.317,
+     0.2951,
+     0.2815
+    ],
+    "lag1_cross_measure_all": 0.0633,
+    "lag1_cross_wd4_not_facing": 0.1,
+    "disc_widths": 0.1332,
+    "disc_depths": 0.1332,
+    "lag1_upperW_to_next_lowerW": 0.1,
+    "lag5_cross_wd4": 0.1
+   },
+   "fit_limit": {
+    "R_measure_widths": 0.301,
+    "R_measure_depths": 0.463,
+    "R_measure_width_depth_upper": 0.1193,
+    "R_measure_width_depth_lower": 0.1193,
+    "R_measure_upperW_lowerD": 0.1193,
+    "R_measure_upperD_lowerW": 0.1193,
+    "R_measure_hpost_mean": 0.0,
+    "R_measure_wd4_mean": 0.2068,
+    "R_level_lag": [
+     0.4869,
+     0.4317,
+     0.3934,
+     0.3694,
+     0.3545
+    ],
+    "implied_disc_widths": 0.1466,
+    "implied_lag1_cross_all": 0.0604
+   },
+   "kl_gap_nats_per_spine": 0.5294,
+   "gain_over_assumed_limit": 7.7276,
+   "fit_limit_T1L5": {
+    "R_measure_widths": 0.3013,
+    "R_measure_depths": 0.4622,
+    "R_measure_width_depth_upper": 0.121,
+    "R_level_lag": [
+     0.4868,
+     0.4315,
+     0.3932,
+     0.3693,
+     0.3543
+    ]
+   },
+   "params": {
+    "a2": 0.1,
+    "b2": 0.4976,
+    "phi": 0.6248,
+    "floor": 0.52,
+    "gw2": 0.1177,
+    "gd2": 0.2167,
+    "c2": 0.0665,
+    "k2": 0.0332
+   },
+   "loss": 0.0176
+  },
+  "tuned_a20.20": {
+   "name": "tuned_a20.20",
+   "note": "{\"a2\": 0.2, \"b2\": 0.4302, \"phi\": 0.6247, \"floor\": 0.4688, \"gw2\": 0.1102, \"gd2\": 0.203, \"c2\": 0.0555, \"k2\": 0.0311}",
+   "true_clean": {
+    "same_level_widths": 0.3657,
+    "same_level_depths": 0.4585,
+    "same_level_width_depth_upper": 0.2555,
+    "same_level_width_depth_lower": 0.2555,
+    "same_level_upperW_lowerD": 0.2555,
+    "same_level_upperD_lowerW": 0.2555,
+    "same_level_hpost_mean": 0.0,
+    "same_level_wd4_mean": 0.3077,
+    "lag_same_measure": [
+     0.5045,
+     0.4509,
+     0.4174,
+     0.3965,
+     0.3835
+    ],
+    "lag_same_measure_wd4": [
+     0.5445,
+     0.4909,
+     0.4574,
+     0.4365,
+     0.4235
+    ],
+    "lag_same_measure_hpost": [
+     0.3445,
+     0.2909,
+     0.2574,
+     0.2365,
+     0.2235
+    ],
+    "lag1_cross_measure_all": 0.1231,
+    "lag1_cross_wd4_not_facing": 0.2,
+    "disc_widths": 0.2311,
+    "disc_depths": 0.2311,
+    "lag1_upperW_to_next_lowerW": 0.2,
+    "lag5_cross_wd4": 0.2
+   },
+   "fit_limit": {
+    "R_measure_widths": 0.301,
+    "R_measure_depths": 0.463,
+    "R_measure_width_depth_upper": 0.1192,
+    "R_measure_width_depth_lower": 0.1192,
+    "R_measure_upperW_lowerD": 0.1192,
+    "R_measure_upperD_lowerW": 0.1192,
+    "R_measure_hpost_mean": 0.0,
+    "R_measure_wd4_mean": 0.2068,
+    "R_level_lag": [
+     0.4869,
+     0.4317,
+     0.3934,
+     0.3694,
+     0.3545
+    ],
+    "implied_disc_widths": 0.1466,
+    "implied_lag1_cross_all": 0.0604
+   },
+   "kl_gap_nats_per_spine": 1.0488,
+   "gain_over_assumed_limit": 8.0129,
+   "fit_limit_T1L5": {
+    "R_measure_widths": 0.3038,
+    "R_measure_depths": 0.4643,
+    "R_measure_width_depth_upper": 0.1238,
+    "R_level_lag": [
+     0.4865,
+     0.4312,
+     0.3929,
+     0.3689,
+     0.3539
+    ]
+   },
+   "params": {
+    "a2": 0.2,
+    "b2": 0.4302,
+    "phi": 0.6247,
+    "floor": 0.4688,
+    "gw2": 0.1102,
+    "gd2": 0.203,
+    "c2": 0.0555,
+    "k2": 0.0311
+   },
+   "loss": 0.0176
+  },
+  "tuned_a20.25": {
+   "name": "tuned_a20.25",
+   "note": "{\"a2\": 0.25, \"b2\": 0.3956, \"phi\": 0.6248, \"floor\": 0.4359, \"gw2\": 0.1067, \"gd2\": 0.1965, \"c2\": 0.0501, \"k2\": 0.03}",
+   "true_clean": {
+    "same_level_widths": 0.4067,
+    "same_level_depths": 0.4965,
+    "same_level_width_depth_upper": 0.3001,
+    "same_level_width_depth_lower": 0.3001,
+    "same_level_upperW_lowerD": 0.3001,
+    "same_level_upperD_lowerW": 0.3001,
+    "same_level_hpost_mean": 0.0,
+    "same_level_wd4_mean": 0.3506,
+    "lag_same_measure": [
+     0.5119,
+     0.4596,
+     0.4269,
+     0.4065,
+     0.3937
+    ],
+    "lag_same_measure_wd4": [
+     0.5619,
+     0.5096,
+     0.4769,
+     0.4565,
+     0.4437
+    ],
+    "lag_same_measure_hpost": [
+     0.3119,
+     0.2596,
+     0.2269,
+     0.2065,
+     0.1937
+    ],
+    "lag1_cross_measure_all": 0.153,
+    "lag1_cross_wd4_not_facing": 0.25,
+    "disc_widths": 0.28,
+    "disc_depths": 0.28,
+    "lag1_upperW_to_next_lowerW": 0.25,
+    "lag5_cross_wd4": 0.25
+   },
+   "fit_limit": {
+    "R_measure_widths": 0.301,
+    "R_measure_depths": 0.463,
+    "R_measure_width_depth_upper": 0.1192,
+    "R_measure_width_depth_lower": 0.1192,
+    "R_measure_upperW_lowerD": 0.1192,
+    "R_measure_upperD_lowerW": 0.1192,
+    "R_measure_hpost_mean": 0.0,
+    "R_measure_wd4_mean": 0.2068,
+    "R_level_lag": [
+     0.4869,
+     0.4317,
+     0.3934,
+     0.3694,
+     0.3545
+    ],
+    "implied_disc_widths": 0.1466,
+    "implied_lag1_cross_all": 0.0604
+   },
+   "kl_gap_nats_per_spine": 1.4696,
+   "gain_over_assumed_limit": 8.1364,
+   "fit_limit_T1L5": {
+    "R_measure_widths": 0.3051,
+    "R_measure_depths": 0.4655,
+    "R_measure_width_depth_upper": 0.1254,
+    "R_level_lag": [
+     0.4862,
+     0.4309,
+     0.3925,
+     0.3685,
+     0.3535
+    ]
+   },
+   "params": {
+    "a2": 0.25,
+    "b2": 0.3956,
+    "phi": 0.6248,
+    "floor": 0.4359,
+    "gw2": 0.1067,
+    "gd2": 0.1965,
+    "c2": 0.0501,
+    "k2": 0.03
+   },
+   "loss": 0.0176
+  },
+  "tuned_k20.00": {
+   "name": "tuned_k20.00",
+   "note": "{\"k2\": 0.0, \"a2\": 0.235, \"b2\": 0.3917, \"phi\": 0.6546, \"floor\": 0.4524, \"gw2\": 0.1021, \"gd2\": 0.193, \"c2\": 0.0518}",
+   "true_clean": {
+    "same_level_widths": 0.3888,
+    "same_level_depths": 0.4798,
+    "same_level_width_depth_upper": 0.2868,
+    "same_level_width_depth_lower": 0.2868,
+    "same_level_upperW_lowerD": 0.2868,
+    "same_level_upperD_lowerW": 0.2868,
+    "same_level_hpost_mean": 0.0,
+    "same_level_wd4_mean": 0.336,
+    "lag_same_measure": [
+     0.5057,
+     0.4572,
+     0.4254,
+     0.4046,
+     0.391
+    ],
+    "lag_same_measure_wd4": [
+     0.5527,
+     0.5042,
+     0.4724,
+     0.4516,
+     0.438
+    ],
+    "lag_same_measure_hpost": [
+     0.3177,
+     0.2692,
+     0.2374,
+     0.2166,
+     0.203
+    ],
+    "lag1_cross_measure_all": 0.141,
+    "lag1_cross_wd4_not_facing": 0.235,
+    "disc_widths": 0.235,
+    "disc_depths": 0.235,
+    "lag1_upperW_to_next_lowerW": 0.235,
+    "lag5_cross_wd4": 0.235
+   },
+   "fit_limit": {
+    "R_measure_widths": 0.301,
+    "R_measure_depths": 0.463,
+    "R_measure_width_depth_upper": 0.1192,
+    "R_measure_width_depth_lower": 0.1192,
+    "R_measure_upperW_lowerD": 0.1192,
+    "R_measure_upperD_lowerW": 0.1192,
+    "R_measure_hpost_mean": 0.0,
+    "R_measure_wd4_mean": 0.2068,
+    "R_level_lag": [
+     0.4872,
+     0.4308,
+     0.394,
+     0.3698,
+     0.354
+    ],
+    "implied_disc_widths": 0.1466,
+    "implied_lag1_cross_all": 0.0605
+   },
+   "kl_gap_nats_per_spine": 1.3884,
+   "gain_over_assumed_limit": 8.0178,
+   "fit_limit_T1L5": {
+    "R_measure_widths": 0.3049,
+    "R_measure_depths": 0.4653,
+    "R_measure_width_depth_upper": 0.1249,
+    "R_level_lag": [
+     0.4866,
+     0.4302,
+     0.3932,
+     0.369,
+     0.3532
+    ]
+   },
+   "params": {
+    "k2": 0.0,
+    "a2": 0.235,
+    "b2": 0.3917,
+    "phi": 0.6546,
+    "floor": 0.4524,
+    "gw2": 0.1021,
+    "gd2": 0.193,
+    "c2": 0.0518
+   },
+   "loss": 0.0176
+  },
+  "tuned_k20.10": {
+   "name": "tuned_k20.10",
+   "note": "{\"k2\": 0.1, \"a2\": 0.0515, \"b2\": 0.5215, \"phi\": 0.6749, \"floor\": 0.5164, \"gw2\": 0.1336, \"gd2\": 0.2349, \"c2\": 0.0721}",
+   "true_clean": {
+    "same_level_widths": 0.2572,
+    "same_level_depths": 0.3585,
+    "same_level_width_depth_upper": 0.1235,
+    "same_level_width_depth_lower": 0.1235,
+    "same_level_upperW_lowerD": 0.1235,
+    "same_level_upperD_lowerW": 0.1235,
+    "same_level_hpost_mean": 0.0,
+    "same_level_wd4_mean": 0.185,
+    "lag_same_measure": [
+     0.4807,
+     0.4254,
+     0.388,
+     0.3628,
+     0.3458
+    ],
+    "lag_same_measure_wd4": [
+     0.491,
+     0.4357,
+     0.3983,
+     0.3731,
+     0.3561
+    ],
+    "lag_same_measure_hpost": [
+     0.4395,
+     0.3842,
+     0.3469,
+     0.3216,
+     0.3046
+    ],
+    "lag1_cross_measure_all": 0.0409,
+    "lag1_cross_wd4_not_facing": 0.0515,
+    "disc_widths": 0.1515,
+    "disc_depths": 0.1515,
+    "lag1_upperW_to_next_lowerW": 0.0515,
+    "lag5_cross_wd4": 0.0515
+   },
+   "fit_limit": {
+    "R_measure_widths": 0.3014,
+    "R_measure_depths": 0.4614,
+    "R_measure_width_depth_upper": 0.1192,
+    "R_measure_width_depth_lower": 0.1192,
+    "R_measure_upperW_lowerD": 0.1192,
+    "R_measure_upperD_lowerW": 0.1192,
+    "R_measure_hpost_mean": 0.0,
+    "R_measure_wd4_mean": 0.2066,
+    "R_level_lag": [
+     0.4789,
+     0.4372,
+     0.3969,
+     0.3698,
+     0.3514
+    ],
+    "implied_disc_widths": 0.1443,
+    "implied_lag1_cross_all": 0.0594
+   },
+   "kl_gap_nats_per_spine": 0.8811,
+   "gain_over_assumed_limit": 7.8669,
+   "fit_limit_T1L5": {
+    "R_measure_widths": 0.3005,
+    "R_measure_depths": 0.4595,
+    "R_measure_width_depth_upper": 0.1198,
+    "R_level_lag": [
+     0.4788,
+     0.437,
+     0.3967,
+     0.3696,
+     0.3513
+    ]
+   },
+   "params": {
+    "k2": 0.1,
+    "a2": 0.0515,
+    "b2": 0.5215,
+    "phi": 0.6749,
+    "floor": 0.5164,
+    "gw2": 0.1336,
+    "gd2": 0.2349,
+    "c2": 0.0721
+   },
+   "loss": 0.0177
+  },
+  "tuned_k20.20": {
+   "name": "tuned_k20.20",
+   "note": "{\"k2\": 0.2, \"a2\": 0.0221, \"b2\": 0.4463, \"phi\": 0.9434, \"floor\": 0.0004, \"gw2\": 0.1423, \"gd2\": 0.2333, \"c2\": 0.0783}",
+   "true_clean": {
+    "same_level_widths": 0.2427,
+    "same_level_depths": 0.3337,
+    "same_level_width_depth_upper": 0.1004,
+    "same_level_width_depth_lower": 0.1004,
+    "same_level_upperW_lowerD": 0.1004,
+    "same_level_upperD_lowerW": 0.1004,
+    "same_level_hpost_mean": 0.0,
+    "same_level_wd4_mean": 0.163,
+    "lag_same_measure": [
+     0.4387,
+     0.4149,
+     0.3924,
+     0.3712,
+     0.3512
+    ],
+    "lag_same_measure_wd4": [
+     0.4432,
+     0.4193,
+     0.3969,
+     0.3757,
+     0.3557
+    ],
+    "lag_same_measure_hpost": [
+     0.421,
+     0.3972,
+     0.3747,
+     0.3535,
+     0.3335
+    ],
+    "lag1_cross_measure_all": 0.0333,
+    "lag1_cross_wd4_not_facing": 0.0221,
+    "disc_widths": 0.2221,
+    "disc_depths": 0.2221,
+    "lag1_upperW_to_next_lowerW": 0.0221,
+    "lag5_cross_wd4": 0.0221
+   },
+   "fit_limit": {
+    "R_measure_widths": 0.3012,
+    "R_measure_depths": 0.4371,
+    "R_measure_width_depth_upper": 0.1195,
+    "R_measure_width_depth_lower": 0.1195,
+    "R_measure_upperW_lowerD": 0.1195,
+    "R_measure_upperD_lowerW": 0.1195,
+    "R_measure_hpost_mean": 0.0,
+    "R_measure_wd4_mean": 0.2027,
+    "R_level_lag": [
+     0.4229,
+     0.4311,
+     0.4073,
+     0.3848,
+     0.3636
+    ],
+    "implied_disc_widths": 0.1274,
+    "implied_lag1_cross_all": 0.0514
+   },
+   "kl_gap_nats_per_spine": 3.2022,
+   "gain_over_assumed_limit": 7.8738,
+   "fit_limit_T1L5": {
+    "R_measure_widths": 0.2989,
+    "R_measure_depths": 0.4341,
+    "R_measure_width_depth_upper": 0.1194,
+    "R_level_lag": [
+     0.4229,
+     0.4308,
+     0.4069,
+     0.3845,
+     0.3633
+    ]
+   },
+   "params": {
+    "k2": 0.2,
+    "a2": 0.0221,
+    "b2": 0.4463,
+    "phi": 0.9434,
+    "floor": 0.0004,
+    "gw2": 0.1423,
+    "gd2": 0.2333,
+    "c2": 0.0783
+   },
+   "loss": 0.0229
+  }
+ },
+ "_seconds": 51.0
+}
