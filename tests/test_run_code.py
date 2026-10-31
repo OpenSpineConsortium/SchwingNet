@@ -36,7 +36,7 @@ ENTRIES = {"row": ("tools/flow.py",), "state": ("tools/block_sweep.py",), "sweep
            "totalseg": ("flows/totalseg.py",),
            "autoanatomist": ("flows/autoanatomist.py",), "autoanatomist2": ("flows/autoanatomist2.py",),
            "gold4_totalseg": ("flows/gold4_totalseg.py",),
-           "qaloop": ("flows/qaloop.py",)}
+           "qaloop": ("flows/qaloop.py",), "qaloop_tx": ("flows/qaloop_tx.py",)}
 # The calls that load a neighbour of tools/ by its name: tools/domain_gap.py names its own helper tool,
 # which loads tools/<name>.py by path, as the others name load_tool and run_tool.
 LOADERS = ("load_tool", "run_tool", "tool")

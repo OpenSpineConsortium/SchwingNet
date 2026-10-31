@@ -388,6 +388,10 @@ QALOOP_PARTITION=galhp
 # The links a send of a loop plan queues, each a GPU job of 12 hours afterany the one before, so the
 # loop runs up to three days on one send; a smoke plan is one link.
 QALOOP_LINKS=6
+# The plans that run as the kind qaloop_tx (flows/registry.txt): the loop with a transformer encoder,
+# held to its own frozen PREREG, docs/research/qa-loop-transformer/PREREG.md, and queued with its job
+# script grid/qaloop_tx.sbatch; every other plan runs as the kind qaloop under the loop's PREREG.
+QALOOP_TX_PLANS="qa_transformer"
 # The owner's word for one more join of the morphometry rows with sex and age, covariates:<job of the
 # report or the record it replaces>, or covariates:lost for a submission whose answer was lost, then
 # covariates:lost2 for the next such and on, each spent once (logs/MORPHOMETRY-covariates.lost records
@@ -3202,9 +3206,12 @@ qaloop_field() {  # qaloop_field PLAN KEY: a top-level word of the plan, else no
 qaloop_pairs_root() {  # qaloop_pairs_root PLAN: the folder under the data root the plan reads its real pairs from
   sed -n 's/^    "root": "\([a-z0-9_]*\)",\{0,1\}$/\1/p' "$1" | head -n 1
 }
-qaloop_covered() {  # qaloop_covered PLAN NAME: status 0 where the loop's frozen PREREG covers the plan by its name and bytes; the refusal otherwise
+qaloop_kind() {  # qaloop_kind PLAN: the kind the plan runs as, qaloop_tx for a plan QALOOP_TX_PLANS names, else qaloop
+  case " $QALOOP_TX_PLANS " in *" $1 "*) echo qaloop_tx ;; *) echo qaloop ;; esac
+}
+qaloop_covered() {  # qaloop_covered PLAN NAME: status 0 where the frozen PREREG of the plan's kind covers the plan by its name and bytes; the refusal otherwise
   local prereg entry frozen bytes want
-  prereg=$(flow_prereg qaloop)
+  prereg=$(flow_prereg "$(qaloop_kind "$2")")
   case "$prereg" in
     ""|/*|../*|*/../*) echo "refusing: flows/registry.txt names no PREREG inside the checkout for the QA loop, so no plan is covered; nothing was queued"; return 90 ;;
   esac
@@ -3274,7 +3281,7 @@ qaloop_queue() {  # qaloop_queue CHAIN COMMIT FIRST LINKS: links FIRST to LINKS 
   for ((link = first; link <= links; link++)); do
     depend_on "$after" || return 1
     job=$(submit "qaloop_$id" gpu "${loop[@]}" QALOOP_LINK="$link" ${chain:+QALOOP_CHAIN="$chain"} ${opts[@]+"${opts[@]}"} \
-      --partition "$QALOOP_PARTITION" --cpus 8 --mem 64G --time 12:00:00 --no-requeue -- qaloop.sbatch) || {
+      --partition "$QALOOP_PARTITION" --cpus 8 --mem 64G --time 12:00:00 --no-requeue -- "$(qaloop_kind "$id").sbatch") || {
       [ "$link" = "$first" ] && return 1
       echo "  link $link was refused; the links queued before it stand, and the next send carries the chain on" >&2
       echo "$chain"
@@ -3317,8 +3324,8 @@ word_qaloop() {  # one plan of the QA loop: queued as a chain of links, its repo
   fi
   full=$(git -C "$REPO" rev-parse HEAD 2>/dev/null)
   [[ $full =~ ^[0-9a-f]{40}$ ]] || { echo "refusing: the checkout's commit cannot be read, and every link copies the code at it"; return 2; }
-  launched_script qaloop.sbatch || {
-    echo "refusing: flows/registry.txt names grid/qaloop.sbatch as no flow's job script, and every GPU job starts through flows/launch.py; nothing was queued"
+  launched_script "$(qaloop_kind "$id").sbatch" || {
+    echo "refusing: flows/registry.txt names grid/$(qaloop_kind "$id").sbatch as no flow's job script, and every GPU job starts through flows/launch.py; nothing was queued"
     return 90
   }
   if [ -n "${chain:-}" ]; then
