@@ -138,6 +138,8 @@ class PruneTest(unittest.TestCase):
                          ["idc_nlst", "hf_abdomenatlas2_0_mini", "zenodo_unitochest", "hf_rexgradient_160k"])
         round4 = prune.read_list(ROOT / "grid" / "prune" / "round4.txt")
         self.assertFalse([line for line in round4 if "u251" in line or "versefusion" in line])
+        # gold tier 4's CTs and SPINEPS masks stay (#520)
+        self.assertFalse([line for line in round4 if "anomaly_harvest" in line or line.startswith("data/idc/")])
 
 
 if __name__ == "__main__":
