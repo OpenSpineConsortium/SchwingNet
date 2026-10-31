@@ -45,8 +45,8 @@ What each block steers, in the order a session meets them (session.py):
   input only and never for the HU the ladder thresholds; normalise (clip, the smoke run's; clip-zscore,
   each crop standardised after the clip; model.Config's field);
 - the network: architecture (which network the model spot takes, model.ARCHITECTURES: residual-unet,
-  the smoke run's; plain-unet; probe, the framework's test piece whose answer is known), widths (the
-  three scales' channels), groups (group norm's groups);
+  the smoke run's; plain-unet; probe, the framework's test piece whose answer is known; transunet and
+  unetr, the two transformers), widths (the three scales' channels), groups (group norm's groups);
 - the ladder: blur_mm (the blur rung's largest sigma), threshold_hu and threshold_width_hu (the
   soft threshold of the CT the last rung ends on), ladder (in-turn, the rungs one after another, a
   third of lambda each; overlapping, half of lambda each, a quarter apart; together, all of it);
@@ -112,7 +112,7 @@ TABLE: Tuple[Key, ...] = (
     Key("intensity", "choice", "a gain, an offset and noise on the encoder's input", choices=("off", "gain-offset", "gain-offset-noise")),
     Key("normalise", "choice", "how the encoder's CT channel is scaled", choices=("clip", "clip-zscore")),
     Key("architecture", "choice", "the network the model spot takes (model.ARCHITECTURES)",
-        choices=("residual-unet", "plain-unet", "probe")),
+        choices=("residual-unet", "plain-unet", "probe", "transunet", "unetr")),
     Key("widths", "triple", "the encoders' channels at the three scales"),
     Key("groups", "int", "group norm's groups", low=1),
     Key("blur_mm", "float", "the blur rung's largest sigma, mm", low=0.0),

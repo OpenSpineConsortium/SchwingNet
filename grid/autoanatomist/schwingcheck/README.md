@@ -56,6 +56,7 @@ The archive's example in [README.md](../README.md) prints the same three leading
 
 `python -m schwingcheck.one_body` scores a lone body, the one-vertebra evaluation, draws its figures and checks this README's tables of it ([The one-vertebra evaluation](#the-one-vertebra-evaluation)).
 `python -m schwingcheck.fixed_k` runs the fixed-k NUTS review, draws its figures and checks this README's tables of it ([The fixed-k NUTS review](#the-fixed-k-nuts-review)).
+`python -m schwingcheck.census` ranks every measure in hand by what it tells a lone body about its level, from Panjabi's table, the clinical reread's series and a table in the gold tier 3 schema, and checks this README's tables of it ([The census of the measures](#the-census-of-the-measures)).
 
 ## Layout
 
@@ -82,10 +83,11 @@ The archive's example in [README.md](../README.md) prints the same three leading
 - [`one_body.py`](one_body.py): the one-vertebra evaluation: every body of the chain's three column types a field of one body, scored level by level, by measure set, along the build-up study's order, on the coarse study's claims, under four rules for the patient's size and at the papers' type weights, written as one record, with its tables, its figures and the check.
 - [`categorical.py`](categorical.py): CategoricalGibbsMetropolis with Liu's acceptance on its proportional proposal, which PyMC 6.3.2 computes wrong ([The corrected step](#the-corrected-step)); no result uses it.
 - [`fixed_k.py`](fixed_k.py): the fixed-k NUTS review: the fixed-level model held to its closed form, the place free under PyMC's two Metropolis proposals and summed out by pymc-extras, both proposals on a bare place against their kernels written out, and the naming model's far tail, written as one record, with its tables, its figures and the check.
+- [`census.py`](census.py): the census of the measures: every measure of every table in hand ranked at each level by the information it gives a lone body under the exact rule, the greedy order that separates what the measures carry, and the keys that cannot be ranked with their reasons; one code path for Panjabi's table, the reread's series and the gold tier 3 schema.
 - [`graphs/`](graphs/): the three models' graphs, generated; do not edit them by hand.
 - [`__main__.py`](__main__.py): the commands above.
 - [`examples/`](examples/): the field above; [quadrature_check.py](examples/quadrature_check.py), which prints how well the two quadratures integrate the size with every measure of the pool ([The rule](#the-rule)); [floor_check.py](examples/floor_check.py), how often the generator's floor binds and how far it moves the posterior ([The measures](#the-measures)); [anomalous_check.py](examples/anomalous_check.py), which fields the rule names wrong at 0.99 on the anomalous spines of the build-up study ([What it found](#what-it-found)); [lone_body_check.py](examples/lone_body_check.py), how far a lone L6 or T13 lies from the names it is taken for ([The one-vertebra evaluation](#the-one-vertebra-evaluation)); and [pymc_proportional_repro.py](examples/pymc_proportional_repro.py) with [pymc_proportional_report.md](examples/pymc_proportional_report.md), the reproduction of PyMC's proportional proposal sampling the wrong law, standing alone for PyMC's maintainers, and the issue drafted from it, which waits for the owner's word to be posted ([The corrected step](#the-corrected-step)).
-- Tests in [tests/](../tests/): `test_schwingcheck_table.py`, `test_schwingcheck_rule.py`, `test_schwingcheck_columns.py`, `test_schwingcheck_record.py`, `test_schwingcheck_cli.py`, `test_schwingcheck_model.py`, `test_schwingcheck_curve.py`, `test_schwingcheck_chain.py`, `test_schwingcheck_chain_study.py`, `test_schwingcheck_chain_figures.py`, `test_schwingcheck_one_body.py`, `test_schwingcheck_fixed_k.py`, `test_schwingcheck_categorical.py`.
+- Tests in [tests/](../tests/): `test_schwingcheck_table.py`, `test_schwingcheck_rule.py`, `test_schwingcheck_columns.py`, `test_schwingcheck_record.py`, `test_schwingcheck_cli.py`, `test_schwingcheck_model.py`, `test_schwingcheck_curve.py`, `test_schwingcheck_chain.py`, `test_schwingcheck_chain_study.py`, `test_schwingcheck_chain_figures.py`, `test_schwingcheck_one_body.py`, `test_schwingcheck_fixed_k.py`, `test_schwingcheck_categorical.py`, `test_schwingcheck_census.py`.
 
 ## The table
 
@@ -146,6 +148,19 @@ The whole likelihood is one matrix product per block of fields: the sums the She
 `columns.draw_columns(ref, phenotypes, seed, n, measures, ...)` is the archive's `neighbour.draw_columns` with the random stream consumed in the same order (the size, the offsets, 24 level draws per measure, 24 noise draws per measure), so the same seed gives the same columns bit for bit, for every phenotype (typical, four_lumbar, six_lumbar, t13, lumbar_rib, no_rib_t12), with the exchangeable correlation between measures' offsets and with the archive's settings or others. It returns a `Columns` object whose `values` are (column, body, measure) with NaN past the end of a column shorter than the longest, with each column's levels, phenotype, transitional position and scale. `columns.fields(values, offsets)` cuts every field of the offsets given from every column, in the archive's order for consecutive offsets, with the truth (the place) and the column of each field, and leaves out a column too short for the pattern.
 
 Each measure is drawn with its own power of the size and its own error (`power`, and `noise_mm` as one value per measure), and floored at 0.5 only where it scales with the size, since an angle may be negative; with every power 1 the columns are the archive's bit for bit. Given the patients' sizes (`scale`), no size is drawn and the stream starts at the offsets, so further measures can be drawn for the same patients from a stream of their own, leaving the first measures' columns as they were. That holds at `r_between` 0, the default: at any other, the further measures' offsets are drawn apart from the first measures' and do not correlate with them as one call's would. The build-up study of step e draws the record's seven so and adds the rest. `floor=False` draws with no floor at all, as the build-up study draws the specimens of its re-estimated tables, which carry no error (curve.estimated_table); the `Columns` say so in their `meta`, and the floor's count (`columns.floor_hits`) finds nothing in them.
+
+## The correlation prior
+
+The generator's correlation is assumed: two levels of one measure correlate at rho squared, 0.25
+at the default rho 0.5, and two measures not at all at r_between 0. correlation.py fits it from
+whole real spines instead (greg's choice of 2026-10-30, thread "Train on randomized spine
+phantoms"): a matrix normal on each cell's z score, one correlation between levels and one between
+measures, by Dutilleul's flip-flop on complete spines, shrunk 5 per cent toward the identity, one
+prior per population. `draw_columns(..., correlation=prior)` draws with it and keeps each cell's
+mean and SD; without it the stream is the archive's to the bit. L6 borrows L5's row and T13
+T12's. `python -m schwingcheck.correlation fit` reads the morphometry engine's rows.csv and
+`compare` scores held-out spines in nats against the assumed structure. Not yet fitted on the
+gold tier: rows.csv is on the grid. tests/test_schwingcheck_correlation.py (12 tests).
 
 ## The scores and the records
 
@@ -1325,6 +1340,209 @@ The naming model's estimate at the places whose exact posterior is between 1e-06
 q(s), the place's posterior given the size, under the exact posterior of log s on a grid 0.0005 apart: the variance of q over the square of its mean, which is the variance of one independent draw's estimate relative to the place's posterior squared, so that an estimate within 10 per cent takes that over 0.01 draws; and the share of the size's posterior on which 90 per cent of the place's mass lies.
 <!-- /fixed_k:spread -->
 
+## The census of the measures
+
+The owner's ask of 29 October 2026, 15:09 UTC, "a census of the morphometrics information ranked in order of how much it helps each level be identified, ensured they are separated by orthogonal information provided", and at 15:18 UTC over "all ... unique measures from the clinical reread thread not just panjabi". [census.py](census.py) ranks every measure in hand by what it tells a lone body about its level, from every table in hand: Panjabi's four papers as one source, each series of the 39 other papers the clinical reread tabled as a source of its own, and, through the same command, a table in the schema agreed with the morphometrics thread (level, measure, kind, n, mean, sd, error, with a correlation table beside it), so that the gold tier 3 CT table is ranked the same way when it lands. Every key of the reread's vocabulary is ranked or listed with the reason it cannot be.
+
+```
+python -m schwingcheck.census run --series records/census-2026-10-29/inputs/series.csv --vocabulary records/census-2026-10-29/inputs/vocabulary.csv
+python -m schwingcheck.census run --table levels.csv --correlation correlation.csv --source gold3 --out records/census-gold3/census.json
+python -m schwingcheck.census table --which ranking|order|papers|unranked
+python -m schwingcheck.census check                           # whether this README carries the record's tables
+```
+
+**The information.** What a set of measures S from one source tells a lone body at level L is I_L(S) = E[log p(L | x, S)] - log p(L), in nats: the expected log posterior at the true level, under the exact rule ([rule.py](rule.py)) over the levels the source prints the measures at with a uniform prior over them, plus log K, the expectation taken over bodies the generator draws at L by the source's own table (the mean and spread at L, the patient's size log-normal with the rule's spread, each measure scaled by its kind's power of the size and read with its kind's error). It is 0 for a measure that says nothing and log K, 3.09 nats over the 22 levels C3 to L5 and 1.61 over the five lumbar ones, for a measure that names the body for certain; the share named exactly stands beside it. A measure printed at some levels only is ranked over those levels, a smaller question read against its own log K, and what a measure's presence says (a rib facet is thoracic) is not counted. The errors are the rule's stated ones, 1 mm, sqrt(pi A / 2) mm^2 and 3 degrees, and 0.04 for a ratio, which scales with no power of the size; a table that carries its own error column is read with it. Each source is one population measured one way (the owner's rule of 28 October 2026), so no information is ever computed across sources, and every number is synthetic, drawn from each table, never a patient.
+
+**The order.** Within a source, the measures printed at one set of levels are ordered greedily: the first is the one whose information summed over the levels is largest, and each next one adds the largest conditional gain, I_L(S + m) - I_L(S), summed over the levels. The conditional gain is what the measure adds given everything before it, so the order separates the information the measures carry: a measure that adds under a tenth of what it gives alone is listed under the earlier measure it shares most with, the pair's redundancy being I(m) + I(m') - I({m, m'}). The generator draws the measures independently given the level and the size, so that redundancy is what two measures share about the level, not a correlation between them; a correlation table, which the gold tier 3 schema carries (Pearson within each level), lists the pairs whose |r| reaches 0.7 at the median level as sharing too, measured rather than inferred.
+
+**The sources.** Panjabi's four papers: the 42 measures of the long table that print a spread (32 at every level C3 to L5, 10 in one region), each with its own error ([measures.py](measures.py)), a pair as its mean. The other papers: [the reread's series.csv](../records/census-2026-10-29/inputs/README.md), one source per (paper, cohort, technique, sex, group), the values a paper measured itself (a value quoted from another paper, a figure's example and a pig cohort are left out), a disc's row counted to the body above it, the sides averaged, rows at C2, S1, L6 or T13 left out since the census runs over C3 to L5, a measure's kind read from its units, and at least two levels with a spread, since one level names nothing. The vocabulary gives the keys the census could not rank, each with its reason.
+
+**The record.** census.json in [records/census-2026-10-29/](../records/census-2026-10-29/), with the command, the inputs by sha256, the seed, the nodes, the machine, the versions and the git state taken when it began (`made_by`), made from commit 227ccfc on 29 October 2026 on a cloud machine with 4 CPUs in Python 3.12.3, with other work sharing the machine; nothing changed while it ran. 100 bodies are drawn at each level for every source and group, so a standalone share named exactly carries a standard error of up to 5 points and a sum over 22 levels of information a standard error of about 0.1 nats; the tables below are read at that resolution.
+
+### What it found
+
+- **Of the 106 keys the clinical reread named, 68 are ranked and 38 cannot be.** 97 of the keys are a length, an area, an angle or a ratio of a vertebra; the other 9 are the papers' subjects, counts and verdicts (`subject_age`, `prevalence`, `reliability`, ...). Of the 97, Panjabi's table ranks 42 (32 at every level, 10 in one region), the 39 other papers rank 46, of which 26 are in no Panjabi table (`h_ant`, `h_mid`, `interpedicular`, `pedicle_chord`, `lamina_angle`, the disc heights, the foramen, the lamina and pedicle variants), 20 are measures of his printed by others too, 10 are printed everywhere as a mean with no spread (his 7 and `disc_index`, `endplate_concavity`, `spinous_angle`), and 19 are named in the reread's definitions but tabled by no paper in its series. 34 of the 39 papers give a series the census can rank; the five others print quoted values, means with no spread, or rows outside C3 to L5 only.
+- **One measure of Panjabi's carries a third of what all 32 carry, and five carry three quarters.** Over the 22 levels the most a source can give is 22 log 22 = 68.0 nats. The upper end-plate area alone gives 22.79 and names 19.2% of lone bodies exactly; the first five of the greedy order (the upper end-plate area, the transverse process width, the upper interfacet width, the superior facet's sagittal angle and the interfacet height) give 44.73 and name 56.5%; the first ten give 52.64 and name 71.0%; all 32 give 61.56, 90.5% of the maximum, and name 88.8% of lone bodies exactly (the one-vertebra evaluation's 86.8% is the same rule under the chain's prior on 11,000 fields). The three regions fill unevenly: with all 32 the cervical levels hold 14.9 of their 15.5 nats and are named 95.8% of the time, the lumbar 14.6 of 15.5 and 94.8%, the thoracic 32.0 of 37.1 and 83.4%; T6 is the level told least, 2.23 of 3.09 nats and 64% named, then T7, T5 and T4.
+- **22 of the 32 add under a tenth of what they give alone, once the measures before them are in.** The four widest end-plate measures each give 22 to 23 nats alone and name the same bodies: the lower end-plate width, sixth in the order, adds 2.14 of its 22.04 and shares 16.65 with the upper end-plate area; the upper end-plate width, 22nd, adds 0.35 of its 22.55; the posterior height, 14.48 alone, comes last and adds 0.04. The information the table carries about a lone body lives in about ten measures of different parts of the vertebra: the end-plate (one area), the transverse and spinous processes, the facets (an interfacet width and height, a sagittal angle), the pedicle (its width and sagittal inclination). The other 22 are the same information read again, which is what a correlation between them would also show, were one known; the generator draws them independently, so this redundancy is the floor of what real spines share.
+- **Of the seven a SPINEPS mask gives, none is among the first five, and together they carry what two or three of the best carry.** In the greedy order the lower end-plate width is sixth (adds 2.14 nats), the lower end-plate depth tenth (1.02), the upper end-plate depth 13th (0.73), the canal width 19th (0.46), the upper end-plate width 22nd (0.35), the canal depth 29th (0.20) and the posterior height 32nd (0.04); alone they give 22.6, 22.0, 18.3, 16.8, 14.5, 8.1 and 2.7 nats, the canal depth the least informative length of the 32 but for the two inclinations. The measures the mask does not give yet, and the census puts first, are the end-plate area, the transverse process width, the facets and the pedicle.
+- **Each level has a measure of its own.** Of Panjabi's 32, the lower end-plate width tells most alone at C3 and C4 (1.82 and 1.71 of 3.09 nats, C3 named 52% of the time from it alone), the spinous process length at C5 and L3, the posterior height at C6 (1.43), the lower end-plate depth at C7, the superior facet's sagittal angle at T1 (1.14, named 69%), the pedicle's transverse inclination at T2, the end-plate areas and depths from T3 to T9 (0.71 to 1.12), the lower end-plate width at T10 and T11, the upper end-plate width at T12 (1.26), the inferior facet's sagittal angle at L1 (1.69, named 67%), the superior facet's at L2, and the pedicle width at L4 and L5 (1.75 and 2.29, named 76% and 73% from it alone). The thoracic middle, T3 to T9, has no measure above 1.12 nats alone, and all 32 together reach 2.2 to 2.7 of 3.09 there; C7, T1 and T12 reach 3.08 or 3.09.
+- **Panjabi's measures printed in one region name a body within that region.** His six uncovertebral measures over C3 to C7 name 65.0% of lone cervical bodies among the five (chance 20%), nearly all of it the two frontal inclinations (0.68 and 0.60 of 1.61 nats); the pars area over T3 to L5 gives 0.27 of 2.71 nats (16% named among 15), the costotransverse area over T1 to T11 0.25 of 2.40, the costovertebral areas 0.12 and 0.16. What their presence says, that a rib facet is thoracic, is not counted here.
+- **Tan 2004 is the one other table that reaches every level with many measures, and it names a lone body as well as Panjabi's.** Its 18 measures printed at C3 to L5 (ten Chinese cadaver spines, a direct-contact 3D digitiser) give 2.73 of 3.09 nats a level and name 85.9% of lone bodies exactly; its order puts the lower end-plate width first (28.6 nats of 68), the pedicle's sagittal inclination second (12.0), the transverse process width third (5.2), and 10 of its 18 add under a tenth of what they give alone. Its spreads are smaller than Panjabi's, so at most levels its measures head the table across sources: its spinous length at C3 and C4 (2.60 and 2.27 nats), its end-plate widths from C5 to C7 and from T3 to T11, its pedicle sagittal inclination at T1, T8 and T9, its pedicle width at L5 (2.54). A source's nats are its own: a smaller printed spread, from a narrower population or a more exact technique, gives more, and the table says which measure of which table tells most, not which population is right.
+- **The other papers' tables tell less, and the lumbar-only ones ask a smaller question.** Busscher 2010's four heights at every level (the anterior, middle and posterior body heights and the disc's) name 34.7% of lone bodies; Hinck 1966's interpedicular distance alone, from AP films by age group, 12.5% to 14.3% (0.55 to 0.65 nats); Zindrick 1987's five pedicle measures over T1 to L5, 43.4% among 17. The 80 lumbar-only groups, five levels each, name a lone lumbar body 43.5% of the time at the median, from 23.8% (Shin 2024's foramen width) to 69.4% (Arockiaraj 2025's four pedicle measures; Griffith 2016's canal measures 65.6% in the largest quartile), against a chance of 20%. The best measures Panjabi did not print are the anterior body height (Tan 2004, 0.84 of 3.09 nats a level), the middle body height (Busscher 2010, 0.78), the interpedicular distance (Hinck 1966, 0.65), the pedicle chord (Tan 2004, 0.59 of 2.83), the lamina angle (Abbas 2021, 0.56 of 1.61) and the disc heights (Bach 2019, about 0.5 of 1.79).
+- **What the census does not say.** It ranks tables, not vertebrae: a measure's information is the generator's, drawn from one source's printed mean and spread with the rule's stated error, measures independent given the level and the size. The gold tier 3 table, measured on CTs with its own errors and its within-level correlations, is ranked by the same command when it lands, and its correlation table lists the sharing the generator cannot see; no pair is listed as sharing by correlation here, since no source in hand prints one.
+
+### The measures that tell most at each level
+
+The five measures, over every source, whose information alone is largest at each level, as `key, source, nats`; a measure from a source printed at fewer than 22 levels carries its own log K after a comma, since its question is smaller.
+
+<!-- census:ranking -->
+| Level | 1 | 2 | 3 | 4 | 5 |
+|---|---|---|---|---|---|
+| C3 | spinous_length, tan2004, 2.60 | endplate_lower, tan2004, 2.12 | endplate, tan2004, 2.08, of 3.04 | endplate_lower, panjabi, 1.82 | endplate_area, tan2004, 1.81 |
+| C4 | spinous_length, tan2004, 2.27 | endplate_lower, tan2004, 1.94 | endplate, tan2004, 1.87, of 3.04 | endplate_lower, panjabi, 1.71 | spinous_length, panjabi, 1.66 |
+| C5 | endplate, tan2004, 1.85, of 3.04 | endplate_lower, tan2004, 1.84 | spinous_length, tan2004, 1.84 | spinous_length, panjabi, 1.69 | pedicle_incl_sag, tan2004, 1.58 |
+| C6 | endplate_lower, tan2004, 1.76 | pedicle_incl_sag, tan2004, 1.53 | h_post, busscher2010, 1.50 | h_post, panjabi, 1.43 | interfacet_w_sup, panjabi, 1.38 |
+| C7 | pedicle_incl_sag, tan2004, 1.78 | endplate, tan2004, 1.63, of 3.04 | endplate_lower, tan2004, 1.52 | endplate_lower_depth, panjabi, 1.32 | h_post, busscher2010, 1.25 |
+| T1 | pedicle_incl_sag, tan2004, 1.34 | pedicle_incl_sag, lien2007, 1.30, of 2.83 | pedicle_incl_sag, zindrick1987, 1.21, of 2.83 | facet_sag_sup, panjabi, 1.14 | transverse_width, tan2004, 1.13 |
+| T2 | pedicle_incl_trans, panjabi, 1.22 | endplate_depth, panjabi, 1.17 | endplate_depth, tan2004, 1.15 | endplate_lower_depth, tan2004, 1.00 | endplate_lower_area, panjabi, 0.99 |
+| T3 | endplate_depth, tan2004, 1.21 | endplate_lower_depth, tan2004, 1.01 | endplate_area, tan2004, 1.00 | endplate_lower, tan2004, 0.97 | endplate_area, panjabi, 0.95 |
+| T4 | endplate_depth, tan2004, 1.25 | endplate_area, tan2004, 1.13 | endplate_lower_depth, tan2004, 1.05 | pedicle_chord, tan2004, 0.94, of 2.83 | pedicle_w, lien2007, 0.91, of 2.83 |
+| T5 | endplate_lower, tan2004, 1.09 | endplate_depth, tan2004, 1.03 | endplate_area, tan2004, 0.95 | endplate_area, panjabi, 0.84 | endplate_lower_depth, tan2004, 0.83 |
+| T6 | endplate_depth, tan2004, 1.03 | endplate_lower_area, panjabi, 0.94 | endplate_lower_depth, tan2004, 0.94 | endplate_area, panjabi, 0.89 | endplate_area, tan2004, 0.89 |
+| T7 | endplate_area, panjabi, 1.01 | endplate_area, tan2004, 0.94 | endplate_lower, tan2004, 0.94 | endplate_lower_area, tan2004, 0.91, of 3.04 | endplate_lower_depth, tan2004, 0.90 |
+| T8 | pedicle_incl_sag, tan2004, 1.46 | endplate_area, panjabi, 1.12 | endplate_area, tan2004, 1.00 | endplate_lower_area, panjabi, 0.92 | endplate_lower, tan2004, 0.90 |
+| T9 | pedicle_incl_sag, tan2004, 1.15 | endplate, tan2004, 1.02, of 3.04 | endplate_area, tan2004, 0.96 | endplate_lower, tan2004, 0.95 | endplate_lower_area, tan2004, 0.85, of 3.04 |
+| T10 | endplate_lower, tan2004, 1.47 | pedicle_incl_sag, tan2004, 1.34 | endplate, tan2004, 1.13, of 3.04 | endplate_lower_area, tan2004, 1.03, of 3.04 | endplate_lower, panjabi, 1.01 |
+| T11 | endplate_lower, tan2004, 1.51 | costotransverse_area, panjabi, 1.45, of 2.40 | endplate, tan2004, 1.37, of 3.04 | pedicle_incl_sag, tan2004, 1.29 | endplate_area, tan2004, 1.20 |
+| T12 | endplate, panjabi, 1.26 | pedicle_incl_sag, zindrick1987, 1.25, of 2.83 | pedicle_incl_sag, tan2004, 1.24 | endplate_lower, tan2004, 1.23 | endplate, tan2004, 1.18, of 3.04 |
+| L1 | facet_sag_inf, panjabi, 1.69 | endplate, tan2004, 1.22, of 3.04 | endplate_lower, tan2004, 1.21 | facet_sag_sup, panjabi, 1.18 | endplate_lower, panjabi, 1.16 |
+| L2 | endplate_lower_area, tan2004, 1.45, of 3.04 | facet_sag_sup, panjabi, 1.39 | endplate_lower, tan2004, 1.30 | pedicle_chord, tan2004, 1.29, of 2.83 | spinous_length, panjabi, 1.29 |
+| L3 | endplate_area, tan2004, 1.49 | endplate_lower, tan2004, 1.45 | spinous_length, panjabi, 1.37 | facet_sag_sup, panjabi, 1.36 | transverse_width, tan2004, 1.35 |
+| L4 | pedicle_w, panjabi, 1.75 | endplate_lower, tan2004, 1.74 | facet_sag_sup, panjabi, 1.70 | endplate_lower_area, tan2004, 1.64, of 3.04 | endplate_area, tan2004, 1.62 |
+| L5 | pedicle_w, tan2004, 2.54 | pedicle_area, tan2004, 2.46 | pedicle_w, panjabi, 2.29 | pedicle_w, lien2007, 2.28, of 2.83 | pedicle_h, tan2004, 2.11 |
+<!-- /census:ranking -->
+
+### Panjabi's 32 in the order that separates their information
+
+Each measure's information alone summed over the 22 levels, what it adds given the measures before it, that gain by region, and, where it adds under a tenth of what it gives alone, the earlier measure it shares most with and the pair's redundancy.
+
+<!-- census:order -->
+| # | Measure | Alone, nats | Adds, nats | Adds C | Adds T | Adds L | Repeats |
+|---|---|---|---|---|---|---|---|
+| 1 | endplate_area | 22.79 | 22.79 | 6.46 | 11.04 | 5.29 |  |
+| 2 | transverse_width | 13.42 | 9.03 | 1.16 | 5.58 | 2.28 |  |
+| 3 | interfacet_w_sup | 14.19 | 6.34 | 2.12 | 3.34 | 0.88 |  |
+| 4 | facet_sag_sup | 15.71 | 3.71 | 0.77 | 1.64 | 1.30 |  |
+| 5 | interfacet_h | 16.43 | 2.88 | 0.94 | 1.02 | 0.92 |  |
+| 6 | endplate_lower | 22.04 | 2.14 | 0.78 | 1.15 | 0.21 | endplate_area (16.65) |
+| 7 | pedicle_w | 8.92 | 1.80 | 0.07 | 0.58 | 1.15 |  |
+| 8 | spinous_length | 18.01 | 1.61 | 0.51 | 0.95 | 0.16 | endplate_lower (11.04) |
+| 9 | facet_sag_inf | 14.47 | 1.34 | 0.05 | 0.81 | 0.47 | endplate_lower (9.39) |
+| 10 | endplate_lower_depth | 16.83 | 1.02 | 0.28 | 0.59 | 0.16 | endplate_area (13.83) |
+| 11 | pedicle_incl_sag | 8.19 | 0.94 | 0.33 | 0.45 | 0.15 |  |
+| 12 | pedicle_h | 14.79 | 0.89 | 0.08 | 0.54 | 0.27 | endplate_area (10.82) |
+| 13 | endplate_depth | 18.25 | 0.73 | 0.10 | 0.57 | 0.06 | endplate_area (15.61) |
+| 14 | interfacet_w_inf | 14.04 | 0.73 | 0.18 | 0.32 | 0.22 | interfacet_w_sup (7.91) |
+| 15 | facet_trans_sup | 12.60 | 0.62 | 0.12 | 0.38 | 0.13 | endplate_area (8.91) |
+| 16 | facet_w_sup | 4.24 | 0.57 | 0.01 | 0.46 | 0.10 |  |
+| 17 | canal_area | 3.70 | 0.45 | 0.04 | 0.32 | 0.09 |  |
+| 18 | facet_area_sup | 7.32 | 0.45 | 0.14 | 0.22 | 0.09 | facet_sag_sup (4.24) |
+| 19 | canal_w | 8.13 | 0.46 | 0.14 | 0.26 | 0.05 | interfacet_w_inf (4.23) |
+| 20 | facet_h_inf | 5.81 | 0.39 | 0.07 | 0.17 | 0.15 | facet_sag_sup (3.90) |
+| 21 | endplate_lower_area | 21.93 | 0.37 | 0.13 | 0.24 | 0.00 | endplate_area (18.00) |
+| 22 | endplate | 22.55 | 0.35 | 0.04 | 0.29 | 0.02 | endplate_area (17.70) |
+| 23 | pedicle_incl_trans | 8.81 | 0.32 | 0.18 | 0.11 | 0.02 | endplate_lower (4.79) |
+| 24 | pedicle_area | 11.37 | 0.30 | 0.01 | 0.21 | 0.08 | endplate_lower (9.04) |
+| 25 | facet_w_inf | 4.61 | 0.29 | 0.01 | 0.23 | 0.05 | interfacet_w_inf (1.88) |
+| 26 | facet_area_inf | 7.45 | 0.22 | 0.00 | 0.16 | 0.05 | facet_sag_sup (4.79) |
+| 27 | facet_trans_inf | 8.26 | 0.21 | 0.03 | 0.14 | 0.04 | endplate_lower_area (5.69) |
+| 28 | endplate_incl | 1.49 | 0.21 | 0.07 | 0.08 | 0.06 |  |
+| 29 | canal_ap | 2.68 | 0.20 | 0.01 | 0.17 | 0.03 | facet_sag_inf (1.05) |
+| 30 | facet_h_sup | 4.72 | 0.10 | 0.05 | -0.01 | 0.06 | endplate_lower (3.16) |
+| 31 | endplate_lower_incl | 0.80 | 0.07 | 0.01 | 0.00 | 0.05 | spinous_length (0.17) |
+| 32 | h_post | 14.48 | 0.04 | 0.02 | 0.02 | 0.00 | endplate_area (12.61) |
+<!-- /census:order -->
+
+### What the other papers' tables carry
+
+Every measure the 39 other papers print with a spread at two levels or more, Panjabi's or not: how many sources print it, the levels covered over all of them, and the largest information it gives alone in any one source as a mean over that source's levels, against that source's log K.
+
+<!-- census:papers -->
+| Measure | In Panjabi | Sources | Levels | Best mean nats (source, levels) |
+|---|---|---|---|---|
+| endplate_lower | yes | 6 | C3 to L5 (22) | 1.30 of 3.09 (tan2004, 22) |
+| endplate | yes | 6 | C3 to L5 (21) | 1.20 of 3.04 (tan2004, 21) |
+| endplate_area | yes | 2 | C3 to L5 (22) | 1.18 of 3.09 (tan2004, 22) |
+| pedicle_incl_sag | yes | 10 | C3 to L5 (22) | 1.12 of 3.09 (tan2004, 22) |
+| endplate_depth | yes | 7 | C3 to L5 (22) | 1.03 of 3.09 (tan2004, 22) |
+| endplate_lower_area | yes | 2 | C3 to L5 (22) | 1.03 of 3.04 (tan2004, 21) |
+| endplate_lower_depth | yes | 7 | C3 to L5 (22) | 0.91 of 3.09 (tan2004, 22) |
+| h_post | yes | 8 | C3 to L5 (22) | 0.87 of 3.09 (tan2004, 22) |
+| h_ant | no | 8 | C3 to L5 (22) | 0.84 of 3.09 (tan2004, 22) |
+| pedicle_h | yes | 30 | C3 to L5 (22) | 0.79 of 3.09 (tan2004, 22) |
+| h_mid | no | 3 | C3 to L5 (22) | 0.78 of 3.09 (busscher2010, 22) |
+| pedicle_area | yes | 3 | C3 to L5 (22) | 0.71 of 3.09 (tan2004, 22) |
+| transverse_width | yes | 1 | C3 to L5 (22) | 0.67 of 3.09 (tan2004, 22) |
+| interpedicular | no | 11 | C3 to L5 (22) | 0.65 of 3.09 (hinck1966, 22) |
+| pedicle_w | yes | 36 | C3 to L5 (22) | 0.63 of 2.83 (lien2007, 17) |
+| spinous_length | yes | 1 | C3 to L5 (22) | 0.60 of 3.09 (tan2004, 22) |
+| pedicle_chord | no | 9 | T1 to L5 (17) | 0.59 of 2.83 (tan2004, 17) |
+| canal_w | yes | 14 | C3 to L5 (22) | 0.59 of 3.09 (tan2004, 22) |
+| lamina_angle | no | 4 | L1 to L5 (5) | 0.56 of 1.61 (abbas2021, 5) |
+| disc_h_ant | no | 22 | C7 to L5 (18) | 0.54 of 1.79 (bach2019, 6) |
+| pedicle_incl_trans | yes | 7 | C3 to L5 (22) | 0.54 of 2.83 (lien2007, 17) |
+| disc_h_mean | no | 34 | T12 to L5 (6) | 0.45 of 1.79 (bach2019, 6) |
+| disc_h_mid | no | 22 | C3 to L5 (22) | 0.45 of 3.09 (busscher2010, 22) |
+| pedicle_length | no | 3 | L1 to L5 (5) | 0.44 of 1.61 (arockiaraj2025, 5) |
+| pedicle_w_inner | no | 1 | L1 to L5 (5) | 0.44 of 1.61 (makino2012, 5) |
+| endplate_lower_incl | yes | 1 | C3 to L5 (22) | 0.38 of 3.09 (tan2004, 22) |
+| canal_ap | yes | 17 | C3 to L5 (22) | 0.32 of 1.61 (griffith2016, 5) |
+| body_area | no | 9 | L1 to L5 (5) | 0.31 of 1.61 (griffith2016, 5) |
+| foramen_h | no | 18 | T12 to L5 (6) | 0.30 of 1.79 (bach2019, 6) |
+| disc_h_post | no | 22 | C7 to L5 (18) | 0.29 of 1.79 (bach2019, 6) |
+| endplate_incl | yes | 1 | C3 to L5 (22) | 0.27 of 3.09 (tan2004, 22) |
+| canal_index | no | 6 | L1 to L5 (5) | 0.21 of 1.61 (griffith2016, 5) |
+| body_w_mid | no | 2 | L1 to L5 (5) | 0.21 of 1.61 (abbas2021, 5) |
+| canal_area | yes | 9 | C3 to L5 (22) | 0.19 of 1.61 (griffith2016, 5) |
+| lateral_recess | no | 1 | T12 to L5 (6) | 0.17 of 1.79 (yadav2020, 6) |
+| facet_w_sup | yes | 2 | L1 to L5 (5) | 0.17 of 1.61 (masharawi2021, 5) |
+| facet_angle_axial | no | 2 | L1 to L5 (5) | 0.16 of 1.61 (masharawi2021, 5) |
+| pedicle_h_inner | no | 1 | L1 to L5 (5) | 0.14 of 1.61 (makino2012, 5) |
+| body_w | no | 1 | L1 to L5 (5) | 0.13 of 1.61 (moncadahabib2025, 5) |
+| foramen_w | no | 4 | T12 to L5 (6) | 0.12 of 1.79 (yadav2020, 6) |
+| body_d_mid | no | 3 | L1 to L5 (5) | 0.08 of 1.61 (abbas2021, 5) |
+| pedicle_cortex | no | 1 | L1 to L5 (5) | 0.03 of 1.61 (otsuki2021, 5) |
+| body_d | no | 2 | T10 to L5 (8) | 0.03 of 1.61 (moncadahabib2025, 5) |
+| foramen_area | no | 1 | L1 to L5 (5) | 0.01 of 1.61 (shin2024, 5) |
+| disc_d | no | 1 | L3 to L5 (3) | -0.00 of 1.10 (tang2016, 3) |
+| disc_w | no | 1 | L3 to L5 (3) | -0.01 of 1.10 (tang2016, 3) |
+<!-- /census:papers -->
+
+### The keys the census cannot rank
+
+<!-- census:unranked -->
+| Key | Why it is not ranked |
+|---|---|
+| alignment | named in the reread, no paper prints a table of it |
+| body_index | named in the reread, no paper prints a table of it |
+| costovertebral_area | printed as a mean with no spread |
+| disc_index | printed as a mean with no spread |
+| endplate_concavity | printed as a mean with no spread |
+| endplate_wedge | printed as a mean with no spread |
+| facet_angle_sagittal | named in the reread, no paper prints a table of it |
+| facet_card_x_inf | printed as a mean with no spread |
+| facet_card_x_sup | printed as a mean with no spread |
+| facet_card_y_inf | printed as a mean with no spread |
+| facet_card_y_sup | printed as a mean with no spread |
+| facet_gap | named in the reread, no paper prints a table of it |
+| facet_tropism | named in the reread, no paper prints a table of it |
+| h_lat | named in the reread, no paper prints a table of it |
+| lamina_h | named in the reread, no paper prints a table of it |
+| lamina_thickness | named in the reread, no paper prints a table of it |
+| lamina_w | named in the reread, no paper prints a table of it |
+| other | not a measure of a vertebra (other) |
+| pars_w | named in the reread, no paper prints a table of it |
+| pedicle_angle_sagittal | named in the reread, no paper prints a table of it |
+| pedicle_angle_transverse | named in the reread, no paper prints a table of it |
+| pedicle_h_outer | named in the reread, no paper prints a table of it |
+| pedicle_w_outer | named in the reread, no paper prints a table of it |
+| prevalence | not a measure of a vertebra (percent) |
+| reliability | not a measure of a vertebra (other) |
+| rib | not a measure of a vertebra (other) |
+| rib_articulation_area | printed as a mean with no spread |
+| sacrum | not a measure of a vertebra (other) |
+| spinous_angle | printed as a mean with no spread |
+| spinous_h | named in the reread, no paper prints a table of it |
+| subject_age | not a measure of a vertebra (years) |
+| subject_bmi | not a measure of a vertebra (other) |
+| subject_count | not a measure of a vertebra (count) |
+| subject_height | named in the reread, no paper prints a table of it |
+| subject_weight | not a measure of a vertebra (other) |
+| transverse_h | named in the reread, no paper prints a table of it |
+| transverse_length | named in the reread, no paper prints a table of it |
+| wedge | named in the reread, no paper prints a table of it |
+<!-- /census:unranked -->
+
 ## Tests
 
 268 tests, whose full run in the pinned environment on Python 3.12.3 took 1,041 s on 29 October 2026, run as `python -m unittest tests/test_schwingcheck_*.py` with no other job sharing the CPU (the 229 before the fixed-k NUTS review took 959 s on 29 October 2026, the 200 before the one-vertebra evaluation 1,059 s on 29 October 2026, the 177 at the checkpoint of 29 October 2026, 00:40 UTC were not timed, the 146 before the chain took 566 s, the 143 before the build-up study's final review 764 s, the 135 before its full run's record 563 s, the 132 before its second review 554 s, the 92 before the build-up study 1,114 s with other jobs sharing the CPU, and the 90 before the review's third check 460 s), the slowest the record test, which rescores the record twice, and the NUTS runs:
@@ -1342,6 +1560,7 @@ q(s), the place's posterior given the size, under the exact posterior of log s o
 - `test_schwingcheck_one_body.py` (29): the one-body rule is the chain at one body, its posterior over the names under every prior chain.logev's within 1e-12, a value not read among them, and with the typical prior step d's rule (rule.name) at one body, nothing on the L6 or the T13; the prior over the names sums to one and gives an L6 and a T13 nothing for the typical column; a prefix of the whole build-up order is all 32, and its first measure is rule.py's on that measure alone; the heights are centred on the specimens' mean with their spread and the sizes on the heights with the residual, keeping the generator's spread of size whole, each size rule takes the mean and SD it says, and each rule's nodes hold its prior's mean and spread where the height puts it; every body is a field of its own under its own name, each type is drawn at its patients' sizes, and a given size multiplies every length by its power; a coarse claim holds an L6 and a T13 by their places and C3 to L5 as the coarse study does, and its rates count what it says; a quick run makes every body of its columns a field and gives every row, level and claim its tables read, a row is its own rule scored afresh on its own fields (the size given, the first five of the order, a height rule, the papers' low weights, every type), its levels add up to their type's rows and its confusion counts to the levels, the typical rule never names an L6 or a T13, one cell of each table is its rows', `check` finds the README's tables and a changed one, the figures drawn twice are the same files, every caption is under sixty words and says the columns are synthetic, the CSVs hold the record's numbers, and the record names its code and the build-up order it read; the committed record's tables are this README's, it was made by committed code that did not change while it ran, its figures, images included, are byte for byte what the code draws from it, and the README shows each figure.
 - `test_schwingcheck_fixed_k.py` (35): free_level's log density at a place, a size and offsets is place_loglik's with the priors, and with the offsets integrated out by Gauss-Hermite quadrature rule.py's likelihood at that size, to 3e-14; the batch-means helpers give a share and its error as a hand count does, and the averaged posterior is the mean of the place's conditional; draws of log s made independently from its exact posterior have its mean and SD on the example field, whose top place's conditional lies outside the bounds, the closed form's interval reads the distribution function at the nodes where the cumulative sum alone sits half a step low, and the spread rows' posteriors are the exact posterior; Liu's Metropolised Gibbs and the uniform proposal leave a place's law stationary, and PyMC's proportional proposal, as its code computes the acceptance with its own rounding, another law, or on two places none, at 0.5 and 0.5, or each place half, at 0.89 and 0.11; the bare log density is PyMC's own compiled one and its softmax rounds as PyMC's does, a ratio above one both ways where the plain renormalisation gives one below; a quick run gives every row its tables read, its known runs' closed form a density of log s whose interval is grid_summary's with ArviZ's trace and forest drawn, the proportional proposal stops on a place all but certain and says why, the summed-out model is exact within its errors on every field, outright where its chains agree and flagged by R-hat where one sat in a far mode, each proposal on a bare place gives the law its kernel leaves stationary or never moves where it has none, check finds a stale or missing table, and the figures drawn twice are the same files; the committed record: this README carries its tables, committed code that did not change while it ran made it, its FIGURES.md names the record, the draws and the code by their hashes and every committed figure file is what the code draws from it, PNG and PDF included, NUTS with the levels known is the closed form within four errors with R-hat below 1.01, the uniform proposal leaves chains that disagree, the proportional one agreeing chains more than 2.9 errors off on every field and on a bare place its kernel's law, it stopped on every sharp field, the one summed-out field a stuck chain kept within five errors has R-hat above 1.5, the far tail runs low on NUTS's draws and on independent ones, lower on NUTS's and less on NUTS ten times as long, and every number this section's prose gives of the record, the level known, each proposal, the place summed out, the sharp fields and the far tail, is the record's at the precision printed.
 - `test_schwingcheck_categorical.py` (4): one Metropolised Gibbs move from each value goes where Liu's kernel says, counted over 40,000 moves; one less each probability is the log-sum-exp of the others' probabilities; in pm.sample the step gives a bare Categorical its own law, on three values and on the two where PyMC's proportional proposal gives each value half; and a value certain or all but certain is kept, with no NaN and no error.
+- `test_schwingcheck_census.py` (22): a measure whose means stand apart gives nearly log K at every level and names nearly every body, one the same at every level gives nothing and names one body in K, and no measure gives more than log K; each kind is drawn by the generator's law, an angle never scaled by the size; the greedy order adds the largest gain and its cumulative information never falls, and a twin of a separating measure adds under a tenth of what it gives alone and is listed under it with nearly the whole of its information as their redundancy; a correlation table lists a pair at the threshold and not below it; Panjabi's four papers are one source of 42 measures in six groups of levels, the 32 at every level the pool, with 7 unranked for want of a spread; a disc counts to the body above it and nothing outside C3 to L5; the errors are the rule's by kind; a small series becomes one source per (paper, cohort, technique, sex, group) with every reason for leaving a key out, and a table in the morphometrics schema reads its error column and the median |r| of its correlation table and refuses a kind the census does not take; a run on Panjabi's table and one small series writes a record that says how it was made, ranks or lists every key of its vocabulary once with its reason, and whose four tables the check finds in a README and whose changed cell it catches, and the command line prints a table; the committed record: this README carries its tables, committed code that did not change while it ran made it, its inputs are the committed copies by sha256, its sources are what the committed series give, every one of the vocabulary's 106 keys is ranked or listed once, and no information stands above log K.
 
 ## What step e takes from here
 
