@@ -322,6 +322,21 @@ def agreed_levels(entry):
     return best
 
 
+SUB_CANAL = 61          # SPINEPS's spinal canal (grid/autoanatomist/scanimport/schemes.py)
+
+
+def subregions_to_read(sub, shape):
+    """The subregion mask the oracle reads a case with, or None to read each vertebra whole. The oracle
+    measures the subregions about the spinal canal, so a mask with no canal leaves every level unread:
+    C-ArmLSpine's SPINEPS masks from the CBCT carry none (their 70 to 74 are the sacrum's parts), and
+    with them all 125 cases' landmarks came back NaN, the real arm had no run and no frame to read, and
+    the loop of 2026-10-31 (chain 40903197) stopped on real naming's missing data. Read whole, the
+    same masks give the landmarks of nearly every level (docs/research/qa-loop/DEVIATIONS.md)."""
+    if sub is None or sub.shape != tuple(shape) or not (sub == SUB_CANAL).any():
+        return None
+    return sub
+
+
 def read_pair(root, case, levels, size=512):
     """One case's pair, read on the grid: the oracle's landmarks on its SPINEPS masks for the agreed
     levels and the sacrum's centroid, in LPS millimetres as the poses take them, and each posed
@@ -333,8 +348,7 @@ def read_pair(root, case, levels, size=512):
     labels = np.asarray(vert.dataobj).astype(np.int16)
     sub_path = root / "spineps" / f"{case}_seg-spine_msk.nii.gz"
     sub = np.asarray(nib.load(str(sub_path)).dataobj).astype(np.int16) if sub_path.is_file() else None
-    if sub is not None and sub.shape != labels.shape:
-        sub = None
+    sub = subregions_to_read(sub, labels.shape)
     names = {VERSE_ID[lv]: lv for lv in levels}
     keys = tuple(specs.SEVEN + specs.EXTRA)
     readings = {r.level: r for r in ChordOracle(keys).read(labels, vert.affine, names, sub)}

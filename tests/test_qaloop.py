@@ -474,6 +474,28 @@ class ReviewFixesTest(unittest.TestCase):
         self.assertEqual(samples.agreed_levels(entry(["L1", "L2", "L4", "L5"])), ["L1", "L2"])
         self.assertIsNone(samples.agreed_levels(entry(["L1", "L2"], flags=["six_lumbar"])))
 
+    def test_a_subregion_mask_with_no_canal_is_left_out_and_the_levels_read_whole(self):
+        import importlib
+        import sys
+        import numpy as np
+        samples = load_tool("qaloop_samples")
+        saved = list(sys.path)
+        try:
+            sys.path.insert(0, str(ROOT / "grid" / "autoanatomist"))
+            schemes = importlib.import_module("scanimport.schemes")
+        finally:
+            sys.path[:] = saved
+        self.assertEqual(samples.SUB_CANAL, schemes.SUB_CANAL)
+        # as C-ArmLSpine's CBCT masks carry them: the vertebra's parts and the sacrum's (70 to 74), no canal
+        carm = np.zeros((4, 4, 4), np.int16)
+        carm[0, :2, :2], carm[1, :2, :2], carm[2, :2, :2] = 49, 41, 72
+        self.assertIsNone(samples.subregions_to_read(carm, carm.shape))
+        canal = carm.copy()
+        canal[3, :2, :2] = samples.SUB_CANAL
+        self.assertIs(samples.subregions_to_read(canal, canal.shape), canal)
+        self.assertIsNone(samples.subregions_to_read(canal, (4, 4, 5)))
+        self.assertIsNone(samples.subregions_to_read(None, (4, 4, 4)))
+
 
 def load_tool(name):
     """A tool of tools/ loaded by its path, sys.path as it was after, since the round tool sets its own."""
