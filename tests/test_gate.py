@@ -5616,7 +5616,7 @@ exit "${FAKE_RC:-0}"
     def test_qaloop_refuses_a_plan_without_its_file_its_frozen_cover_its_class_its_flow_or_a_loops_pairs(self):
         gate = (ROOT / "grid" / "gate.sh").read_text(encoding="utf-8")
         # every link on galhp's L40S cards, as the auto-anatomist's trials, and six links of 12 hours a loop
-        self.assertIn("\nQALOOP_PARTITION=galhp\n", gate)
+        self.assertIn("\nQALOOP_PARTITION=${QALOOP_PARTITION:-galhp}\n", gate)
         self.assertIn("\nQALOOP_LINKS=6\n", gate)
         self.assertEqual(self.gate("qaloop").returncode, 64)
         refused = self.gate("qaloop", "qa_nope")
@@ -5673,6 +5673,16 @@ exit "${FAKE_RC:-0}"
         self.assertIn("flows/registry.txt names grid/qaloop.sbatch as no flow's job script", refused.stdout)
         self.assertEqual(self.submitted(), [])
         self.assertFalse((self.repo / "grid" / "logs" / "QALOOP-qa_smoke.chain").exists())
+
+    def test_qaloop_sent_by_hand_may_name_the_partition_and_the_card(self):
+        self.qaloop_ready()
+        done = self.gate("qaloop", "qa_smoke", QALOOP_PARTITION="reqp", QALOOP_GPU_TYPE="nvidia_a30")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        lines = self.submitted()
+        self.assertEqual(len(lines), 1, lines)
+        self.assertIn("--class gpu --name qaloop_qa_smoke --partition reqp --gpu-type nvidia_a30 --cpus 8 --mem 64G --time 12:00:00 "
+                      "--no-requeue qaloop.sbatch |", lines[0])
+        self.assertIn("1 GPU link(s) of 12 hours on reqp", done.stdout)
 
     def test_qaloop_queues_the_smoke_as_one_link_shows_its_rounds_carries_an_unended_chain_on_and_prints_its_report(self):
         full = self.qaloop_ready()

@@ -394,8 +394,13 @@ AUTOANATOMIST_PARTITION=galhp
 # where a send while a link lasts reads each round's PROGRESS.txt.
 QALOOP_ROOT=${QALOOP_ROOT:-$VOLUME/go2432/qaloop}
 # The partition every link of the loop is sent to (word_qaloop): galhp's L40S cards, for the reason
-# AUTOANATOMIST_PARTITION gives, since the loop trains the same network under the same pins.
-QALOOP_PARTITION=galhp
+# AUTOANATOMIST_PARTITION gives, since the loop trains the same network under the same pins. A send by
+# hand may name another partition with QALOOP_PARTITION and a card with QALOOP_GPU_TYPE (hpcworker
+# framework 29): on 1 November all six galhp nodes were held by jobs of 28 days, five of them draining,
+# while the batch partition reqp had A30 cards idle, where a link may be preempted and the chain's
+# next send carries it on.
+QALOOP_PARTITION=${QALOOP_PARTITION:-galhp}
+QALOOP_GPU_TYPE=${QALOOP_GPU_TYPE:-}
 # The links a send of a loop plan queues, each a GPU job of 12 hours afterany the one before, so the
 # loop runs up to three days on one send; a smoke plan is one link.
 QALOOP_LINKS=6
@@ -3334,7 +3339,8 @@ qaloop_queue() {  # qaloop_queue CHAIN COMMIT FIRST LINKS: links FIRST to LINKS 
   for ((link = first; link <= links; link++)); do
     depend_on "$after" || return 1
     job=$(submit "qaloop_$id" gpu "${loop[@]}" QALOOP_LINK="$link" ${chain:+QALOOP_CHAIN="$chain"} ${opts[@]+"${opts[@]}"} \
-      --partition "$QALOOP_PARTITION" --cpus 8 --mem 64G --time 12:00:00 --no-requeue -- "$(qaloop_kind "$id").sbatch") || {
+      --partition "$QALOOP_PARTITION" ${QALOOP_GPU_TYPE:+--gpu-type "$QALOOP_GPU_TYPE"} --cpus 8 --mem 64G --time 12:00:00 --no-requeue \
+      -- "$(qaloop_kind "$id").sbatch") || {
       [ "$link" = "$first" ] && return 1
       echo "  link $link was refused; the links queued before it stand, and the next send carries the chain on" >&2
       echo "$chain"
