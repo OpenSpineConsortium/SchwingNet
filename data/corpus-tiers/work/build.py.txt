@@ -1,0 +1,72 @@
+"""Build data/corpus-tiers/sources.json from the verified rows, the adjudicated corrections and the
+pending rows written by hand. Kept as text so no check reads it as code: copy it to build.py beside rows-verified.json,
+critics.json and hand_rows.json and run python3 build.py from this folder."""
+import json, re, sys, unicodedata
+from pathlib import Path
+S = Path(__file__).parent
+REPO = Path("/home/claude/SchwingNet")
+TIERS = ("gold1", "gold2", "gold3", "gold4", "silver1", "silver2", "silver3", "silver4", "outside", "unknown")
+KEEP = ["id", "name", "status", "modalities", "n_persons", "n_studies", "count_basis", "coverage", "full_n", "partial_n",
+        "paired", "paired_n", "human_vertebral_annotation", "human_annotation_what", "machine_labels", "spineps_masks_n",
+        "synthetic_only", "tiers", "tier_basis", "dominant_tier", "expected_if_obtained", "licence", "licence_class",
+        "conversions", "overlap_with", "counted_in", "truth_caveats", "notes", "evidence"]
+PREFIXES = [("/home/claude/SchwingNet/", ""), ("/home/claude/spine-datasets/", "spine-datasets:"),
+            ("/home/claude/spinesurg-ct-nnunet/", "spinesurg-ct-nnunet:"), ("/home/claude/symphony-template/", "symphony-template:"),
+            ("/home/claude/bordercall/", "bordercall:"), ("/home/claude/", "")]
+
+def ascii(x):
+    if isinstance(x, str):
+        for a, b in PREFIXES:
+            x = x.replace(a, b)
+        x = (x.replace("\u2013", "-").replace("\u2014", "-").replace("\u2019", "'").replace("\u2018", "'")
+              .replace("\u201c", '"').replace("\u201d", '"').replace("\u00d7", "x").replace("\u2264", "<=")
+              .replace("\u2265", ">=").replace("\u2192", "->").replace("\u00b1", "+-").replace("\u2026", "...")
+              .replace("\u00b5", "u").replace("\u03bc", "u").replace("\u00b0", " deg"))
+        x = unicodedata.normalize("NFKD", x).encode("ascii", "ignore").decode()
+        return x
+    if isinstance(x, list):
+        return [ascii(v) for v in x]
+    if isinstance(x, dict):
+        return {k: ascii(v) for k, v in x.items()}
+    return x
+
+def main():
+    rows = {r["id"]: r for r in json.loads((S / "rows-verified.json").read_text())["rows"]}
+    extra = json.loads((S / "critics.json").read_text()) if (S / "critics.json").exists() else {}
+    for r in extra.get("missing_rows", []):
+        rows.setdefault(r["id"], r)
+    for r in json.loads((S / "hand_rows.json").read_text()):
+        rows[r["id"]] = dict(rows.get(r["id"], {}), **r)
+    ZERO = {k: 0 for k in TIERS}
+    resolve = [  # the four places where two lenses' accepted values differed, settled by hand
+        {"id": "nnunet_dataset815", "field": "counted_in", "value": "ctspinopelvic1k"},
+        {"id": "idc_tier1", "field": "tiers", "value": dict(ZERO, gold4=320, silver4=3179, unknown=101)},
+        {"id": "idc_tier1", "field": "full_n", "value": 320},
+        {"id": "tcia_ct_colonography", "field": "tiers", "value": dict(ZERO, unknown=23)},
+        {"id": "panorama", "field": "tiers", "value": dict(ZERO, silver4=1949)}]
+    applied, skipped = 0, []
+    resolved = [r for r in resolve]
+    for c in extra.get("accepted", []) + resolved:
+        r = rows.get(c["id"])
+        if r is None:
+            skipped.append(c); continue
+        r[c["field"]] = c["value"]; applied += 1
+    out = []
+    for rid in sorted(rows):
+        r = rows[rid]
+        t = {k: int(r.get("tiers", {}).get(k, 0) or 0) for k in TIERS}
+        rec = {k: r.get(k) for k in KEEP if r.get(k) not in (None, "", [])}
+        rec["tiers"] = t
+        if (REPO / "data" / "sources" / (rid + ".json")).exists():
+            rec["record"] = "data/sources/%s.json" % rid
+        out.append(ascii(rec))
+    doc = {"about": ("The owner's gold and silver tiers of 2026-10-27, one row per source: tools/corpus_tiers.py "
+                     "reads it (table, power) and the census places every held CT by its census_collections. "
+                     "docs/research/corpus-tiers/README.md says how it was made and what it rests on."),
+           "sources": out, "census_collections": ascii(extra.get("census", {}))}
+    p = REPO / "data" / "corpus-tiers" / "sources.json"
+    p.write_text(json.dumps(doc, indent=1, ensure_ascii=True) + "\n")
+    print(len(out), "sources;", applied, "corrections applied;", len(skipped), "skipped:", [c["id"] for c in skipped])
+
+if __name__ == "__main__":
+    main()

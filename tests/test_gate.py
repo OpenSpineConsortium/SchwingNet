@@ -2148,6 +2148,161 @@ esac
             self.assertIn("- exit 0", done.stdout)
         self.assertEqual(len(self.submitted()), 1)
 
+    def test_census_queues_one_cpu_job_for_the_tiers_and_then_keeps_printing_its_report(self):
+        # no stage, two stages and another stage are refused before anything is read
+        self.assertEqual(self.gate("census").returncode, 64)
+        self.assertEqual(self.gate("census", "a", "b").returncode, 64)
+        refused = self.gate("census", "full")
+        self.assertEqual(refused.returncode, 64, refused.stdout)
+        self.assertIn("census takes tiers or gold3", refused.stdout)
+        # the environments are not made here, and no setup job goes with it: the job finds the SPINEPS python
+        refused = self.gate("census", "tiers")
+        self.assertEqual(refused.returncode, 2, refused.stdout)
+        self.assertIn("data/corpus-tiers/sources.json", refused.stdout)
+        shutil.copytree(ROOT / "data" / "corpus-tiers", self.repo / "data" / "corpus-tiers")
+        done = self.gate("census", "tiers")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        lines = self.submitted()
+        self.assertEqual(len(lines), 1, lines)
+        self.assertIn("--class batch --name census_tiers", lines[0])
+        self.assertIn("STAGE=tiers", lines[0])
+        self.assertIn("--no-requeue", lines[0])
+        self.assertIn("census.sbatch", lines[0])
+        self.live(self.recorded()["census_tiers"])
+        self.assertEqual(self.gate("census", "tiers").returncode, 75)
+        (self.fake / "queue").write_text("", encoding="utf-8")
+        report = self.repo / "grid" / "logs" / "CENSUS-tiers.md"
+        report.write_text("# census tiers\n- exit 0\n", encoding="utf-8")
+        for _ in range(2):
+            done = self.gate("census", "tiers")
+            self.assertEqual(done.returncode, 0, done.stdout)
+            self.assertIn("- exit 0", done.stdout)
+        self.assertEqual(len(self.submitted()), 1)
+
+    def census_tiers_ready(self):
+        """What census tiers needs to be queued here: the committed tier table, and no environment made."""
+        shutil.copytree(ROOT / "data" / "corpus-tiers", self.repo / "data" / "corpus-tiers")
+
+    def test_census_tiers_queues_nothing_after_a_job_that_left_no_report_until_the_owners_word(self):
+        self.census_tiers_ready()
+        self.assertEqual(self.gate("census", "tiers").returncode, 0)
+        job = self.recorded()["census_tiers"]
+        # a job stopped before its end (the wall time, a preemption, a cancel) leaves only its .part
+        logs = self.repo / "grid" / "logs"
+        part = logs / "CENSUS-tiers.md.part"
+        part.write_text(f"# census tiers: job {job} on node, commit abc1234, 2026-10-29 15:00:00 UTC\n"
+                        "- interpreter: python\n", encoding="utf-8")
+        for _ in range(2):
+            shown = self.gate("census", "tiers")
+            self.assertEqual(shown.returncode, 64, shown.stdout)
+            self.assertIn("CENSUS-tiers.md.part, unfinished", shown.stdout)
+            self.assertIn("- interpreter: python", shown.stdout)
+            self.assertIn(f"CENSUS_RERUNS=tiers:{job}", shown.stdout)
+        self.assertEqual(len(self.submitted()), 1)
+        # the other census's word for the same job number frees nothing here
+        self.allow_census_rerun(f"gold3:{job}")
+        self.assertEqual(self.gate("census", "tiers").returncode, 64)
+        self.allow_census_rerun(f"tiers:{job}")
+        again = self.gate("census", "tiers")
+        self.assertEqual(again.returncode, 0, again.stdout + again.stderr)
+        self.assertIn(f"is job {job}'s", again.stdout)
+        self.assertEqual(len(self.submitted()), 2)
+        self.assertFalse(part.exists())
+        self.assertTrue((logs / f"CENSUS-tiers-{job}.part").exists())
+        # one word, one more job: the second job, ended with no report, waits for a word of its own
+        second = self.recorded()["census_tiers"]
+        self.assertNotEqual(second, job)
+        refused = self.gate("census", "tiers")
+        self.assertEqual(refused.returncode, 64, refused.stdout)
+        self.assertIn(f"CENSUS_RERUNS=tiers:{second}", refused.stdout)
+        self.assertEqual(len(self.submitted()), 2)
+
+    def test_census_tiers_keeps_a_failed_report_until_the_owners_word_names_its_job(self):
+        self.census_tiers_ready()
+        logs = self.repo / "grid" / "logs"
+        logs.mkdir(parents=True, exist_ok=True)
+        report = logs / "CENSUS-tiers.md"
+        report.write_text("# census tiers: job 77 on node, commit abc1234, 2026-10-29 15:00:00 UTC\n"
+                          "- FAILED at census: x\n- exit 1 at 2026-10-29 16:00:00 UTC\n", encoding="utf-8")
+        # a failure on older code is printed and queues nothing: a second job is a second count
+        for _ in range(2):
+            kept = self.gate("census", "tiers")
+            self.assertEqual(kept.returncode, 0, kept.stdout)
+            self.assertIn("FAILED at census", kept.stdout)
+            # gold3's two readings are its own: the tiers report is printed without them
+            self.assertNotIn("census gold3 detail", kept.stdout)
+        self.assertEqual(self.submitted(), [])
+        self.allow_census_rerun("tiers:76 gold3:77")
+        self.assertEqual(self.gate("census", "tiers").returncode, 0)
+        # a report whose first line names no job is let through by no entry, not even a stray "tiers:"
+        nameless = logs / "CENSUS-tiers.md"
+        kept_text = nameless.read_text(encoding="utf-8")
+        nameless.write_text("# census tiers\n- exit 1 at 2026-10-29 16:00:00 UTC\n", encoding="utf-8")
+        self.allow_census_rerun("tiers: tiers:77")
+        self.assertEqual(self.gate("census", "tiers").returncode, 0)
+        self.assertEqual(self.submitted(), [])
+        self.assertFalse((logs / "CENSUS-tiers-.md").exists())
+        nameless.write_text(kept_text, encoding="utf-8")
+        self.assertEqual(self.submitted(), [])
+        self.assertTrue(report.exists())
+        self.allow_census_rerun("tiers:77")
+        again = self.gate("census", "tiers")
+        self.assertEqual(again.returncode, 0, again.stdout + again.stderr)
+        self.assertIn("is job 77's", again.stdout)
+        self.assertEqual(len(self.submitted()), 1)
+        self.assertTrue((logs / "CENSUS-tiers-77.md").exists())
+
+    def test_census_tiers_queues_nothing_after_a_lost_answer_until_the_owners_word(self):
+        self.census_tiers_ready()
+        (self.fake / "lossy").write_text("census_tiers", encoding="utf-8")
+        lost = self.gate("census", "tiers", HPCW_LOSSY=str(self.fake / "lossy"))
+        self.assertNotEqual(lost.returncode, 0, lost.stdout)
+        self.assertEqual(len(self.submitted()), 1)
+        self.assertTrue((self.repo / "grid" / "logs" / "CENSUS-tiers.sent").exists())
+        self.assertNotIn("census_tiers", self.recorded())
+        (self.fake / "lossy").write_text("", encoding="utf-8")
+        refused = self.gate("census", "tiers")
+        self.assertEqual(refused.returncode, 64, refused.stdout)
+        self.assertIn("no job id came back", refused.stdout)
+        word = self.lost_word(refused.stdout, "tiers")
+        # neither the other census's word for the same mark nor a word that names no mark frees it
+        self.allow_census_rerun(word.replace("tiers:", "gold3:") + " tiers:lost")
+        self.assertEqual(self.gate("census", "tiers").returncode, 64)
+        self.allow_census_rerun(word)
+        done = self.gate("census", "tiers")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("follows a submission whose answer was lost", done.stdout)
+        self.assertEqual(len(self.submitted()), 2)
+        self.assertFalse((self.repo / "grid" / "logs" / "CENSUS-tiers.sent").exists())
+
+    def test_the_census_job_reports_counts_and_releases_the_checkout(self):
+        # census.sbatch runs tools/corpus_tiers.py from the checkout over the census lists; with no
+        # interpreter that reads a mask it fails at once and says so, holding nothing afterwards
+        self.git_repo()
+        for name in ("corpus_tiers.py", "bordercall_corpus.py"):
+            shutil.copy(ROOT / "tools" / name, self.repo / "tools" / name)
+        shutil.copytree(ROOT / "data" / "corpus-tiers", self.repo / "data" / "corpus-tiers")
+        tiers = self.tmp / "go2432" / "ruleclass" / "tiers"
+        tiers.mkdir(parents=True)
+        env = dict(os.environ, SCHWINGNET=str(self.repo), LAB_VOLUME=str(self.tmp), SSN=str(self.tmp / "ssn"),
+                   STAGE="tiers", SLURM_JOB_ID="781", CENSUS_PYTHON=str(self.fake / "nopython"),
+                   PATH=f"{self.fake}:/usr/bin:/bin")
+        (self.fake / "nopython").write_text("#!/bin/sh\nexit 1\n", encoding="utf-8")
+        (self.fake / "nopython").chmod(0o755)
+        done = subprocess.run(["bash", str(self.repo / "grid" / "census.sbatch")], cwd=self.repo / "grid", env=env,
+                              capture_output=True, text=True, timeout=60)
+        report = (self.repo / "grid" / "logs" / "CENSUS-tiers.md").read_text(encoding="utf-8")
+        self.assertIn("# census tiers: job 781", report.splitlines()[0])
+        if "FAILED: no interpreter" in report:
+            self.assertEqual(done.returncode, 2, report)
+        else:                                               # an interpreter on PATH reads masks: an empty census
+            self.assertEqual(done.returncode, 0, report + done.stdout + done.stderr)
+            self.assertIn("CTs read 0", report)
+        self.assertFalse((self.repo / "grid" / "logs" / "HOLD").exists())
+        bad = subprocess.run(["bash", str(self.repo / "grid" / "census.sbatch")], cwd=self.repo / "grid",
+                             env=dict(env, STAGE="full"), capture_output=True, text=True, timeout=60)
+        self.assertEqual(bad.returncode, 64)
+
     def test_bordercall_complete_queues_one_cpu_job_once_and_never_again_without_the_owners_word(self):
         # the owner's count of 2026-10-29 15:22 UTC is one CPU job: a stage it does not know is refused
         refused = self.gate("bordercall", "tune")
@@ -2423,9 +2578,9 @@ esac
     def test_census_gold3_queues_one_cpu_job_once_and_never_again_without_the_owners_word(self):
         # the owner's count of 2026-10-29 12:26 UTC is one CPU job: no id, another id and no tool are refused
         self.assertEqual(self.gate("census").returncode, 64)
-        refused = self.gate("census", "tiers")
+        refused = self.gate("census", "full")
         self.assertEqual(refused.returncode, 64, refused.stdout)
-        self.assertIn("census takes gold3", refused.stdout)
+        self.assertIn("census takes tiers or gold3", refused.stdout)
         self.assertEqual(self.gate("census", "gold3").returncode, 2)
         (self.repo / "tools" / "gold3_census.py").write_text("", encoding="utf-8")
         # nor is the one job spent on roots the census would read nothing from
@@ -2463,6 +2618,68 @@ esac
             self.assertEqual(done.returncode, 0, done.stdout)
             self.assertIn("gold4: idc rows 2, admitted 1", done.stdout)
         self.assertEqual(len(self.submitted()), 1)
+
+    def lost_word(self, stdout, census):
+        """The owner's word a refusal after a lost answer asks for, as it prints it."""
+        found = re.search(rf"CENSUS_RERUNS=({census}:lost-[0-9]+) ", stdout)
+        self.assertIsNotNone(found, stdout)
+        return found.group(1)
+
+    def test_a_census_rerun_whose_answer_is_lost_waits_for_a_word_of_its_own(self):
+        # one word, one more job: a rerun the word let through whose answer is lost is not let through again
+        self.census_tiers_ready()
+        self.assertEqual(self.gate("census", "tiers").returncode, 0)
+        job = self.recorded()["census_tiers"]
+        logs = self.repo / "grid" / "logs"
+        self.allow_census_rerun(f"tiers:{job}")
+        (self.fake / "lossy").write_text("census_tiers", encoding="utf-8")
+        lost = self.gate("census", "tiers", HPCW_LOSSY=str(self.fake / "lossy"))
+        self.assertNotEqual(lost.returncode, 0, lost.stdout)
+        self.assertEqual(len(self.submitted()), 2)
+        (self.fake / "lossy").write_text("", encoding="utf-8")
+        # the lost job ran and left a part of its own, which keeps its own name when it is moved aside
+        part = logs / "CENSUS-tiers.md.part"
+        part.write_text("# census tiers: job 999 on node, commit abc1234, 2026-10-29 15:00:00 UTC\n", encoding="utf-8")
+        refused = self.gate("census", "tiers")
+        self.assertEqual(refused.returncode, 64, refused.stdout)
+        self.assertIn("no job id came back", refused.stdout)
+        self.assertEqual(len(self.submitted()), 2)
+        self.allow_census_rerun(self.lost_word(refused.stdout, "tiers"))
+        again = self.gate("census", "tiers")
+        self.assertEqual(again.returncode, 0, again.stdout + again.stderr)
+        self.assertEqual(len(self.submitted()), 3)
+        self.assertTrue((logs / "CENSUS-tiers-999.part").exists())
+        self.assertFalse((logs / f"CENSUS-tiers-{job}.part").exists())
+
+    def test_a_lost_answer_word_lets_one_more_job_through_never_two(self):
+        (self.repo / "tools" / "gold3_census.py").write_text("", encoding="utf-8")
+        self.census_inputs()
+        (self.fake / "lossy").write_text("census_gold3", encoding="utf-8")
+        first = self.gate("census", "gold3", HPCW_LOSSY=str(self.fake / "lossy"))
+        self.assertNotEqual(first.returncode, 0, first.stdout)
+        refused = self.gate("census", "gold3")
+        self.assertEqual(refused.returncode, 64, refused.stdout)
+        word = self.lost_word(refused.stdout, "gold3")
+        self.allow_census_rerun(word)
+        # the mark is kept while a check refuses what the word lets through, so nothing is queued unasked
+        (self.fake / "refuse").write_text("census_gold3", encoding="utf-8")
+        held = self.gate("census", "gold3")
+        self.assertNotEqual(held.returncode, 0, held.stdout)
+        self.assertTrue((self.repo / "grid" / "logs" / "CENSUS-gold3.sent").exists())
+        (self.fake / "refuse").write_text("", encoding="utf-8")
+        self.allow_census_rerun("gold3:4242")
+        self.assertEqual(self.gate("census", "gold3").returncode, 64)
+        self.assertEqual(len(self.submitted()), 1)
+        # the word lets one more through, and that one's answer is lost too: the word is spent
+        self.allow_census_rerun(word)
+        time.sleep(1.1)
+        second = self.gate("census", "gold3", HPCW_LOSSY=str(self.fake / "lossy"))
+        self.assertNotEqual(second.returncode, 0, second.stdout)
+        self.assertEqual(len(self.submitted()), 2)
+        spent = self.gate("census", "gold3")
+        self.assertEqual(spent.returncode, 64, spent.stdout)
+        self.assertNotEqual(self.lost_word(spent.stdout, "gold3"), word)
+        self.assertEqual(len(self.submitted()), 2)
 
     def test_census_gold3_report_brings_the_padded_planes_and_verses_missing_names(self):
         # the owner's rule of 2026-10-29 23:46 UTC: a CT that shows C2 and the sacrum is in, and VerSe's
@@ -2538,12 +2755,12 @@ esac
             refused = self.gate("census", "gold3")
             self.assertEqual(refused.returncode, 64, refused.stdout)
             self.assertIn("no job id came back", refused.stdout)
-            self.assertIn("CENSUS_RERUNS=gold3:lost", refused.stdout)
+            self.assertIn("CENSUS_RERUNS=gold3:lost-", refused.stdout)
         self.assertEqual(len(self.submitted()), 1)
-        # a rerun word naming another job is not this one's
-        self.allow_census_rerun("gold3:4242")
+        # a rerun word naming another job, or a lost answer by no mark, is not this one's
+        self.allow_census_rerun("gold3:4242 gold3:lost")
         self.assertEqual(self.gate("census", "gold3").returncode, 64)
-        self.allow_census_rerun("gold3:lost")
+        self.allow_census_rerun(self.lost_word(refused.stdout, "gold3"))
         done = self.gate("census", "gold3")
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
         self.assertIn("follows a submission whose answer was lost", done.stdout)
@@ -3580,7 +3797,7 @@ exec python3 "$@"
 
     def test_each_driver_adds_and_drops_only_its_own_line_of_the_hold(self):
         # the lines every driver uses, run as two jobs: the later one ending first leaves the earlier one's line
-        for name in ("morphometry.sbatch", "v1-driver.sbatch", "bench.sbatch", "totalseg-complete.sbatch"):
+        for name in ("morphometry.sbatch", "v1-driver.sbatch", "bench.sbatch", "totalseg-complete.sbatch", "census.sbatch"):
             text = (GRID / name).read_text(encoding="utf-8")
             take = next(line.strip() for line in text.splitlines() if '>> "$HOLD"' in line)
             drop = next(line.strip() for line in text.splitlines() if line.strip().startswith("unhold()"))

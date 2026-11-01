@@ -1,0 +1,18 @@
+[
+ {
+  "id": "bournemouth_cervical_qf",
+  "dominant_tier": "expected:silver3 (tracks only held, no pixels)",
+  "expected_if_obtained": "silver3: the 63 people's DICOM cine (252 sequences) under the data sharing agreement, and the wider archive of about 1,180 events (about 120 cervical, 280 lumbar flexion and extension, 380 lumbar side flexion, 100 leg swing, 300 mixed), every one partial on real fluoroscopy with person-placed corner templates. Since 2026-10-26 14:33 UTC Fiona Mellor (Exeter) coordinates one answer with Alan and Alex Breen.",
+  "notes": "The tracks are on the grid but carry no pixels, so no one of the 63 is in a tier until the cine arrives; the cine is silver3."
+ },
+ {
+  "id": "hsg_ais_registry",
+  "name": "Harms Study Group registry (Setting Scoliosis Straight Foundation)",
+  "human_vertebral_annotation": "unknown",
+  "n_persons": null,
+  "count_basis": "No count of persons with images: the group's own chapter gives over 8,000 prospective and over 1,000 retrospective patients in the whole database, the AIS registry over 5,500 from 14 sites (4,843 operative and 483 non-operative in the 2016 report), cerebral palsy over 500 operative and 150 non-operative; nothing held",
+  "expected_if_obtained": "gold3 for standing PA and lateral films whose field shows C2 to the sacrum, if the central readers' level names (end vertebrae, apex, instrumented levels) come tied to the films; silver3 for films cut above the sacrum or below C2; gold4 or silver4 if only the images come. No CT is kept by any public account, so gold1 or gold2 only if a CT of the same patient turns up. Images are held centrally: deidentified radiographs from every site, digital since 2001, measured centrally by trained staff (more than 25 coronal and 20 lateral measures), follow-up at 2, 5, 10 and 20 years.",
+  "notes": "The owner wrote to Michelle Marks on 2026-10-23; she answered with a welcome asking for the study's details and imaging needs. A short follow-up asking for the films in DICOM with pixel spacing, any CT of the same patients, the readers' level names and the data dictionary, and counts, is in the owner's Outlook Drafts (2026-10-27), for the owner to send. The Database User Program's fees (USD 5,000 a year, 50,000 to 150,000 for a custom database) and any agreement are the owner's to decide.",
+  "truth_caveats": "Whether the central measurements name levels on the images, and whether the field reaches C2, is what the follow-up asks; instrumented levels from an operative record are not an image annotation unless tied to the films; post-operative films carry hardware."
+ }
+]
