@@ -190,9 +190,17 @@ def metas_by_case(export):
     return metas
 
 
-def build(source, export, cases, out):
+def structure_in_view(meta, levels):
+    """Whether the export kept a box for the sacrum or one of the stretch's levels on this frame, which it does
+    where half the structure's projected voxels fall inside the image."""
+    names = set(levels) | {"sacrum"}
+    return any(kept(b) and b.get("level_ts") in names for b in meta.get("boxes", []))
+
+
+def build(source, export, cases, out, in_view=None):
     """The pairs of one source. cases: (case, person, levels, TotalSegmentator folder, held-out reason or None,
-    left-out reason or None), in order; a held-out or left-out case is named in the manifest and never read."""
+    left-out reason or None), in order; a held-out or left-out case is named in the manifest and never read. With
+    in_view, a frame it says shows none of the person's structures is left out and counted."""
     out = Path(out)
     out.mkdir(parents=True, exist_ok=True)
     metas = metas_by_case(export)
@@ -224,6 +232,9 @@ def build(source, export, cases, out):
                 # the canvas a frame that is not square is centred on holds no image at its margins, where a
                 # body would count as seen; such frames are few (COBRA's collimated bands) and left out
                 skipped["not square"] = skipped.get("not square", 0) + 1
+                continue
+            if in_view is not None and not in_view(m, levels):
+                skipped["no structure in view"] = skipped.get("no structure in view", 0) + 1
                 continue
             fr = frame_of(m, image)
             fr["P"] = orient(fr["P"], marks)
@@ -263,12 +274,12 @@ def cobra_levels(record):
     return best if len(best) >= 2 else []
 
 
-def build_cobra(data, out, export_name="cobra_elekta_v3", source="cobra2026", ts_of=None):
+def build_cobra(data, out, export_name="cobra_elekta_v3", source="cobra2026", ts_of=None, in_view=None):
     """COBRA2026's Elekta export (realxray_cobra_export v2, 24 frames a case, the CT-to-projection axis map confirmed
     by edge NCC case by case): the export's test cases (md5 of the case mod 10 is 8 or 9) are held out; a case whose
     column the transitional screen (cobra2026/lstv) does not call ordinary, L1 to L5 above the sacrum, is left out,
     since the real arm names the typical column. ts_of gives a case's TotalSegmentator labels where they are not the
-    Elekta seg tree's."""
+    Elekta seg tree's; in_view is build's."""
     data = Path(data)
     export = data / "realxray" / export_name
     ts_of = ts_of or (lambda case: data / "cobra2026" / "seg" / case / "ts")
@@ -284,16 +295,18 @@ def build_cobra(data, out, export_name="cobra_elekta_v3", source="cobra2026", ts
         subtype = json.loads(call.read_text()).get("call_by_mask_id", {}).get("subtype") if call.is_file() else None
         left = None if subtype == "ordinary" else f"transitional screen: {subtype}"
         cases.append((case, f"cobra2026:{case}", cobra_levels(rec), ts_of(case), held, left))
-    return build(source, export, cases, out)
+    return build(source, export, cases, out, in_view)
 
 
 def build_cobra_varian(data, out):
     """COBRA2026's Varian export (tools/cobra_varian_export.py: centres F and G, 24 frames a case, square crops
     about the lumbosacral junction, the axis map confirmed by edge NCC case by case), by build_cobra's rules, the
-    TotalSegmentator labels the anomaly harvest made on the same ct_def standing for the Elekta seg tree."""
+    TotalSegmentator labels the anomaly harvest made on the same ct_def standing for the Elekta seg tree. The Varian
+    fields are pelvic and centred on the treatment target, below the spine, so many frames hold no structure of the
+    column at all; a frame with no box of the sacrum or of the person's levels is left out and counted."""
     data = Path(data)
     harvest = data / "anomaly_harvest" / "cobra" / "ts"
-    return build_cobra(data, out, "cobra_varian", "cobra_varian", lambda case: harvest / f"{case}.nii.gz")
+    return build_cobra(data, out, "cobra_varian", "cobra_varian", lambda case: harvest / f"{case}.nii.gz", structure_in_view)
 
 
 def box_at_size(meta, box, image_path):

@@ -291,6 +291,13 @@ class FrameTest(unittest.TestCase):
         self.assertEqual(self.V.solver_of({"case": "F003", "axis_map": {"edge_ncc": 0.7}}, {"F003"}), "ok")
         self.assertEqual(self.V.solver_of({"case": "F035", "axis_map": {"solver_2026_09_23": "not tried"}}, {"F003"}), "not tried")
 
+    def test_the_arm_keeps_a_frame_where_a_structure_shows(self):
+        realx = load("realx_pairs")
+        meta = {"boxes": [{"level_ts": "L5", "visible_frac": 0.7}, {"level_ts": "sacrum", "visible_frac": 0.3}]}
+        self.assertTrue(realx.structure_in_view(meta, ["L4", "L5"]))
+        self.assertFalse(realx.structure_in_view(meta, ["L2", "L3"]))
+        self.assertFalse(realx.structure_in_view({"boxes": []}, ["L4", "L5"]))
+
     def test_the_held_out_rule_is_the_elekta_exports(self):
         import hashlib
         for case in ("F003", "G000", "G133", "F120"):

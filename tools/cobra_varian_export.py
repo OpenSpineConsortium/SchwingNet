@@ -928,7 +928,9 @@ def export_case(case, data, out):
     flood_rec["air_spread_mirrored"] = round(float(np.median([s[1] for s in spreads])), 4) if spreads else None
     rec["flood"] = flood_rec
     if spreads and flood_rec["air_spread_mirrored"] < MIRROR_RATIO * flood_rec["air_spread_as_stored"]:
-        return excluded(rec, "the air scan fits the frames better mirrored: its orientation is not the stack's")
+        return excluded(rec, "the air scan fits the frames' air better mirrored than as stored "
+                             f"(spread {flood_rec['air_spread_mirrored']} against {flood_rec['air_spread_as_stored']}): "
+                             "it is not the scan these frames were taken with, or not in their orientation")
     have = [f["scale"] for f in fr.values() if f["scale"] is not None]
     case_scale = float(np.median(have)) if have else None
 
