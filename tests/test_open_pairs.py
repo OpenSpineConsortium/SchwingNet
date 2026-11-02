@@ -201,13 +201,15 @@ class Selections(unittest.TestCase):
     def test_a_masked_series_is_found_by_its_nbia_folder_name(self):
         lines = ["P1/01-01-2000-1-Abdomen24ACRIN-0.4.1/4.000000-Coloprone  1.0  B30f-0.4.2",
                  "P2/01-01-2000-1-Abdomen-.1240/3.000000-Colosupine  1.0  B30f-.4371",
+                 "P3/01-01-2000-1-CT ABDOMEN WO CONTRA-91117/100.000000-91118",
                  "P9/01-01-2000-1-Abdomen-.1/2.000000-x-12345"]
-        keys = select.masked_keys(lines, {"P1", "P2"})
+        keys = select.masked_keys(lines, {"P1", "P2", "P3"})
         series = [row(PatientID="P1", SeriesNumber=4, SeriesInstanceUID="1.3.6.1.4.1.9328.50.4.2"),
                   row(PatientID="P1", SeriesNumber=5, SeriesInstanceUID="1.3.6.1.4.1.9328.50.4.2"),
-                  row(PatientID="P2", SeriesNumber=3, SeriesInstanceUID="1.3.6.1.4.1.9328.50.4.4371")]
+                  row(PatientID="P2", SeriesNumber=3, SeriesInstanceUID="1.3.6.1.4.1.9328.50.4.4371"),
+                  row(PatientID="P3", SeriesNumber=100, SeriesInstanceUID="1.3.6.1.4.1.9328.50.4.91118")]
         chosen, unmatched = select.masked_series(series, keys)
-        self.assertEqual([(r["PatientID"], r["SeriesNumber"]) for r in chosen], [("P1", 4), ("P2", 3)])
+        self.assertEqual([(r["PatientID"], r["SeriesNumber"]) for r in chosen], [("P1", 4), ("P2", 3), ("P3", 100)])
         self.assertEqual(unmatched, set())
 
     def test_sbu_takes_the_abdominal_films_and_scouts_of_a_held_abdomen_and_pelvis_ct(self):

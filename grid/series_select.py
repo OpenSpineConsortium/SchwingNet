@@ -58,8 +58,9 @@ LOCALIZER = re.compile(r"topo|scout|surview|locali[sz]er|\bap ?top\b", re.IGNORE
 ABDOMINAL_FILM = re.compile(r"abdomen|abd series|abd uprt|\bkub\b", re.IGNORECASE)
 FILMS = ("CR", "DX")
 # NBIA's folder name for a series, as the TCIA Data Retriever writes it and CTSpine1K's path.csv
-# keeps it: "<SeriesNumber>-<SeriesDescription>-<last five characters of SeriesInstanceUID>".
-SERIES_FOLDER = re.compile(r"^(?P<number>-?[0-9.]+)-(?P<description>.*)-(?P<tail>.{5})$")
+# keeps it: "<SeriesNumber>-<SeriesDescription>-<last five characters of SeriesInstanceUID>", with
+# no description and its dash where the series has none (43 of the 784 COLONOG lines).
+SERIES_FOLDER = re.compile(r"^(?P<number>-?[0-9.]+)-(?:(?P<description>.*)-)?(?P<tail>.{5})$")
 
 
 def abdomen_and_pelvis(description):

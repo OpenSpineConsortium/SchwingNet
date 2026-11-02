@@ -39,7 +39,9 @@ import urllib.request
 from pathlib import Path
 from xml.etree import ElementTree
 
-PREFIX = 1 << 16
+# What is read of each object: CT COLONOGRAPHY's headers measured 1,890 to 1,896 bytes on 24 instances
+# of 4 series (2026-11-02), so 16 KiB holds a header eight times as long; one longer is reported.
+PREFIX = 1 << 14
 S3_NAMESPACE = "{http://s3.amazonaws.com/doc/2006-03-01/}"
 PIXEL_DATA = (0x7FE0, 0x0010)
 ITEM, ITEM_END, SEQUENCE_END = (0xFFFE, 0xE000), (0xFFFE, 0xE00D), (0xFFFE, 0xE0DD)
