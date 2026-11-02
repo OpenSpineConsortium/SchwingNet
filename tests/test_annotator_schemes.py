@@ -18,8 +18,12 @@ ROOT = Path(__file__).resolve().parent.parent
 SCHEMES = ROOT / "docs" / "research" / "annotator-landmarks" / "schemes.json"
 GATES = ROOT / "tools" / "qaloop_gates.py"
 ENGINE = ROOT / "grid" / "bordercall" / "morphometry"
-QALOOP_REF = re.compile(r"qaloop:([A-Za-z_]+\.[A-Za-z_]+)")
-ENGINE_REF = re.compile(r"engine:([a-z_]+)\.([A-Za-z_0-9]+)")
+# Every "qaloop:" or "engine:" in a counterpart is read as one reference, the name running from the colon to the
+# first space, comma, semicolon or bracket; a reference that does not have the shape below is an error in itself,
+# so a misspelt or empty one fails rather than passing unread.
+REFERENCE = re.compile(r"\b(qaloop|engine):([^\s,;()]*)")
+QALOOP_NAME = re.compile(r"[a-z_]+\.[a-z_]+")
+ENGINE_NAME = re.compile(r"([a-z_]+)\.([A-Za-z_][A-Za-z_0-9]*)")
 SOURCES = ("qaloop:", "engine:", "new: ")
 KINDS = ("fixed", "silhouette")
 SCHEME_FIELDS = ("key", "name", "citation", "view", "landmarks", "datasets")
@@ -35,6 +39,30 @@ def qaloop_landmarks():
         if isinstance(node, ast.Assign) and any(getattr(t, "id", None) == "LANDMARKS" for t in node.targets):
             return set(ast.literal_eval(node.value))
     raise AssertionError("tools/qaloop_gates.py defines no LANDMARKS")
+
+
+def references(text):
+    """The (source, name) of every qaloop: and engine: reference in a counterpart's text."""
+    return REFERENCE.findall(text)
+
+
+def reference_problems(text, landmarks, functions_of):
+    """What is wrong with a counterpart's references: a name of the wrong shape, a landmark the loop does not place,
+    or an engine function its module does not define. Empty when every reference holds."""
+    problems = []
+    for source, name in references(text):
+        if source == "qaloop":
+            if not QALOOP_NAME.fullmatch(name):
+                problems.append("qaloop reference %r is not a landmark's name" % name)
+            elif name not in landmarks:
+                problems.append("qaloop:%s is not one of the 18 LANDMARKS" % name)
+            continue
+        shape = ENGINE_NAME.fullmatch(name)
+        if not shape:
+            problems.append("engine reference %r is not module.function" % name)
+        elif shape.group(2) not in functions_of(shape.group(1)):
+            problems.append("engine:%s is not defined in grid/bordercall/morphometry/%s.py" % (name, shape.group(1)))
+    return problems
 
 
 def engine_functions(module):
@@ -81,20 +109,27 @@ class SchemesTest(unittest.TestCase):
         for key, p in self.points:
             self.assertTrue(p["counterpart_3d"].startswith(SOURCES), (key, p["name"], p["counterpart_3d"]))
 
-    def test_qaloop_counterparts_are_landmarks_the_loop_places(self):
-        names = qaloop_landmarks()
-        self.assertEqual(len(names), 18)
-        for key, p in self.points:
-            for name in QALOOP_REF.findall(p["counterpart_3d"]):
-                self.assertIn(name, names, (key, p["name"]))
+    def test_the_loop_places_18_landmarks(self):
+        self.assertEqual(len(qaloop_landmarks()), 18)
 
-    def test_engine_counterparts_are_constructions_the_engine_has(self):
-        seen = 0
+    def test_every_reference_names_a_landmark_or_an_engine_construction(self):
+        names = qaloop_landmarks()
+        sources = set()
         for key, p in self.points:
-            for module, function in ENGINE_REF.findall(p["counterpart_3d"]):
-                seen += 1
-                self.assertIn(function, engine_functions(module), (key, p["name"], module))
-        self.assertGreater(seen, 0)
+            for source, _ in references(p["counterpart_3d"]):
+                sources.add(source)
+            self.assertEqual(reference_problems(p["counterpart_3d"], names, engine_functions), [], (key, p["name"]))
+        self.assertEqual(sources, {"qaloop", "engine"}, "the registry names no landmark or no engine construction")
+
+    def test_a_reference_of_the_wrong_shape_is_caught(self):
+        names = qaloop_landmarks()
+        for bad in ("qaloop: endplate.right", "qaloop:endplate2.right", "qaloop:endplate.rigth", "qaloop:",
+                    "engine:Pelvis.socket_centre", "engine: pelvis.socket_centre", "engine:pelvis.socket_center",
+                    "engine:pelvis", "new: x (engine:pelvis.socket_center)"):
+            self.assertTrue(reference_problems(bad, names, engine_functions), bad)
+        for good in ("qaloop:endplate.right", "engine:pelvis.socket_centre", "engine:column.wall_corner(top)",
+                     "new: x (engine:pelvis.s1_plate gives its centre); qaloop:h_post.inferior"):
+            self.assertEqual(reference_problems(good, names, engine_functions), [], good)
 
 
 if __name__ == "__main__":
