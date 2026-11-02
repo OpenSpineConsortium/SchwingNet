@@ -30,7 +30,7 @@ is a sweep's state folder, tools/block_sweep.py's with the rows it starts; `swee
 flows/, named by the launcher's key (schwingnet.pipeline.run_key), `v1` the version 1 run of
 tools/flow.py as a launched flow, `experiment` one requested combination of it, `latency` one job
 of the latency word on a run's checkpoint, the last two the DRR domain-gap study's parts and its
-MOOSE masks; `realism`, `totalseg`, `autoanatomist`, `autoanatomist2`, `gold4_totalseg`, `qaloop` and `qaloop_tx`
+MOOSE masks; `realism`, `totalseg`, `autoanatomist`, `autoanatomist2`, `gold4_totalseg`, `qaloop`, `qaloop_tx` and `qaloop_ext`
 are flows of flows/ too, the FluXray reproduction's stages, the gold tier 3 completion's
 TotalSegmentator arm, the auto-anatomist screens' trials and joins, TotalSegmentator's tasks and
 merge on the gold tier 4 CTs, and the QA loop's rounds.
@@ -134,6 +134,9 @@ KINDS["qaloop"] = ("flows/qaloop.py", "flows/stage.py", "flows/stage_registry.py
 # The QA loop with a transformer encoder (docs/research/qa-loop-transformer/PREREG.md) runs the loop's
 # flow under a kind of its own, so it reaches every file the loop does and its own flow file.
 KINDS["qaloop_tx"] = (*KINDS["qaloop"], "flows/qaloop_tx.py")
+# The QA loop with external real arms (docs/research/qa-loop-external/PREREG.md) runs the loop's flow under a
+# kind of its own; its arms are built pairs read from the data root, recorded by their manifests' sha256.
+KINDS["qaloop_ext"] = (*KINDS["qaloop"], "flows/qaloop_ext.py")
 
 NAMES_THE_RUN = "names the run: the files it lists are the digest, so a change to the lists changes the digest by itself"
 LAUNCHES = "starts or carries on the flow's run, which it names by this digest, and computes nothing the run keeps"
@@ -204,6 +207,7 @@ LEFT_OUT["qaloop"] = {**STAGE_PAGE_LEFT_OUT,
                      "step, after every round; it computes nothing a round or a decision comes from",
                      "tools/wandb_log.py": ROW_LEFT_OUT["tools/wandb_log.py"]}
 LEFT_OUT["qaloop_tx"] = LEFT_OUT["qaloop"]
+LEFT_OUT["qaloop_ext"] = LEFT_OUT["qaloop"]
 
 
 class RunCodeError(Exception):

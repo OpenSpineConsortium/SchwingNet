@@ -357,6 +357,7 @@ def read_pair(root, case, levels, size=512):
                       for lv in levels])
     sac = np.argwhere(labels == VERSE_ID["sacrum"])
     sacrum = (sac @ vert.affine[:3, :3].T + vert.affine[:3, 3]).mean(axis=0) * to_lps if len(sac) else np.full(3, np.nan)
+    sacral = sacral_points(labels, vert.affine) * to_lps
     frames = []
     folder = root / "unpacked" / "C-ArmLSpine" / case
     files = [str(p) for p in folder.rglob("*") if p.is_file()] if folder.is_dir() else []
@@ -370,7 +371,72 @@ def read_pair(root, case, levels, size=512):
         K = np.diag([1.0 / f, 1.0 / f, 1.0]) @ np.asarray(pose["K"], float)
         frames.append({"view": view, "P": G.projection_matrix(K, pose["R"], pose["t"]), "image": image,
                        "edge_ncc": float(pose.get("edge_ncc", float("nan")))})
-    return {"levels": list(levels), "landmarks": marks, "sacrum": sacrum, "frames": frames, "stand_in": False}
+    return {"levels": list(levels), "landmarks": marks, "sacrum": sacrum, "sacral": sacral, "frames": frames, "stand_in": False}
+
+
+# The count's anchor (greg, 2026-11-01: "look for sacral landmarks as finding the anchor is necessary to the
+# counting based verification"): four points on the top of S1, read from a sacrum mask alone, so that whether the
+# anchor shows on a real frame can be measured as each level's landmarks are.
+SACRAL_POINTS = ("promontory", "s1_top_centre", "ala_one", "ala_two")
+SACRAL_TOP_MM, SACRAL_ALA_MM, SACRAL_MIDLINE_MM = 6.0, 25.0, 15.0
+
+
+def sacral_points(labels, affine):
+    """The sacrum's four anchor points in the mask's world millimetres (RAS for a NIfTI), NaN where there is no
+    sacrum. The column's axis runs from the sacrum's centroid to the lowest lumbar body's (or is the volume's
+    superior axis without one), and the midline is that body's centroid. The top of S1 is the sacrum's voxels within
+    SACRAL_MIDLINE_MM of the midline and SACRAL_TOP_MM of the highest of them, since the alae and the articular
+    processes can rise above the endplate; the promontory is that slab's most anterior voxel and its centre the
+    slab's centroid; the two alae are the sacrum's voxels farthest to either side within SACRAL_ALA_MM of that top."""
+    affine = np.asarray(affine, float)
+    labels = np.asarray(labels)
+    sac = np.argwhere(labels == VERSE_ID["sacrum"])
+    if len(sac) < 50:
+        return np.full((len(SACRAL_POINTS), 3), np.nan)
+    world = sac @ affine[:3, :3].T + affine[:3, 3]
+    centre = world.mean(axis=0)
+    axis, midline = np.array([0.0, 0.0, 1.0]), centre
+    for level in ("L5", "L6", "L4"):
+        body = np.argwhere(labels == VERSE_ID[level])
+        if len(body):
+            midline = (body @ affine[:3, :3].T + affine[:3, 3]).mean(axis=0)
+            axis = midline - centre
+            break
+    axis = axis / max(np.linalg.norm(axis), 1e-9)
+    # anterior is +y in RAS, taken perpendicular to the axis; the lateral axis is across both
+    anterior = np.array([0.0, 1.0, 0.0]) - axis * axis[1]
+    anterior = anterior / max(np.linalg.norm(anterior), 1e-9)
+    side = np.cross(axis, anterior)
+    height = (world - centre) @ axis
+    lat = (world - midline) @ side
+    middle = np.abs(lat) <= SACRAL_MIDLINE_MM
+    if middle.sum() < 10:
+        return np.full((len(SACRAL_POINTS), 3), np.nan)
+    top_height = height[middle].max()
+    top = world[middle & (height >= top_height - SACRAL_TOP_MM)]
+    upper = height >= top_height - SACRAL_ALA_MM
+    return np.array([top[np.argmax((top - centre) @ anterior)], top.mean(axis=0),
+                     world[upper][np.argmax(lat[upper])], world[upper][np.argmin(lat[upper])]])
+
+
+def pair_anchor(pair, radius=8, sigma=1.5, null_per_body=200, size=512):
+    """Each posed frame's evidence for the anchor: the mean percentile of the sacral points' edge strength against
+    points drawn inside their own outline, where at least three of the four fall in the frame; NaN otherwise."""
+    pts = np.asarray(pair.get("sacral", np.full((len(SACRAL_POINTS), 3), np.nan)), float)
+    out = []
+    for i, fr in enumerate(pair["frames"]):
+        if not np.isfinite(pts).all():
+            out.append(float("nan"))
+            continue
+        uv = G.project(fr["P"], pts)
+        inside = in_frame(uv, size)
+        if inside.sum() < 3:
+            out.append(float("nan"))
+            continue
+        uv[~inside] = np.nan
+        pct, _ = G.presence_percentiles(fr["image"], [uv], range(len(SACRAL_POINTS)), radius, sigma, null_per_body, seed=i)
+        out.append(float(np.nanmean(pct)) if np.isfinite(pct).any() else float("nan"))
+    return out
 
 
 def save_pair(path, pair):
@@ -381,6 +447,7 @@ def save_pair(path, pair):
                  P=np.asarray([fr["P"] for fr in pair["frames"]]).reshape(-1, 3, 4),
                  images=np.asarray([fr["image"] for fr in pair["frames"]], np.float32),
                  edge_ncc=np.asarray([fr.get("edge_ncc", np.nan) for fr in pair["frames"]], float),
+                 sacral=np.asarray(pair.get("sacral", np.full((len(SACRAL_POINTS), 3), np.nan)), float),
                  stand_in=np.asarray(pair["stand_in"]))
     os.replace(tmp, path)
 
@@ -389,8 +456,9 @@ def load_pair(path):
     with np.load(path) as z:
         frames = [{"view": str(v), "P": P, "image": img, "edge_ncc": float(e)}
                   for v, P, img, e in zip(z["views"], z["P"], z["images"], z["edge_ncc"])]
+        sacral = z["sacral"] if "sacral" in z.files else np.full((len(SACRAL_POINTS), 3), np.nan)
         return {"levels": [str(x) for x in z["levels"]], "landmarks": z["landmarks"], "sacrum": z["sacrum"],
-                "frames": frames, "stand_in": bool(z["stand_in"])}
+                "sacral": sacral, "frames": frames, "stand_in": bool(z["stand_in"])}
 
 
 CASE_ID = re.compile(r"\s*(?:case[ _-]?)?0*(\d{1,6})\s*", re.IGNORECASE)

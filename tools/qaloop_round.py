@@ -46,6 +46,7 @@ for _folder in (ROOT / "vendor" / "beethoven-qa" / "src", ROOT / "grid" / "autoa
         sys.path.insert(1, str(_folder))
 
 import argparse  # noqa: E402
+import hashlib  # noqa: E402
 import importlib.util  # noqa: E402
 import json  # noqa: E402
 import math  # noqa: E402
@@ -516,9 +517,11 @@ def pairs_for(plan, data, work, workers, say):
             if path is None:
                 failed[why] = failed.get(why, 0) + 1
                 continue
-            pairs.append(dict(S.load_pair(path), person=c["person"], part=c["part"]))
-        return pairs, {"source": "C-ArmLSpine", "cases": len(cases), "read": len(pairs), "left_out": skipped,
-                       "failed": failed, "stand_in": False}
+            pairs.append(dict(S.load_pair(path), person=c["person"], part=c["part"], source="carmlspine"))
+        record = {"source": "C-ArmLSpine", "cases": len(cases), "read": len(pairs), "left_out": skipped,
+                  "failed": failed, "stand_in": False}
+        external, record["external"] = external_pairs(spec, data, say)
+        return pairs + external, record
     count = int(spec.get("stand_ins", 0))
     if count <= 0:
         say("pairs: none (no C-ArmLSpine under the data root and no stand-ins in the plan)")
@@ -531,6 +534,29 @@ def pairs_for(plan, data, work, workers, say):
         part = "validation" if i % 3 == 2 else "training"
         pairs.append(dict(S.load_pair(path), person=f"standin:{seed}", part=part))
     return pairs, {"source": "stand-ins", "cases": count, "read": len(pairs), "stand_in": True}
+
+
+def external_pairs(spec, data, say):
+    """The plan's external real arms (tools/realx_pairs.py, docs/research/qa-loop-external/PREREG.md): each source's
+    built pairs under the data root, every one the gates' (part validation), none the selection's; the persons a
+    source holds out for its own test are named in its manifest and never read. Returns (pairs, record)."""
+    pairs, record = [], {}
+    for ext in spec.get("external", []):
+        folder = Path(data) / ext["folder"]
+        raw = (folder / "manifest.json").read_bytes()
+        manifest = json.loads(raw)
+        if manifest.get("source") != ext["source"] or int(manifest.get("size", 0)) != int(spec.get("size", 512)):
+            raise RuntimeError(f"external arm {ext['source']}: its manifest names {manifest.get('source')} at "
+                               f"{manifest.get('size')} pixels, not {ext['source']} at {spec.get('size', 512)}")
+        got = [dict(S.load_pair(str(folder / q["npz"])), person=q["person"], part="validation", source=ext["source"])
+               for q in manifest["persons"]]
+        pairs += got
+        record[ext["source"]] = {"persons": len(got), "frames": sum(len(q["frames"]) for q in got),
+                                 "held_out": len(manifest.get("held_out", [])), "left_out": len(manifest.get("left_out", {})),
+                                 "manifest_sha256": hashlib.sha256(raw).hexdigest()}
+        say(f"pairs: {ext['source']}: {len(got)} persons, {record[ext['source']]['frames']} frames, all the gates'; "
+            f"{record[ext['source']]['held_out']} held out for its test, {record[ext['source']]['left_out']} left out")
+    return pairs, record
 
 
 def run_pool(fn, jobs, workers, say=None):
@@ -561,12 +587,56 @@ def run_pool(fn, jobs, workers, say=None):
 
 
 def presence_by_part(pairs, spec):
-    """Every frame's evidence for every landmark, the selection's frames apart from the gate's."""
+    """Every frame's evidence for every landmark, the selection's frames apart from the gate's, and the gate's
+    frames again by the source they came from."""
     out = {"training": [], "validation": []}
+    by_source = {}
     for pair in pairs:
         rows = S.pair_presence(pair, spec.get("radius", 8), spec.get("sigma", 1.5), spec.get("null_per_body", 200))
         out[pair["part"]] += [r for r in rows]
-    return {k: np.asarray(v).reshape(-1, len(G.LANDMARKS)) for k, v in out.items()}
+        if pair["part"] == "validation":
+            by_source.setdefault(pair.get("source", "carmlspine"), []).extend(rows)
+    result = {k: np.asarray(v).reshape(-1, len(G.LANDMARKS)) for k, v in out.items()}
+    result["by_source"] = {k: np.asarray(v).reshape(-1, len(G.LANDMARKS)) for k, v in by_source.items()}
+    return result
+
+
+def frame_means_of(rows, chosen):
+    return [float(np.nanmean(r[chosen])) if np.isfinite(r[chosen]).any() else float("nan") for r in rows]
+
+
+def by_source_part(pairs, presence, sel_packs, chosen, ceiling, bars, spec, say):
+    """Each source's own real naming and presence on the gate's frames, and the sacral anchor's presence, recorded
+    beside the pooled gates so a source that fails is seen; none of it moves the controller (the external PREREG,
+    section 3)."""
+    out = {}
+    runs_by = {}
+    for pair in pairs:
+        if pair["part"] == "validation":
+            runs_by.setdefault(pair.get("source", "carmlspine"), []).extend(
+                S.pair_samples(pair, pair["person"], spec["k_max"], spec["size"]))
+    for source, runs in sorted(runs_by.items()):
+        entry = {"runs": len(runs)}
+        if runs:
+            _, table = gate_cells(sel_packs, G.pack(runs), chosen, S.TYPE_LEVELS)
+            entry["real_naming"] = G.fingerprint_gate(table, bars["real_naming"], ("none",), "real", ceiling)
+        if presence is not None and source in presence["by_source"] and len(presence["by_source"][source]):
+            entry["presence"] = G.presence_gate(frame_means_of(presence["by_source"][source], chosen), bars["presence"])
+        out[source] = entry
+    anchor, anchor_by = [], {}
+    for pair in pairs:
+        if pair["part"] == "validation":
+            means = S.pair_anchor(pair, spec["radius"], spec["sigma"], spec["null_per_body"], spec["size"])
+            anchor += means
+            anchor_by.setdefault(pair.get("source", "carmlspine"), []).extend(means)
+    checks = {"anchor": G.presence_gate(anchor, bars["presence"])}
+    for source, means in anchor_by.items():
+        out.setdefault(source, {})["anchor"] = G.presence_gate(means, bars["presence"])
+    for source, entry in sorted(out.items()):
+        words = [f"{k} {'pass' if v.get('pass') else 'fail'}" for k, v in entry.items() if isinstance(v, dict)]
+        say(f"by source: {source}: {entry.get('runs', 0)} real gate runs; " + ", ".join(words))
+    say(f"anchor: {checks['anchor']['why']}")
+    return out, checks
 
 
 # ---------------------------------------------------------------- the round
@@ -864,6 +934,11 @@ def fingerprint_part(plan, config, record, pairs, pair_record, persons, gate_per
         record["gates"]["presence"] = pres
     else:
         record["gates"]["presence"] = {"pass": False, "missing": "no gate frame to look at"}
+    if plan.get("pairs", {}).get("external") or plan.get("anchor"):
+        pres = plan.get("presence", {})
+        spec = {"k_max": fp["k_max"], "size": int(plan.get("pairs", {}).get("size", 512)), "radius": pres.get("radius", 8),
+                "sigma": pres.get("sigma", 1.5), "null_per_body": pres.get("null_per_body", 200)}
+        record["by_source"], record["checks"] = by_source_part(pairs, presence, sel_packs, chosen, ceiling, bars, spec, say)
     seconds = G.time_naming(namer, gate_packs, chosen, int(plan.get("latency_runs", 500)))
     lat = G.latency_gate(seconds, bars["latency"])
     lat["what"] = "the 2-D naming path alone (features and every hypothesis), no landmark detector"

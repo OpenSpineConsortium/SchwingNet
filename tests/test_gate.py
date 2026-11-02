@@ -5770,6 +5770,33 @@ exit "${FAKE_RC:-0}"
         self.assertEqual(busy.returncode, 75, busy.stdout)
         self.assertEqual(len(self.submitted()), 6)
 
+    def test_qaloop_queues_the_external_plans_as_their_own_kind_under_their_own_prereg(self):
+        full = self.qaloop_ready()
+        self.qaloop_pairs()
+        refused = self.gate("qaloop", "qa_ext_smoke")
+        self.assertEqual(refused.returncode, 90, refused.stdout)
+        self.assertIn("docs/research/qa-loop-external/PREREG.md is not frozen", refused.stdout)
+        self.assertEqual(self.submitted(), [])
+        folder = self.repo / "docs" / "research" / "qa-loop-external"
+        folder.mkdir(parents=True, exist_ok=True)
+        for name in ("PREREG.md", "PREREG.md.sha256"):
+            shutil.copy(ROOT / "docs" / "research" / "qa-loop-external" / name, folder / name)
+        done = self.gate("qaloop", "qa_ext_smoke")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        lines = self.submitted()
+        self.assertEqual(len(lines), 1, lines)
+        for said in ("--class gpu --name qaloop_qa_ext_smoke ", " PLAN=qa_ext_smoke ", f" QALOOP_COMMIT={full} ",
+                     "--no-requeue qaloop_ext.sbatch |"):
+            self.assertIn(said, lines[0])
+        loop = self.gate("qaloop", "qa_ext")
+        self.assertEqual(loop.returncode, 0, loop.stdout + loop.stderr)
+        self.assertEqual(len(self.submitted()), 7)
+        self.assertIn("--no-requeue qaloop_ext.sbatch |", self.submitted()[-1])
+        script = (ROOT / "grid" / "qaloop_ext.sbatch").read_text(encoding="utf-8")
+        self.assertIn("QALOOP_KIND=qaloop_ext bash", script)
+        self.assertIn("qaloop_ext) STUDY_DIR=docs/research/qa-loop-external FLOW_CLASS=QaloopExtFlow ;;",
+                      (ROOT / "grid" / "qaloop.sbatch").read_text(encoding="utf-8"))
+
     def test_qaloop_queues_the_transformer_plan_as_its_own_kind_under_its_own_prereg(self):
         full = self.qaloop_ready()
         self.qaloop_pairs()
@@ -5805,7 +5832,7 @@ exit "${FAKE_RC:-0}"
         done = subprocess.run(["bash", str(ROOT / "grid" / "qaloop.sbatch")], capture_output=True, text=True,
                               env={**os.environ, "QALOOP_KIND": "other", "SCHWINGNET": str(self.repo)})
         self.assertEqual(done.returncode, 64, done.stdout + done.stderr)
-        self.assertIn("QALOOP_KIND is qaloop or qaloop_tx, not other", done.stdout)
+        self.assertIn("QALOOP_KIND is qaloop, qaloop_tx or qaloop_ext, not other", done.stdout)
 
     def test_qaloop_waits_for_the_setup_job_and_still_reads_its_chain_from_the_first_link(self):
         self.qaloop_ready()
