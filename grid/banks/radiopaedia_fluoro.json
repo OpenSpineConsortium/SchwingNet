@@ -24,5 +24,5 @@
   "labels": null,
   "synthetic": false,
   "px_mm": null,
-  "notes": "Radiopaedia fluoroscopy and angiographic series of the Spine cases under agreement 202610-9517, laid out by tools/radiopaedia_import.py as raw/<rID>/<sha256 prefix>.jpg; the view varies by image and is unread; levels only in the case text"
+  "notes": "Radiopaedia fluoroscopy and angiographic series of the Spine cases under agreement 202610-9517, laid out by tools/radiopaedia_import.py as raw/<rID>/<sha256 prefix>.jpg; the view varies by image and is unread; levels read on the images by a person, never from the case text alone (docs/research/radiopaedia-paired.md)"
 }
