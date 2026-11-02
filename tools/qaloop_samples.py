@@ -421,8 +421,13 @@ def sacral_points(labels, affine):
 
 def pair_anchor(pair, radius=8, sigma=1.5, null_per_body=200, size=512):
     """Each posed frame's evidence for the anchor: the mean percentile of the sacral points' edge strength against
-    points drawn inside their own outline, where at least three of the four fall in the frame; NaN otherwise."""
+    points drawn inside the outline they make with the lowest level's landmarks, where at least three of the four
+    fall in the frame; NaN otherwise. The four alone can lie nearly on one line in a lateral view, where an outline
+    of their own holds no point to draw (the external smoke of 2026-11-02, chain 40939308), so the lowest body's
+    landmarks widen it; a frame whose outline still holds none reads NaN."""
     pts = np.asarray(pair.get("sacral", np.full((len(SACRAL_POINTS), 3), np.nan)), float)
+    marks = np.asarray(pair.get("landmarks", np.empty((0, len(G.LANDMARKS), 3))), float)
+    lowest = marks[-1] if len(marks) else np.empty((0, 3))
     out = []
     for i, fr in enumerate(pair["frames"]):
         if not np.isfinite(pts).all():
@@ -434,8 +439,16 @@ def pair_anchor(pair, radius=8, sigma=1.5, null_per_body=200, size=512):
             out.append(float("nan"))
             continue
         uv[~inside] = np.nan
-        pct, _ = G.presence_percentiles(fr["image"], [uv], range(len(SACRAL_POINTS)), radius, sigma, null_per_body, seed=i)
-        out.append(float(np.nanmean(pct)) if np.isfinite(pct).any() else float("nan"))
+        low = G.project(fr["P"], lowest) if len(lowest) else np.empty((0, 2))
+        if len(low):
+            low[~in_frame(low, size)] = np.nan
+        body = np.vstack([low, uv])
+        chosen = range(len(low), len(body))
+        try:
+            pct, nulls = G.presence_percentiles(fr["image"], [body], chosen, radius, sigma, null_per_body, seed=i)
+        except (ValueError, IndexError):
+            pct, nulls = np.full((1, len(SACRAL_POINTS)), np.nan), 0
+        out.append(float(np.nanmean(pct)) if nulls and np.isfinite(pct).any() else float("nan"))
     return out
 
 

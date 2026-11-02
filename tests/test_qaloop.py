@@ -587,6 +587,13 @@ class ExternalArmTest(unittest.TestCase):
         self.assertTrue(np.isnan(samples.pair_anchor(pair)[0]))
         pair["sacral"] = np.full((4, 3), np.nan)
         self.assertTrue(np.isnan(samples.pair_anchor(pair)[0]))
+        # four points on one line, as a lateral view can put them, with no body beside them: NaN, never a crash
+        pair["sacral"] = np.array([[0.0, 0, 0], [10, 10, 0], [20, 20, 0], [30, 30, 0]])
+        self.assertTrue(np.isnan(samples.pair_anchor(pair)[0]))
+        # with the lowest level's landmarks beside them the outline holds points and the anchor reads
+        pair["landmarks"] = rng.uniform(-40, 40, size=(1, 18, 3)) * np.array([1, 1, 0])
+        got = samples.pair_anchor(pair)[0]
+        self.assertTrue(0.0 <= got <= 1.0, got)
 
     def test_the_builders_levels_are_the_longest_agreed_stretch_and_a_padded_frame_keeps_its_projection(self):
         import json
