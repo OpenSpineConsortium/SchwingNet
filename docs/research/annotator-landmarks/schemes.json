@@ -1,0 +1,678 @@
+{
+ "source": "docs/research/annotator-landmarks/README.md: the owner's local session of 1 November 2026; counts read on the grid that night (listings and the read-only CPU job 40940203) and after the review of 2 November (jobs 40940445, 40940609, 40940634, 40940650, 40940690)",
+ "notation": {
+  "qaloop:<name>": "one of the 18 points of tools/qaloop_gates.py LANDMARKS, as grid/autoanatomist/autoanatomist/oracle.py places it",
+  "engine:<module.function>": "a construction of the vendored morphometry engine, grid/bordercall/morphometry",
+  "new: <what>": "a construction neither has yet",
+  "fixed": "one place on the bone, the same in every view",
+  "silhouette": "where the bone's outline turns in the view read; a fixed 3-D point stands for it only near that view",
+  "held": "the path under the grid's data root, or false"
+ },
+ "schemes": [
+  {
+   "key": "deepfluoro14",
+   "name": "DeepFluoro's fourteen pelvic landmarks",
+   "citation": "Grupp RB, Unberath M, Gao C, et al. Automatic annotation of hip anatomy in fluoroscopy for robust and efficient 2D/3D registration. Int J Comput Assist Radiol Surg 2020;15(5):759-769. doi:10.1007/s11548-020-02162-7 (PMC7263976)",
+   "view": "any C-arm pose (the QA arm's kept frames within 15 degrees of anteroposterior)",
+   "landmarks": [
+    {
+     "name": "FH-l, FH-r",
+     "definition": "centers of the femoral head",
+     "counterpart_3d": "engine:pelvis.socket_centre (acetabular sphere; a sphere on the femoral head's own mask is the direct one)",
+     "fixed_or_silhouette": "fixed"
+    },
+    {
+     "name": "GSN-l, GSN-r",
+     "definition": "greater sciatic notches",
+     "counterpart_3d": "new: the notch's deepest point on the ilium's posterior border",
+     "fixed_or_silhouette": "fixed (placed in 3-D)"
+    },
+    {
+     "name": "IOF-l, IOF-r",
+     "definition": "inferior obturator foramen",
+     "counterpart_3d": "new: the obturator foramen's lowest rim point",
+     "fixed_or_silhouette": "fixed (placed in 3-D)"
+    },
+    {
+     "name": "MOF-l, MOF-r",
+     "definition": "medial obturator foramen",
+     "counterpart_3d": "new: the obturator foramen's most medial rim point",
+     "fixed_or_silhouette": "fixed (placed in 3-D)"
+    },
+    {
+     "name": "SPS-l, SPS-r",
+     "definition": "superior pubis symphysis",
+     "counterpart_3d": "new: the symphysis's upper end on each pubis",
+     "fixed_or_silhouette": "fixed (placed in 3-D)"
+    },
+    {
+     "name": "IPS-l, IPS-r",
+     "definition": "inferior pubis symphysis",
+     "counterpart_3d": "new: the symphysis's lower end on each pubis",
+     "fixed_or_silhouette": "fixed (placed in 3-D)"
+    },
+    {
+     "name": "ASIS-l, ASIS-r",
+     "definition": "anterior superior iliac spine",
+     "counterpart_3d": "new: the spine's most anterior point (engine:pelvis.crest_top is the crest's top, not ASIS)",
+     "fixed_or_silhouette": "fixed (placed in 3-D)"
+    }
+   ],
+   "datasets": [
+    {
+     "name": "DeepFluoro release (ipcai_2020_full_res_data.h5)",
+     "held": "/rs/rs_grp_oschome/go2432/data/deepfluoro_h5/raw/deepfluoro/unpacked_full/ipcai_2020_full_res_data.h5",
+     "images": 262,
+     "format": "HDF5: <specimen>/vol-landmarks/<name> 3-vector, world frame LPS; <specimen>/projections/<frame>/gt-landmarks/<name> 2-vector in pixels",
+     "points": 2786,
+     "view": "C-arm, any pose",
+     "note": "262 frames read, of the five specimens the arm may read (the record counts 366 over all six; 18-1109, the held-out one, was not opened); 70 3-D points; 3,668 2-D entries listed, every frame listing all fourteen, of which 2,786 fall on the 1,536 by 1,536 detector and 882 off it, which the paper counts as not visible (job 40940445); the segmentation vol_seg has seven labels (hemipelves 1 and 2, lumbar vertebrae 3, upper sacrum 4, femurs 5 and 6, lower sacrum 7)"
+    }
+   ]
+  },
+  {
+   "key": "aasce_boostnet68",
+   "name": "Four corners of 17 vertebrae on anteroposterior whole-spine films (AASCE, BoostNet)",
+   "citation": "Wu H, Bailey C, Rasoulinejad P, Li S. Automatic landmark estimation for adolescent idiopathic scoliosis assessment using BoostNet. MICCAI 2017, Part I, LNCS 10433, pp. 127-135. doi:10.1007/978-3-319-66182-7_15; AASCE 2019 challenge, SpineWeb dataset 16",
+   "view": "anteroposterior",
+   "landmarks": [
+    {
+     "name": "upper corner, the film's left, T1 to L5",
+     "definition": "the upper end-plate's end on the film's left side, as the outline shows it",
+     "counterpart_3d": "qaloop:endplate.right or qaloop:endplate.left; which of the two is the patient's right depends on the film's facing, which the release does not record",
+     "fixed_or_silhouette": "silhouette"
+    },
+    {
+     "name": "upper corner, the film's right, T1 to L5",
+     "definition": "the upper end-plate's end on the film's right side, as the outline shows it",
+     "counterpart_3d": "qaloop:endplate.right or qaloop:endplate.left; which of the two is the patient's right depends on the film's facing, which the release does not record",
+     "fixed_or_silhouette": "silhouette"
+    },
+    {
+     "name": "lower corner, the film's left, T1 to L5",
+     "definition": "the lower end-plate's end on the film's left side, as the outline shows it",
+     "counterpart_3d": "qaloop:endplate_lower.right or qaloop:endplate_lower.left; which of the two is the patient's right depends on the film's facing, which the release does not record",
+     "fixed_or_silhouette": "silhouette"
+    },
+    {
+     "name": "lower corner, the film's right, T1 to L5",
+     "definition": "the lower end-plate's end on the film's right side, as the outline shows it",
+     "counterpart_3d": "qaloop:endplate_lower.right or qaloop:endplate_lower.left; which of the two is the patient's right depends on the film's facing, which the release does not record",
+     "fixed_or_silhouette": "silhouette"
+    }
+   ],
+   "datasets": [
+    {
+     "name": "AASCE 2019 / BoostNet labelled films (GitHub mirror)",
+     "held": "/rs/rs_grp_oschome/go2432/data/thoracic_xr/mirror_zlinzju_ke30_u7_AASCE2019/unpacked/ke30_u7_AASCE2019-master/boostnet_labeldata",
+     "images": 609,
+     "format": "MATLAB .mat per film, variable p2 68x2 uint16 pixels; on most films the vertebrae top down and each vertebra's points upper left, upper right, lower left, lower right as seen, but 28 of the 609 films list one vertebra above the one before it and 11 vertebrae break the corner order (36 films with either fault; jobs 40940445, 40940609), so a corner's level and place are read by its position, never its index; landmarks.csv 136 scaled numbers a row; angles.csv",
+     "points": 41412,
+     "view": "anteroposterior",
+     "note": "481 training and 128 test films; the 98 challenge test films carry none"
+    },
+    {
+     "name": "AASCE request-form copy",
+     "held": "/rs/rs_grp_oschome/go2432/data/aasce2019_boostnet/raw/aasce",
+     "images": 481,
+     "format": "as the mirror",
+     "note": "481 training films and 99 entries in its test folder; no 128 test films"
+    }
+   ]
+  },
+  {
+   "key": "spinal_ai2024_quads",
+   "name": "Four corners per vertebra on generated anteroposterior films (Spinal-AI2024)",
+   "citation": "Shao Z, Yuan Y, Ma L, et al. CurvNet: latent contour representation and iterative data engine for curvature angle estimation. Pattern Recognition 2025. doi:10.1016/j.patcog.2025.112546 (arXiv 2411.12604)",
+   "view": "anteroposterior",
+   "landmarks": [
+    {
+     "name": "upper corner, the film's left",
+     "definition": "the upper end-plate's end on the film's left side, as the outline shows it",
+     "counterpart_3d": "qaloop:endplate.right or qaloop:endplate.left; which of the two is the patient's right depends on the film's facing, which the release does not record",
+     "fixed_or_silhouette": "silhouette"
+    },
+    {
+     "name": "upper corner, the film's right",
+     "definition": "the upper end-plate's end on the film's right side, as the outline shows it",
+     "counterpart_3d": "qaloop:endplate.right or qaloop:endplate.left; which of the two is the patient's right depends on the film's facing, which the release does not record",
+     "fixed_or_silhouette": "silhouette"
+    },
+    {
+     "name": "lower corner, the film's left",
+     "definition": "the lower end-plate's end on the film's left side, as the outline shows it",
+     "counterpart_3d": "qaloop:endplate_lower.right or qaloop:endplate_lower.left; which of the two is the patient's right depends on the film's facing, which the release does not record",
+     "fixed_or_silhouette": "silhouette"
+    },
+    {
+     "name": "lower corner, the film's right",
+     "definition": "the lower end-plate's end on the film's right side, as the outline shows it",
+     "counterpart_3d": "qaloop:endplate_lower.right or qaloop:endplate_lower.left; which of the two is the patient's right depends on the film's facing, which the release does not record",
+     "fixed_or_silhouette": "silhouette"
+    }
+   ],
+   "datasets": [
+    {
+     "name": "Spinal-AI2024",
+     "held": "/rs/rs_grp_oschome/go2432/data/spinal_ai2024/raw/spinal_ai2024/repo",
+     "images": 20000,
+     "format": "COCO JSON: one annotation per vertebra, segmentation one quadrilateral of 4 points, category 'text'; Cobb angles in two text files",
+     "points": 1369060,
+     "view": "anteroposterior",
+     "note": "generated by a latent diffusion data engine: no patient imaged, no reader; 273,450 training and 68,815 test quadrilaterals, mostly 16 to 18 an image"
+    }
+   ]
+  },
+  {
+   "key": "buu_lspine_lines",
+   "name": "End-plate lines of L1 to L5 (and S1 on the lateral), BUU-LSPINE",
+   "citation": "Klinwichit P, Yookwan W, Limchareon S, Chinnasarn K, Jang JS, Onuean A. BUU-LSPINE: a Thai open lumbar spine dataset for spondylolisthesis detection. Appl Sci 2023;13(15):8646. doi:10.3390/app13158646; the dataset's page, services.informatics.buu.ac.th/spine",
+   "view": "both",
+   "landmarks": [
+    {
+     "name": "upper corner, the film's left",
+     "definition": "the upper end-plate's end on the film's left side, as the outline shows it",
+     "counterpart_3d": "qaloop:endplate.right or qaloop:endplate.left; which of the two is the patient's right depends on the film's facing, which the release does not record",
+     "fixed_or_silhouette": "silhouette"
+    },
+    {
+     "name": "upper corner, the film's right",
+     "definition": "the upper end-plate's end on the film's right side, as the outline shows it",
+     "counterpart_3d": "qaloop:endplate.right or qaloop:endplate.left; which of the two is the patient's right depends on the film's facing, which the release does not record",
+     "fixed_or_silhouette": "silhouette"
+    },
+    {
+     "name": "lower corner, the film's left",
+     "definition": "the lower end-plate's end on the film's left side, as the outline shows it",
+     "counterpart_3d": "qaloop:endplate_lower.right or qaloop:endplate_lower.left; which of the two is the patient's right depends on the film's facing, which the release does not record",
+     "fixed_or_silhouette": "silhouette"
+    },
+    {
+     "name": "lower corner, the film's right",
+     "definition": "the lower end-plate's end on the film's right side, as the outline shows it",
+     "counterpart_3d": "qaloop:endplate_lower.right or qaloop:endplate_lower.left; which of the two is the patient's right depends on the film's facing, which the release does not record",
+     "fixed_or_silhouette": "silhouette"
+    },
+    {
+     "name": "anterosuperior corner",
+     "definition": "where the upper end-plate meets the anterior wall",
+     "counterpart_3d": "qaloop:endplate_depth.anterior (a median 0.2 mm behind the front corner (column.wall_corner's construction mirrored to the front) along the depth and 3.1 mm inside along the normal, job 40940609)",
+     "fixed_or_silhouette": "silhouette (near fixed on the midline in a true lateral)"
+    },
+    {
+     "name": "posterosuperior corner",
+     "definition": "where the upper end-plate meets the posterior wall",
+     "counterpart_3d": "engine:column.wall_corner(top); its nearest LANDMARK qaloop:endplate_depth.posterior lies a median 0.3 mm in front of it along the depth and 3.7 mm inside the body along the plate's normal (job 40940609)",
+     "fixed_or_silhouette": "silhouette (in a true lateral the midline corner stands in; where the posterior face is concave across the outline's corner may lie behind it, unmeasured)"
+    },
+    {
+     "name": "anteroinferior corner",
+     "definition": "where the lower end-plate meets the anterior wall",
+     "counterpart_3d": "qaloop:endplate_lower_depth.anterior (a median 0.2 mm behind the front corner (column.wall_corner's construction mirrored to the front) along the depth and 3.1 mm inside along the normal, job 40940609)",
+     "fixed_or_silhouette": "silhouette (near fixed on the midline in a true lateral)"
+    },
+    {
+     "name": "posteroinferior corner",
+     "definition": "where the lower end-plate meets the posterior wall",
+     "counterpart_3d": "engine:column.wall_corner(bottom); its nearest LANDMARK qaloop:endplate_lower_depth.posterior lies a median 0.3 mm in front of it along the depth and 3.7 mm inside the body along the plate's normal (job 40940609)",
+     "fixed_or_silhouette": "silhouette (in a true lateral the midline corner stands in; where the posterior face is concave across the outline's corner may lie behind it, unmeasured)"
+    },
+    {
+     "name": "S1 upper line, anterior end",
+     "definition": "the anterior end of the top of S1 on the lateral",
+     "counterpart_3d": "new: the S1 plate's anterior end, the promontory (engine:pelvis.s1_plate gives its plane)",
+     "fixed_or_silhouette": "silhouette (near fixed on the midline in a true lateral)"
+    },
+    {
+     "name": "S1 upper line, posterior end",
+     "definition": "the posterior end of the top of S1 on the lateral",
+     "counterpart_3d": "new: the S1 plate's posterior end, the posterosuperior corner of S1",
+     "fixed_or_silhouette": "silhouette (in a true lateral the midline corner stands in; where the posterior face is concave across the outline's corner may lie behind it, unmeasured)"
+    }
+   ],
+   "datasets": [
+    {
+     "name": "BUU-LSPINE v1 (3,600 people), anteroposterior",
+     "held": "/rs/rs_grp_oschome/go2432/data/buu_lspine_3600/raw/buu_full/BUU-LSPINEv1/AP",
+     "images": 3600,
+     "format": "CSV per film: one row per end-plate line, x1,y1,x2,y2,code; 10 rows (L1 to L5, upper and lower)",
+     "points": 72000,
+     "view": "anteroposterior",
+     "note": "codes 0 (35,870 lines), 1 (61), 2 (69); meaning undocumented; corners named by the film's sides"
+    },
+    {
+     "name": "BUU-LSPINE v1 (3,600 people), lateral",
+     "held": "/rs/rs_grp_oschome/go2432/data/buu_lspine_3600/raw/buu_full/BUU-LSPINEv1/LA",
+     "images": 3603,
+     "format": "CSV per film as above; 11 rows (L1 to L5 and the top of S1)",
+     "points": 79266,
+     "view": "lateral",
+     "note": "3,606 CSV and 3,604 films, of which 3,603 pair by name (3 CSV without a film, 1 film without a CSV; jobs 40940445, 40940609): 79,266 points on held films, 79,332 in all; codes 0 (38,862), 3 (465), 4 (194), 20 (15), 21 (130); meaning undocumented"
+    },
+    {
+     "name": "BUU-LSPINE 2000 (the same films, diagnosis codes)",
+     "held": "/rs/rs_grp_oschome/go2432/data/buu_lspine_2000/raw/BUU-LSPINE",
+     "images": 4000,
+     "format": "as v1",
+     "points": 84000,
+     "view": "both",
+     "note": "2,000 AP CSV of 10 lines and 2,000 LA of 11 on the same films as v1 (byte-identical JPEGs, every name in v1); codes AP 0, 1, 2, 5, 6, 7, 8 and LA 0, 3, 4, 9, 10, 20, 21, marked on single lines (the page's diagnoses, side bending and rotation on the AP film and flexion/extension on the lateral, are marked on the lower edge lines; which code is which is undocumented); column 5 differs from v1's on 1,316 files; the geometry is v1's on 3,923 files and not on 77 (22 AP, 55 LA; job 40940445): on 2 LA files every line is drawn the other way round, on 75 lines lie elsewhere, every line on 68 and one or two on 7 (jobs 40940650, 40940690); which release is right there was not checked against the films, so this release is kept beside v1, not dropped as a duplicate"
+    }
+   ]
+  },
+  {
+   "key": "mendeley_spondy_corners",
+   "name": "Four corners per vertebra, L3 to S1, on lateral lumbar films (Mendeley 5jdfdgp762)",
+   "citation": "Reyes K. Spondylolisthesis vertebral landmark. Mendeley Data, version 1, 2025. doi:10.17632/5jdfdgp762.1",
+   "view": "lateral",
+   "landmarks": [
+    {
+     "name": "anterosuperior corner",
+     "definition": "where the upper end-plate meets the anterior wall",
+     "counterpart_3d": "qaloop:endplate_depth.anterior (a median 0.2 mm behind the front corner (column.wall_corner's construction mirrored to the front) along the depth and 3.1 mm inside along the normal, job 40940609)",
+     "fixed_or_silhouette": "silhouette (near fixed on the midline in a true lateral)"
+    },
+    {
+     "name": "posterosuperior corner",
+     "definition": "where the upper end-plate meets the posterior wall",
+     "counterpart_3d": "engine:column.wall_corner(top); its nearest LANDMARK qaloop:endplate_depth.posterior lies a median 0.3 mm in front of it along the depth and 3.7 mm inside the body along the plate's normal (job 40940609)",
+     "fixed_or_silhouette": "silhouette (in a true lateral the midline corner stands in; where the posterior face is concave across the outline's corner may lie behind it, unmeasured)"
+    },
+    {
+     "name": "anteroinferior corner",
+     "definition": "where the lower end-plate meets the anterior wall",
+     "counterpart_3d": "qaloop:endplate_lower_depth.anterior (a median 0.2 mm behind the front corner (column.wall_corner's construction mirrored to the front) along the depth and 3.1 mm inside along the normal, job 40940609)",
+     "fixed_or_silhouette": "silhouette (near fixed on the midline in a true lateral)"
+    },
+    {
+     "name": "posteroinferior corner",
+     "definition": "where the lower end-plate meets the posterior wall",
+     "counterpart_3d": "engine:column.wall_corner(bottom); its nearest LANDMARK qaloop:endplate_lower_depth.posterior lies a median 0.3 mm in front of it along the depth and 3.7 mm inside the body along the plate's normal (job 40940609)",
+     "fixed_or_silhouette": "silhouette (in a true lateral the midline corner stands in; where the posterior face is concave across the outline's corner may lie behind it, unmeasured)"
+    }
+   ],
+   "datasets": [
+    {
+     "name": "Mendeley 5jdfdgp762",
+     "held": "/rs/rs_grp_oschome/go2432/data/mendeley_5jdfdgp762/raw/mendeley_716/extracted/Dataset",
+     "images": 714,
+     "format": "JSON for Keypoint R-CNN (boxes, keypoints 4 per vertebra as x, y, visibility, labels) and YOLO pose text (class, box, 4 keypoints with flags), both in Train/Keypointrcnn_data/labels/train and labels/val; the 16 films in Test carry none. Keypoint order, measured against BUU-LSPINE's line ends on 501 films (job 40940634): JSON the lower plate's two corners, then the upper plate's; text the upper plate's first, the lower plate's two, the upper plate's second; each plate's corners in the order of BUU's line ends",
+     "points": 18400,
+     "view": "lateral",
+     "note": "698 labelled films: 484 in JSON (13,000 keypoints) and 214 in YOLO pose text (1,350 vertebrae); 3 to 11 vertebrae a film, more than L3 to S1 on most; 16 unlabelled test films; 501 films carry a BUU-LSPINE lateral film's name and are a second placement of BUU's corners: on 2,466 L1 to L5 bodies the corners lie a median 9.3 BUU pixels (4 per cent of the plate's length) from BUU's line ends, no film's shift and no copy (jobs 40940634, 40940650)"
+    }
+   ]
+  },
+  {
+   "key": "csxa23",
+   "name": "Corners of C3 to C7, C2's lower plate and C2's centre on lateral cervical films (CSXA)",
+   "citation": "Ran Y, Qin W, Qin C, et al. A high-quality dataset featuring classified and annotated cervical spine X-ray atlas. Sci Data 2024;11:625. doi:10.1038/s41597-024-03383-0 (PMC11176335)",
+   "view": "lateral",
+   "landmarks": [
+    {
+     "name": "anterosuperior corner, C3 to C7",
+     "definition": "where the upper end-plate meets the anterior wall",
+     "counterpart_3d": "qaloop:endplate_depth.anterior (a median 0.2 mm behind the front corner (column.wall_corner's construction mirrored to the front) along the depth and 3.1 mm inside along the normal, job 40940609)",
+     "fixed_or_silhouette": "silhouette (near fixed on the midline in a true lateral)"
+    },
+    {
+     "name": "posterosuperior corner, C3 to C7",
+     "definition": "where the upper end-plate meets the posterior wall",
+     "counterpart_3d": "engine:column.wall_corner(top); its nearest LANDMARK qaloop:endplate_depth.posterior lies a median 0.3 mm in front of it along the depth and 3.7 mm inside the body along the plate's normal (job 40940609)",
+     "fixed_or_silhouette": "silhouette (in a true lateral the midline corner stands in; where the posterior face is concave across the outline's corner may lie behind it, unmeasured)"
+    },
+    {
+     "name": "anteroinferior corner, C3 to C7",
+     "definition": "where the lower end-plate meets the anterior wall",
+     "counterpart_3d": "qaloop:endplate_lower_depth.anterior (a median 0.2 mm behind the front corner (column.wall_corner's construction mirrored to the front) along the depth and 3.1 mm inside along the normal, job 40940609)",
+     "fixed_or_silhouette": "silhouette (near fixed on the midline in a true lateral)"
+    },
+    {
+     "name": "posteroinferior corner, C3 to C7",
+     "definition": "where the lower end-plate meets the posterior wall",
+     "counterpart_3d": "engine:column.wall_corner(bottom); its nearest LANDMARK qaloop:endplate_lower_depth.posterior lies a median 0.3 mm in front of it along the depth and 3.7 mm inside the body along the plate's normal (job 40940609)",
+     "fixed_or_silhouette": "silhouette (in a true lateral the midline corner stands in; where the posterior face is concave across the outline's corner may lie behind it, unmeasured)"
+    },
+    {
+     "name": "C2 bottom left, C2 bottom right",
+     "definition": "the two corner points of the lower endplate of C2",
+     "counterpart_3d": "qaloop:endplate_lower_depth.anterior and engine:column.wall_corner(bottom) at C2, the image's left and right being anterior or posterior by the film's facing",
+     "fixed_or_silhouette": "silhouette (the anterior near fixed on the midline in a true lateral; the posterior as the other posterior corners)"
+    },
+    {
+     "name": "C2 centroid",
+     "definition": "the central point of C2",
+     "counterpart_3d": "new: the centroid of C2's body without the dens (the body anatomy.build cuts at C2 takes in the odontoid, measure.no_dens_plate, so its centroid sits above the reader's point; unmeasured)",
+     "fixed_or_silhouette": "fixed"
+    }
+   ],
+   "datasets": [
+    {
+     "name": "CSXA",
+     "held": "/rs/rs_grp_oschome/go2432/data/csxa_cervical_xray_atlas/raw/csxa",
+     "images": 4963,
+     "format": "labelme JSON 5.2.1 with the image embedded; shapes labelled 'C<n> top|bottom left|right' and 'C2 centroid'",
+     "points": 114150,
+     "view": "lateral",
+     "note": "4,962 files of 23 labelled shapes and one of 24 (a doubled C3 top right); 112,019 shapes of type point, 2,087 one-point polygons and 44 polygons of 2 to 4 points, each a double click within 1.2 px (jobs 40940445, 40940609), so each shape is one landmark; left and right are the image's sides"
+    }
+   ]
+  },
+  {
+   "key": "bournemouth_qf_tracks",
+   "name": "Four-point templates on lateral cervical fluoroscopy, placed on the first frame and tracked (Bournemouth QF)",
+   "citation": "Branney J, Breen AC, Breen A. Cervical spine kinematics database from fluoroscopic imaging. Bournemouth University data repository, record 385. doi:10.18746/bmth.data.00000385; the deposit's README.pdf",
+   "view": "lateral (fluoroscopic sequences)",
+   "landmarks": [
+    {
+     "name": "anterosuperior corner, C3 to C7",
+     "definition": "where the upper end-plate meets the anterior wall",
+     "counterpart_3d": "qaloop:endplate_depth.anterior (a median 0.2 mm behind the front corner (column.wall_corner's construction mirrored to the front) along the depth and 3.1 mm inside along the normal, job 40940609)",
+     "fixed_or_silhouette": "silhouette (near fixed on the midline in a true lateral)"
+    },
+    {
+     "name": "posterosuperior corner, C3 to C7",
+     "definition": "where the upper end-plate meets the posterior wall",
+     "counterpart_3d": "engine:column.wall_corner(top); its nearest LANDMARK qaloop:endplate_depth.posterior lies a median 0.3 mm in front of it along the depth and 3.7 mm inside the body along the plate's normal (job 40940609)",
+     "fixed_or_silhouette": "silhouette (in a true lateral the midline corner stands in; where the posterior face is concave across the outline's corner may lie behind it, unmeasured)"
+    },
+    {
+     "name": "anteroinferior corner, C3 to C7",
+     "definition": "where the lower end-plate meets the anterior wall",
+     "counterpart_3d": "qaloop:endplate_lower_depth.anterior (a median 0.2 mm behind the front corner (column.wall_corner's construction mirrored to the front) along the depth and 3.1 mm inside along the normal, job 40940609)",
+     "fixed_or_silhouette": "silhouette (near fixed on the midline in a true lateral)"
+    },
+    {
+     "name": "posteroinferior corner, C3 to C7",
+     "definition": "where the lower end-plate meets the posterior wall",
+     "counterpart_3d": "engine:column.wall_corner(bottom); its nearest LANDMARK qaloop:endplate_lower_depth.posterior lies a median 0.3 mm in front of it along the depth and 3.7 mm inside the body along the plate's normal (job 40940609)",
+     "fixed_or_silhouette": "silhouette (in a true lateral the midline corner stands in; where the posterior face is concave across the outline's corner may lie behind it, unmeasured)"
+    },
+    {
+     "name": "C2 points 2 and 3",
+     "definition": "the caudal corners of C2 (points 1 and 4 lie above them on no named point)",
+     "counterpart_3d": "qaloop:endplate_lower_depth.anterior and engine:column.wall_corner(bottom) at C2",
+     "fixed_or_silhouette": "silhouette (as the lateral corners)"
+    },
+    {
+     "name": "T1 points 1 and 4 (and C7's where the shoulder hides it)",
+     "definition": "the cranial corners; points 2 and 3 are estimated",
+     "counterpart_3d": "qaloop:endplate_depth.anterior and engine:column.wall_corner(top) at T1",
+     "fixed_or_silhouette": "silhouette (as the lateral corners)"
+    },
+    {
+     "name": "C1's four points",
+     "definition": "above and below over C1's marrow cavities at either side of the image, each pair's middle a cavity's centre",
+     "counterpart_3d": "new: the centres of C1's arches' marrow cavities (C1 has no body)",
+     "fixed_or_silhouette": "silhouette"
+    },
+    {
+     "name": "C0 points 2 and 3",
+     "definition": "the McGregor line, the hard palate's posterior edge to the occiput's lowest point (points 1 and 4 lie above it on no anatomy)",
+     "counterpart_3d": "new: the two ends of McGregor's line on the skull",
+     "fixed_or_silhouette": "silhouette"
+    }
+   ],
+   "datasets": [
+    {
+     "name": "Bournemouth cervical database",
+     "held": "/rs/rs_grp_oschome/go2432/data/realxray/bournemouth_qf/raw/Cervical_Database.mat",
+     "images": null,
+     "format": "one MATLAB file; structure Database, a row per image event (126); Templates has a column for flexion and one for extension, each cell a 9 by 4 cell array, a row per vertebra C0 to T1 and a column per template point (1 top left, 2 bottom left, 3 bottom right, 4 top right), each an (n frames, 2) array of x, y; an empty cell a level not tracked; Database.orientation L or R, the side of the image the anterior lies on",
+     "view": "lateral",
+     "note": "tracks only, no pixels: 252 sequences of 63 people (data/sources/bournemouth_cervical_qf.json); tracked C0 48, C1 249, C2 252, C3 251, C4 252, C5 251, C6 247, C7 50, T1 7; 181 to 339 frames a track; orientation L 226, R 26 (jobs 40940445, 40940609); points placed by hand five times on the first frame, then a tracker's, averaged"
+    }
+   ]
+  },
+  {
+   "key": "nhanes2_vertxnet",
+   "name": "NHANES II vertebral body landmarks and the reference bodies C2 and S1 (VertXNet)",
+   "citation": "Chen Y, Mo Y, Readie A, Ligozio G, Mandal I, Jabbar F, Coroller T, Papiez BW. VertXNet: an ensemble method for vertebral body segmentation and identification from cervical and lumbar spinal X-rays. Sci Rep 2024;14:3341. doi:10.1038/s41598-023-49923-3; Zenodo record 10223910 v3 (CC BY 4.0)",
+   "view": "lateral (cervical and lumbar)",
+   "landmarks": [
+    {
+     "name": "body mask by level",
+     "definition": "the vertebral body's region drawn from the landmarks, named C2 to C7 or T12 to S1",
+     "counterpart_3d": "new: the outline of the projected body's mask, by level",
+     "fixed_or_silhouette": "silhouette"
+    },
+    {
+     "name": "reference bodies C2 and S1",
+     "definition": "added by two radiologists where visible (445 of 544 films, as the paper says)",
+     "counterpart_3d": "new: the projected outlines of C2 and S1, with their names",
+     "fixed_or_silhouette": "silhouette"
+    }
+   ],
+   "datasets": [
+    {
+     "name": "NHANES II annotations (Zenodo 10223910)",
+     "held": "/rs/rs_grp_oschome/go2432/data/nhanes2_zenodo_landmarks/raw/nhanes_annotated/NHANESII_Annotations_VertebralOsetophytes.zip",
+     "images": 543,
+     "format": "pickle per film: sample_id, the film's pixels (uint8) and masks, one binary mask per named body and their union",
+     "view": "lateral",
+     "note": "275 cervical and 268 lumbar files; the two read hold masks and no landmark coordinates"
+    },
+    {
+     "name": "Hipp 2022 machine corners on NHANES II",
+     "held": false,
+     "images": 17026,
+     "format": "four corners per body, L1 to S1 and C2 to C7, placed by neural networks, not people",
+     "note": "Hipp JA, Grieco TF, Newman P, Reitman CA. JBMR Plus 2022;6(10):e10677; 7,364 lumbar and 9,662 cervical films"
+    }
+   ]
+  },
+  {
+   "key": "six_point_genant",
+   "name": "Six-point quantitative morphometry and Genant's semiquantitative grade (SOF, MrOS)",
+   "citation": "Black DM, Cummings SR, Stone K, et al. A new approach to defining normal vertebral dimensions. J Bone Miner Res 1991;6(8):883-892. McCloskey EV, Spector TD, Eyres KS, Fern ED, O'Rourke N, Vasikaran S, Kanis JA. The assessment of vertebral deformity: a method for use in population studies and clinical trials. Osteoporos Int 1993;3(3):138-147 (PubMed 8481590). Genant HK, Wu CY, van Kuijk C, Nevitt MC. Vertebral fracture assessment using a semiquantitative technique. J Bone Miner Res 1993;8(9):1137-1148",
+   "view": "lateral",
+   "landmarks": [
+    {
+     "name": "anterosuperior corner",
+     "definition": "where the upper end-plate meets the anterior wall",
+     "counterpart_3d": "qaloop:endplate_depth.anterior (a median 0.2 mm behind the front corner (column.wall_corner's construction mirrored to the front) along the depth and 3.1 mm inside along the normal, job 40940609)",
+     "fixed_or_silhouette": "silhouette (near fixed on the midline in a true lateral)"
+    },
+    {
+     "name": "posterosuperior corner",
+     "definition": "where the upper end-plate meets the posterior wall",
+     "counterpart_3d": "engine:column.wall_corner(top); its nearest LANDMARK qaloop:endplate_depth.posterior lies a median 0.3 mm in front of it along the depth and 3.7 mm inside the body along the plate's normal (job 40940609)",
+     "fixed_or_silhouette": "silhouette (in a true lateral the midline corner stands in; where the posterior face is concave across the outline's corner may lie behind it, unmeasured)"
+    },
+    {
+     "name": "anteroinferior corner",
+     "definition": "where the lower end-plate meets the anterior wall",
+     "counterpart_3d": "qaloop:endplate_lower_depth.anterior (a median 0.2 mm behind the front corner (column.wall_corner's construction mirrored to the front) along the depth and 3.1 mm inside along the normal, job 40940609)",
+     "fixed_or_silhouette": "silhouette (near fixed on the midline in a true lateral)"
+    },
+    {
+     "name": "posteroinferior corner",
+     "definition": "where the lower end-plate meets the posterior wall",
+     "counterpart_3d": "engine:column.wall_corner(bottom); its nearest LANDMARK qaloop:endplate_lower_depth.posterior lies a median 0.3 mm in front of it along the depth and 3.7 mm inside the body along the plate's normal (job 40940609)",
+     "fixed_or_silhouette": "silhouette (in a true lateral the midline corner stands in; where the posterior face is concave across the outline's corner may lie behind it, unmeasured)"
+    },
+    {
+     "name": "upper plate middle",
+     "definition": "the middle of the upper end-plate (sets Hm with the lower)",
+     "counterpart_3d": "engine:column.plate_centre(top)",
+     "fixed_or_silhouette": "fixed"
+    },
+    {
+     "name": "lower plate middle",
+     "definition": "the middle of the lower end-plate",
+     "counterpart_3d": "engine:column.plate_centre(bottom)",
+     "fixed_or_silhouette": "fixed"
+    }
+   ],
+   "datasets": [
+    {
+     "name": "SOF lateral spine films",
+     "held": false,
+     "images": null,
+     "format": "six points per body, T4 to L4; Genant grades",
+     "note": "asked; registration closed; images moving to the NIA Aging Research Biobank"
+    },
+    {
+     "name": "MrOS lateral spine films",
+     "held": false,
+     "images": null,
+     "format": "6-point and 95-point morphometry by semi-automated software; Genant grades",
+     "note": "asked; registration closed"
+    }
+   ]
+  },
+  {
+   "key": "spinopelvic_sva",
+   "name": "The spinopelvic points and the sagittal vertical axis",
+   "citation": "Legaye J, Duval-Beaupere G, Hecquet J, Marty C. Pelvic incidence: a fundamental pelvic parameter for three-dimensional regulation of spinal sagittal curves. Eur Spine J 1998;7(2):99-103. Schwab F, Ungar B, Blondel B, et al. Scoliosis Research Society-Schwab adult spinal deformity classification: a validation study. Spine 2012;37(12):1077-1082. doi:10.1097/BRS.0b013e31823e15e2",
+   "view": "lateral (standing for the published normals)",
+   "landmarks": [
+    {
+     "name": "S1 plate, anterior end",
+     "definition": "the anterior end of the sacral plate",
+     "counterpart_3d": "new: the S1 plate's anterior end",
+     "fixed_or_silhouette": "silhouette (near fixed on the midline in a true lateral)"
+    },
+    {
+     "name": "S1 plate, posterior end",
+     "definition": "the posterior end of the sacral plate; the posterosuperior corner of S1",
+     "counterpart_3d": "new: the S1 plate's posterior end",
+     "fixed_or_silhouette": "silhouette (in a true lateral the midline corner stands in; where the posterior face is concave across the outline's corner may lie behind it, unmeasured)"
+    },
+    {
+     "name": "S1 plate midpoint",
+     "definition": "the middle of the S1 plate, where incidence is read",
+     "counterpart_3d": "new: the middle of the S1 plate's two ends (the centre of engine:pelvis.s1_plate is the mean of the sacral top under the lowest lumbar body's footprint, so it moves with L5 and in a slip is not the reader's midpoint)",
+     "fixed_or_silhouette": "fixed"
+    },
+    {
+     "name": "femoral head centres",
+     "definition": "the centres of the two femoral heads; the hip axis is their middle",
+     "counterpart_3d": "engine:pelvis.socket_centre",
+     "fixed_or_silhouette": "fixed"
+    },
+    {
+     "name": "C7 centre",
+     "definition": "the centre of the C7 body, from which the plumb line drops",
+     "counterpart_3d": "new: the centroid of anatomy.build's C7 body",
+     "fixed_or_silhouette": "fixed"
+    }
+   ],
+   "datasets": [
+    {
+     "name": "none held with a reader's spinopelvic points",
+     "held": false,
+     "images": null,
+     "format": "",
+     "note": "BUU-LSPINE's lateral S1 line gives the S1 plate's two ends without the femoral heads"
+    }
+   ]
+  },
+  {
+   "key": "cobb_lines",
+   "name": "The Cobb end-plate lines",
+   "citation": "Cobb JR. Outline for the study of scoliosis. AAOS Instructional Course Lectures, vol. 5. Ann Arbor: J. W. Edwards; 1948:261-275 (as cited; text not read)",
+   "view": "anteroposterior (scoliosis); lateral (lordosis, kyphosis)",
+   "landmarks": [
+    {
+     "name": "upper end vertebra's superior plate line",
+     "definition": "a line along the superior end-plate of the upper end vertebra",
+     "counterpart_3d": "new: on an anteroposterior film the line through the plate's two lateral corners, qaloop:endplate.right to qaloop:endplate.left; engine:column.plate_normal(top) and engine:column.coronal_cobb take their slope across from the plane of engine:body.rim_plane through the plate's central half, not from its corners; on a lateral the line from corner to corner is the slope front to back of engine:body.rim_plane",
+     "fixed_or_silhouette": "silhouette (ends); the line's tilt robust"
+    },
+    {
+     "name": "lower end vertebra's inferior plate line",
+     "definition": "a line along the inferior end-plate of the lower end vertebra",
+     "counterpart_3d": "new: on an anteroposterior film the line through the plate's two lateral corners, qaloop:endplate_lower.right to qaloop:endplate_lower.left; engine:column.plate_normal(bottom) and engine:column.coronal_cobb take their slope across from the plane of engine:body.rim_plane through the plate's central half, not from its corners; on a lateral the line from corner to corner is the slope front to back of engine:body.rim_plane",
+     "fixed_or_silhouette": "silhouette (ends); the line's tilt robust"
+    }
+   ],
+   "datasets": [
+    {
+     "name": "AASCE angles.csv",
+     "held": "/rs/rs_grp_oschome/go2432/data/thoracic_xr/mirror_zlinzju_ke30_u7_AASCE2019/unpacked/ke30_u7_AASCE2019-master/boostnet_labeldata/labels",
+     "images": 609,
+     "format": "three Cobb angles a film (CSV)",
+     "view": "anteroposterior"
+    },
+    {
+     "name": "Spinal-AI2024 Cobb files",
+     "held": "/rs/rs_grp_oschome/go2432/data/spinal_ai2024/raw/spinal_ai2024/repo",
+     "images": 20000,
+     "format": "three Cobb angles an image (text)",
+     "view": "anteroposterior"
+    }
+   ]
+  },
+  {
+   "key": "pedicle_rotation",
+   "name": "Rotation from the pedicles (Nash-Moe, Perdriolle)",
+   "citation": "Nash CL, Moe JH. A study of vertebral rotation. J Bone Joint Surg Am 1969;51:223-229. Perdriolle R, Vidal J. Thoracic idiopathic scoliosis curve evolution and prognosis. Spine 1985;10(9):785-791 (PubMed 4089651)",
+   "view": "anteroposterior",
+   "landmarks": [
+    {
+     "name": "convex pedicle oval's centre",
+     "definition": "the position of the convex-side pedicle's shadow within the body's width",
+     "counterpart_3d": "new: the projection of the pedicle module's isthmus axis",
+     "fixed_or_silhouette": "silhouette"
+    },
+    {
+     "name": "body's lateral margins at the pedicle's height",
+     "definition": "the body's two sides that bound the width the pedicle is read in",
+     "counterpart_3d": "new: the projected body's outline at the pedicle's height",
+     "fixed_or_silhouette": "silhouette"
+    }
+   ],
+   "datasets": [
+    {
+     "name": "none held",
+     "held": false,
+     "images": null,
+     "format": ""
+    }
+   ]
+  },
+  {
+   "key": "meyerding_slip",
+   "name": "The slip of L5 on S1 (Meyerding)",
+   "citation": "Meyerding HW. Spondyloptosis. Surg Gynecol Obstet 1932;54:371-377 (as cited; text not read)",
+   "view": "lateral",
+   "landmarks": [
+    {
+     "name": "L5 posteroinferior corner",
+     "definition": "the corner of L5 the slip is measured to",
+     "counterpart_3d": "engine:column.wall_corner(L5, bottom); not h_post's inferior end, which lies a median 4.7 mm in front of that corner at the lumbar plates (job 40940609)",
+     "fixed_or_silhouette": "silhouette (in a true lateral the midline corner stands in; where the posterior face is concave across the outline's corner may lie behind it, unmeasured)"
+    },
+    {
+     "name": "S1 posterior wall line",
+     "definition": "the line of the posterior cortex of the S1 body",
+     "counterpart_3d": "new: S1's posterior wall (S1 is no vertebra in the engine)",
+     "fixed_or_silhouette": "silhouette"
+    },
+    {
+     "name": "S1 plate depth",
+     "definition": "the anteroposterior diameter of the S1 plate the slip is a share of",
+     "counterpart_3d": "new: the S1 plate's two ends",
+     "fixed_or_silhouette": "silhouette (near fixed on the midline in a true lateral)"
+    }
+   ],
+   "datasets": [
+    {
+     "name": "BUU-LSPINE lateral",
+     "held": "/rs/rs_grp_oschome/go2432/data/buu_lspine_3600/raw/buu_full/BUU-LSPINEv1/LA",
+     "images": 3603,
+     "format": "end-plate lines (L5 lower, S1 upper)",
+     "view": "lateral"
+    },
+    {
+     "name": "Mendeley 5jdfdgp762",
+     "held": "/rs/rs_grp_oschome/go2432/data/mendeley_5jdfdgp762/raw/mendeley_716/extracted/Dataset",
+     "images": 714,
+     "format": "corners L3 to S1",
+     "view": "lateral"
+    }
+   ]
+  }
+ ]
+}
