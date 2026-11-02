@@ -40,7 +40,8 @@ KIND=${QALOOP_KIND:-qaloop}
 case "$KIND" in
   qaloop) STUDY_DIR=docs/research/qa-loop FLOW_CLASS=QaloopFlow ;;
   qaloop_tx) STUDY_DIR=docs/research/qa-loop-transformer FLOW_CLASS=QaloopTxFlow ;;
-  *) echo "qaloop: QALOOP_KIND is qaloop or qaloop_tx, not $KIND; nothing ran"; echo "SN_QALOOP_RC=64"; exit 64 ;;
+  qaloop_ext) STUDY_DIR=docs/research/qa-loop-external FLOW_CLASS=QaloopExtFlow ;;
+  *) echo "qaloop: QALOOP_KIND is qaloop, qaloop_tx or qaloop_ext, not $KIND; nothing ran"; echo "SN_QALOOP_RC=64"; exit 64 ;;
 esac
 QALOOP_PIN="jax[cuda12]==0.10.2 flax==0.12.8 optax==0.2.8 orbax-checkpoint==0.12.8 numpy==2.4.6 scipy==1.17.1 nibabel==5.3.2 xarray==2025.6.1 pandas==2.3.2"
 # What every link runs, copied at the gate's commit: the tools and the packages they import, the

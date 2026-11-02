@@ -538,5 +538,103 @@ class PoolTest(unittest.TestCase):
         self.assertEqual(round_tool.floor_pool([0, 1, 2, 3], [nan, nan, nan, 0.1], 0.5), [0, 1, 2, 3])
 
 
+@unittest.skipIf(MISSING, f"needs numpy ({', '.join(MISSING)} missing)")
+class ExternalArmTest(unittest.TestCase):
+    """The external real arms (docs/research/qa-loop-external/PREREG.md): the sacral anchor's points, the anchor's
+    presence, the pair builder's levels and frame geometry, and the round reading a built arm for the gates alone."""
+
+    def column(self):
+        """A sacrum (VerSe 26) wider at its top, with an L5 (24) above it along +z, in RAS with 1 mm voxels."""
+        import numpy as np
+        labels = np.zeros((40, 40, 60), np.int16)
+        labels[8:32, 10:24, 5:25] = 26          # the sacrum: x 8 to 31, y 10 to 23, z 5 to 24
+        labels[2:38, 12:20, 20:25] = 26         # its alae, wider near the top
+        labels[14:26, 12:22, 30:40] = 24        # L5 above it
+        return labels, np.eye(4)
+
+    def test_the_sacral_points_sit_on_the_top_of_s1_at_its_front_and_its_two_sides(self):
+        import numpy as np
+        samples = load_tool("qaloop_samples")
+        labels, affine = self.column()
+        pts = samples.sacral_points(labels, affine)
+        self.assertEqual(pts.shape, (4, 3))
+        promontory, centre, ala_one, ala_two = pts
+        self.assertGreaterEqual(promontory[2], 24 - samples.SACRAL_TOP_MM)   # in the top slab
+        self.assertEqual(promontory[1], 23)                                 # its most anterior voxel, +y in RAS
+        self.assertEqual(sorted([ala_one[0], ala_two[0]]), [2, 37])         # the alae, the two lateral extremes
+        self.assertTrue(np.isnan(samples.sacral_points(np.zeros((5, 5, 5), np.int16), affine)).all())
+
+    def test_the_anchor_is_read_only_where_three_points_fall_in_the_frame(self):
+        import numpy as np
+        samples = load_tool("qaloop_samples")
+        G = samples.G
+        K = np.array([[1000.0, 0, 256], [0, 1000.0, 256], [0, 0, 1]])
+        P = G.projection_matrix(K, np.eye(3), np.array([0.0, 0.0, 1000.0]))
+        rng = np.random.default_rng(0)
+        frame = {"view": "ap_real", "P": P, "image": rng.random((512, 512)).astype(np.float32), "edge_ncc": float("nan")}
+        pair = {"frames": [frame], "sacral": np.array([[0.0, 0, 0], [20, 0, 0], [0, 20, 0], [-20, 0, 0]])}
+        got = samples.pair_anchor(pair)
+        self.assertEqual(len(got), 1)
+        self.assertTrue(0.0 <= got[0] <= 1.0, got)
+        pair["sacral"] = np.array([[0.0, 0, 0], [900, 0, 0], [0, 900, 0], [-900, 0, 0]])     # three of four off the frame
+        self.assertTrue(np.isnan(samples.pair_anchor(pair)[0]))
+        pair["sacral"] = np.full((4, 3), np.nan)
+        self.assertTrue(np.isnan(samples.pair_anchor(pair)[0]))
+
+    def test_the_builders_levels_are_the_longest_agreed_stretch_and_a_padded_frame_keeps_its_projection(self):
+        import json
+        import tempfile
+        import numpy as np
+        from PIL import Image
+        realx = load_tool("realx_pairs")
+        entry = {"vertebrae": [{"level": "L3", "agree": True}, {"level": "L4", "agree": True}, {"level": "L5", "agree": True},
+                               {"level": None, "agree": False}], "variant_flags": ["level names disagree"]}
+        self.assertEqual(realx.agreed_stretch(entry), ["L3", "L4", "L5"])
+        self.assertEqual(realx.agreed_stretch({"vertebrae": [{"level": "L4", "agree": True}]}), [])
+        record = {"structures": {"L2": {"level": "L2", "level_agree": True}, "L3": {"level": "L3", "level_agree": False},
+                                 "L4": {"level": "L4", "level_agree": True}, "L5": {"level": "L5", "level_agree": True}}}
+        self.assertEqual(realx.cobra_levels(record), ["L4", "L5"])
+        with tempfile.TemporaryDirectory() as tmp:
+            png = Path(tmp) / "f.png"
+            Image.new("L", (400, 200), 128).save(png)                       # wider than tall: padded top and bottom
+            K = [[900.0, 0, 200.0], [0, 900.0, 100.0], [0, 0, 1]]
+            meta = {"pose": {"K": K, "ext": np.eye(4).tolist(), "qc_edge_ncc": 0.8}, "view": {"lat_from_ap_deg": 80.0}}
+            fr = realx.frame_of(meta, png)
+            self.assertEqual(fr["view"], "lat_real")
+            self.assertEqual(fr["image"].shape, (512, 512))
+            point = np.array([[10.0, -5.0, 1000.0]])
+            u, v, w = np.asarray(K) @ point[0]
+            want = np.array([u / w, v / w + 100]) * 512 / 400                # the canvas adds 100 rows above, then scales
+            self.assertTrue(np.allclose(realx.G.project(fr["P"], point)[0], want), (realx.G.project(fr["P"], point), want))
+            flipped = realx.orient(-fr["P"], point)
+            self.assertTrue(np.allclose(flipped, fr["P"]))
+            json.dumps(meta)
+
+    def test_the_round_reads_an_external_arm_for_the_gates_alone_and_refuses_a_manifest_of_another(self):
+        import json
+        import tempfile
+        import numpy as np
+        round_tool = load_tool("qaloop_round")
+        samples = round_tool.S
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp) / "realx" / "demo"
+            folder.mkdir(parents=True)
+            frame = {"view": "ap_real", "P": np.eye(3, 4), "image": np.zeros((8, 8), np.float32), "edge_ncc": 0.5}
+            samples.save_pair(str(folder / "a.npz"), {"levels": ["L4", "L5"], "landmarks": np.zeros((2, 18, 3)),
+                                                     "sacrum": np.zeros(3), "frames": [frame], "stand_in": False})
+            manifest = {"source": "demo", "size": 512, "persons": [{"person": "demo:a", "npz": "a.npz"}],
+                        "held_out": [{"person": "demo:b"}], "left_out": {"demo:c": "why"}}
+            (folder / "manifest.json").write_text(json.dumps(manifest))
+            said = []
+            pairs, record = round_tool.external_pairs({"size": 512, "external": [{"source": "demo", "folder": "realx/demo"}]}, tmp, said.append)
+            self.assertEqual([(p["person"], p["part"], p["source"]) for p in pairs], [("demo:a", "validation", "demo")])
+            self.assertEqual({k: record["demo"][k] for k in ("persons", "frames", "held_out", "left_out")},
+                             {"persons": 1, "frames": 1, "held_out": 1, "left_out": 1})
+            self.assertEqual(len(record["demo"]["manifest_sha256"]), 64)
+            self.assertTrue(np.isnan(pairs[0]["sacral"]).all())             # a cache written before the anchor reads as none
+            with self.assertRaises(RuntimeError):
+                round_tool.external_pairs({"size": 384, "external": [{"source": "demo", "folder": "realx/demo"}]}, tmp, said.append)
+
+
 if __name__ == "__main__":
     unittest.main()

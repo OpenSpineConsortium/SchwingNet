@@ -408,6 +408,9 @@ QALOOP_LINKS=6
 # held to its own frozen PREREG, docs/research/qa-loop-transformer/PREREG.md, and queued with its job
 # script grid/qaloop_tx.sbatch; every other plan runs as the kind qaloop under the loop's PREREG.
 QALOOP_TX_PLANS="qa_transformer"
+# The plans that run as the kind qaloop_ext: the loop with external real arms for its gates (DeepFluoro, COBRA2026),
+# held to docs/research/qa-loop-external/PREREG.md and queued with grid/qaloop_ext.sbatch.
+QALOOP_EXT_PLANS="qa_ext_smoke qa_ext"
 # The Pipelines tab's cards (word_cards): the git copy on the lab volume the word builds the branch in,
 # the repository it pushes to (the checkout's own origin unless CARDS_REMOTE names another, as the
 # tests do), the branch, and how many of a kind's newest runs it carries.
@@ -3264,8 +3267,10 @@ qaloop_field() {  # qaloop_field PLAN KEY: a top-level word of the plan, else no
 qaloop_pairs_root() {  # qaloop_pairs_root PLAN: the folder under the data root the plan reads its real pairs from
   sed -n 's/^    "root": "\([a-z0-9_]*\)",\{0,1\}$/\1/p' "$1" | head -n 1
 }
-qaloop_kind() {  # qaloop_kind PLAN: the kind the plan runs as, qaloop_tx for a plan QALOOP_TX_PLANS names, else qaloop
-  case " $QALOOP_TX_PLANS " in *" $1 "*) echo qaloop_tx ;; *) echo qaloop ;; esac
+qaloop_kind() {  # qaloop_kind PLAN: the kind the plan runs as: qaloop_tx or qaloop_ext for a plan their lists name, else qaloop
+  case " $QALOOP_TX_PLANS " in *" $1 "*) echo qaloop_tx; return ;; esac
+  case " $QALOOP_EXT_PLANS " in *" $1 "*) echo qaloop_ext; return ;; esac
+  echo qaloop
 }
 qaloop_covered() {  # qaloop_covered PLAN NAME: status 0 where the frozen PREREG of the plan's kind covers the plan by its name and bytes; the refusal otherwise
   local prereg entry frozen bytes want
