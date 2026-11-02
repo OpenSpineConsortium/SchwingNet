@@ -1,0 +1,5 @@
+The Loop-X digital-twin cadaver's geometry (spine-datasets #170, IPCAI 2025, arXiv 2412.08020), read from its medPhoton private group 30BB and tested against the bone on the grid on 2026-11-01; docs/research/loopx-digital-twin.md has the evidence.
+
+- (30BB,2073) on an X-ray: rows 1, 2 and 4 of its 4 x 4 project from the device's DICOM frame (origin the isocentre) to millimetres on the image; (30BB,2055) on an X-ray or CBCT maps the patient array's frame to the image's navigation frame, the reconstruction's voxel frame in millimetres from the first voxel of instance 0 with its third axis against DICOM's z. tools/loopx_twin.py reads both and stitches the four CBCTs.
+- Constraint: the composed pose holds only for untilted shots; under gantry tilt, (30BB,2088), it is off by 5 to 28 mm at the bone, so the 49 tilted frames are left out until the authors say how tilt enters, or a registration replaces the device's pose.
+- The arm realx/twin (tools/realx_pairs.py twin) is one cadaver, four PA frames, levels T12 to L5 named by TotalSegmentator alone; gate-only and in no loop.
