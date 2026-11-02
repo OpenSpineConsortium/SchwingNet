@@ -134,8 +134,9 @@ CHORDS = {"upper_width": (("superior_right", "superior_left"), "endplate"),
 # lateral toward the side's own outside so one direction serves both hips: "anatomical", the anterior pelvic plane
 # upright as in a person standing (anatomical_frame); "scanner", the scanner's long axis made square to the hip axis
 # (pelvic_frame); "joint", the symphysis's own long axis, its faces' greatest spread. Each entry says why; the numbers
-# are DeepFluoro's five specimens' (docs/research/annotator-landmarks/constructions.md), and the first was learned from
-# them, so its fair error is the one `check` measures leaving each specimen out.
+# are DeepFluoro's five specimens' (docs/research/annotator-landmarks/constructions.md). The first was learned from
+# them and the others chosen among readings measured on them, so none has a fair error there: `check`'s leave-one-out
+# figure holds out only a direction's mean, not the frame or the outline it is read on, which were chosen on all five.
 DIRECTIONS = {
     # learned: the person's points lie from the foramen's centre toward the ischium, back and down (both labelings gave
     # (0.24, -0.83, -0.51) and (0.23, -0.83, -0.51), each person's point within a median 9 degrees of it)
@@ -703,10 +704,11 @@ def symphysis(right, left, frames, directions=None):
     extreme along the end's entry in DIRECTIONS.
 
     Three readings of the ends were measured on DeepFluoro (constructions.md): along the joint's long axis both (the
-    run the bars were set for), whose superior end lay a median 4 mm from the person's and inferior end 14 mm, the
-    faces staying within 4 mm of each other 7 to 17 mm further back than the person's inferior point; along the
-    scanner's long axis, 14 and 3 mm; along the anatomical frame's, 12 and 8 mm. The table takes the superior end from
-    the first and the inferior from the second."""
+    run the bars were set for), whose superior end lay a median 4 mm from the person's and inferior end 14 mm; along
+    the scanner's long axis, 14 and 3 mm; along the anatomical frame's, 12 and 8 mm. Along the line from the person's
+    SPS to the person's IPS, the right pubis's face runs on past the person's IPS by 14.3 and 4.4 mm at its 95th
+    percentile and 21.2 and 9.9 mm at its furthest (debug job 40940285, 17-1882 and 18-2799). The table takes the
+    superior end from the first reading and the inferior from the second, both chosen on the same points."""
     from scipy.spatial import cKDTree
     G = engine()["G"]
     frame = frames["anatomical"]
