@@ -563,6 +563,13 @@ class ExternalArmTest(unittest.TestCase):
         self.assertEqual(promontory[1], 23)                                 # its most anterior voxel, +y in RAS
         self.assertEqual(sorted([ala_one[0], ala_two[0]]), [2, 37])         # the alae, the two lateral extremes
         self.assertTrue(np.isnan(samples.sacral_points(np.zeros((5, 5, 5), np.int16), affine)).all())
+        # alae that rise above the endplate leave the top of S1 where the midline's body ends
+        labels[2:8, 12:20, 25:29] = 26
+        labels[32:38, 12:20, 25:29] = 26
+        promontory, centre, _, _ = samples.sacral_points(labels, affine)
+        self.assertLessEqual(promontory[2], 24)
+        self.assertLessEqual(centre[2], 24)
+        self.assertTrue(abs(centre[0] - 19.5) <= samples.SACRAL_MIDLINE_MM)
 
     def test_the_anchor_is_read_only_where_three_points_fall_in_the_frame(self):
         import numpy as np
@@ -601,6 +608,8 @@ class ExternalArmTest(unittest.TestCase):
             meta = {"pose": {"K": K, "ext": np.eye(4).tolist(), "qc_edge_ncc": 0.8}, "view": {"lat_from_ap_deg": 80.0}}
             fr = realx.frame_of(meta, png)
             self.assertEqual(fr["view"], "lat_real")
+            self.assertIsNone(realx.frame_of(dict(meta, view={"lat_from_ap_deg": 40.0}), png))   # oblique: never seen
+            self.assertEqual(realx.view_of({"view": {"lat_from_ap_deg": -170.0}}), "ap_real")
             self.assertEqual(fr["image"].shape, (512, 512))
             point = np.array([[10.0, -5.0, 1000.0]])
             u, v, w = np.asarray(K) @ point[0]

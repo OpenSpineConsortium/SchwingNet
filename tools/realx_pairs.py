@@ -43,6 +43,10 @@ DEEPFLUORO_TEST = ("18-1109",)          # the realxray export's test specimen, h
 TS_FILES = {"T12": "vertebrae_T12", "L1": "vertebrae_L1", "L2": "vertebrae_L2", "L3": "vertebrae_L3", "L4": "vertebrae_L4",
             "L5": "vertebrae_L5", "sacrum": "sacrum"}
 TO_LPS = np.array([-1.0, -1.0, 1.0])
+# The namer's phantom frames are drawn within 10 degrees of the anteroposterior and lateral views (qaloop_samples
+# DEFAULT_POSE); a real frame further than VIEW_TOLERANCE_DEG from both is a view the namer never saw, so it is left
+# out rather than counted against it. COBRA's 24 frames a case span the whole quarter turn.
+VIEW_TOLERANCE_DEG = 15.0
 LEVEL_COLOURS = [(255, 80, 80), (80, 200, 255), (120, 255, 120), (255, 170, 40), (220, 120, 255), (255, 255, 255)]
 
 
@@ -110,10 +114,25 @@ def frame_of(meta, image_path):
     K = np.array([[s, 0.0, s * int(dx)], [0.0, s, s * int(dy)], [0.0, 0.0, 1.0]]) @ np.asarray(meta["pose"]["K"], float)
     ext = np.asarray(meta["pose"]["ext"], float)
     P = G.projection_matrix(K, ext[:3, :3], ext[:3, 3])
-    lat = meta.get("view", {}).get("lat_from_ap_deg")
-    view = "lat_real" if lat is not None and abs(float(lat)) >= 45.0 else "ap_real"
+    view = view_of(meta)
+    if view is None:
+        return None
     return {"view": view, "P": P, "image": np.asarray(canvas.resize((SIZE, SIZE), Image.BILINEAR), np.float32) / 255.0,
             "edge_ncc": float(meta["pose"].get("qc_edge_ncc", float("nan")))}
+
+
+def view_of(meta):
+    """ap_real within VIEW_TOLERANCE_DEG of the anteroposterior view, lat_real within it of the lateral, else None."""
+    lat = meta.get("view", {}).get("lat_from_ap_deg")
+    if lat is None:
+        return None
+    lat = abs(float(lat)) % 180.0
+    lat = min(lat, 180.0 - lat)
+    if lat <= VIEW_TOLERANCE_DEG:
+        return "ap_real"
+    if lat >= 90.0 - VIEW_TOLERANCE_DEG:
+        return "lat_real"
+    return None
 
 
 def orient(P, points):
@@ -125,6 +144,12 @@ def orient(P, points):
         return P
     w = pts @ P[2, :3] + P[2, 3]
     return -P if np.median(w) < 0 else P
+
+
+def square(image_path):
+    from PIL import Image
+    with Image.open(image_path) as img:
+        return img.size[0] == img.size[1]
 
 
 def metas_by_case(export):
@@ -141,7 +166,9 @@ def build(source, export, cases, out):
     out = Path(out)
     out.mkdir(parents=True, exist_ok=True)
     metas = metas_by_case(export)
-    manifest = {"source": source, "export": str(export), "size": SIZE, "persons": [], "held_out": [], "left_out": {}}
+    manifest = {"source": source, "export": str(export), "size": SIZE, "view_tolerance_deg": VIEW_TOLERANCE_DEG,
+                "persons": [], "held_out": [], "left_out": {}, "frames_left_out": {}}
+    skipped = manifest["frames_left_out"]
     for case, person, levels, ts, held, left in cases:
         if held:
             manifest["held_out"].append({"person": person, "frames": len(metas.get(case, [])), "why": held})
@@ -158,11 +185,20 @@ def build(source, export, cases, out):
         frames, ids = [], []
         for m in metas.get(case, []):
             image = Path(export) / "images" / m["split"] / f"{case}_{m['frame']}.png"
-            if image.is_file():
-                fr = frame_of(m, image)
-                fr["P"] = orient(fr["P"], marks)
-                frames.append(fr)
-                ids.append(m["frame"])
+            if not image.is_file():
+                continue
+            if view_of(m) is None:
+                skipped["oblique"] = skipped.get("oblique", 0) + 1
+                continue
+            if not square(image):
+                # the canvas a frame that is not square is centred on holds no image at its margins, where a
+                # body would count as seen; such frames are few (COBRA's collimated bands) and left out
+                skipped["not square"] = skipped.get("not square", 0) + 1
+                continue
+            fr = frame_of(m, image)
+            fr["P"] = orient(fr["P"], marks)
+            frames.append(fr)
+            ids.append(m["frame"])
         if not frames:
             manifest["left_out"][person] = "no exported frame"
             continue
@@ -232,6 +268,11 @@ def box_at_size(meta, box, image_path):
     return s * (x0 + dx), s * (y0 + dy), s * (x1 + dx), s * (y1 + dy)
 
 
+def kept(box):
+    """Whether an export kept a box: DeepFluoro's export says so, COBRA's gives the visible share, kept at a half."""
+    return bool(box.get("kept", box.get("visible_frac", 0.0) >= 0.5))
+
+
 def check(out, data=None):
     """For every built pair: the share of each level's projected landmarks inside the export's own box for that level
     (which it drew from the same CT through the same pose), and a contact sheet of two frames a person with the
@@ -243,14 +284,14 @@ def check(out, data=None):
     tiles, report = [], {}
     for p in manifest["persons"]:
         pair = S.load_pair(str(out / p["npz"]))
-        inside, total = 0, 0
+        inside, total, s_in, s_total = 0, 0, 0, 0
         for k, fr in enumerate(pair["frames"]):
             uv = G.project(fr["P"], pair["landmarks"])
             if export is not None:
                 meta_path = export / "meta" / f"{p['case']}_{p['frame_ids'][k]}.json"
                 meta = json.loads(meta_path.read_text()) if meta_path.is_file() else None
                 for i, lv in enumerate(pair["levels"]):
-                    box = next((b for b in (meta or {}).get("boxes", []) if b.get("level") == lv and b.get("kept")), None)
+                    box = next((b for b in (meta or {}).get("boxes", []) if b.get("level") == lv and kept(b)), None)
                     if box is None:
                         continue
                     x0, y0, x1, y1 = box_at_size(meta, box["box"], export / "images" / meta["split"] / f"{p['case']}_{meta['frame']}.png")
@@ -277,7 +318,17 @@ def check(out, data=None):
                         d.rectangle([u - 5, v - 5, u + 5, v + 5], outline=(255, 255, 0), width=2)
                 d.text((8, 8), f"{p['case']} frame {p['frame_ids'][k]} {fr['view']}: " + " ".join(pair["levels"]) + " + S1 anchor", fill=(255, 255, 0))
                 tiles.append(im.resize((384, 384)))
-        report[p["person"]] = {"inside_box": inside, "points": total, "share": round(inside / total, 3) if total else None}
+            if export is not None and meta is not None:
+                # the anchor's points against the export's own sacrum box
+                box = next((b for b in meta.get("boxes", []) if b.get("level") == "sacrum" and kept(b)), None)
+                if box is not None:
+                    x0, y0, x1, y1 = box_at_size(meta, box["box"], export / "images" / meta["split"] / f"{p['case']}_{meta['frame']}.png")
+                    sv = G.project(fr["P"], pair["sacral"])
+                    sv = sv[S.in_frame(sv, SIZE, margin=0.0)]
+                    s_in += int(((sv[:, 0] >= x0 - 6) & (sv[:, 0] <= x1 + 6) & (sv[:, 1] >= y0 - 6) & (sv[:, 1] <= y1 + 6)).sum())
+                    s_total += len(sv)
+        report[p["person"]] = {"inside_box": inside, "points": total, "share": round(inside / total, 3) if total else None,
+                               "sacral_inside_box": s_in, "sacral_points": s_total}
     if tiles:
         cols = 4
         rows = (len(tiles) + cols - 1) // cols

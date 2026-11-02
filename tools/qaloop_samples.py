@@ -378,37 +378,45 @@ def read_pair(root, case, levels, size=512):
 # counting based verification"): four points on the top of S1, read from a sacrum mask alone, so that whether the
 # anchor shows on a real frame can be measured as each level's landmarks are.
 SACRAL_POINTS = ("promontory", "s1_top_centre", "ala_one", "ala_two")
-SACRAL_TOP_MM, SACRAL_ALA_MM = 6.0, 25.0
+SACRAL_TOP_MM, SACRAL_ALA_MM, SACRAL_MIDLINE_MM = 6.0, 25.0, 15.0
 
 
 def sacral_points(labels, affine):
     """The sacrum's four anchor points in the mask's world millimetres (RAS for a NIfTI), NaN where there is no
-    sacrum: along the column's axis, taken from the sacrum's centroid to the lowest lumbar body's (or the volume's
-    superior axis without one), the top of S1 is the sacrum's voxels within SACRAL_TOP_MM of its highest; the
-    promontory is that slab's most anterior voxel, its centre the slab's centroid, and the two alae the sacrum's
-    voxels farthest to either side within SACRAL_ALA_MM of the top."""
+    sacrum. The column's axis runs from the sacrum's centroid to the lowest lumbar body's (or is the volume's
+    superior axis without one), and the midline is that body's centroid. The top of S1 is the sacrum's voxels within
+    SACRAL_MIDLINE_MM of the midline and SACRAL_TOP_MM of the highest of them, since the alae and the articular
+    processes can rise above the endplate; the promontory is that slab's most anterior voxel and its centre the
+    slab's centroid; the two alae are the sacrum's voxels farthest to either side within SACRAL_ALA_MM of that top."""
     affine = np.asarray(affine, float)
-    sac = np.argwhere(np.asarray(labels) == VERSE_ID["sacrum"])
+    labels = np.asarray(labels)
+    sac = np.argwhere(labels == VERSE_ID["sacrum"])
     if len(sac) < 50:
         return np.full((len(SACRAL_POINTS), 3), np.nan)
     world = sac @ affine[:3, :3].T + affine[:3, 3]
     centre = world.mean(axis=0)
-    axis = np.array([0.0, 0.0, 1.0])
+    axis, midline = np.array([0.0, 0.0, 1.0]), centre
     for level in ("L5", "L6", "L4"):
-        body = np.argwhere(np.asarray(labels) == VERSE_ID[level])
+        body = np.argwhere(labels == VERSE_ID[level])
         if len(body):
-            axis = (body @ affine[:3, :3].T + affine[:3, 3]).mean(axis=0) - centre
+            midline = (body @ affine[:3, :3].T + affine[:3, 3]).mean(axis=0)
+            axis = midline - centre
             break
     axis = axis / max(np.linalg.norm(axis), 1e-9)
-    height = (world - centre) @ axis
-    top = world[height >= height.max() - SACRAL_TOP_MM]
-    upper = world[height >= height.max() - SACRAL_ALA_MM]
-    # anterior is +y in RAS; the lateral axis is the one across the column, x taken perpendicular to it
+    # anterior is +y in RAS, taken perpendicular to the axis; the lateral axis is across both
     anterior = np.array([0.0, 1.0, 0.0]) - axis * axis[1]
     anterior = anterior / max(np.linalg.norm(anterior), 1e-9)
     side = np.cross(axis, anterior)
-    lat = (upper - centre) @ side
-    return np.array([top[np.argmax((top - centre) @ anterior)], top.mean(axis=0), upper[np.argmax(lat)], upper[np.argmin(lat)]])
+    height = (world - centre) @ axis
+    lat = (world - midline) @ side
+    middle = np.abs(lat) <= SACRAL_MIDLINE_MM
+    if middle.sum() < 10:
+        return np.full((len(SACRAL_POINTS), 3), np.nan)
+    top_height = height[middle].max()
+    top = world[middle & (height >= top_height - SACRAL_TOP_MM)]
+    upper = height >= top_height - SACRAL_ALA_MM
+    return np.array([top[np.argmax((top - centre) @ anterior)], top.mean(axis=0),
+                     world[upper][np.argmax(lat[upper])], world[upper][np.argmin(lat[upper])]])
 
 
 def pair_anchor(pair, radius=8, sigma=1.5, null_per_body=200, size=512):

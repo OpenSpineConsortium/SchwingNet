@@ -31,7 +31,7 @@ DESIGN = "c588988049e1c983ee551f9d5c1177f0b8c7db8083bf2dfd73bea6a656e9da55"
 # adopts the loop's sections 1 to 6 word for word, so the answers restate both alike.
 DESIGNS = {DESIGN: "docs/research/qa-loop/PREREG.md",
            "f796b662183d027080776b2c2deb33d2eec096c82df44ea56baaf1525af2b066": "docs/research/qa-loop-transformer/PREREG.md",
-           "96158d8a65bad5caa9e12f3518437b854f2d0b06579a7d9d1c75783707c3c4ae": "docs/research/qa-loop-external/PREREG.md"}
+           "87bdde0128d1a35e4cf3ae2f016b8ecaed676b2c3ec372f6723f2247f3610385": "docs/research/qa-loop-external/PREREG.md"}
 LICENCES = ROOT / "data" / "licences.json"
 SOURCE = "carmlspine"
 # PREREG.md section 6's known limits, one restatement each in the section's order;
