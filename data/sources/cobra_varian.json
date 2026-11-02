@@ -5,7 +5,7 @@
   "what": "the same kind, from Varian linacs",
   "level_truth": "same",
   "reach": "held",
-  "status": "geometry solved 2026-09-23; no bank built, no frame looked at",
+  "status": "exported 2026-11-01 by tools/cobra_varian_export.py: 220 of 225 cases, 24 frames each, in realxray/cobra_varian; 38 persons in realx/cobra_varian, data only; the fields show the sacrum and L5, little above; no frame looked at by eye",
   "licence": "CC BY-NC 4.0",
   "link": "https://zenodo.org/records/21322350",
   "how_to_get": [],
