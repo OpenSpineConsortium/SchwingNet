@@ -18,8 +18,13 @@ frame's pose brought to the loop's 512 pixels. The specimen the export held out 
 
     python tools/realx_pairs.py deepfluoro --data <data root> --out <folder>
     python tools/realx_pairs.py cobra --data <data root> --out <folder>
+    python tools/realx_pairs.py twin --data <data root> --out <folder>         # after tools/loopx_twin.py's three steps
     python tools/realx_pairs.py check --out <folder>        # overlays and the box agreement, on the grid
     python tools/realx_pairs.py annotations --out <realx/deepfluoro> --shipped <folder of deepfluoro_shipped.py>
+
+twin is the IPCAI 2025 Loop-X digital-twin cadaver (spine-datasets #170), one person whose four navigated CBCTs
+tools/loopx_twin.py stitches and whose X-rays it keeps only where their own poses, tested against the bone, hold
+(docs/research/loopx-digital-twin.md); its levels are TotalSegmentator's alone.
 
 The last sets DeepFluoro's own annotations (its fourteen person-placed pelvic landmarks and its 2-D label image, read
 from the release by tools/deepfluoro_shipped.py) against the arm, so the arm is checked by something this project did
@@ -41,6 +46,7 @@ import json  # noqa: E402
 import numpy as np  # noqa: E402
 
 import deepfluoro_shipped as DS  # noqa: E402
+import loopx_twin as LX  # noqa: E402
 import qaloop_samples as S  # noqa: E402
 
 G = S.G
@@ -260,6 +266,126 @@ def build_cobra(data, out, export_name="cobra_elekta_v3"):
         ts = data / "cobra2026" / "seg" / case / "ts"
         cases.append((case, f"cobra2026:{case}", cobra_levels(rec), ts, held, left))
     return build("cobra2026", export, cases, out)
+
+
+TWIN_CASE = "202410191"
+TWIN_SUBJECT = "one cadaver: a 60-year-old female donor's torso from mid-femur to the upper thorax (Killeen and others, arXiv 2412.08020)"
+TWIN_SQUARE = 0.95      # a frame whose shorter side is under this share of its longer is a collimated strip, left out
+TWIN_MIN_VOXELS = 2000  # a level TotalSegmentator drew at least this much of, at the stitched grid's 1 mm
+
+
+def twin_view(source_deg):
+    """ap_real or lat_real by the Loop-X source's angle on the ring (180 straight below the table, 270 to a side),
+    within VIEW_TOLERANCE_DEG, else None."""
+    try:
+        return view_of({"view": {"lat_from_ap_deg": float(source_deg) - 180.0}})
+    except (TypeError, ValueError):
+        return None
+
+
+def twin_levels(labels):
+    """The longest consecutive stretch of the typical column TotalSegmentator drew, two or more."""
+    best, run = [], []
+    for lv in S.TYPE_LEVELS["typical"]:
+        run = run + [lv] if int((labels == S.VERSE_ID[lv]).sum()) >= TWIN_MIN_VOXELS else []
+        if len(run) > len(best):
+            best = list(run)
+    return best if len(best) >= 2 else []
+
+
+def twin_frame(head, pixels, P_pixels):
+    """One Loop-X X-ray on the loop's canvas: its attenuation within the shutter, scaled to [0, 1] by its 99.5th
+    percentile there and nothing outside it, centred on a square of its longer side and brought to SIZE; P (to the
+    frame's own pixels, edge coordinates) moved and scaled alike."""
+    from PIL import Image
+    mask = LX.shutter_mask(head.get("shutter") or [], pixels.shape)
+    att = LX.attenuation(pixels, mask)
+    top = float(np.percentile(att[mask], 99.5)) if mask.any() else float(att.max())
+    img = np.where(mask, np.clip(att / max(top, 1e-6), 0.0, 1.0), 0.0).astype(np.float32)
+    h, w = img.shape
+    side = max(h, w)
+    dx, dy = (side - w) // 2, (side - h) // 2
+    canvas = np.zeros((side, side), np.float32)
+    canvas[dy:dy + h, dx:dx + w] = img
+    s = SIZE / side
+    K = np.array([[s, 0.0, s * dx], [0.0, s, s * dy], [0.0, 0.0, 1.0]])
+    small = np.asarray(Image.fromarray(canvas, mode="F").resize((SIZE, SIZE), Image.BILINEAR), np.float32)
+    return {"view": twin_view(head.get("source_deg")), "P": K @ np.asarray(P_pixels, float), "image": small}
+
+
+TWIN_REASONS = ("gantry tilted", "edge NCC at the pose", "the best shift", "no navigation matrix", "no projection matrix",
+                "the same pixels", "too small to score", "the bone projects outside", "no edge", "oblique", "not square",
+                "shows fewer than two")
+
+
+def twin_reason(head, frame, seen, levels):
+    """Why one X-ray is not in the arm, or None: its pose must hold (tools/loopx_twin.py pose), its view lie within
+    the tolerance of the anteroposterior or lateral, it be near square, and it show two or more of the arm's levels
+    (tools/loopx_twin.py levels), since a frame of the upper thorax holds none of the column the arm names."""
+    if "left_out" in head:
+        return head["left_out"]
+    if not frame.get("held"):
+        return frame.get("why") or "pose not checked"
+    if twin_view(head.get("source_deg")) is None:
+        return "oblique"
+    if min(head["rows"], head["columns"]) < TWIN_SQUARE * max(head["rows"], head["columns"]):
+        return "not square"
+    if len(set(seen) & set(levels)) < 2:
+        return "shows fewer than two of the arm's levels"
+    return None
+
+
+def twin_reason_key(why):
+    return next((key for key in TWIN_REASONS if why.startswith(key)), why)
+
+
+def build_twin(data, out):
+    """The Loop-X digital-twin cadaver (spine-datasets #170) as one person: its stitched CBCT's TotalSegmentator
+    vertebrae, the oracle's landmarks on the typical column it drew, and every X-ray whose pose the pose check holds,
+    in the world of CT0's LPS. One person leaves nothing to hold out: the arm is gate-only, as every external arm is."""
+    data, out = Path(data), Path(out)
+    work = data / "realxray_work" / "twin"
+    out.mkdir(parents=True, exist_ok=True)
+    meta, cts = LX.load_cts(work)
+    checked = json.loads((work / "pose.json").read_text())["frames"]
+    seen = {k: v["levels"] for k, v in json.loads((work / "levels.json").read_text())["frames"].items()}
+    labels, affine = ts_labels(work / "ts")
+    levels = twin_levels(labels)
+    person = f"loopx_twin:{TWIN_CASE}"
+    manifest = {"source": "loopx_twin", "export": str(work), "size": SIZE, "view_tolerance_deg": VIEW_TOLERANCE_DEG, "subject": TWIN_SUBJECT,
+                "levels_from": "TotalSegmentator 2.18.0 on the stitched CBCT, one reader", "persons": [], "held_out": [],
+                "held_out_note": "one person: nothing is held out, and the arm serves the gates alone", "left_out": {},
+                "frames_left_out": {}, "frame_reasons": {}}
+    if not levels:
+        manifest["left_out"][person] = "TotalSegmentator drew no two consecutive levels of the typical column"
+        (out / "manifest.json").write_text(json.dumps(manifest, indent=1))
+        return manifest
+    marks, sacrum, sacral = landmarks_of(labels, affine, levels)
+    frames, ids = [], []
+    for head in meta["xrays"]:
+        why = twin_reason(head, checked.get(head["name"], {}), seen.get(head["name"], []), levels)
+        if why:
+            key = twin_reason_key(why)
+            manifest["frames_left_out"][key] = manifest["frames_left_out"].get(key, 0) + 1
+            manifest["frame_reasons"][head["name"]] = why
+            continue
+        z = np.load(work / "xray" / f"{head['name']}.npz")
+        P = LX.world_P(z["P"], LX.dicom_nav(z["nav"], cts[0]["frame"]), cts[0]["nav"], head["pixel_spacing"])
+        fr = twin_frame(head, z["pixels"], P)
+        fr["P"] = orient(fr["P"], marks)
+        fr["edge_ncc"] = float(checked[head["name"]].get("ncc_at_pose", float("nan")))
+        frames.append(fr)
+        ids.append(head["name"])
+    if not frames:
+        manifest["left_out"][person] = "no X-ray whose pose holds in view"
+    else:
+        S.save_pair(str(out / f"{TWIN_CASE}.npz"), {"levels": levels, "landmarks": marks, "sacrum": sacrum, "sacral": sacral, "frames": frames, "stand_in": False})
+        read = int(np.isfinite(marks).all(axis=2).sum())
+        manifest["persons"].append({"person": person, "case": TWIN_CASE, "npz": f"{TWIN_CASE}.npz", "levels": levels, "frames": len(frames), "frame_ids": ids,
+                                    "views": [fr["view"] for fr in frames], "landmarks_read": read, "landmarks_total": int(marks.shape[0] * marks.shape[1])})
+    (out / "manifest.json").write_text(json.dumps(manifest, indent=1))
+    print(f"loopx_twin: levels {levels}, {len(frames)} frames {ids}; left out {manifest['frames_left_out']}", flush=True)
+    return manifest
 
 
 def box_at_size(meta, box, image_path):
@@ -586,7 +712,7 @@ def save_sheet(tiles, path, cols=4):
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
-    for name in ("deepfluoro", "cobra"):
+    for name in ("deepfluoro", "cobra", "twin"):
         d = sub.add_parser(name)
         d.add_argument("--data", required=True)
         d.add_argument("--out", required=True)
@@ -601,6 +727,8 @@ def main(argv=None):
         build_deepfluoro(a.data, a.out)
     elif a.cmd == "cobra":
         build_cobra(a.data, a.out)
+    elif a.cmd == "twin":
+        build_twin(a.data, a.out)
     elif a.cmd == "annotations":
         annotations(a.out, a.shipped)
     else:

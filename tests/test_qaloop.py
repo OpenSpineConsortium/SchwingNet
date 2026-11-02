@@ -652,6 +652,84 @@ class ExternalArmTest(unittest.TestCase):
                 round_tool.external_pairs({"size": 384, "external": [{"source": "demo", "folder": "realx/demo"}]}, tmp, said.append)
 
 
+TWIN_MISSING = [name for name in ("numpy", "PIL") if importlib.util.find_spec(name) is None]
+
+
+@unittest.skipIf(TWIN_MISSING, f"needs numpy and Pillow ({', '.join(TWIN_MISSING)} missing)")
+class LoopxTwinTest(unittest.TestCase):
+    """The Loop-X digital-twin cadaver (tools/loopx_twin.py, tools/realx_pairs.py twin): the navigation frame runs
+    against DICOM's z from the top slice's first voxel, so CBCTs a navigation steps up its axis lie down the body;
+    an X-ray's pose is its device projection over the motion the navigations give; the views read off the source's
+    angle; and a frame on the loop's canvas keeps its projection."""
+
+    def rigid(self, angle_deg, axis, t):
+        import numpy as np
+        M = np.eye(4)
+        M[:3, :3] = load_gates().rotation(axis, angle_deg)
+        M[:3, 3] = t
+        return M
+
+    def test_the_navigation_frame_runs_against_z_from_the_top_slice(self):
+        import numpy as np
+        twin = load_tool("loopx_twin")
+        affine = np.array([[0.6, 0, 0, -190.0], [0, 0.6, 0, -123.0], [0, 0, 0.6, -91.0], [0, 0, 0, 1]])
+        F = twin.nav_frame(affine, 416)
+        top_first = affine @ np.array([0, 0, 415, 1.0])
+        self.assertTrue(np.allclose(F @ top_first, [0, 0, 0, 1]))
+        self.assertTrue(np.allclose(F @ (top_first + [0, 0, -10, 0]), [0, 0, 10, 1]))       # down the body is up its axis
+        # two CBCTs whose navigations differ by 187 mm along the frame's axis: the second lies 187 mm down z
+        nav0 = self.rigid(30, [1, 2, 3], [85.0, -443.0, 1150.0])
+        step = np.eye(4)
+        step[2, 3] = -187.0
+        nav1 = step @ nav0                           # the second CBCT's navigation, 187 mm down its frame's axis
+        w = twin.to_world(twin.dicom_nav(nav1, F), twin.dicom_nav(nav0, F))
+        self.assertTrue(np.allclose(w @ [0, 0, 0, 1.0], [0, 0, -187.0, 1]), w @ [0, 0, 0, 1.0])
+
+    def test_an_xray_pose_is_its_projection_over_the_navigated_motion(self):
+        import numpy as np
+        twin = load_tool("loopx_twin")
+        affine = np.array([[0.6, 0, 0, -190.0], [0, 0.6, 0, -123.0], [0, 0, 0.6, -91.0], [0, 0, 0, 1]])
+        F = twin.nav_frame(affine, 416)
+        nav0 = self.rigid(40, [0.2, 1, 0.5], [80.0, -440.0, 1100.0])
+        motion = self.rigid(7, [1, 0, 0], [5.0, -20.0, 140.0])            # the world's LPS to the device's at the shot
+        nav_x = F @ motion @ np.linalg.inv(F) @ nav0                       # what the device would write
+        P_mm = np.array([[1247.0, -210.0, -8.7, 155000.0], [-1.1, -275.0, -1258.0, 203600.0], [0.0008, -0.9994, -0.035, 746.0]])
+        P = twin.world_P(P_mm, twin.dicom_nav(nav_x, F), twin.dicom_nav(nav0, F), [0.3, 0.3])
+        point = np.array([12.0, 30.0, -80.0, 1.0])
+        h = P_mm @ motion @ point
+        self.assertTrue(np.allclose((P @ point)[:2] / (P @ point)[2], h[:2] / h[2] / 0.3))
+        self.assertGreater(twin.focal_of(P), 4000)                          # 1247 mm at 0.3 mm a pixel
+        self.assertTrue(twin.untilted({"tilt_deg": "-0.001100"}) and not twin.untilted({"tilt_deg": "-7.275200"}))
+        self.assertFalse(twin.untilted({"tilt_deg": None}))
+
+    def test_views_follow_the_source_and_a_frame_on_the_canvas_keeps_its_projection(self):
+        import numpy as np
+        realx = load_tool("realx_pairs")
+        self.assertEqual([realx.twin_view(d) for d in ("180.07", "175.02", "268.98", "150.0", "290.87", None)],
+                         ["ap_real", "ap_real", "lat_real", None, None, None])
+        head = {"rows": 300, "columns": 280, "shutter": [10, 10, 270, 10, 270, 290, 10, 290], "source_deg": "180.0"}
+        pixels = np.full((300, 280), 40000, np.uint16)
+        pixels[100:200, 100:180] = 4000                                     # a dense block: attenuation there
+        P_pixels = np.array([[4000.0, 0, 140, 140 * 750.0], [0, 4000.0, 150, 150 * 750.0], [0, 0, 1.0, 750.0]])
+        fr = realx.twin_frame(head, pixels, P_pixels)
+        self.assertEqual(fr["view"], "ap_real")
+        self.assertEqual(fr["image"].shape, (512, 512))
+        self.assertLessEqual(float(fr["image"].max()), 1.0)
+        point = np.array([[3.0, -4.0, 0.0]])
+        u, v, w = P_pixels @ np.append(point[0], 1.0)
+        want = (np.array([u / w, v / w]) + [10, 0]) * 512 / 300            # 10 columns of margin each side, then scaled
+        self.assertTrue(np.allclose(realx.G.project(fr["P"], point)[0], want))
+        self.assertGreater(fr["image"][int(want[1]), int(want[0])], 0.9)    # the block sits where its pixels went
+        arm, both = ["T12", "L1", "L2"], ["L1", "L2", "L3"]
+        self.assertEqual(realx.twin_reason({"rows": 300, "columns": 120, "source_deg": "180"}, {"held": True}, both, arm), "not square")
+        self.assertEqual(realx.twin_reason({"rows": 300, "columns": 300, "source_deg": "150"}, {"held": True}, both, arm), "oblique")
+        self.assertIsNone(realx.twin_reason({"rows": 300, "columns": 290, "source_deg": "181"}, {"held": True}, both, arm))
+        self.assertEqual(realx.twin_reason({"rows": 300, "columns": 290, "source_deg": "181"}, {"held": True}, ["T4", "T12"], arm),
+                         "shows fewer than two of the arm's levels")
+        why = realx.twin_reason(head, {"held": False, "why": "gantry tilted -7.2752 degrees (30BB,2088): no"}, both, arm)
+        self.assertEqual(realx.twin_reason_key(why), "gantry tilted")
+
+
 SHIPPED_MISSING = [name for name in ("numpy", "scipy", "PIL") if importlib.util.find_spec(name) is None]
 
 
