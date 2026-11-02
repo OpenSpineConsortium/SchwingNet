@@ -11,7 +11,10 @@ was saved and lays it out for grid/banks/radiopaedia_fluoro.json and radiopaedia
 A case can be saved as a CT too, the third group, whose images are the slices of a stack and so
 carry an order the other groups do not. Each slice is named by its one number, as the case
 viewer shows it (12.jpg or slice-012.jpg); a case's slices sit straight in its folder, one
-series, or in one folder per series (axial, sagittal), and are laid out by their number:
+series, or in one folder per series (axial, sagittal), and are laid out by their number. A CT
+case is one folder: a second folder under ct naming the same rID is refused, since the slices of
+the two would interleave by number, while under fluoro or xr two folders of one rID are one case,
+since films carry no order:
 
     <from>/ct/<rID>/[<series>/]<n>.jpg
     <to>/radiopaedia_ct/raw/<rID>/<series or stack>/<n, four digits>-<sha256[:16]>.jpg
@@ -26,9 +29,10 @@ Every image is named by its bytes, so the same image saved twice in a case is ke
 reported, and the same image under two cases is refused, since which case it belongs to is not
 the tool's to decide; in a CT stack the same slice under two numbers is refused too, since one
 of the two numbers is wrong. A file that is not a JPEG, a folder whose name does not start with
-an rID, a group other than ct, fluoro or xr, a slice name with no number or more than one, and
-two slices of one number are refused by name, and nothing is written until the whole set has
-been read. `<to>/CASES.csv` lists each case with its group, frame count and page, and
+an rID, a group other than ct, fluoro or xr, a slice name with no number or more than one, two
+slices of one number, and a file saved beside the group folders or straight into one, where it
+belongs to no case, are refused by name, and nothing is written until the whole set has been
+read. `<to>/CASES.csv` lists each case with its group, frame count and page, and
 `<to>/SHA256SUMS` every file, so the folder can be carried to the grid (grid/carry/README.md);
 the near-duplicate check against the corpora already held is the leak check after ingest
 (grid/run-leaks.sh with NEW=<source>/<shard>), which runs before any frame enters a test split.
@@ -102,8 +106,11 @@ def series_folders(case_dir):
     entries = sorted(case_dir.iterdir())
     loose = [p for p in entries if p.is_file()]
     folders = [p for p in entries if p.is_dir()]
+    for path in loose:
+        require_jpeg_name(path)
     if loose and folders:
-        raise ImportError_(f"{case_dir}: slices both loose and in series folders; put every slice in a series folder")
+        raise ImportError_(f"{loose[0]}: a loose slice beside the series folders of {case_dir.name}; "
+                           "put every slice in a series folder")
     if loose:
         return [(LOOSE_SERIES, loose)]
     found = []
@@ -125,14 +132,35 @@ def case_images(group, rid, case_dir):
             for series, paths in series_folders(case_dir) for p in paths]
 
 
+def refuse_loose_files(folder, where):
+    """Above the case folders a file belongs to no case, so it would be dropped unread."""
+    loose = sorted(p for p in folder.iterdir() if p.is_file())
+    if loose:
+        raise ImportError_(f"{loose[0]}: saved {where}, where it belongs to no case; "
+                           "move it into its case folder or delete it")
+
+
+def claim_ct_folder(ct_folders, rid, case_dir):
+    """A CT case is one folder, since the slices of two folders would interleave by number."""
+    first = ct_folders.setdefault(rid, case_dir)
+    if first != case_dir:
+        raise ImportError_(f"{case_dir}: {CT}/{rid} is saved in {first.name} too; a CT case is one folder, "
+                           "with its series as folders inside it")
+
+
 def saved_images(source):
     """Every saved image as a Saved record, in path order."""
-    found = []
+    found, ct_folders = [], {}
+    refuse_loose_files(source, "beside the group folders")
     for group_dir in sorted(p for p in source.iterdir() if p.is_dir()):
         if group_dir.name not in GROUPS:
             raise ImportError_(f"{group_dir.name}: the group is none of {', '.join(GROUPS)}")
+        refuse_loose_files(group_dir, f"straight into {group_dir.name}")
         for case_dir in sorted(p for p in group_dir.iterdir() if p.is_dir()):
-            found.extend(case_images(group_dir.name, case_of(case_dir.name), case_dir))
+            rid = case_of(case_dir.name)
+            if group_dir.name == CT:
+                claim_ct_folder(ct_folders, rid, case_dir)
+            found.extend(case_images(group_dir.name, rid, case_dir))
     if not found:
         raise ImportError_(f"{source}: no saved image under <group>/<rID>/")
     return found
@@ -150,8 +178,11 @@ def refuse_unless_repeat(item, first, first_path):
     """An image kept already may come again only as a second save in the same place."""
     if (first.group, first.rid) != (item.group, item.rid):
         raise ImportError_(f"{item.path}: the same image is saved under {first.group}/{first.rid} too")
-    if (first.series, first.number) != (item.series, item.number):
-        raise ImportError_(f"{item.path}: the same slice is saved as {first_path.name} in {first.series} too; "
+    if first.series != item.series:
+        raise ImportError_(f"{item.path}: the same slice is saved in {first.series} as {first_path.name} too; "
+                           "a slice belongs to one series, so keep it in one")
+    if first.number != item.number:
+        raise ImportError_(f"{item.path}: the same slice is saved as {first_path.name} too; "
                            "one of its two numbers is wrong")
 
 

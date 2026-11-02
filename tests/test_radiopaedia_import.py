@@ -168,6 +168,53 @@ class PairedCaseTest(unittest.TestCase):
                 with self.assertRaises(rp.ImportError_):
                     rp.arrange(saved)
 
+    def refusal(self, layout):
+        """The message a saved layout is refused with."""
+        for relative, data in layout:
+            save(self.saved, relative, data)
+        with self.assertRaises(rp.ImportError_) as caught:
+            rp.arrange(self.saved)
+        return str(caught.exception)
+
+    def test_a_ct_case_saved_in_two_folders_is_refused(self):
+        layouts = ((("ct/5-axial/21.jpg", 21), ("ct/5-axial/22.jpg", 22), ("ct/5-sagittal/1.jpg", 1)),
+                   (("ct/5-a/1.jpg", 1), ("ct/5-b/axial/2.jpg", 2), ("xr/5/a.jpg", 99)),
+                   (("ct/5/1.jpg", 1), ("ct/rID5/2.jpg", 2)))
+        for index, layout in enumerate(layouts):
+            with self.subTest(layout=layout):
+                self.saved = Path(self.tmp.name) / f"two-folders-{index}"
+                message = self.refusal([(relative, slice_bytes(n)) for relative, n in layout])
+                self.assertIn("a CT case is one folder", message)
+
+    def test_two_film_folders_of_one_rid_are_one_case(self):
+        save(self.saved, "xr/5-ap/a.jpg", JPEG)
+        save(self.saved, "xr/5-lateral/b.jpg", OTHER)
+        kept, _ = rp.arrange(self.saved)
+        self.assertEqual(rp.case_rows(kept), [{"rid": "5", "group": "xr", "frames": 2,
+                                               "page": "https://radiopaedia.org/cases/5"}])
+
+    def test_a_file_above_the_case_folders_is_refused_by_name(self):
+        for index, stray in enumerate(("ct/12.jpg", "xr/a.jpg", "fluoro/a.jpg", "notes.jpg", "desktop.ini")):
+            with self.subTest(stray=stray):
+                self.saved = Path(self.tmp.name) / f"stray-{index}"
+                message = self.refusal([(stray, slice_bytes(12)), ("xr/5/b.jpg", OTHER)])
+                self.assertIn(Path(stray).name, message)
+                self.assertIn("belongs to no case", message)
+
+    def test_the_same_slice_in_two_series_is_refused_as_such(self):
+        message = self.refusal([("ct/5/axial/1.jpg", slice_bytes(1)), ("ct/5/sagittal/1.jpg", slice_bytes(1))])
+        self.assertIn("belongs to one series", message)
+        self.assertNotIn("numbers", message)
+
+    def test_one_slice_under_two_numbers_names_the_numbers(self):
+        message = self.refusal([("ct/5/axial/1.jpg", slice_bytes(1)), ("ct/5/axial/2.jpg", slice_bytes(1))])
+        self.assertIn("one of its two numbers is wrong", message)
+
+    def test_a_stray_file_beside_series_folders_is_refused_by_name(self):
+        message = self.refusal([("ct/5/axial/1.jpg", slice_bytes(1)), ("ct/5/Thumbs.db", b"x")])
+        self.assertIn("Thumbs.db", message)
+        self.assertIn("not a .jpg", message)
+
     def test_a_ct_beside_both_x_ray_groups_is_refused(self):
         save(self.saved, "ct/5/1.jpg", slice_bytes(1))
         save(self.saved, "fluoro/5/a.jpg", JPEG)
