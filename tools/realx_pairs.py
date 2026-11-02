@@ -18,6 +18,7 @@ frame's pose brought to the loop's 512 pixels. The specimen the export held out 
 
     python tools/realx_pairs.py deepfluoro --data <data root> --out <folder>
     python tools/realx_pairs.py cobra --data <data root> --out <folder>
+    python tools/realx_pairs.py cobra_varian --data <data root> --out <folder>   # tools/cobra_varian_export.py's export
     python tools/realx_pairs.py check --out <folder>        # overlays and the box agreement, on the grid
     python tools/realx_pairs.py annotations --out <realx/deepfluoro> --shipped <folder of deepfluoro_shipped.py>
 
@@ -87,6 +88,29 @@ def ts_labels(folder):
     if labels is None:
         raise ValueError("no TotalSegmentator vertebra mask")
     return labels, affine
+
+
+def harvest_ts_labels(path):
+    """The anomaly harvest's TotalSegmentator labels (one multi-label file a case, its class map two folders up)
+    as one volume in VerSe ids, with its affine. TotalSegmentator 2.18 labels S1 apart from the rest of the
+    sacrum; the sacrum here is the two together, as SPINEPS's is and as tools/cobra_varian_export.py boxed it."""
+    import nibabel as nib
+    path = Path(path)
+    ids = {name: int(i) for i, name in json.loads((path.parent.parent / "class_map.json").read_text()).items()}
+    img = nib.load(str(path))
+    raw = np.asarray(img.dataobj)
+    labels = np.zeros(raw.shape, np.int16)
+    for level, stem in TS_FILES.items():
+        labels[raw == ids[stem]] = S.VERSE_ID[level]
+    labels[raw == ids["vertebrae_S1"]] = S.VERSE_ID["sacrum"]
+    if not labels.any():
+        raise ValueError("no TotalSegmentator vertebra label")
+    return labels, img.affine
+
+
+def read_ts(ts):
+    """A folder of per-structure masks (the Elekta export's seg tree) or one harvest label file."""
+    return ts_labels(ts) if Path(ts).is_dir() else harvest_ts_labels(ts)
 
 
 def landmarks_of(labels, affine, levels):
@@ -166,9 +190,17 @@ def metas_by_case(export):
     return metas
 
 
-def build(source, export, cases, out):
+def structure_in_view(meta, levels):
+    """Whether the export kept a box for the sacrum or one of the stretch's levels on this frame, which it does
+    where half the structure's projected voxels fall inside the image."""
+    names = set(levels) | {"sacrum"}
+    return any(kept(b) and b.get("level_ts") in names for b in meta.get("boxes", []))
+
+
+def build(source, export, cases, out, in_view=None):
     """The pairs of one source. cases: (case, person, levels, TotalSegmentator folder, held-out reason or None,
-    left-out reason or None), in order; a held-out or left-out case is named in the manifest and never read."""
+    left-out reason or None), in order; a held-out or left-out case is named in the manifest and never read. With
+    in_view, a frame it says shows none of the person's structures is left out and counted."""
     out = Path(out)
     out.mkdir(parents=True, exist_ok=True)
     metas = metas_by_case(export)
@@ -183,7 +215,7 @@ def build(source, export, cases, out):
             manifest["left_out"][person] = left or "no two consecutive levels both labellers name alike"
             continue
         try:
-            labels, affine = ts_labels(Path(ts))
+            labels, affine = read_ts(Path(ts))
         except (OSError, ValueError) as exc:
             manifest["left_out"][person] = f"segmentation not read: {type(exc).__name__}"
             continue
@@ -200,6 +232,9 @@ def build(source, export, cases, out):
                 # the canvas a frame that is not square is centred on holds no image at its margins, where a
                 # body would count as seen; such frames are few (COBRA's collimated bands) and left out
                 skipped["not square"] = skipped.get("not square", 0) + 1
+                continue
+            if in_view is not None and not in_view(m, levels):
+                skipped["no structure in view"] = skipped.get("no structure in view", 0) + 1
                 continue
             fr = frame_of(m, image)
             fr["P"] = orient(fr["P"], marks)
@@ -239,13 +274,15 @@ def cobra_levels(record):
     return best if len(best) >= 2 else []
 
 
-def build_cobra(data, out, export_name="cobra_elekta_v3"):
+def build_cobra(data, out, export_name="cobra_elekta_v3", source="cobra2026", ts_of=None, in_view=None):
     """COBRA2026's Elekta export (realxray_cobra_export v2, 24 frames a case, the CT-to-projection axis map confirmed
     by edge NCC case by case): the export's test cases (md5 of the case mod 10 is 8 or 9) are held out; a case whose
     column the transitional screen (cobra2026/lstv) does not call ordinary, L1 to L5 above the sacrum, is left out,
-    since the real arm names the typical column."""
+    since the real arm names the typical column. ts_of gives a case's TotalSegmentator labels where they are not the
+    Elekta seg tree's; in_view is build's."""
     data = Path(data)
     export = data / "realxray" / export_name
+    ts_of = ts_of or (lambda case: data / "cobra2026" / "seg" / case / "ts")
     cases = []
     for path in sorted((export / "cases").glob("*.json")):
         rec = json.loads(path.read_text())
@@ -257,9 +294,19 @@ def build_cobra(data, out, export_name="cobra_elekta_v3"):
         call = data / "cobra2026" / "lstv" / f"{case}.json"
         subtype = json.loads(call.read_text()).get("call_by_mask_id", {}).get("subtype") if call.is_file() else None
         left = None if subtype == "ordinary" else f"transitional screen: {subtype}"
-        ts = data / "cobra2026" / "seg" / case / "ts"
-        cases.append((case, f"cobra2026:{case}", cobra_levels(rec), ts, held, left))
-    return build("cobra2026", export, cases, out)
+        cases.append((case, f"cobra2026:{case}", cobra_levels(rec), ts_of(case), held, left))
+    return build(source, export, cases, out, in_view)
+
+
+def build_cobra_varian(data, out):
+    """COBRA2026's Varian export (tools/cobra_varian_export.py: centres F and G, 24 frames a case, square crops
+    about the lumbosacral junction, the axis map confirmed by edge NCC case by case), by build_cobra's rules, the
+    TotalSegmentator labels the anomaly harvest made on the same ct_def standing for the Elekta seg tree. The Varian
+    fields are pelvic and centred on the treatment target, below the spine, so many frames hold no structure of the
+    column at all; a frame with no box of the sacrum or of the person's levels is left out and counted."""
+    data = Path(data)
+    harvest = data / "anomaly_harvest" / "cobra" / "ts"
+    return build_cobra(data, out, "cobra_varian", "cobra_varian", lambda case: harvest / f"{case}.nii.gz", structure_in_view)
 
 
 def box_at_size(meta, box, image_path):
@@ -586,7 +633,7 @@ def save_sheet(tiles, path, cols=4):
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
-    for name in ("deepfluoro", "cobra"):
+    for name in ("deepfluoro", "cobra", "cobra_varian"):
         d = sub.add_parser(name)
         d.add_argument("--data", required=True)
         d.add_argument("--out", required=True)
@@ -601,6 +648,8 @@ def main(argv=None):
         build_deepfluoro(a.data, a.out)
     elif a.cmd == "cobra":
         build_cobra(a.data, a.out)
+    elif a.cmd == "cobra_varian":
+        build_cobra_varian(a.data, a.out)
     elif a.cmd == "annotations":
         annotations(a.out, a.shipped)
     else:
