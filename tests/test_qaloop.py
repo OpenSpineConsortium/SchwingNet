@@ -652,6 +652,10 @@ class ExternalArmTest(unittest.TestCase):
                 round_tool.external_pairs({"size": 384, "external": [{"source": "demo", "folder": "realx/demo"}]}, tmp, said.append)
 
 
+SHIPPED_MISSING = [name for name in ("numpy", "scipy", "PIL") if importlib.util.find_spec(name) is None]
+
+
+@unittest.skipIf(SHIPPED_MISSING, f"needs numpy, scipy and Pillow ({', '.join(SHIPPED_MISSING)} missing)")
 class ShippedAnnotationsTest(unittest.TestCase):
     """DeepFluoro's own annotations against the arm (tools/deepfluoro_shipped.py, tools/realx_pairs.py annotations):
     the shipped coordinates reach the loop's canvas as the export reads them, and the check finds the person's
