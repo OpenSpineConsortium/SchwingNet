@@ -652,5 +652,88 @@ class ExternalArmTest(unittest.TestCase):
                 round_tool.external_pairs({"size": 384, "external": [{"source": "demo", "folder": "realx/demo"}]}, tmp, said.append)
 
 
+class ShippedAnnotationsTest(unittest.TestCase):
+    """DeepFluoro's own annotations against the arm (tools/deepfluoro_shipped.py, tools/realx_pairs.py annotations):
+    the shipped coordinates reach the loop's canvas as the export reads them, and the check finds the person's
+    landmarks where the pair's pose puts them, the arm's landmarks on the shipped labels, and the presence measure
+    seeing edges a person marked."""
+
+    NAMES = ["ASIS-l", "ASIS-r", "FH-l", "FH-r", "GSN-l", "GSN-r", "IOF-l", "IOF-r", "IPS-l", "IPS-r", "MOF-l", "MOF-r",
+             "SPS-l", "SPS-r"]
+
+    def test_the_shipped_coordinates_reach_the_loop_canvas_turned_with_the_image(self):
+        import numpy as np
+        ds = load_tool("deepfluoro_shipped")
+        # a full-resolution pixel centre is the export's (u + 0.5) / 4 at 384, which is (u + 0.5) / 3 at 512
+        self.assertTrue(np.allclose(ds.to_loop(np.array([[0.0, 1535.0]]), 0, 1536, 1536), [[0.5 / 3, 1535.5 / 3]]))
+        self.assertTrue(np.allclose(ds.to_loop(np.array([[0.0, 1535.0]]), 1, 1536, 1536), [[512 - 0.5 / 3, 512 - 1535.5 / 3]]))
+        seg = np.zeros((1536, 1536), np.uint8)
+        seg[:3, :2] = 4                                    # two of a block's three columns: the block takes the label
+        seg[3:6, :1] = 3                                   # one of three: it does not
+        got = ds.seg_to_loop(seg, 0)
+        self.assertEqual(got.shape, (512, 512))
+        self.assertEqual((got[0, 0], got[1, 0]), (4, 0))
+        self.assertEqual(ds.seg_to_loop(seg, 1)[511, 511], 4)          # turned with the image
+        self.assertTrue(ds.is_interior("FH-l") and not ds.is_interior("GSN-r"))
+
+    def build(self, tmp, rots):
+        import numpy as np
+        samples = load_tool("qaloop_samples")
+        G = samples.G
+        rng = np.random.default_rng(3)
+        K = np.array([[1200.0, 0, 256], [0, 1200.0, 256], [0, 0, 1]])
+        P = G.projection_matrix(K, np.eye(3), np.array([0.0, 0.0, 1000.0]))
+        lm3d = np.column_stack([rng.uniform(-120, 120, 14), rng.uniform(-120, 120, 14), rng.uniform(-30, 30, 14)])
+        marks = np.stack([rng.uniform(-60, 60, (18, 3)) * np.array([1, 1, 0.2]) + np.array([0, -80 + 40 * i, 0]) for i in range(2)])
+        sacral = np.array([[0.0, 10, 0], [0, 0, 0], [30, 0, 0], [-30, 0, 0]])
+        frames, raws, segs = [], [], []
+        for k, rot in enumerate(rots):
+            image = np.zeros((512, 512), np.float32)
+            uv = G.project(P, lm3d)
+            for u, v in uv:                               # a bright patch at each landmark a person marked: an edge there
+                image[int(v) - 2:int(v) + 3, int(u) - 2:int(u) + 3] = 1.0
+            frames.append({"view": "ap_real", "P": P, "image": image, "edge_ncc": float("nan")})
+            raw = (512 - uv if rot else uv) * 1536 / 512 - 0.5
+            raws.append(raw)
+            seg = np.zeros((512, 512), np.uint8)
+            for pts in list(G.project(P, marks)) + [G.project(P, sacral)]:
+                lo, hi = np.floor(pts.min(axis=0)).astype(int), np.ceil(pts.max(axis=0)).astype(int)
+                seg[max(lo[1], 0):hi[1], max(lo[0], 0):hi[0]] = 3
+            segs.append(seg[::-1, ::-1] if rot else seg)   # the shipped labels sit on the frame before it is turned
+        out, shipped = Path(tmp) / "arm", Path(tmp) / "shipped"
+        out.mkdir()
+        shipped.mkdir()
+        samples.save_pair(str(out / "c.npz"), {"levels": ["L4", "L5"], "landmarks": marks, "sacrum": np.zeros(3), "sacral": sacral,
+                                              "frames": frames, "stand_in": False})
+        ids = [f"{k:03d}" for k in range(len(rots))]
+        (out / "manifest.json").write_text(json.dumps({"source": "deepfluoro", "size": 512, "held_out": [],
+                                                       "persons": [{"person": "deepfluoro:c", "case": "c", "npz": "c.npz", "frame_ids": ids}]}))
+        full_segs = [np.kron(s, np.ones((3, 3), np.uint8)) for s in segs]
+        np.savez(shipped / "c.npz", names=np.asarray(self.NAMES), lm3d=lm3d, raw=np.asarray(raws), rot=np.asarray(rots),
+                 cols=1536, rows=1536, frame_ids=np.asarray(ids),
+                 seg=np.asarray([load_tool("deepfluoro_shipped").seg_to_loop(s, r) for s, r in zip(full_segs, rots)]))
+        return out, shipped
+
+    def test_the_check_finds_the_persons_landmarks_where_the_pose_puts_them(self):
+        import tempfile
+        realx = load_tool("realx_pairs")
+        with tempfile.TemporaryDirectory() as tmp:
+            out, shipped = self.build(tmp, [0, 1] * 5)          # ten frames: enough for the share's lower bound
+            report = realx.annotations(out, shipped)
+            winner = report["reprojection"]["winner"]
+            self.assertTrue(report["reprojection"]["pass"], report["reprojection"])
+            self.assertEqual((winner["order"], winner["turned_with_image"]), ("column first", True))
+            self.assertLess(winner["median_px"], 0.01)
+            # reading the turned frames' coordinates without the turn lands them far off
+            other = [r for r in report["reprojection"]["readings"] if r["order"] == "column first" and not r["turned_with_image"]][0]
+            self.assertGreater(other["p90_px"], 10)
+            self.assertTrue(report["spine"]["pass"], report["spine"])
+            self.assertTrue(report["sacral"]["pass"], report["sacral"])
+            self.assertTrue(report["presence"]["person_outline_landmarks"]["pass"], report["presence"])
+            self.assertIn("canal_ap.anterior", report["presence"]["arm_by_landmark"])
+            self.assertTrue((shipped / "annotations.json").is_file() and (shipped / "annotations_sheet.png").is_file())
+            self.assertEqual(sorted(x.name for x in out.iterdir()), ["c.npz", "manifest.json"])     # the arm is never written
+
+
 if __name__ == "__main__":
     unittest.main()

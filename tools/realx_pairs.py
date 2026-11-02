@@ -19,6 +19,11 @@ frame's pose brought to the loop's 512 pixels. The specimen the export held out 
     python tools/realx_pairs.py deepfluoro --data <data root> --out <folder>
     python tools/realx_pairs.py cobra --data <data root> --out <folder>
     python tools/realx_pairs.py check --out <folder>        # overlays and the box agreement, on the grid
+    python tools/realx_pairs.py annotations --out <realx/deepfluoro> --shipped <folder of deepfluoro_shipped.py>
+
+The last sets DeepFluoro's own annotations (its fourteen person-placed pelvic landmarks and its 2-D label image, read
+from the release by tools/deepfluoro_shipped.py) against the arm, so the arm is checked by something this project did
+not make.
 """
 
 import sys
@@ -35,6 +40,7 @@ import json  # noqa: E402
 
 import numpy as np  # noqa: E402
 
+import deepfluoro_shipped as DS  # noqa: E402
 import qaloop_samples as S  # noqa: E402
 
 G = S.G
@@ -341,6 +347,242 @@ def check(out, data=None):
     return report
 
 
+# DeepFluoro's 2-D label ids (tools/deepfluoro_shipped.py), the presence measure's own radius as the distance a point
+# may sit from a labelled pixel, and the bars docs/research/qa-loop-external/README.md stated before the check ran.
+SHIPPED_SPINE, SHIPPED_UPPER_SACRUM, SHIPPED_BONE = (3, 4), (4,), (1, 2, 3, 4, 5, 6)
+NEAR_PX = 8
+ANNOTATION_BARS = {"reprojection_median_px": 1.0, "reprojection_p90_px": 2.0, "on_spine": 0.9}
+PRESENCE_BARS = {"frame_mean": 0.6, "share_low": 0.6}       # the loop's presence bars (grid/qaloop/qa_ext.json)
+
+
+def distance_to(seg, labels):
+    """Each canvas pixel's distance in pixels to the nearest pixel carrying one of the labels, inf where none does."""
+    from scipy.ndimage import distance_transform_edt
+    hit = np.isin(seg, labels)
+    if not hit.any():
+        return np.full(seg.shape, np.inf)
+    return distance_transform_edt(~hit)
+
+
+def readings(uv_shipped, uv_ours):
+    """The distances between the shipped 2-D landmarks and the person's 3-D ones projected, where both are in frame."""
+    ok = S.in_frame(uv_ours, SIZE, margin=0.0) & np.isfinite(uv_shipped).all(axis=-1)
+    return np.linalg.norm(uv_shipped[ok] - uv_ours[ok], axis=-1)
+
+
+def shipped_readings(z, k):
+    """The four ways the shipped coordinates could be read (column or row first; turned with the image or not), each
+    as the frame's landmarks on the loop canvas. deepfluoro_shipped.to_loop is the export's own reading."""
+    raw, rot, cols, rows = z["raw"][k], int(z["rot"][k]), int(z["cols"]), int(z["rows"])
+    return {(order, turned): DS.to_loop(raw if order == "column first" else raw[:, ::-1], rot if turned else 0, cols, rows)
+            for order in ("column first", "row first") for turned in (True, False)}
+
+
+def share_near(dist, uv, near=NEAR_PX):
+    """How many of the in-frame points sit within near pixels of the labelled region, and how many were in frame."""
+    uv = np.asarray(uv, float).reshape(-1, 2)
+    uv = uv[S.in_frame(uv, SIZE, margin=0.0)]
+    d = G.sample_at(dist, uv)
+    return int((d <= near).sum()), int(len(uv))
+
+
+def ratio(hit, n):
+    return round(hit / n, 3) if n else None
+
+
+def annotations(out, shipped):
+    """DeepFluoro's own annotations against the arm, three ways (docs/research/qa-loop-external/README.md): the pose
+    chain in the loop's pixels (the person's 3-D pelvic landmarks through the pair's P against the shipped 2-D ones);
+    the arm's lumbar landmarks and sacral points against the shipped label image, which the dataset's authors drew
+    from their own 3-D labels; and the presence measure on the landmarks a person placed, which the loop's presence
+    gate must find if it can tell a real structure on these frames at all, beside the arm's own landmarks and anchor
+    on the same frames. Writes annotations.json and annotations_sheet.png beside the shipped files, so the arm's own
+    folder, which a running loop reads, is never written."""
+    out, shipped = Path(out), Path(shipped)
+    manifest = json.loads((out / "manifest.json").read_text())
+    errors = {}
+    spine = {"near_spine": [0, 0], "near_bone": [0, 0], "by_level": {}, "by_view": {}}
+    sacral = {name: {"near_spine": [0, 0], "near_upper_sacrum": [0, 0], "near_bone": [0, 0]} for name in S.SACRAL_POINTS}
+    top_to_sacrum = []
+    person_edge, person_interior, ours_all, ours_anchor, ours_rows = [], [], [], [], []
+    by_landmark = {}
+    tiles = []
+    for p in manifest["persons"]:
+        pair = S.load_pair(str(out / p["npz"]))
+        with np.load(shipped / f"{p['case']}.npz") as z:
+            z = {k: z[k] for k in z.files}
+        if [str(x) for x in z["frame_ids"]] != list(p["frame_ids"]):
+            raise SystemExit(f"{p['case']}: the shipped frames are not the manifest's")
+        names = [str(x) for x in z["names"]]
+        edge = [i for i, n in enumerate(names) if not DS.is_interior(n)]
+        interior = [i for i, n in enumerate(names) if DS.is_interior(n)]
+        presence = S.pair_presence(pair)
+        anchor = S.pair_anchor(pair)
+        for k, fr in enumerate(pair["frames"]):
+            ours = G.project(fr["P"], z["lm3d"])
+            ways = shipped_readings(z, k)
+            for way, uv in ways.items():
+                errors.setdefault(way, []).extend(readings(uv, ours).tolist())
+            uv_person = ways[("column first", True)]
+            seg = z["seg"][k]
+            d_spine, d_bone = distance_to(seg, SHIPPED_SPINE), distance_to(seg, SHIPPED_BONE)
+            d_upper = distance_to(seg, SHIPPED_UPPER_SACRUM)
+            marks = G.project(fr["P"], pair["landmarks"])
+            for i, lv in enumerate(pair["levels"]):
+                for key, dist in (("near_spine", d_spine), ("near_bone", d_bone)):
+                    h, n = share_near(dist, marks[i])
+                    spine[key][0] += h
+                    spine[key][1] += n
+                    for group, name in (("by_level", lv), ("by_view", fr["view"])):
+                        cell = spine[group].setdefault(name, {"near_spine": [0, 0], "near_bone": [0, 0]})[key]
+                        cell[0] += h
+                        cell[1] += n
+            sv = G.project(fr["P"], pair["sacral"])
+            for j, name in enumerate(S.SACRAL_POINTS):
+                for key, dist in (("near_spine", d_spine), ("near_upper_sacrum", d_upper), ("near_bone", d_bone)):
+                    h, n = share_near(dist, sv[j])
+                    sacral[name][key][0] += h
+                    sacral[name][key][1] += n
+            top = sv[S.SACRAL_POINTS.index("s1_top_centre")]
+            if S.in_frame(top[None], SIZE, margin=0.0)[0]:
+                top_to_sacrum.append(float(G.sample_at(d_upper, top[None])[0]))
+            # the presence measure at the person's landmarks, the null drawn inside the outline they make
+            seen = S.in_frame(uv_person, SIZE)
+            if seen.sum() >= 3:
+                body = np.where(seen[:, None], uv_person, np.nan)
+                try:
+                    pct, nulls = G.presence_percentiles(fr["image"], [body], range(len(names)), seed=k)
+                except (ValueError, IndexError):
+                    pct, nulls = np.full((1, len(names)), np.nan), 0
+                if nulls:
+                    for i, n in enumerate(names):
+                        if np.isfinite(pct[0, i]):
+                            by_landmark.setdefault(n.split("-")[0], []).append(float(pct[0, i]))
+                    e, f = pct[0, edge], pct[0, interior]
+                    person_edge.append(float(np.nanmean(e)) if np.isfinite(e).any() else float("nan"))
+                    person_interior.append(float(np.nanmean(f)) if np.isfinite(f).any() else float("nan"))
+            row = presence[k]
+            ours_rows.append(row)
+            ours_all.append(float(np.nanmean(row)) if np.isfinite(row).any() else float("nan"))
+            ours_anchor.append(anchor[k])
+            if k in (0, len(pair["frames"]) // 2) and len(tiles) < 12:
+                tiles.append(annotation_tile(fr, seg, uv_person, ours, marks, sv, pair["levels"], f"{p['case']} {p['frame_ids'][k]} {fr['view']}"))
+    report = {"bars": ANNOTATION_BARS, "presence_bars": PRESENCE_BARS, "near_px": NEAR_PX,
+              "reprojection": reprojection_report(errors), "spine": spine_report(spine), "sacral": sacral_report(sacral, top_to_sacrum),
+              "presence": {"person_outline_landmarks": G.presence_gate(person_edge, PRESENCE_BARS),
+                           "person_head_centres": G.presence_gate(person_interior, PRESENCE_BARS),
+                           "arm_landmarks_all_18": G.presence_gate(ours_all, PRESENCE_BARS),
+                           "arm_sacral_anchor": G.presence_gate(ours_anchor, PRESENCE_BARS),
+                           "by_person_landmark": {k: {"frames": len(v), "median": round(float(np.median(v)), 3),
+                                                      "share_at_bar": round(float(np.mean(np.asarray(v) >= PRESENCE_BARS["frame_mean"])), 3)}
+                                                  for k, v in sorted(by_landmark.items())},
+                           "arm_by_landmark": arm_by_landmark(ours_rows)}}
+    report["passes"] = {"reprojection": report["reprojection"]["pass"], "spine": report["spine"]["pass"],
+                        "sacral": report["sacral"]["pass"], "person_landmarks_present": report["presence"]["person_outline_landmarks"]["pass"]}
+    (shipped / "annotations.json").write_text(json.dumps(report, indent=1, default=float))
+    if tiles:
+        save_sheet(tiles, shipped / "annotations_sheet.png")
+    print(json.dumps({"passes": report["passes"], "reprojection": report["reprojection"]["winner"],
+                      "presence": {k: v.get("why") for k, v in report["presence"].items() if isinstance(v, dict) and "why" in v}},
+                     indent=1, default=float))
+    return report
+
+
+def arm_by_landmark(rows):
+    """Each of the arm's eighteen landmarks on the same frames: how many read it, its median percentile and the share
+    at the presence bar, so a landmark the loop may choose can be set beside the person's."""
+    rows = np.asarray(rows, float).reshape(-1, len(G.LANDMARKS))
+    out = {}
+    for j, name in enumerate(G.LANDMARKS):
+        v = rows[:, j][np.isfinite(rows[:, j])]
+        out[name] = {"frames": int(len(v)), "median": round(float(np.median(v)), 3) if len(v) else None,
+                     "share_at_bar": round(float(np.mean(v >= PRESENCE_BARS["frame_mean"])), 3) if len(v) else None}
+    return out
+
+
+def reprojection_report(errors):
+    """The reading with the smallest median and 90th percentile wins; it must hold the bars and stand clear of the
+    next, as the export's convention test asked, or the shipped coordinates were not read the export's way."""
+    rows = []
+    for (order, turned), e in errors.items():
+        e = np.asarray(e, float)
+        rows.append({"order": order, "turned_with_image": turned, "points": int(len(e)),
+                     "median_px": round(float(np.median(e)), 3) if len(e) else None,
+                     "p90_px": round(float(np.percentile(e, 90)), 3) if len(e) else None,
+                     "max_px": round(float(e.max()), 3) if len(e) else None})
+    rows.sort(key=lambda r: (r["median_px"] if r["median_px"] is not None else 1e9, r["p90_px"] if r["p90_px"] is not None else 1e9))
+    best = rows[0] if rows else {}
+    nxt = rows[1] if len(rows) > 1 else {}
+    held = bool(best.get("points")) and best["median_px"] <= ANNOTATION_BARS["reprojection_median_px"] \
+        and best["p90_px"] <= ANNOTATION_BARS["reprojection_p90_px"]
+    clear = not nxt.get("points") or (nxt["p90_px"] or 0) > 3 * max(best.get("p90_px") or 0, 0.5)
+    export_way = best.get("order") == "column first" and best.get("turned_with_image") is True
+    return {"pass": bool(held and clear and export_way), "winner": best, "readings": rows,
+            "why": ("the export's reading wins and holds the bars" if held and clear and export_way else
+                    "the shipped landmarks and the pair's pose disagree, or another reading of the coordinates wins")}
+
+
+def spine_report(spine):
+    def shares(cell):
+        return {"near_spine": ratio(*cell["near_spine"]), "near_bone": ratio(*cell["near_bone"]),
+                "points": cell["near_spine"][1]}
+    total = shares(spine)
+    near = total["near_spine"]
+    return {"pass": near is not None and near >= ANNOTATION_BARS["on_spine"], **total,
+            "by_level": {k: shares(v) for k, v in spine["by_level"].items()},
+            "by_view": {k: shares(v) for k, v in spine["by_view"].items()}}
+
+
+def sacral_report(sacral, top_to_sacrum):
+    out = {name: {key: ratio(*cell) for key, cell in v.items()} | {"points": v["near_spine"][1]} for name, v in sacral.items()}
+    held = [out[n]["near_spine"] for n in ("promontory", "s1_top_centre")]
+    t = np.asarray([x for x in top_to_sacrum if np.isfinite(x)], float)
+    out["s1_top_centre_to_upper_sacrum_px"] = {"frames": int(len(t)), "median": round(float(np.median(t)), 2) if len(t) else None,
+                                               "p90": round(float(np.percentile(t, 90)), 2) if len(t) else None}
+    out["pass"] = all(x is not None and x >= ANNOTATION_BARS["on_spine"] for x in held)
+    return out
+
+
+def annotation_tile(fr, seg, uv_person, uv_ours, marks, sacral, levels, title):
+    """One frame: the shipped labels as outlines (vertebrae cyan, upper sacrum yellow, the rest grey), the shipped
+    2-D landmarks as green crosses and the person's 3-D ones reprojected as white rings, which should sit on them,
+    the arm's lumbar landmarks in their level's colour and its sacral points as yellow squares."""
+    from PIL import Image, ImageDraw
+    im = Image.fromarray((np.clip(fr["image"], 0, 1) * 255).astype(np.uint8)).convert("RGB")
+    rgb = np.asarray(im).copy()
+    for labs, col in (((1, 2, 5, 6), (150, 150, 150)), ((3,), (0, 220, 255)), ((4,), (255, 230, 0))):
+        m = np.isin(seg, labs)
+        edge = m & ~(np.roll(m, 1, 0) & np.roll(m, -1, 0) & np.roll(m, 1, 1) & np.roll(m, -1, 1))
+        rgb[edge] = col
+    im = Image.fromarray(rgb)
+    d = ImageDraw.Draw(im)
+    for i, lv in enumerate(levels):
+        col = LEVEL_COLOURS[i % len(LEVEL_COLOURS)]
+        for u, v in marks[i]:
+            if np.isfinite(u) and np.isfinite(v):
+                d.ellipse([u - 3, v - 3, u + 3, v + 3], fill=col)
+    for u, v in sacral:
+        if np.isfinite(u) and np.isfinite(v):
+            d.rectangle([u - 5, v - 5, u + 5, v + 5], outline=(255, 230, 0), width=2)
+    for (u, v), (a, b) in zip(uv_person, uv_ours):
+        if np.isfinite(u) and np.isfinite(v):
+            d.line([u - 6, v, u + 6, v], fill=(0, 255, 0), width=2)
+            d.line([u, v - 6, u, v + 6], fill=(0, 255, 0), width=2)
+        if np.isfinite(a) and np.isfinite(b):
+            d.ellipse([a - 7, b - 7, a + 7, b + 7], outline=(255, 255, 255), width=1)
+    d.text((8, 8), title, fill=(255, 255, 0))
+    return im.resize((384, 384))
+
+
+def save_sheet(tiles, path, cols=4):
+    from PIL import Image
+    rows = (len(tiles) + cols - 1) // cols
+    sheet = Image.new("RGB", (cols * 384, rows * 384), "white")
+    for i, t in enumerate(tiles):
+        sheet.paste(t, ((i % cols) * 384, (i // cols) * 384))
+    sheet.save(path)
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -351,11 +593,16 @@ def main(argv=None):
     c = sub.add_parser("check")
     c.add_argument("--out", required=True)
     c.add_argument("--data")
+    n = sub.add_parser("annotations")
+    n.add_argument("--out", required=True)
+    n.add_argument("--shipped", required=True)
     a = ap.parse_args(argv)
     if a.cmd == "deepfluoro":
         build_deepfluoro(a.data, a.out)
     elif a.cmd == "cobra":
         build_cobra(a.data, a.out)
+    elif a.cmd == "annotations":
+        annotations(a.out, a.shipped)
     else:
         check(a.out, a.data)
 
