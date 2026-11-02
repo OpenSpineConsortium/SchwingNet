@@ -13,6 +13,10 @@ JPEG = b"\xff\xd8\xff\xe0" + b"frame-a"
 OTHER = b"\xff\xd8\xff\xe0" + b"frame-b"
 
 
+def slice_bytes(number):
+    return b"\xff\xd8\xff\xe0" + f"slice-{number}".encode()
+
+
 def save(root, relative, data):
     path = root / relative
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -38,9 +42,12 @@ class ArrangeTest(unittest.TestCase):
         self.assertTrue((self.out / "radiopaedia_xr/raw/90103").is_dir())
         cases = (self.out / "CASES.csv").read_text().splitlines()
         self.assertEqual(cases[1], "24796,fluoro,1,https://radiopaedia.org/cases/24796")
+        self.assertEqual((self.out / "PAIRS.csv").read_text(),
+                         "rid,ct_series,ct_slices,xray_group,xray_frames,page\n")
         sums = (self.out / "SHA256SUMS").read_text()
         self.assertIn("CASES.csv", sums)
-        self.assertEqual(len(sums.splitlines()), 3)
+        self.assertIn("PAIRS.csv", sums)
+        self.assertEqual(len(sums.splitlines()), 4)
 
     def test_the_same_image_under_two_cases_is_refused(self):
         save(self.saved, "fluoro/1/a.jpg", JPEG)
@@ -49,7 +56,7 @@ class ArrangeTest(unittest.TestCase):
         self.assertFalse(self.out.exists())
 
     def test_refusals_by_name(self):
-        for relative, data in (("ct/1/a.jpg", JPEG), ("fluoro/case/a.jpg", JPEG),
+        for relative, data in (("mr/1/a.jpg", JPEG), ("fluoro/case/a.jpg", JPEG),
                                ("fluoro/1/a.png", JPEG), ("fluoro/1/a.jpg", b"not a jpeg")):
             with self.subTest(relative=relative):
                 saved = Path(self.tmp.name) / relative.replace("/", "_")
@@ -66,8 +73,108 @@ class ArrangeTest(unittest.TestCase):
 
     def test_a_rerun_writes_the_same_bytes(self):
         save(self.saved, "xr/7/a.jpg", OTHER)
+        save(self.saved, "ct/7/1.jpg", slice_bytes(1))
         rp.main(["run", "--from", str(self.saved), "--to", str(self.out)])
         self.assertEqual(rp.main(["run", "--from", str(self.saved), "--to", str(self.out)]), 0)
+
+
+class PairedCaseTest(unittest.TestCase):
+    """A case saved as a CT and as an X-ray is one person seen both ways."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.saved = Path(self.tmp.name) / "saved"
+        self.out = Path(self.tmp.name) / "out"
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def run_import(self):
+        return rp.main(["run", "--from", str(self.saved), "--to", str(self.out)])
+
+    def test_a_paired_case_is_laid_out_by_slice_and_listed(self):
+        save(self.saved, "ct/24796-l6-transitional/axial/slice-10.jpg", slice_bytes(10))
+        save(self.saved, "ct/24796-l6-transitional/axial/slice-2.jpg", slice_bytes(2))
+        save(self.saved, "ct/24796-l6-transitional/sagittal/7.jpg", slice_bytes(7))
+        save(self.saved, "xr/24796/lateral.jpg", OTHER)
+        save(self.saved, "ct/555/3.jpg", slice_bytes(3))
+        self.assertEqual(self.run_import(), 0)
+        axial = sorted(p.name for p in (self.out / "radiopaedia_ct/raw/24796/axial").iterdir())
+        self.assertEqual([name[:5] for name in axial], ["0002-", "0010-"])
+        self.assertEqual(axial[0][5:], hashlib.sha256(slice_bytes(2)).hexdigest()[:16] + ".jpg")
+        self.assertTrue((self.out / "radiopaedia_ct/raw/555/stack").is_dir())
+        pairs = (self.out / "PAIRS.csv").read_text().splitlines()
+        self.assertEqual(pairs, ["rid,ct_series,ct_slices,xray_group,xray_frames,page",
+                                 "24796,2,3,xr,1,https://radiopaedia.org/cases/24796"])
+        cases = (self.out / "CASES.csv").read_text().splitlines()
+        self.assertEqual(cases[1:3], ["555,ct,1,https://radiopaedia.org/cases/555",
+                                      "24796,ct,3,https://radiopaedia.org/cases/24796"])
+        self.assertEqual(len((self.out / "SHA256SUMS").read_text().splitlines()), 7)
+
+    def test_a_fluoroscopy_case_pairs_too(self):
+        save(self.saved, "ct/9/1.jpg", slice_bytes(1))
+        save(self.saved, "fluoro/9/a.jpg", JPEG)
+        kept, _ = rp.arrange(self.saved)
+        pairs = rp.pair_rows(kept, rp.case_rows(kept))
+        self.assertEqual([(p["rid"], p["xray_group"], p["xray_frames"]) for p in pairs], [("9", "fluoro", 1)])
+
+    def test_a_slice_name_must_hold_one_number(self):
+        for name in ("a.jpg", "12 (1).jpg", "12 of 87.jpg", "20261031.jpg", "12.png", "notes.txt"):
+            with self.subTest(name=name):
+                saved = Path(self.tmp.name) / name.replace(" ", "_")
+                save(saved, f"ct/1/{name}", slice_bytes(12))
+                with self.assertRaises(rp.ImportError_):
+                    rp.arrange(saved)
+
+    def test_two_slices_of_one_number_are_refused(self):
+        save(self.saved, "ct/1/12.jpg", slice_bytes(12))
+        save(self.saved, "ct/1/slice-012.jpg", slice_bytes(13))
+        self.assertEqual(self.run_import(), 2)
+        self.assertFalse(self.out.exists())
+
+    def test_one_slice_under_two_numbers_is_refused(self):
+        save(self.saved, "ct/1/1.jpg", slice_bytes(1))
+        save(self.saved, "ct/1/2.jpg", slice_bytes(1))
+        with self.assertRaises(rp.ImportError_):
+            rp.arrange(self.saved)
+
+    def test_a_second_save_of_one_slice_is_dropped(self):
+        save(self.saved, "ct/1/12.jpg", slice_bytes(12))
+        save(self.saved, "ct/1/12 - Copy.jpg", slice_bytes(12))
+        kept, duplicates = rp.arrange(self.saved)
+        self.assertEqual((len(kept), len(duplicates)), (1, 1))
+        self.assertTrue(duplicates[0].startswith("ct/1/12"))
+
+    def test_the_same_slice_in_two_series_is_refused(self):
+        save(self.saved, "ct/1/axial/1.jpg", slice_bytes(1))
+        save(self.saved, "ct/1/sagittal/1.jpg", slice_bytes(1))
+        with self.assertRaises(rp.ImportError_):
+            rp.arrange(self.saved)
+
+    def test_a_ct_slice_saved_as_the_x_ray_is_refused(self):
+        save(self.saved, "ct/1/1.jpg", slice_bytes(1))
+        save(self.saved, "xr/1/a.jpg", slice_bytes(1))
+        with self.assertRaises(rp.ImportError_):
+            rp.arrange(self.saved)
+
+    def test_series_folders_are_refused_where_the_order_would_be_unclear(self):
+        layouts = (("ct/1/3.jpg", "ct/1/axial/4.jpg"), ("ct/1/axial/deeper/4.jpg",),
+                   ("ct/1/axial view/4.jpg",))
+        for index, layout in enumerate(layouts):
+            with self.subTest(layout=layout):
+                saved = Path(self.tmp.name) / f"layout-{index}"
+                for n, relative in enumerate(layout):
+                    save(saved, relative, slice_bytes(n))
+                with self.assertRaises(rp.ImportError_):
+                    rp.arrange(saved)
+
+    def test_a_ct_beside_both_x_ray_groups_is_refused(self):
+        save(self.saved, "ct/5/1.jpg", slice_bytes(1))
+        save(self.saved, "fluoro/5/a.jpg", JPEG)
+        save(self.saved, "xr/5/b.jpg", OTHER)
+        kept, _ = rp.arrange(self.saved)
+        with self.assertRaises(rp.ImportError_):
+            rp.case_rows(kept)
 
 
 if __name__ == "__main__":
