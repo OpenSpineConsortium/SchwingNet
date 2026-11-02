@@ -2,8 +2,11 @@
 three dimensions and in two where its points lie in a plane square to the ray, a length divided by its
 magnification is its 3-D length, the segmental angle keeps its sign whichever side the image shows the plane from,
 the vertebra's own axes give the view's angle, the oracle's construction gives no wedge, the projection test reads
-a pair and its export's other frames and never a held-out person, and the gold tier's aggregates and ratios are
-what their rows say. numpy is all the module needs, which CI's python3 does not hold, so the file is skipped there;
+a pair and its export's other frames and never a held-out person, a pair frame and its export twin give one
+magnification per pixel of their canvases' sides, a source whose angles are in doubt is tabled apart and judges
+nothing, the gold tier's aggregates and ratios are what their rows say and come from the typical columns alone when
+the verdicts are given, an unknown magnification costs a length and never a ratio, the crests' line is read about
+the body it crosses and about a lone body, and the chords are set beside the other papers' series. numpy is all the module needs, which CI's python3 does not hold, so the file is skipped there;
 run it with any python that has numpy:
 
     python3 -m unittest tests.test_annotator_measures -v
@@ -13,6 +16,7 @@ import csv
 import importlib.util
 import json
 import math
+import re
 import tempfile
 import unittest
 from pathlib import Path
@@ -186,13 +190,13 @@ class PairsAndExport(unittest.TestCase):
     def setUp(self):
         self.M = load()
 
-    def make(self, root):
+    def make(self, root, name="pairs"):
         """A built pair of one person with one frame, its export's meta for that frame and one oblique frame, and
         a held-out person whose meta must never be read."""
         import numpy as np
         col = column(self.M)
         mid = col.reshape(-1, 3).mean(axis=0)
-        pairs, export = Path(root) / "pairs", Path(root) / "export"
+        pairs, export = Path(root) / name, Path(root) / "export"
         (export / "meta").mkdir(parents=True)
         pairs.mkdir()
         K = np.array([[1500.0, 0, 192], [0, 1500.0, 192], [0, 0, 1]])
@@ -232,6 +236,27 @@ class PairsAndExport(unittest.TestCase):
             self.assertEqual(lateral["within_tolerance"]["n"], 5)
             self.assertLess(lateral["within_tolerance"]["median_abs"], 1e-9)
             self.assertTrue(self.M.projection_table(res).startswith("| Measure"))
+            self.assertTrue(self.M.pooling_table(res).startswith("| Measure"))
+
+    def test_a_pair_frame_and_its_export_twin_give_one_magnification_per_canvas_side(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            res = self.M.run_project([str(self.make(tmp))], str(Path(tmp) / "projection.json"))
+            mag = res["magnification"]["pairs"]
+            self.assertEqual(mag["by_kind"]["pair"]["canvas_sides"], [512.0])
+            self.assertEqual(mag["by_kind"]["export"]["canvas_sides"], [384.0])
+            self.assertGreater(mag["log_sd_raw_pixels"], 0.1)        # 512 against 384 pixels is a factor of 1.33
+            self.assertLess(mag["log_sd"], 0.02)                     # the same frames, one distance: one scale
+
+    def test_a_source_whose_angles_are_in_doubt_is_tabled_apart_and_judges_nothing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            res = self.M.run_project([str(self.make(tmp, "deepfluoro"))], str(Path(tmp) / "projection.json"))
+            lateral = next(m for m in res["measures"] if m["name"] == "ha/hp")["views"]["lat"]
+            self.assertIsNone(lateral["within_tolerance"])
+            self.assertEqual(lateral["verdict"], "not tested")
+            self.assertEqual(lateral["bins"], [])
+            self.assertTrue(lateral["bins_all"])
+            self.assertTrue(lateral["bins_by_source"]["deepfluoro"])
+            self.assertEqual(lateral["by_source"]["deepfluoro"]["n"], 5)
 
 
 @unittest.skipIf(MISSING, f"needs numpy ({', '.join(MISSING)} missing)")
@@ -266,7 +291,20 @@ class Gold(unittest.TestCase):
             self.assertAlmostEqual(float(table[("L3", "depth_over_h_post")]["mean"]), 35.0 / 28.0)
             self.assertNotIn(("L5", "crush_index"), table)
             self.assertEqual(summary["pelvis"]["intercristal_level"], {"L4": 6})
+            self.assertEqual(summary["pelvis"]["intercristal_level_persons"], 6)
             self.assertEqual(summary["pelvis"]["pelvic_incidence"]["n"], 6)
+            self.assertIsNone(summary["calls_of_the_chosen"])
+
+            verdicts = Path(tmp) / "verdicts.csv"
+            with open(verdicts, "w", newline="") as f:
+                w = csv.writer(f)
+                w.writerow(["member", "id", "call", "pattern"])
+                for i in range(6):
+                    w.writerow(["enhance_pet", f"{i:04d}", "T12L6" if i == 5 else "T12L5", "C2 to L5 named, one, two"])
+                w.writerow(["enhance_pet", "0006", "T12L5", ""])
+            summary = self.M.run_gold(str(rows), str(persons), str(Path(tmp) / "typical"), str(verdicts))
+            self.assertEqual(summary["studies_with_rows"], 5)            # the sixth lumbar's person is left out
+            self.assertEqual(summary["calls_of_the_chosen"], {"T12L5": 5, "other": 1, "no verdict": 0})
 
 
 class FakeCensus:
@@ -274,6 +312,16 @@ class FakeCensus:
     effect is plain."""
 
     SEED, RATIO_ERROR = 1, 0.04
+    LEFT_OUT_COHORTS = re.compile(r"porcine")
+
+    @staticmethod
+    def read_csv(path):
+        with open(path, newline="") as f:
+            return list(csv.DictReader(f))
+
+    @staticmethod
+    def body_level(level):
+        return level.split("-")[0].strip()
 
     def __init__(self):
         from dataclasses import dataclass
@@ -294,6 +342,31 @@ class FakeCensus:
         m = measures[0]
         K = len(m.levels)
         return {"measures": [{"key": m.key, "standalone": [1.0 / m.error] * K, "standalone_se": [0.0] * K}]}
+
+
+class FakeRule:
+    """The rule's size spread as the census reads it, and nodes that carry the spread they were made for."""
+
+    def __init__(self):
+        self.SYNTH = {"scale_sd": 0.07}
+
+    def quadrature(self, sd):
+        return ("nodes", sd)
+
+
+class SizedCensus(FakeCensus):
+    """A census whose information for a length falls as the size spread its nodes were made for widens, and whose
+    draws read the spread the rule holds at the time, as the census's own do; a ratio's is untouched."""
+
+    def __init__(self, rule):
+        super().__init__()
+        self.R = rule
+
+    def census_group(self, measures, fields, seed, nodes, correlation):
+        m = measures[0]
+        assert nodes[1] == self.R.SYNTH["scale_sd"]
+        info = 1.0 / m.error - (10.0 * nodes[1] if m.kind == "length" else 0.0)
+        return {"measures": [{"key": m.key, "standalone": [info] * len(m.levels), "standalone_se": [0.0] * len(m.levels)}]}
 
 
 @unittest.skipIf(MISSING, f"needs numpy ({', '.join(MISSING)} missing)")
@@ -337,11 +410,65 @@ class XrayErrors(unittest.TestCase):
         gap = self.C.Series("x", "ratio", 0.04, ("T12", "L2"), (1.0,) * 2, (0.1,) * 2, (9,) * 2)
         self.assertIsNone(self.M.restricted(self.C, gap, self.M.LUMBAR))
 
-    def test_the_crests_line_tells_log_k_less_its_entropy(self):
+    def test_the_crests_line_tells_log_k_less_its_entropy_of_the_body_it_crosses(self):
         t = self.M.tuffier({"L4": 3, "L5": 1, "L4-L5": 7})
         p = [0.75, 0.25]
-        self.assertAlmostEqual(t["information_nats"], math.log(6) + sum(x * math.log(x) for x in p))
+        self.assertAlmostEqual(t["crossed_body_nats"], math.log(6) + sum(x * math.log(x) for x in p))
         self.assertAlmostEqual(t["named_by_the_commonest"], 0.75)
+
+    def test_the_crests_line_about_a_lone_body_is_the_census_mean_over_the_levels(self):
+        t = self.M.tuffier({"L4": 3, "L5": 1, "L4-L5": 7}, persons=11)
+        q = {lv: 0.0 for lv in self.M.LUMBAR}
+        q.update({"L4": 3 / 11, "L5": 1 / 11})
+        yes, no = sum(q.values()), sum(1 - x for x in q.values())
+
+        def info(x):
+            got = (x * math.log(x / yes) if x else 0.0) + (1 - x) * math.log((1 - x) / no)
+            return got + math.log(6)
+        self.assertAlmostEqual(t["lone_body_nats"], sum(info(x) for x in q.values()) / 6)
+        self.assertLess(t["lone_body_nats"], t["crossed_body_nats"])
+        self.assertAlmostEqual(t["lone_body_by_level"]["T12"], info(0.0))
+        whole = self.M.tuffier({"L4": 6}, persons=6)               # one body always crossed: that body is named
+        self.assertAlmostEqual(whole["lone_body_by_level"]["L4"], math.log(6))
+
+    def test_the_crush_index_stands_in_by_an_analogue(self):
+        self.assertEqual(self.M.stand_in("crush_index"), ("crush", "analogue"))
+        self.assertEqual(self.M.stand_in("width_taper"), ("EPWl/EPWu", "same"))
+
+    def test_an_unknown_magnification_costs_a_length_and_never_a_ratio_and_the_spread_is_put_back(self):
+        R = FakeRule()
+        C = SizedCensus(R)
+        ct = [self.series("endplate_depth"), self.series("depth_taper", "ratio", 0.9)]
+        rows = self.M.paired_standalone(C, ct, ct, R.quadrature(0.07), 10, 1, R, {"carm": 0.07})
+        length, ratio = rows
+        self.assertAlmostEqual(length["xray"], length["ct"])
+        self.assertAlmostEqual(length["xray_uncalibrated_carm"], 1.0 - 10.0 * math.hypot(0.07, 0.07))
+        self.assertAlmostEqual(ratio["xray_uncalibrated_carm"], ratio["xray"])
+        self.assertEqual(R.SYNTH["scale_sd"], 0.07)
+
+    def test_the_chords_are_set_beside_the_other_series_step_by_step(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / self.M.SERIES_CSV
+            path.parent.mkdir(parents=True)
+            with open(path, "w", newline="") as f:
+                w = csv.writer(f)
+                w.writerow(["paper", "cohort", "technique", "source_of_values", "key", "level", "sex", "mean", "sd"])
+                for paper, l4, l5 in (("a2000", 27.0, 25.0), ("b2001", 26.0, 25.5)):
+                    w.writerow([paper, "adults", "ct", "this paper", "h_post", "L4", "all", l4, ""])
+                    w.writerow([paper, "adults", "ct", "this paper", "h_post", "L5", "all", l5, ""])
+                w.writerow(["c2002", "porcine_x", "ct", "this paper", "h_post", "L4", "all", 40.0, "1"])
+                w.writerow(["d2003", "adults", "ct", "cited_from x", "h_post", "L4", "all", 40.0, "1"])
+            gold = [self.C.Series("h_post", "length", 1.0, ("L4", "L5"), (28.0, 24.0), (3.0, 3.0), (9, 9))]
+            pan = [self.C.Series("h_post", "length", 1.0, ("L4", "L5"), (24.1, 22.9), (2.0, 2.0), (12, 12))]
+            rows = self.M.against_sources(self.C, tmp, gold, pan)
+            post = next(r for r in rows if r["gold_key"] == "h_post")
+            self.assertEqual(post["levels"]["L4"]["others_n"], 2)               # the pig and the quoted value left out
+            self.assertAlmostEqual(post["levels"]["L4"]["others_median"], 26.5)
+            step = post["steps"]["L5_less_L4"]
+            self.assertAlmostEqual(step["gold"], -4.0)
+            self.assertAlmostEqual(step["panjabi"], -1.2)
+            self.assertEqual(sorted(step["others"]), ["a2000 | adults | ct | all", "b2001 | adults | ct | all"])
+            self.assertIn("| h_post | L5_less_L4 | -4.0 | -1.2 |", self.M.sources_table(rows))
 
 
 @unittest.skipIf(MISSING or importlib.util.find_spec("xarray") is None or not (BORDERCALL / "schwingcheck" / "census.py").is_file(),

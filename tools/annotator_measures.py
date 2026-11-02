@@ -21,12 +21,22 @@ where they agree with Panjabi. This tool answers three questions of the measures
   error widened by what the projection test measured for it.
 
     python tools/annotator_measures.py project --pairs <realx/deepfluoro> <realx/cobra> --out projection.json
-    python tools/annotator_measures.py gold --rows <morphometry/enhance/rows.csv> --persons <persons.csv> --out <dir>
-    python tools/annotator_measures.py census --bordercall <clone> --gold <dir> --projection projection.json --out census.json
+    python tools/annotator_measures.py gold --rows <morphometry/enhance/rows.csv> --persons <persons.csv> \
+        --verdicts <morphometry/enhance/verdicts.csv> --out <dir>
+    python tools/annotator_measures.py census --bordercall <clone at the commit the note names> --gold <dir> \
+        --projection projection.json --out census.json
     python tools/annotator_measures.py report --projection projection.json --census census.json
 
+The census's default of 2,000 bodies a level is the one the note's numbers were drawn with, and the record writes
+down the clone's commit.
+
+What the projection test is: fixed 3-D points (the oracle's) carried through each frame's P, so it measures what the
+view does to those points. A reader marks an outline's extreme on the image, which moves round the rim as the view
+turns, so off the view a reader's width is not the fixed points' (the note's section 2 says by how much for an
+elliptic plate); within the view's tolerance the two differ by little.
+
 Nothing here constructs a landmark: every point is the oracle's, as the owner's rule of 29 October 2026 asks, and a
-measure the eighteen points cannot make (Genant's heights at the plates' surfaces, the concavity, the wedge angle,
+measure the eighteen points cannot make (the six-point heights at the plates' surfaces, the concavity, the wedge angle,
 the pelvic angles) is read from the engine's own rows instead, and only in the census.
 """
 
@@ -41,7 +51,9 @@ import argparse  # noqa: E402
 import csv  # noqa: E402
 import json  # noqa: E402
 import math  # noqa: E402
+import subprocess  # noqa: E402
 import warnings  # noqa: E402
+from contextlib import contextmanager  # noqa: E402
 from dataclasses import dataclass  # noqa: E402
 
 import numpy as np  # noqa: E402
@@ -58,6 +70,14 @@ PAIR_SIZE = 512                                       # the pairs' frames, at th
 # 90th percentile; an angle's within the census's 3 degrees and 6; a length's, divided by the magnification at its
 # middle, within 5 per cent of its 3-D length at the median and 10 at the 90th percentile.
 BARS = {"ratio": (0.04, 0.08), "angle": (3.0, 6.0), "length": (0.05, 0.10)}
+# DeepFluoro's read vertebrae lie a median 32 degrees tilted against the scanner's long axis by their own frames,
+# which the test cannot tell from a frame the oracle tilted (its column line runs through the neighbours' centroids on
+# a CT that cuts the lumbar spine), so their angles off the view are in doubt: their readings are tabled apart
+# (bins_by_source, by_source, bins_all) and left out of the binned agreement, the verdicts and the census's errors.
+ANGLES_IN_DOUBT = ("deepfluoro",)
+# Twelve thoracic and five lumbar: only in such a column are the six names T12 to L5 the bodies they mean, with L5
+# on the sacrum, so the gold table is built from these persons alone (bordercall's count call in verdicts.csv).
+TYPICAL_CALL = "T12L5"
 MIN_CELL = 5                                          # a gold table cell needs this many persons
 MIN_R = 30                                            # a within-level correlation needs this many
 
@@ -131,8 +151,8 @@ EPWU, EPWL, EPDU, EPDL = chord("endplate"), chord("endplate_lower"), chord("endp
 VBHP, SCW, SCD, TPW, SPL = chord("h_post"), chord("canal_w"), chord("canal_ap"), chord("tp_span"), chord("spinous_length")
 # The corner heights a lateral reader takes: between the plates' anterior ends, their posterior ends, and the middles
 # of the two depth chords. The oracle sets all four points of a plate at its slab's median height in the vertebra's
-# frame (oracle.body_traces), so these are slab-centre heights, not Genant's, which the engine reads as h_ant,
-# h_post_inset and h_mid; the projection test reads them for what projection does to a vertical length.
+# frame (oracle.body_traces), so these are slab-centre heights, not the six-point morphometry's, which the engine
+# reads as h_ant, h_post_inset and h_mid; the projection test reads them for what projection does to a vertical length.
 HA = length(point("endplate_depth.anterior"), point("endplate_lower_depth.anterior"))
 HP = length(point("endplate_depth.posterior"), point("endplate_lower_depth.posterior"))
 HM = length(middle(point("endplate_depth.posterior"), point("endplate_depth.anterior")),
@@ -144,8 +164,8 @@ HL = mean_of(HLR, HLL)
 
 
 def crush(f):
-    """A level's value over the mean of its neighbours' (Genant's crush: the posterior height against the adjacent
-    vertebrae's)."""
+    """A level's value over the mean of its neighbours', the form of quantitative morphometry's crush ratio (Eastell
+    1991, McCloskey 1993: the posterior height against what the adjacent vertebrae's predict)."""
     return ratio(f, mean_of(moved(f, -1), moved(f, 1)))
 
 
@@ -237,18 +257,18 @@ MEASURES = [
     Measure("EPWl", "length", "ap", EPWL, "Panjabi; the anteroposterior corners"),
     Measure("EPDu", "length", "lat", EPDU, "Panjabi; the lateral corners"),
     Measure("EPDl", "length", "lat", EPDL, "Panjabi; the lateral corners"),
-    Measure("VBHp", "length", "lat", VBHP, "Panjabi; Genant's and McCloskey's posterior height"),
+    Measure("VBHp", "length", "lat", VBHP, "Panjabi's posterior wall height"),
     Measure("SCW", "length", "ap", SCW, "Panjabi; the interpedicular distance of the AP film"),
     Measure("SCD", "length", "lat", SCD, "Panjabi; the canal's depth of the lateral film"),
     Measure("TPW", "length", "ap", TPW, "Panjabi"),
     Measure("SPL", "length", "lat", SPL, "Panjabi"),
-    Measure("ha", "length", "lat", HA, "Genant, McCloskey, Black: anterior height, from the plates' ends"),
-    Measure("hp", "length", "lat", HP, "Genant, McCloskey, Black: posterior height, from the plates' ends"),
-    Measure("hm", "length", "lat", HM, "Genant, McCloskey, Black: middle height, from the chords' middles"),
+    Measure("ha", "length", "lat", HA, "six-point morphometry (Eastell, Black, McCloskey): anterior height, plates' ends"),
+    Measure("hp", "length", "lat", HP, "six-point morphometry: posterior height, from the plates' ends"),
+    Measure("hm", "length", "lat", HM, "six-point morphometry: middle height, from the chords' middles"),
     Measure("hl", "length", "ap", HL, "the coronal corners' lateral heights, right and left averaged"),
-    Measure("ha/hp", "ratio", "lat", ratio(HA, HP), "Genant's wedge ratio"),
-    Measure("hm/hp", "ratio", "lat", ratio(HM, HP), "Genant's biconcavity ratio"),
-    Measure("crush", "ratio", "lat", crush(VBHP), "Genant's crush ratio, hp over the neighbours' hp"),
+    Measure("ha/hp", "ratio", "lat", ratio(HA, HP), "Eastell's wedge ratio"),
+    Measure("hm/hp", "ratio", "lat", ratio(HM, HP), "Eastell's biconcavity ratio"),
+    Measure("crush", "ratio", "lat", crush(VBHP), "the crush ratio's form on Panjabi's VBHp, the wall over its neighbours'"),
     Measure("EPDu/VBHp", "ratio", "lat", ratio(EPDU, VBHP), "the body's depth over its height"),
     Measure("EPDl/EPDu", "ratio", "lat", ratio(EPDL, EPDU), "the depth's taper from the upper plate to the lower"),
     Measure("SCD/EPDu", "ratio", "lat", ratio(SCD, EPDU), "the canal over the body, Torg and Pavlov's form"),
@@ -362,7 +382,8 @@ def frame_rows(col3, levels, P, size, person, source_name, kind):
         inside = seen(mask, m.uses)
         for i in range(len(col3)):
             if np.isfinite(v3[i]) and np.isfinite(v2[i]) and np.isfinite(off_ap[i]):
-                rows.append((k, levels[i], person, source_name, kind, off_ap[i], off_lat[i], mag[i], bool(inside[i]), v3[i], v2[i]))
+                rows.append((k, levels[i], person, source_name, kind, off_ap[i], off_lat[i], mag[i], bool(inside[i]), v3[i],
+                             v2[i], float(size)))
     return rows
 
 
@@ -459,7 +480,7 @@ def project_all(folders):
 
 
 def as_arrays(rows):
-    names = ("measure", "level", "person", "source", "kind", "off_ap", "off_lat", "mag", "inside", "v3", "v2")
+    names = ("measure", "level", "person", "source", "kind", "off_ap", "off_lat", "mag", "inside", "v3", "v2", "size")
     cols = list(zip(*rows)) if rows else [[] for _ in names]
     return {n: np.asarray(c) for n, c in zip(names, cols)}
 
@@ -525,8 +546,11 @@ def robust_sd(err):
 
 def summarise(A):
     """Per measure, in its own view and the other: the agreement by bin, within TOLERANCE of the view, the verdict,
-    the robust SD of the error there (the census's X-ray error) and the within-level correlation."""
+    the robust SD of the error there (the census's X-ray error) and the within-level correlation, all from the
+    sources whose angles are not in doubt (ANGLES_IN_DOUBT); each source's own bins and cells beside them, and the
+    bins of every source pooled (bins_all), so that what the pooling would do can be read."""
     out = []
+    trusted = ~np.isin(A["source"], ANGLES_IN_DOUBT)
     for k, m in enumerate(MEASURES):
         this = (A["measure"] == k) & A["inside"]
         err = agreement(m.kind, A["v3"], A["v2"], A["mag"])
@@ -535,28 +559,43 @@ def summarise(A):
             if m.kind == "angle" and view != m.view:
                 continue
             nearest = (A["off_ap"] <= A["off_lat"]) if view == "ap" else (A["off_lat"] < A["off_ap"])
-            sel = this & nearest
+            every = this & nearest
+            sel = every & trusted
             off = A["off_ap"] if view == "ap" else A["off_lat"]
-            near = sel & (off < TOLERANCE)
+            near, near_every = sel & (off < TOLERANCE), every & (off < TOLERANCE)
             r, n_pl = within_level_r(A, near, k)
             stats = cell(err[near]) if near.any() else None
-            entry["views"][view] = {"bins": binned(sel, A, err, view), "within_tolerance": stats,
-                                    "bins_by_source": {s: binned(sel & (A["source"] == s), A, err, view) for s in sorted(set(A["source"]))},
-                                    "persons": int(len(set(A["person"][near]))), "robust_sd": robust_sd(err[near]),
-                                    "verdict": verdict(m.kind, stats), "r_within_level": r, "person_levels": n_pl,
-                                    "by_source": {s: cell(err[near & (A["source"] == s)]) for s in sorted(set(A["source"][near]))}}
+            entry["views"][view] = {
+                "bins": binned(sel, A, err, view), "within_tolerance": stats, "bins_all": binned(every, A, err, view),
+                "bins_by_source": {s: binned(every & (A["source"] == s), A, err, view) for s in sorted(set(A["source"]))},
+                "persons": int(len(set(A["person"][near]))), "robust_sd": robust_sd(err[near]),
+                "verdict": verdict(m.kind, stats), "r_within_level": r, "person_levels": n_pl,
+                "by_source": {s: cell(err[near_every & (A["source"] == s)]) for s in sorted(set(A["source"][near_every]))}}
         out.append(entry)
     return out
 
 
 def magnification_spread(A):
-    """Per source, the spread of the magnification over its frames and vertebrae, as the SD of its logarithm: the
-    scale a length read in pixels on an uncalibrated frame does not know."""
+    """Per source, the spread of the magnification over its in-frame readings, as the SD of its logarithm: the scale
+    a length read in pixels on an uncalibrated frame does not know. A pair's frame is its export frame brought to
+    PAIR_SIZE pixels while an export frame keeps its own side, so each magnification is taken per pixel of its own
+    canvas's side, which is the same for one frame on either canvas; the spread in each canvas's raw pixels is kept
+    beside it, to show what pooling the two canvases would do."""
     out = {}
     for s in sorted(set(A["source"])):
-        m = A["mag"][(A["source"] == s) & A["inside"]]
-        if len(m):
-            out[s] = {"n": int(len(m)), "log_sd": float(np.std(np.log(m))), "p5_over_p95": float(np.percentile(m, 5) / np.percentile(m, 95))}
+        keep = (A["source"] == s) & A["inside"]
+        if not keep.any():
+            continue
+        per_side = A["mag"] / A["size"]
+        by_kind = {}
+        for k in ("pair", "export"):
+            got = keep & (A["kind"] == k)
+            if got.any():
+                by_kind[k] = {"n": int(got.sum()), "log_sd": float(np.std(np.log(per_side[got]))),
+                              "canvas_sides": sorted({float(x) for x in A["size"][got]})}
+        out[s] = {"n": int(keep.sum()), "log_sd": float(np.std(np.log(per_side[keep]))),
+                  "p5_over_p95": float(np.percentile(per_side[keep], 5) / np.percentile(per_side[keep], 95)),
+                  "log_sd_raw_pixels": float(np.std(np.log(A["mag"][keep]))), "by_kind": by_kind}
     return out
 
 
@@ -599,7 +638,10 @@ def run_project(folders, out):
 LEVEL_ORDER = [f"C{i}" for i in range(1, 8)] + [f"T{i}" for i in range(1, 13)] + [f"L{i}" for i in range(1, 7)]
 # The engine's rows the census ranks, as the engine names them (grid/bordercall/morphometry), each with its kind, the
 # measure of the eighteen points whose projection test stands for it in the X-ray run, and how: "same" where the
-# eighteen points make the same chord (the oracle is scanimport's chords), "analogue" where they make a line of the
+# eighteen points make the same chord (the oracle is scanimport's chords; the plate and canal widths among them are
+# the label slab's extents at 9c85de1, which take in what the label fuses to the plate's edge, L5's transverse
+# processes' roots among it, and read the canal from the label's hole: bordercall #78, after 9c85de1, reads plate_w
+# and canal_w_ct instead, and these rows predate it), "analogue" where they make a line of the
 # same direction at about the same place (the engine's corner heights against the slab-centre heights, the waist
 # against the plate, the plates' angles against the segmental angle), None where nothing of the eighteen does (a
 # concavity and a disc lie inside what the points span, and are not tested).
@@ -618,15 +660,23 @@ GOLD_ROWS = {
     "segment_sagittal": ("angle", "seg_sag", "same"), "segment_coronal": ("angle", "seg_cor", "same"),
     "disc_h_ant": ("length", None, None), "disc_h_post": ("length", None, None),
 }
-# Ratios of the engine's rows, each the same ratio the eighteen points make (MEASURES), so the projection test's
-# error for it is its own.
+# Ratios of the engine's rows: the numerator's row, the denominator's (a row, "below" for the same row of the level
+# below, "crush" for the mean of the neighbours'), the ratio of the eighteen points (MEASURES) that stands for it, and
+# how. The crush index is read on the engine's corner height h_post_inset, whose stand-in is the crush ratio's form on
+# the posterior wall (VBHp), an analogue; every other is the same ratio of the same chords.
 GOLD_RATIOS = {
-    "crush_index": ("h_post_inset", "crush", "crush"), "depth_over_h_post": ("endplate_depth", "h_post", "EPDu/VBHp"),
-    "depth_taper": ("endplate_lower_depth", "endplate_depth", "EPDl/EPDu"), "canal_ap_over_depth": ("canal_ap", "endplate_depth", "SCD/EPDu"),
-    "spinous_over_depth": ("spinous_length", "endplate_depth", "SPL/EPDu"), "h_post_over_below": ("h_post", "below", "VBHp/below"),
-    "depth_over_below": ("endplate_depth", "below", "EPDu/below"), "width_taper": ("endplate_lower", "endplate", "EPWl/EPWu"),
-    "canal_w_over_width": ("canal_w", "endplate", "SCW/EPWu"), "tp_span_over_width": ("tp_span", "endplate", "TPW/EPWu"),
-    "width_over_below": ("endplate", "below", "EPWu/below"), "tp_span_over_below": ("tp_span", "below", "TPW/below"),
+    "crush_index": ("h_post_inset", "crush", "crush", "analogue"),
+    "depth_over_h_post": ("endplate_depth", "h_post", "EPDu/VBHp", "same"),
+    "depth_taper": ("endplate_lower_depth", "endplate_depth", "EPDl/EPDu", "same"),
+    "canal_ap_over_depth": ("canal_ap", "endplate_depth", "SCD/EPDu", "same"),
+    "spinous_over_depth": ("spinous_length", "endplate_depth", "SPL/EPDu", "same"),
+    "h_post_over_below": ("h_post", "below", "VBHp/below", "same"),
+    "depth_over_below": ("endplate_depth", "below", "EPDu/below", "same"),
+    "width_taper": ("endplate_lower", "endplate", "EPWl/EPWu", "same"),
+    "canal_w_over_width": ("canal_w", "endplate", "SCW/EPWu", "same"),
+    "tp_span_over_width": ("tp_span", "endplate", "TPW/EPWu", "same"),
+    "width_over_below": ("endplate", "below", "EPWu/below", "same"),
+    "tp_span_over_below": ("tp_span", "below", "TPW/below", "same"),
 }
 PELVIS = ("pelvic_incidence", "sacral_slope_supine", "pelvic_tilt_supine", "intercristal_above_l4l5", "hip_axis_width")
 
@@ -650,6 +700,26 @@ def chosen_studies(persons_csv, members_out=("verse", "totalseg")):
             keep.add(r["study"])
             members[r["member"]] = members.get(r["member"], 0) + 1
     return keep, members
+
+
+def typical_studies(verdicts_csv, studies):
+    """Of the studies given, those whose column bordercall's count calls TYPICAL_CALL; and how many of the given
+    studies each call holds, a call held by fewer than MIN_CELL counted under "other"."""
+    keep, calls = set(), {}
+    with open(verdicts_csv, newline="") as f:
+        for r in csv.DictReader(f):
+            if r["id"] not in studies:
+                continue
+            call = (r.get("call") or "").strip() or "none"
+            calls[call] = calls.get(call, 0) + 1
+            if call == TYPICAL_CALL:
+                keep.add(r["id"])
+    shown = {k: v for k, v in sorted(calls.items()) if v >= MIN_CELL}
+    other = sum(v for v in calls.values() if v < MIN_CELL)
+    if other:
+        shown["other"] = other
+    shown["no verdict"] = len(studies) - sum(calls.values())
+    return keep, shown
 
 
 def read_rows(rows_csv, studies):
@@ -684,7 +754,7 @@ def derived(body):
         if level not in LEVEL_ORDER:
             continue
         got = {}
-        for name, (num, den, _) in GOLD_RATIOS.items():
+        for name, (num, den, _, _) in GOLD_RATIOS.items():
             a = vals.get(num)
             if den == "below":
                 lower = neighbour(level, 1)
@@ -752,6 +822,7 @@ def pelvis_summary(pelvis):
             counts[lv] = counts.get(lv, 0) + 1
     out["intercristal_level"] = {k: v for k, v in sorted(counts.items()) if v >= MIN_CELL}
     out["intercristal_level_withheld_cells"] = sum(1 for v in counts.values() if v < MIN_CELL)
+    out["intercristal_level_persons"] = sum(counts.values())
     return out
 
 
@@ -763,16 +834,20 @@ def write_csv(path, rows, fields):
             w.writerow(r)
 
 
-def run_gold(rows_csv, persons_csv, out):
+def run_gold(rows_csv, persons_csv, out, verdicts_csv=None):
     out = Path(out)
     out.mkdir(parents=True, exist_ok=True)
     studies, members = chosen_studies(persons_csv)
+    calls = None
+    if verdicts_csv:
+        studies, calls = typical_studies(verdicts_csv, studies)
     body, pelvis = read_rows(rows_csv, studies)
     ratios = derived(body)
     table = gold_table(body, ratios)
     write_csv(out / "table.csv", table, ["level", "measure", "kind", "n", "mean", "sd", "error"])
     write_csv(out / "correlation.csv", gold_correlations(body, ratios), ["level", "measure_a", "measure_b", "n", "r"])
-    summary = {"studies_chosen": len(studies), "members": members, "studies_with_rows": len({s for s, _ in body}),
+    summary = {"studies_chosen": len(studies), "members": members, "calls_of_the_chosen": calls,
+               "typical_call": TYPICAL_CALL if calls is not None else None, "studies_with_rows": len({s for s, _ in body}),
                "cells": len(table), "pelvis": pelvis_summary(pelvis), "min_cell": MIN_CELL, "min_r": MIN_R}
     (out / "summary.json").write_text(json.dumps(summary, indent=1))
     return summary
@@ -818,7 +893,7 @@ def stand_in(key):
     if key in GOLD_ROWS:
         return GOLD_ROWS[key][1], GOLD_ROWS[key][2]
     if key in GOLD_RATIOS:
-        return GOLD_RATIOS[key][2], "same"
+        return GOLD_RATIOS[key][2], GOLD_RATIOS[key][3]
     return None, None
 
 
@@ -840,18 +915,35 @@ def xray_error(C, series, projection):
     return float(math.hypot(series.error, sd)), name, how
 
 
-def tuffier(counts, levels=LUMBAR):
-    """What the iliac crests' line tells of the body it crosses, by the census's definition for a lone body (the
-    mean log posterior at the truth plus log K, K the six lumbar names, a uniform prior): the posterior of the
-    crossed body's name is the share of persons whose line crosses each body, so the information is log K less
-    that share's entropy; and the count of persons whose line crosses each body or disc."""
+def xlogy(x, y):
+    return float(x * math.log(y)) if x > 0 else 0.0
+
+
+def tuffier(counts, persons=None, levels=LUMBAR):
+    """What the iliac crests' line tells, two ways, with the count of persons whose line crosses each body or disc.
+
+    About the body it crosses (crossed_body_nats): the name of the one body the line marks, its posterior the share
+    of persons whose line crosses each body, so log K less that share's entropy. That is a question of its own and
+    weights the levels by how often the line crosses them.
+
+    About a lone body, by the census's definition (lone_body_nats): a body drawn at each of the K levels alike, the
+    observation whether the line crosses it, q_k the share of persons whose line crosses body k (of `persons`, all
+    whose crest level was read, discs among them), the information at level k the mean log posterior at the truth
+    plus log K, and the mean over the K levels; this is the figure that sits beside the chords'."""
     bodies = {lv: n for lv, n in counts.items() if lv in levels}
     total = sum(bodies.values())
     if not total:
         return {}
     p = np.array([n / total for n in bodies.values()])
-    return {"crossing": counts, "bodies": bodies, "information_nats": float(math.log(len(levels)) + np.sum(p * np.log(p))),
-            "of_nats": float(math.log(len(levels))), "named_by_the_commonest": float(p.max())}
+    K = len(levels)
+    persons = persons or sum(counts.values())
+    q = [bodies.get(lv, 0) / persons for lv in levels]
+    yes, no = sum(q), sum(1.0 - x for x in q)
+    per_level = [xlogy(x, x / yes) + xlogy(1.0 - x, (1.0 - x) / no) + math.log(K) for x in q]
+    return {"crossing": counts, "bodies": bodies, "persons": persons,
+            "crossed_body_nats": float(math.log(K) + np.sum(p * np.log(p))), "of_nats": float(math.log(K)),
+            "named_by_the_commonest": float(p.max()), "lone_body_nats": float(np.mean(per_level)),
+            "lone_body_by_level": dict(zip(levels, per_level))}
 
 
 def rank(C, source_id, series, nodes, fields, seed, correlation=None):
@@ -884,28 +976,122 @@ def angle_cost(C, ct, projection, nodes, fields, seed, least=20):
     return out
 
 
-def paired_standalone(C, ct, xray, nodes, fields, seed):
+@contextmanager
+def size_spread(R, sd):
+    """The rule's size spread (R.SYNTH's scale_sd, which the census's draws read) set to sd inside, with the nodes
+    for it, and put back after. A frame of unknown magnification reads every length of a body times one unknown
+    factor, as an unknown size does, so the two spreads add in quadrature and a ratio or an angle, of power 0 in
+    the size, is untouched."""
+    old = R.SYNTH["scale_sd"]
+    R.SYNTH["scale_sd"] = sd
+    try:
+        yield R.quadrature(sd)
+    finally:
+        R.SYNTH["scale_sd"] = old
+
+
+def standalone(C, series, fields, seed, nodes, R=None, scale_sd=None):
+    """One measure's standalone information, mean over its levels, and the standard error of that mean; with
+    scale_sd, drawn and read with the size spread widened to it."""
+    if scale_sd is None:
+        m = C.census_group([series], fields, seed, nodes, {})["measures"][0]
+    else:
+        with size_spread(R, scale_sd) as wide:
+            m = C.census_group([series], fields, seed, wide, {})["measures"][0]
+    return float(np.mean(m["standalone"])), float(math.sqrt(np.nansum(np.square(m["standalone_se"]))) / len(m["standalone"]))
+
+
+def paired_standalone(C, ct, xray, nodes, fields, seed, R=None, uncalibrated=None):
     """Each X-ray measure's standalone information beside the same measure's on the CT, each drawn alone from the
     same seed, so the two draws share every random number and differ only in the error: the difference is what the
-    projection's error costs, free of the census's Monte Carlo noise."""
+    projection's error costs, free of the census's Monte Carlo noise. The X-ray here knows each frame's
+    magnification, as the projection test divides by it; `uncalibrated` ({name: log SD}) adds, for each name, the
+    same measure read on a frame whose magnification is unknown by that spread, the size spread widened by it."""
     by_key = {s.key: s for s in ct}
     out = []
     for k, sx in enumerate(xray):
-        pair = {}
-        for name, series in (("ct", by_key[sx.key]), ("xray", sx)):
-            g = C.census_group([series], fields, seed + 31 * k, nodes, {})
-            m = g["measures"][0]
-            pair[name] = float(np.mean(m["standalone"]))
-            pair[name + "_se"] = float(math.sqrt(np.nansum(np.square(m["standalone_se"]))) / len(m["standalone"]))
-        out.append({"key": sx.key, "levels": list(sx.levels), "ct_error": by_key[sx.key].error, "xray_error": sx.error, **pair})
+        row = {"key": sx.key, "kind": sx.kind, "levels": list(sx.levels), "ct_error": by_key[sx.key].error, "xray_error": sx.error}
+        row["ct"], row["ct_se"] = standalone(C, by_key[sx.key], fields, seed + 31 * k, nodes)
+        row["xray"], row["xray_se"] = standalone(C, sx, fields, seed + 31 * k, nodes)
+        for name, log_sd in (uncalibrated or {}).items():
+            wide = math.hypot(R.SYNTH["scale_sd"], log_sd)
+            row[f"xray_uncalibrated_{name}"], _ = standalone(C, sx, fields, seed + 31 * k, nodes, R, wide)
+        out.append(row)
     return out
 
 
-def run_census(clone, gold, projection_path, out, fields=400):
+SHARED_KEYS = {"endplate": "endplate", "endplate_lower": "endplate_lower", "endplate_depth": "endplate_depth",
+               "endplate_lower_depth": "endplate_lower_depth", "h_post": "h_post", "canal_w": "canal_w",
+               "canal_ap": "canal_ap", "spinous_length": "spinous_length", "tp_span": "transverse_width"}
+SERIES_CSV = Path("research_notes") / "paper-tables" / "data" / "series.csv"
+
+
+def other_series(C, path, keys, levels=LUMBAR):
+    """The clinical reread's series of the given keys at the given levels, read as the census reads them (the values
+    a paper measured itself, no quoted value, figure's example or pig cohort, a disc's row to the body above) but
+    with or without a spread, since a mean is all a comparison needs: {key: {series id: {level: mean}}}, the sides
+    of a level averaged."""
+    by = {}
+    for r in C.read_csv(str(path)):
+        key = r["key"].strip()
+        if key not in keys or r.get("source_of_values", "this paper").strip() not in ("", "this paper"):
+            continue
+        if C.LEFT_OUT_COHORTS.search(r["cohort"].strip()):
+            continue
+        lv = C.body_level(r["level"])
+        mean = number(r["mean"])
+        if lv not in levels or mean is None:
+            continue
+        sid = " | ".join(x for x in (r["paper"].strip(), r["cohort"].strip(), r["technique"].strip(), r["sex"].strip()) if x)
+        by.setdefault(key, {}).setdefault(sid, {}).setdefault(lv, []).append(mean)
+    return {k: {sid: {lv: float(np.mean(v)) for lv, v in cells.items()} for sid, cells in series.items()}
+            for k, series in by.items()}
+
+
+def against_sources(C, clone, gold_series, pan_series, levels=LUMBAR):
+    """Each chord the gold tier shares a name with Panjabi's table, level by level: the gold tier's mean, Panjabi's,
+    and the other series' median, least and most with their count; and, for every series that prints both, the
+    step from L4 to L5 and from T12 to L1, the two steps the ranking leans on."""
+    gold = {s.key: dict(zip(s.levels, s.mean)) for s in gold_series}
+    pan = {s.key: dict(zip(s.levels, s.mean)) for s in pan_series}
+    path = Path(clone) / SERIES_CSV
+    others = other_series(C, path, set(SHARED_KEYS.values()), levels) if path.is_file() else {}
+    out = []
+    for gkey, pkey in SHARED_KEYS.items():
+        series = others.get(pkey, {})
+        row = {"gold_key": gkey, "panjabi_key": pkey, "levels": {}, "steps": {}}
+        for lv in levels:
+            vals = [cells[lv] for cells in series.values() if lv in cells]
+            row["levels"][lv] = {"gold": gold.get(gkey, {}).get(lv), "panjabi": pan.get(pkey, {}).get(lv),
+                                 "others_median": float(np.median(vals)) if vals else None,
+                                 "others_least": min(vals) if vals else None, "others_most": max(vals) if vals else None,
+                                 "others_n": len(vals)}
+        for name, (a, b) in (("L5_less_L4", ("L4", "L5")), ("L1_less_T12", ("T12", "L1"))):
+            step = {"gold": None, "panjabi": None, "others": {}}
+            if a in gold.get(gkey, {}) and b in gold.get(gkey, {}):
+                step["gold"] = gold[gkey][b] - gold[gkey][a]
+            if a in pan.get(pkey, {}) and b in pan.get(pkey, {}):
+                step["panjabi"] = pan[pkey][b] - pan[pkey][a]
+            step["others"] = {sid: cells[b] - cells[a] for sid, cells in sorted(series.items()) if a in cells and b in cells}
+            row["steps"][name] = step
+        out.append(row)
+    return out
+
+
+def commit_of(clone):
+    try:
+        return subprocess.run(["git", "-C", str(clone), "rev-parse", "HEAD"], capture_output=True, text=True,
+                              check=True).stdout.strip()
+    except (OSError, subprocess.CalledProcessError):
+        return None
+
+
+def run_census(clone, gold, projection_path, out, fields=2000):
     C = census_module(clone)
     R = sys.modules["schwingcheck.rule"]
     nodes = R.quadrature(R.SYNTH["scale_sd"])
     projection = json.loads(Path(projection_path).read_text())
+    spreads = {s: v["log_sd"] for s, v in projection.get("magnification", {}).items()}
     pan, _ = C.panjabi_source()
     pan_series = [s for s in (restricted(C, m, LUMBAR) for m in pan.measures if m.key in PANJABI_KEYS) if s]
     table = C.table_source(str(Path(gold) / "table.csv"), "gold3-enhance")
@@ -919,15 +1105,24 @@ def run_census(clone, gold, projection_path, out, fields=400):
         else:
             xray.append(C.Series(s.key, s.kind, err, s.levels, s.mean, s.sd, s.n))
             how[s.key] = {"stand_in": name, "how": why, "error": err, "census_error": s.error}
+    sources = [rank(C, "panjabi, T12 to L5", pan_series, nodes, fields, C.SEED),
+               rank(C, "gold3 ENHANCE.PET, T12 to L5, on the CT", gold_series, nodes, fields, C.SEED + 1, corr),
+               rank(C, "gold3 ENHANCE.PET, T12 to L5, on an X-ray of known magnification", xray, nodes, fields, C.SEED + 1, corr)]
+    if "deepfluoro" in spreads:
+        # the C-arm's own spread: every length of a body read times one unknown factor, the size spread widened by it
+        # (an AP and a lateral frame each have their own factor, which one shared factor makes slightly optimistic)
+        with size_spread(R, math.hypot(R.SYNTH["scale_sd"], spreads["deepfluoro"])) as wide:
+            sources.append(rank(C, "gold3 ENHANCE.PET, T12 to L5, on an X-ray of unknown magnification (the C-arm's spread)",
+                                xray, wide, fields, C.SEED + 1, corr))
+    pelvis = json.loads((Path(gold) / "summary.json").read_text())["pelvis"]
     record = {"levels": list(LUMBAR), "fields_per_level": fields, "seed": C.SEED, "scale_sd": R.SYNTH["scale_sd"],
-              "ratio_error": C.RATIO_ERROR, "sources": [
-                  rank(C, "panjabi, T12 to L5", pan_series, nodes, fields, C.SEED),
-                  rank(C, "gold3 ENHANCE.PET, T12 to L5, on the CT", gold_series, nodes, fields, C.SEED + 1, corr),
-                  rank(C, "gold3 ENHANCE.PET, T12 to L5, on an X-ray", xray, nodes, fields, C.SEED + 1, corr)],
-              "paired_standalone": paired_standalone(C, gold_series, xray, nodes, fields, C.SEED + 5),
+              "bordercall_commit": commit_of(clone), "magnification_log_sd": spreads,
+              "ratio_error": C.RATIO_ERROR, "sources": sources,
+              "paired_standalone": paired_standalone(C, gold_series, xray, nodes, fields, C.SEED + 5, R, spreads),
               "angle_cost": angle_cost(C, gold_series, projection, nodes, max(fields // 4, 100), C.SEED + 7),
               "xray_left_out": left, "xray_errors": how,
-              "tuffier": tuffier(json.loads((Path(gold) / "summary.json").read_text())["pelvis"].get("intercristal_level", {}))}
+              "against_sources": against_sources(C, clone, gold_series, pan_series),
+              "tuffier": tuffier(pelvis.get("intercristal_level", {}), pelvis.get("intercristal_level_persons"))}
     Path(out).write_text(json.dumps(record, indent=1))
     return record
 
@@ -973,6 +1168,27 @@ def source_table(projection):
     return "\n".join(lines) + "\n"
 
 
+def pooling_table(projection, bins=((15.0, 25.0), (25.0, 35.0), (35.0, 60.0))):
+    """Per measure in its own view, the off-view bins from the sources whose angles are trusted, from every source
+    pooled and from each source whose angles are in doubt: what pooling them would do to the figures."""
+    doubt = [s for s in ANGLES_IN_DOUBT]
+    heads = [f"{int(lo)}-{int(hi)}" for lo, hi in bins]
+    lines = ["| Measure | View | " + " | ".join(f"{h}: trusted, pooled, " + ", ".join(doubt) for h in heads) + " |",
+             "|---|---|" + "---|" * len(bins)]
+    for m in projection["measures"]:
+        v = m["views"].get(m["view"])
+        if not v or "bins_all" not in v:
+            continue
+        cells = []
+        for lo, hi in bins:
+            def at(seq):
+                b = next((b for b in seq if tuple(b["bin"]) == (lo, hi)), None)
+                return f"{fmt(m['kind'], b['median_abs'])} ({b['n']})" if b else "-"
+            cells.append(", ".join([at(v["bins"]), at(v["bins_all"])] + [at(v["bins_by_source"].get(s, [])) for s in doubt]))
+        lines.append(f"| {m['name']} | {m['view']} | " + " | ".join(cells) + " |")
+    return "\n".join(lines) + "\n"
+
+
 def fmt(kind, x):
     if kind == "length":
         return f"{100 * x:.1f}%"
@@ -1002,12 +1218,22 @@ def census_table(record):
                 lines.append(f"\nShared by correlation (median |r| of at least 0.7 over the levels): {shared}.")
     paired = record.get("paired_standalone") or []
     if paired:
-        lines += ["\nEach measure alone, on the CT and as read on an X-ray, the same draws (mean nats over its levels, "
-                  "with the standard error of the mean):\n",
-                  "| Measure | Levels | Error, CT | Error, X-ray | Alone, CT | Alone, X-ray | Cost |", "|---|---|---|---|---|---|---|"]
+        sd_of = record.get("magnification_log_sd") or {}
+        spreads = sorted(sd_of)
+        named = ", ".join("%s %.3f" % (s, sd_of[s]) for s in spreads)
+        lines += ["\nEach measure alone, on the CT and as read on an X-ray within 15 degrees of its view, the same draws (mean "
+                  "nats over its levels, with the standard error of the mean); known: the frame's magnification known, as the "
+                  "projection test divides by it; then on a frame whose magnification is unknown by each source's spread "
+                  f"(the log SD: {named}):\n",
+                  "| Measure | Kind | Levels | Error, CT | Error, X-ray | Alone, CT | Known | Cost | "
+                  + " | ".join(f"Unknown, {s} | Cost" for s in spreads) + " |",
+                  "|---|---|---|---|---|---|---|---|" + "---|---|" * len(spreads)]
         for e in sorted(paired, key=lambda e: -e["ct"]):
-            lines.append(f"| {e['key']} | {e['levels'][0]} to {e['levels'][-1]} | {e['ct_error']:.3g} | {e['xray_error']:.3g} | "
-                         f"{e['ct']:.3f} +- {e['ct_se']:.3f} | {e['xray']:.3f} +- {e['xray_se']:.3f} | {e['ct'] - e['xray']:.3f} |")
+            unk = " | ".join(f"{e[f'xray_uncalibrated_{s}']:.3f} | {e['ct'] - e[f'xray_uncalibrated_{s}']:.3f}"
+                             if f"xray_uncalibrated_{s}" in e else "- | -" for s in spreads)
+            lines.append(f"| {e['key']} | {e.get('kind', '')} | {e['levels'][0]} to {e['levels'][-1]} | {e['ct_error']:.3g} | "
+                         f"{e['xray_error']:.3g} | {e['ct']:.3f} +- {e['ct_se']:.3f} | {e['xray']:.3f} +- {e['xray_se']:.3f} | "
+                         f"{e['ct'] - e['xray']:.3f} |" + (f" {unk} |" if spreads else ""))
     cost = record.get("angle_cost") or []
     if cost:
         heads = [f"{int(lo)}-{int(hi)}" for lo, hi in zip(BINS[:-1], BINS[1:])]
@@ -1022,8 +1248,40 @@ def census_table(record):
         lines.append("\nLeft out of the X-ray run: " + "; ".join(f"{e['key']} ({e['why']})" for e in left) + ".")
     t = record.get("tuffier") or {}
     if t:
-        lines.append(f"\nThe crests' line: {t['information_nats']:.2f} of {t['of_nats']:.2f} nats about the body it crosses, "
-                     f"the commonest body {100 * t['named_by_the_commonest']:.1f} per cent; crossings {t['crossing']}.")
+        lines.append(f"\nThe crests' line: {t['crossed_body_nats']:.2f} of {t['of_nats']:.2f} nats about the body it crosses, "
+                     f"the commonest body {100 * t['named_by_the_commonest']:.1f} per cent; {t['lone_body_nats']:.3f} nats about "
+                     f"a lone body, the census's way (by level: "
+                     + ", ".join(f"{lv} {v:.3f}" for lv, v in t["lone_body_by_level"].items())
+                     + f"); crossings {t['crossing']} of {t['persons']} persons read.")
+    lines.append(sources_table(record.get("against_sources") or []))
+    return "\n".join(lines) + "\n"
+
+
+def sources_table(rows):
+    """The gold tier's chords beside Panjabi's and the other series', level by level, and the steps the ranking leans
+    on, series by series."""
+    if not rows:
+        return ""
+    lines = ["\nThe chords against Panjabi and the reread's other series (mm; others: median, least to most, count):\n",
+             "| Chord | Level | Gold | Panjabi | Gold less Panjabi | Others |", "|---|---|---|---|---|---|"]
+    for r in rows:
+        for lv, c in r["levels"].items():
+            g, p = c["gold"], c["panjabi"]
+            diff = f"{g - p:+.1f}" if g is not None and p is not None else "-"
+            others = (f"{c['others_median']:.1f} ({c['others_least']:.1f} to {c['others_most']:.1f}, {c['others_n']})"
+                      if c["others_n"] else "-")
+            gs = "-" if g is None else f"{g:.1f}"
+            ps = "-" if p is None else f"{p:.1f}"
+            lines.append(f"| {r['gold_key']} ({r['panjabi_key']}) | {lv} | {gs} | {ps} | {diff} | {others} |")
+    lines += ["\nThe steps, series by series (mm):\n", "| Chord | Step | Gold | Panjabi | Other series |", "|---|---|---|---|---|"]
+    for r in rows:
+        for name, st in r["steps"].items():
+            if st["gold"] is None and st["panjabi"] is None and not st["others"]:
+                continue
+            others = "; ".join(f"{sid} {v:+.1f}" for sid, v in st["others"].items()) or "-"
+            g = "-" if st["gold"] is None else f"{st['gold']:+.1f}"
+            p = "-" if st["panjabi"] is None else f"{st['panjabi']:+.1f}"
+            lines.append(f"| {r['gold_key']} | {name} | {g} | {p} | {others} |")
     return "\n".join(lines) + "\n"
 
 
@@ -1036,12 +1294,13 @@ def main(argv=None):
     g = sub.add_parser("gold")
     g.add_argument("--rows", required=True)
     g.add_argument("--persons", required=True)
+    g.add_argument("--verdicts", help="bordercall's verdicts.csv: keep only the persons it calls T12L5")
     g.add_argument("--out", required=True)
     c = sub.add_parser("census")
     c.add_argument("--bordercall", required=True)
     c.add_argument("--gold", required=True)
     c.add_argument("--projection", required=True)
-    c.add_argument("--fields", type=int, default=400)
+    c.add_argument("--fields", type=int, default=2000)
     c.add_argument("--out", required=True)
     r = sub.add_parser("report")
     r.add_argument("--projection")
@@ -1052,7 +1311,7 @@ def main(argv=None):
         print(json.dumps({k: res[k] for k in ("counts", "rows", "pair_vs_export_ratio_gap", "construction", "off_view_by_source",
                                               "magnification")}, indent=1))
     elif a.what == "gold":
-        print(json.dumps(run_gold(a.rows, a.persons, a.out), indent=1))
+        print(json.dumps(run_gold(a.rows, a.persons, a.out, a.verdicts), indent=1))
     elif a.what == "census":
         run_census(a.bordercall, a.gold, a.projection, a.out, a.fields)
         print(census_table(json.loads(Path(a.out).read_text())))
@@ -1061,6 +1320,8 @@ def main(argv=None):
             projection = json.loads(Path(a.projection).read_text())
             print(projection_table(projection))
             print(source_table(projection))
+            print(pooling_table(projection))
+            print(json.dumps(projection.get("magnification", {}), indent=1))
         if a.census:
             print(census_table(json.loads(Path(a.census).read_text())))
     return 0
