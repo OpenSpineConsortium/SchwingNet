@@ -16,6 +16,8 @@ manifest it writes stays in the landing's meta folder.
                          grid/idc_headers.py, which reads their headers and not their pixels
     sbu_abdominal_films  COVID-19-NY-SBU's abdominal CR and DX films, and the CT localizers, of
                          the patients whose held CT is an abdomen and pelvis study
+    sbu_localizers       COVID-19-NY-SBU's CT localizers of every patient whose CT the grid holds,
+                         less those a landing named by --fetched already holds
     cmb_xa_frames        every XA series of CMB-MML and CMB-AML, and the CT series of those
                          patients the grid does not hold yet
     cmb_mml_radiographs  every CR and DX series of CMB-MML, and the CT series of those patients
@@ -32,6 +34,7 @@ library, plus idc-index for the IDC selections.
     python grid/series_select.py ctc_localizers --out <landing>/meta/ctc_localizers.csv
     python grid/series_select.py ctc_masked --labels <data>/ctspine1k --out <landing>/meta/ctc_masked.csv
     python grid/series_select.py sbu_abdominal_films --held <data>/idc/raw/covid_19_ny_sbu --out ...
+    python grid/series_select.py sbu_localizers --held <data>/idc/raw/covid_19_ny_sbu         --fetched <data>/covid19_ny_sbu_films/raw/covid_19_ny_sbu --out ...
     python grid/series_select.py cmb_xa_frames --held <data>/idc/raw/cmb_mml --out ...
     python grid/series_select.py size --manifest <csv> --landing <landing>
 """
@@ -117,6 +120,14 @@ def sbu_abdominal(series, held, collection="covid_19_ny_sbu"):
     return films + scouts
 
 
+def sbu_localizers(series, held, fetched, collection="covid_19_ny_sbu"):
+    """The CT localizers of the patients with a held CT series, less the series already fetched."""
+    mine = [s for s in series if s.get("collection_id") == collection]
+    patients = {s["PatientID"] for s in mine if s.get("SeriesInstanceUID") in held}
+    return [s for s in localizers(mine, collection)
+            if s["PatientID"] in patients and s.get("SeriesInstanceUID") not in fetched]
+
+
 def cmb_with_ct(series, modalities, held):
     """The series of the given modalities, and the CT series of their patients the grid does not hold."""
     picked = [s for s in series if s.get("Modality") in modalities]
@@ -196,6 +207,9 @@ def select(name, args):
               f"{len(unmatched)} matched no series of idc-index", file=sys.stderr)
     elif name == "sbu_abdominal_films":
         chosen = sbu_abdominal(series, held_series(args.held))
+    elif name == "sbu_localizers":
+        fetched = held_series(args.fetched) if args.fetched else set()
+        chosen = sbu_localizers(series, held_series(args.held), fetched)
     else:
         raise SystemExit(f"series_select: no selection {name}")
     return [idc_row(s) for s in chosen], f"idc-index {version}"
@@ -236,6 +250,7 @@ def main(argv=None):
     parser.add_argument("selection", help="a selection named above, or size")
     parser.add_argument("--out", help="the manifest CSV to write")
     parser.add_argument("--held", help="a held IDC landing whose series are not fetched again")
+    parser.add_argument("--fetched", help="a landing of this kind whose series are left out")
     parser.add_argument("--labels", help="the CTSpine1K folder (raw_data/labels/COLONOG, metadata/path.csv)")
     parser.add_argument("--manifest", help="size: the manifest to size")
     parser.add_argument("--landing", help="size: the landing whose fetch/verified.jsonl names what is done")

@@ -58,6 +58,7 @@ manifest=$DATA/$ID/meta/$SELECTION.csv
 case "$SELECTION" in
   ctc_masked) from=(--labels "$DATA/ctspine1k") ;;
   sbu_abdominal_films) from=(--held "$DATA/idc/raw/covid_19_ny_sbu") ;;
+  sbu_localizers) from=(--held "$DATA/idc/raw/covid_19_ny_sbu" --fetched "$DATA/covid19_ny_sbu_films/raw/covid_19_ny_sbu") ;;
   cmb_*) from=(--held "$DATA/idc/raw/cmb_mml") ;;
   *) from=() ;;
 esac

@@ -225,6 +225,15 @@ class Selections(unittest.TestCase):
         chosen = select.sbu_abdominal(series, {"ct-a", "ct-b"})
         self.assertEqual(sorted(r["SeriesInstanceUID"] for r in chosen), ["f-a", "s-a"])
 
+    def test_sbu_localizers_are_every_held_ct_patients_less_those_fetched(self):
+        c = "covid_19_ny_sbu"
+        series = [row(collection_id=c, PatientID="A", SeriesInstanceUID="ct-a"),
+                  row(collection_id=c, PatientID="A", SeriesInstanceUID="s1", SeriesDescription="SCOUT AP/LAT"),
+                  row(collection_id=c, PatientID="A", SeriesInstanceUID="s2", SeriesDescription="Scout"),
+                  row(collection_id=c, PatientID="B", SeriesInstanceUID="s3", SeriesDescription="SCOUT")]
+        chosen = select.sbu_localizers(series, {"ct-a"}, {"s2"})
+        self.assertEqual([r["SeriesInstanceUID"] for r in chosen], ["s1"])
+
     def test_cmb_takes_every_series_of_the_modality_and_the_unheld_ct_of_its_patients(self):
         series = [row(collection_id="cmb_mml", PatientID="M1", Modality="XA", SeriesInstanceUID="x1"),
                   row(collection_id="cmb_mml", PatientID="M1", SeriesInstanceUID="held"),

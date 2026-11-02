@@ -1,0 +1,6 @@
+The open paired sets of the survey of 2026-11-01 are on the grid since 2026-11-02, fetched as lists of series by grid/open-pairs.sbatch under the size rule; FORCAST-EST came through spine-datasets' promoter.
+
+- Under /rs/rs_grp_oschome/go2432/data: tcia_ct_localizers (CT COLONOGRAPHY's 1,552 localizer series, 725 patients), tcia_ctc_ct_headers (the headers alone of the CT series CTSpine1K's COLONOG masks were drawn on, whose images were retired 2026-10-31), covid19_ny_sbu_films (27 patients' abdominal films and localizers beside their held CT), cmb_xa_frames and cmb_mml_radiographs (CMB XA frames and films with the CT the grid lacked). The FORCAST-EST phantom sweeps are at /rs/rs_grp_oschome/shared/datasets/heidata_forcast_est/raw.
+- A selection is a rule of grid/series_select.py applied on the grid, never a committed patient list; each landing's meta folder holds its series manifest, and its fetch folder the per-series verification.
+- A header file (*.dcmhdr) is a DICOM file cut before its Pixel Data: pydicom reads it, and nothing that looks for *.dcm images takes it for one.
+- None of them joins any loop until a PREREG of its own names it. The counts and jobs are docs/research/open-paired-fetch.md; the records are spine-datasets' datasets/<id>.json.
