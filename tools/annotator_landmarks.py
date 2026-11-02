@@ -90,9 +90,33 @@ BALL_MM = (18.0, 32.0)                 # the femoral head's radius lies in this 
 BALL_REACH_MM = 100.0                  # the head lies within the femur's highest 100 mm
 S1_BELOW_MM = 4.0                      # the S1 plate's midline layer reaches this far below its plane
 S1_GAP_MM = 2.0                        # a gap wider than this along the midline ends the plate (the sacral canal behind)
+S1_BELOW_MAX_MM = 20.0                 # an S1 plate further below the lowest lumbar plate than a disc's height is suspect
+S1_LATERAL_MAX_MM = 10.0               # and so is one further than this beside the midline
 PLATE_BEYOND_LAYERS = 0.5              # plates.py's BEYOND_LAYERS
 PLATE_FRONT_SHARE = 0.5                # plates.py's FRONT_SHARE
 PLATE_MIN_POINTS = 20                  # plates.py's MIN_POINTS
+
+# The four points read on a shape (the obturator foramen's outline, each pubis's face at the symphysis) are each the
+# shape's extreme along one direction, given as (lateral, anterior, superior) in one of three frames of the pelvis,
+# lateral toward the side's own outside so one direction serves both hips: "anatomical", the anterior pelvic plane
+# upright as in a person standing (anatomical_frame); "scanner", the scanner's long axis made square to the hip axis
+# (pelvic_frame); "joint", the symphysis's own long axis, its faces' greatest spread. Each entry says why; the numbers
+# are DeepFluoro's five specimens' (docs/research/annotator-landmarks/constructions.md), and the first was learned from
+# them, so its fair error is the one `check` measures leaving each specimen out.
+DIRECTIONS = {
+    # learned: the person's points lie from the foramen's centre toward the ischium, back and down (both labelings gave
+    # (0.24, -0.83, -0.51) and (0.23, -0.83, -0.51), each person's point within a median 9 degrees of it)
+    "obturator_inferior": ("anatomical", (0.23, -0.83, -0.51)),
+    # the name's words: toward the midline, with the anterior pelvic plane upright
+    "obturator_medial": ("anatomical", (-1.0, 0.0, 0.0)),
+    # the joint's upper end along its own long axis, the run the bars were set for
+    "symphysis_superior": ("joint", (0.0, 0.0, 1.0)),
+    # the joint's lowest point along the scanner's long axis, the slice where a person scrolling down sees it end
+    "symphysis_inferior": ("scanner", (0.0, 0.0, -1.0)),
+}
+SHAPED = {"IOF": ("obturator_inferior", "outline"), "MOF": ("obturator_medial", "outline"),
+          "SPS": ("symphysis_superior", "face"), "IPS": ("symphysis_inferior", "face")}
+
 
 # Each construction in plain words, and the QA loop's landmark it stands for (tools/qaloop_gates.py LANDMARKS), if
 # any. A vertebra's names are "<level>.<construction>", the pelvis's "<construction>.<side>" or "<construction>".
@@ -125,12 +149,17 @@ CONSTRUCTIONS = {
     "asis": ("the anterior superior iliac spine: where the anterior pelvic plane, the plane resting on both ilia above "
              "the hip axis and on the pubis in front, touches the ilium (anterior_plane)", None),
     "symphysis_superior": ("the pubic symphysis's upper end on this pubis: the face of its bone within 6 mm of the "
-                           "other pubis beyond the joint's gap, its end along the joint's long axis (symphysis)", None),
-    "symphysis_inferior": ("the pubic symphysis's lower end on this pubis (symphysis)", None),
-    "obturator_inferior": ("the obturator foramen's lowest point: the foramen as the largest hole in the silhouette of "
-                           "the hip bone below the hip centre over views within 40 degrees of the anterior pelvic "
-                           "plane's normal, its edge's lowest point, and the bone there (obturator)", None),
-    "obturator_medial": ("the obturator foramen's point nearest the midline, in the same view (obturator)", None),
+                           "other pubis beyond the joint's gap, its end along the joint's own long axis (symphysis, "
+                           "DIRECTIONS)", None),
+    "symphysis_inferior": ("the pubic symphysis's lower end on this pubis: the same face's lowest point along the "
+                           "scanner's long axis (symphysis, DIRECTIONS)", None),
+    "obturator_inferior": ("the obturator foramen's lower end as DeepFluoro's annotators place it: the foramen as the "
+                           "largest hole in the silhouette of the hip bone below the hip centre over views within 40 "
+                           "degrees of the anterior pelvic plane's normal, its outline in 3-D the middle of the bone "
+                           "round the hole's edge in that view, and the outline's extreme toward the ischium, back and "
+                           "down with the plane upright (obturator, DIRECTIONS)", None),
+    "obturator_medial": ("the obturator foramen's point nearest the midline: the same outline's extreme toward the "
+                         "midline with the anterior pelvic plane upright (obturator, DIRECTIONS)", None),
     "sciatic_notch": ("the greater sciatic notch's deepest point: the hip bone's outline seen along the hip axis, the "
                       "point of its posterior concavity furthest inside the convex hull, and the bone there "
                       "(sciatic_notch)", None),
@@ -522,12 +551,21 @@ def principal_axis(points):
     return np.linalg.eigh(np.cov(c.T))[1][:, -1]
 
 
-def symphysis(right, left, frame):
-    """Each pubis's face at the symphysis, and its two ends: the bone of each hip below the hip axis and within
-    PUBIC_MIDLINE_MM of the midline that lies within SYMPHYSIS_MM of the other hip beyond the narrowest gap between
-    them, which only the symphysis holds; the joint's long axis the faces' greatest spread, taken upward; each face's
-    superior and inferior end the mean of its points within END_MM of its end along that axis."""
+def symphysis(right, left, frames, directions=None):
+    """Each pubis's face at the symphysis, and its two named ends: the bone of each hip below the hip axis and within
+    PUBIC_MIDLINE_MM of the midline (in frames["anatomical"]) that lies within SYMPHYSIS_MM of the other hip beyond the
+    narrowest gap between them, which only the symphysis holds. The faces' greatest spread, taken upward, is the
+    joint's long axis and sets frames["joint"]; each end is the mean of its face's points within END_MM of the face's
+    extreme along the end's entry in DIRECTIONS.
+
+    Three readings of the ends were measured on DeepFluoro (constructions.md): along the joint's long axis both (the
+    run the bars were set for), whose superior end lay a median 4 mm from the person's and inferior end 14 mm, the
+    faces staying within 4 mm of each other 7 to 17 mm further back than the person's inferior point; along the
+    scanner's long axis, 14 and 3 mm; along the anatomical frame's, 12 and 8 mm. The table takes the superior end from
+    the first and the inferior from the second."""
     from scipy.spatial import cKDTree
+    G = engine()["G"]
+    frame = frames["anatomical"]
     near = {}
     for side, pts in (("right", right), ("left", left)):
         q = frame.local(pts)
@@ -539,13 +577,46 @@ def symphysis(right, left, frame):
     gap = float(min(d_right.min(), d_left.min()))
     face = {"right": near["right"][d_right <= gap + SYMPHYSIS_MM], "left": near["left"][d_left <= gap + SYMPHYSIS_MM]}
     axis = principal_axis(np.vstack(list(face.values())))
+    axis = unit(axis - (axis @ frame.ex) * frame.ex)
     if axis @ frame.ez < 0:
         axis = -axis
-    out = {"gap_mm": gap, "axis_from_long_deg": angle_deg(axis, frame.ez)}
+    frames = dict(frames, joint=G.Frame(frame.origin, frame.ex, np.cross(axis, frame.ex), axis))
+    out = {"gap_mm": gap, "axis_from_long_deg": angle_deg(axis, frames["scanner"].ez), "frames": frames}
     for side, pts in face.items():
-        out[f"superior_{side}"] = extreme(pts, axis, END_MM)
-        out[f"inferior_{side}"] = extreme(pts, -axis, END_MM)
+        out[f"face_{side}"] = pts
+        out[f"superior_{side}"] = shaped_point(pts, frames, side, "symphysis_superior", directions)
+        out[f"inferior_{side}"] = shaped_point(pts, frames, side, "symphysis_inferior", directions)
     return out
+
+
+def shaped_point(shape, frames, side, construction, directions=None):
+    """A shape's extreme along a construction's direction (DIRECTIONS): the mean of its points within END_MM of the
+    extreme on a symphysis's face, whose voxels stand in a slab, and within CAP_MM on a foramen's outline."""
+    name, vector = (DIRECTIONS if directions is None else directions)[construction]
+    cap = END_MM if construction.startswith("symphysis") else CAP_MM
+    return extreme(shape, along_direction(frames[name], side, vector), cap)
+
+
+def along_direction(frame, side, d):
+    """A direction given as (lateral, anterior, superior) in the frame, lateral toward the side's own outside, so one
+    direction serves the right and the left hip as mirror images."""
+    sign = 1.0 if side == "right" else -1.0
+    return unit(sign * d[0] * frame.ex + d[1] * frame.ey + d[2] * frame.ez)
+
+
+def direction_of(frame, side, vector):
+    """The inverse of along_direction: a world vector as (lateral, anterior, superior) in the frame, unit length."""
+    sign = 1.0 if side == "right" else -1.0
+    return unit(np.array([sign * vector @ frame.ex, vector @ frame.ey, vector @ frame.ez]))
+
+
+def anatomical_frame(frame, normal):
+    """The pelvis in the anatomical position: x the hip axis, y the anterior pelvic plane's normal made square to it,
+    z up within that plane, so that the plane stands upright as it does in a person standing (Lewinnek), whatever the
+    specimen's tilt on the table (7 to 31 degrees on DeepFluoro)."""
+    G = engine()["G"]
+    ahead = unit(normal - (normal @ frame.ex) * frame.ex)
+    return G.Frame(frame.origin, frame.ex, ahead, np.cross(frame.ex, ahead))
 
 
 def view(frame, pitch_deg, yaw_deg):
@@ -566,29 +637,32 @@ def bone_at(points, uv, point2, reach=RIM_MM):
     return None
 
 
-def obturator(points, frame, hip_centre, side, normal=None):
-    """The obturator foramen's lowest point and its point nearest the midline. The foramen is the one large hole the
-    hip bone's silhouette shows below the acetabulum, as on an anteroposterior film: over views tilted up to 40
-    degrees, in steps of 10, from the anterior pelvic plane's normal (the frame's anterior where it is not given), the
-    largest enclosed hole of the bone below OBTURATOR_ABOVE_MM over the hip centre whose middle lies below the hip
-    centre and no more than OBTURATOR_LATERAL_MM lateral to it; the view showing it largest looks along the foramen.
-    In that view the hole's extreme pixels downward and toward the midline (the frame's axes projected), and the bone
-    projecting within RIM_MM of each, its mean over the rim's thickness."""
+def obturator(points, frames, hip_centre, side, directions=None):
+    """The obturator foramen's outline in 3-D and its two named points. The foramen is the one large hole the hip
+    bone's silhouette shows below the acetabulum, as on an anteroposterior film: over views tilted up to 40 degrees,
+    in steps of 10, from the frame's anterior (the anterior pelvic plane's normal, in pelvis_points), the largest
+    enclosed hole of the bone below OBTURATOR_ABOVE_MM over the hip centre whose middle lies below the hip centre and no
+    more than OBTURATOR_LATERAL_MM lateral to it; the view showing it largest looks along the foramen. Its outline in
+    3-D: at each pixel of the hole's edge in that view, the mean of the bone projecting within RIM_MM, the middle of the
+    rim's thickness there. Each named point is the outline's extreme along its entry in DIRECTIONS.
+
+    Three readings of the inferior point were set aside on DeepFluoro (docs/research/annotator-landmarks/
+    constructions.md): the extremes in the oblique view itself (commit 18110ff4, the run the bars were set for), along
+    the scanner's long axis and along the anatomical frame's; they lay a median 26, 25 and 11 mm from the person's, the
+    person's point standing at the foramen's back lower end, toward the ischium, which the learned direction finds."""
     from scipy import ndimage
+    from scipy.spatial import cKDTree
     G = engine()["G"]
+    frame = frames["anatomical"]
     q = frame.local(points)
     sel = points[q[:, 2] < frame.local(hip_centre[None, :])[0, 2] + OBTURATOR_ABOVE_MM]
     if len(sel) < 100:
         return None
-    base = frame
-    if normal is not None:
-        ahead = unit(normal - (normal @ frame.ex) * frame.ex)
-        base = G.Frame(frame.origin, frame.ex, ahead, np.cross(frame.ex, ahead))
     sign = 1.0 if side == "right" else -1.0
     best = None
     for pitch in OBTURATOR_TILTS_DEG:
         for yaw in OBTURATOR_TILTS_DEG:
-            w, u, v = view(base, pitch, yaw)
+            w, u, v = view(frame, pitch, yaw)
             uv = (sel - hip_centre) @ np.column_stack([u, v])
             grid, origin = G.raster(uv, 1.0)
             lab, n = ndimage.label(G.holes(grid))
@@ -601,18 +675,18 @@ def obturator(points, frame, hip_centre, side, normal=None):
                     continue
                 if lateral > OBTURATOR_LATERAL_MM or (best is not None and area <= best[0]):
                     continue
-                best = (area, pitch, yaw, u, v, uv, origin + ij + 0.5)
+                edge = (lab == k) & ndimage.binary_dilation(grid, np.ones((3, 3), bool))
+                best = (area, pitch, yaw, uv, origin + np.argwhere(edge) + 0.5)
     if best is None:
         return None
-    area, pitch, yaw, u, v, uv, hole = best
-    down = -unit(np.array([frame.ez @ u, frame.ez @ v]))
-    medial = -sign * unit(np.array([frame.ex @ u, frame.ex @ v]))
-    out = {"area_mm2": area, "pitch_deg": pitch, "yaw_deg": yaw}
-    for name, d in (("inferior", down), ("medial", medial)):
-        p = bone_at(sel, uv, extreme(hole, d, 0.5))
-        if p is not None:
-            out[name] = p
-    return out
+    area, pitch, yaw, uv, edge = best
+    tree = cKDTree(uv)
+    outline = np.array([sel[i].mean(axis=0) for i in tree.query_ball_point(edge, RIM_MM) if len(i) >= 3])
+    if len(outline) < 10:
+        return None
+    return {"area_mm2": area, "pitch_deg": pitch, "yaw_deg": yaw, "outline_points": len(outline), "outline": outline,
+            "inferior": shaped_point(outline, frames, side, "obturator_inferior", directions),
+            "medial": shaped_point(outline, frames, side, "obturator_medial", directions)}
 
 
 def hull_mask(silhouette):
@@ -733,6 +807,22 @@ def s1_points(sacrum_idx, grid, low):
     return out
 
 
+def s1_against(s1, low, notes, extras):
+    """Where the S1 plate's centre lies against the lowest lumbar body's lower plate centre, in that body's frame
+    (lateral, ahead, below), and a note where it lies further below than a disc holds or off the midline, which on
+    DeepFluoro's cadavers traced to the sacrum's label, not to the plate's reading."""
+    COL = engine()["COL"]
+    try:
+        offset = low.frame.local(s1["centre"][None, :])[0] - low.frame.local(COL.plate_centre(low, False)[None, :])[0]
+    except Exception as e:  # noqa: BLE001 - the offset is a record; its failure is noted, never hidden
+        notes["s1_offset"] = f"failed: {type(e).__name__}: {e}"
+        return
+    extras["s1_offset_mm"] = {"lateral": float(offset[0]), "ahead": float(offset[1]), "below": float(-offset[2])}
+    if -offset[2] > S1_BELOW_MAX_MM or abs(offset[0]) > S1_LATERAL_MAX_MM:
+        notes["s1"] = (f"the S1 plate's centre lies {-offset[2]:.0f} mm below and {abs(offset[0]):.0f} mm beside "
+                       f"{low.level}'s lower plate centre, where no lumbosacral disc puts it: the sacrum's label is suspect")
+
+
 def lowest_lumbar(verts):
     for lv in ("L6", "L5", "L4"):
         if lv in verts:
@@ -740,9 +830,10 @@ def lowest_lumbar(verts):
     return None
 
 
-def pelvis_points(lab, verts):
+def pelvis_points(lab, verts, shapes=None):
     """The pelvis's named points (RAS world), what kept any from being placed, and the constructions' own readings
-    (the plane's tilt, the joint's gap, the foramen's view) for the record."""
+    (the plane's tilt, the joint's gap, the foramen's view) for the record; where shapes is given it is filled with the
+    anatomical frame, the foramina's outlines and the symphysis's faces, for the check's calibration."""
     PELVIS = engine()["PELVIS"]
     points, notes, extras = {}, {}, {}
     hips, kept = {}, {}
@@ -766,6 +857,7 @@ def pelvis_points(lab, verts):
     if low is not None and len(lab.sacrum) >= 1000:
         s1 = attempt(kept, notes, "s1", lambda: s1_points(lab.sacrum, lab.grid, verts[low]))
         if s1 is not None:
+            s1_against(s1, verts[low], notes, extras)
             points["s1_centre"] = s1["centre"]
             for end in ("anterior", "posterior"):
                 if end in s1:
@@ -780,25 +872,32 @@ def pelvis_points(lab, verts):
     frame = pelvic_frame(hips["right"]["centre"], hips["left"]["centre"], lab.grid)
     bone = {s: lab.grid.world(idx.astype(float)) for s, idx in lab.hips.items()}
     app = attempt(kept, notes, "asis", lambda: anterior_plane(bone["right"], bone["left"], frame))
-    normal = None
+    anat = frame
     if app is not None:
-        normal = app["normal"]
+        anat = anatomical_frame(frame, app["normal"])
         points["asis.right"], points["asis.left"] = app["right"], app["left"]
         extras.update(app_turns=app["turns"], app_settled=app["settled"], app_tilt_deg=app["tilt_deg"])
-    sym = attempt(kept, notes, "symphysis", lambda: symphysis(bone["right"], bone["left"], frame))
+    frames = {"scanner": frame, "anatomical": anat}
+    if shapes is not None:
+        shapes["frames"] = frames
+    sym = attempt(kept, notes, "symphysis", lambda: symphysis(bone["right"], bone["left"], frames))
     if sym is not None:
+        if shapes is not None:
+            shapes["frames"] = sym["frames"]
         for side in ("right", "left"):
             points[f"symphysis_superior.{side}"] = sym[f"superior_{side}"]
             points[f"symphysis_inferior.{side}"] = sym[f"inferior_{side}"]
+            if shapes is not None:
+                shapes[f"face.{side}"] = sym[f"face_{side}"]
         extras.update(symphysis_gap_mm=sym["gap_mm"], symphysis_axis_deg=sym["axis_from_long_deg"])
     for side in ("right", "left"):
-        ob = attempt(kept, notes, f"obturator.{side}",
-                     lambda: obturator(bone[side], frame, hips[side]["centre"], side, normal))
+        ob = attempt(kept, notes, f"obturator.{side}", lambda: obturator(bone[side], frames, hips[side]["centre"], side))
         if ob is not None:
             for end in ("inferior", "medial"):
-                if end in ob:
-                    points[f"obturator_{end}.{side}"] = ob[end]
-            extras[f"obturator_view.{side}"] = {k: ob[k] for k in ("area_mm2", "pitch_deg", "yaw_deg")}
+                points[f"obturator_{end}.{side}"] = ob[end]
+            if shapes is not None:
+                shapes[f"outline.{side}"] = ob["outline"]
+            extras[f"obturator_view.{side}"] = {k: ob[k] for k in ("area_mm2", "pitch_deg", "yaw_deg", "outline_points")}
         notch = attempt(kept, notes, f"sciatic_notch.{side}",
                         lambda: sciatic_notch(bone[side], frame, hips[side]["centre"]))
         if notch is not None:
@@ -813,16 +912,17 @@ def construction_of(name):
     return tail if tail in CONSTRUCTIONS else head
 
 
-def construct(lab):
+def construct(lab, shapes=None):
     """Every named point of a labelled CT, in LPS world millimetres, with its construction, its QA loop landmark and
-    the notes of what was not placed; and the vertebrae read, for drawing."""
+    the notes of what was not placed; and the vertebrae read, for drawing. shapes, where given, is filled as
+    pelvis_points fills it."""
     verts, vnotes = read_vertebrae(lab)
     points, notes = {}, {f"{lv}": why for lv, why in vnotes.items()}
     for lv, v in verts.items():
         got, why = vertebra_points(v)
         points.update({f"{lv}.{k}": p for k, p in got.items()})
         notes.update({f"{lv}.{k}": w for k, w in why.items()})
-    got, why, extras = pelvis_points(lab, verts)
+    got, why, extras = pelvis_points(lab, verts, shapes)
     points.update(got)
     notes.update(why)
     notes.update({f"labels.{k}": w for k, w in lab.notes.items()})
@@ -969,12 +1069,14 @@ def check(data, persons_path, out, cases=CASES, pictures=2):
     out = Path(out)
     out.mkdir(parents=True, exist_ok=True)
     marks = json.loads(Path(persons_path).read_text())["cases"]
-    rows, per_case, drawn = [], {}, []
+    rows, per_case, drawn, shapes = [], {}, [], {}
     for case in cases:
         folder = Path(data) / case
         ts = read_totalseg(folder / "ts", folder / "ts_femur")
         authors = read_deepfluoro(folder / "vol_seg.nii.gz", reference=ts)
-        readings = {"totalseg": construct(ts), "authors": construct(authors)}
+        shapes[case] = {"totalseg": {}, "authors": {}}
+        readings = {"totalseg": construct(ts, shapes[case]["totalseg"]),
+                    "authors": construct(authors, shapes[case]["authors"])}
         person = marks[case]["landmarks"]
         rows += person_rows(case, person, readings)
         per_case[case] = {"readings": readings, "frame_check_mm": frame_check(person, authors),
@@ -986,18 +1088,88 @@ def check(data, persons_path, out, cases=CASES, pictures=2):
         if len(drawn) < pictures:
             drawn.append(panel(folder / "ct.nii.gz", case, person, readings))
     table = summary(rows, ["totalseg", "authors"])
+    learned = calibrate(shapes, marks, cases)
     report = {"cases": cases, "held_out_never_read": list(HELD_OUT), "agree_mm": AGREE_MM, "rows": rows,
-              "summary": table, "frame_check_mm": {c: v["frame_check_mm"] for c, v in per_case.items()},
+              "summary": table, "calibration": learned, "frame_check_mm": {c: v["frame_check_mm"] for c, v in per_case.items()},
               "vertebra_agreement_mm": {c: v["vertebra_agreement_mm"] for c, v in per_case.items()},
               "promontory": {c: v["promontory"] for c, v in per_case.items()},
               "extras": {c: {s: r["extras"] for s, r in v["readings"].items()} for c, v in per_case.items()},
               "notes": {c: {s: r["notes"] for s, r in v["readings"].items()} for c, v in per_case.items()}}
     (out / "check.json").write_text(json.dumps(report, indent=1))
-    (out / "table.md").write_text(markdown(table))
+    (out / "table.md").write_text(markdown(table) + "\n" + calibration_markdown(learned))
     if drawn:
         save_panels(drawn, out / "constructions.png")
     print(markdown(table))
     return report
+
+
+def person_direction(shape, frame, side, point_lps):
+    """The direction in which a person's point lies from a shape's centre, as (lateral, anterior, superior)."""
+    return direction_of(frame, side, np.asarray(point_lps, float) * TO_LPS - shape.mean(axis=0))
+
+
+def calibrate(shapes, marks, cases):
+    """For each of the four points read on a shape (SHAPED), in the frame its DIRECTIONS entry names: the direction in
+    which the person's points lie from the shape's centre, learned from the other specimens (both sides, mirrored) and
+    used on the one left out, so a learned reading is judged only on specimens it never saw; beside it the distance
+    with the table's own direction ("table", which for a direction the table took from these specimens is not a fair
+    error); and the direction learned from every specimen, with each person's point's angle from it."""
+    out = {"leave_one_out": {}, "table": {}, "learned_from_all": {}}
+    for source in ("totalseg", "authors"):
+        dirs = {}                        # (kind, case, side) -> the person's direction, where shape and point exist
+        for kind, (construction, shape_name) in SHAPED.items():
+            for case in cases:
+                sh = shapes.get(case, {}).get(source, {})
+                for letter, side in SIDE.items():
+                    name = f"{kind}-{letter}"
+                    point = marks[case]["landmarks"].get(name)
+                    if f"{shape_name}.{side}" in sh and point is not None:
+                        frame = sh["frames"][DIRECTIONS[construction][0]]
+                        dirs[(kind, case, side)] = person_direction(sh[f"{shape_name}.{side}"], frame, side, point)
+        for kind, (construction, shape_name) in SHAPED.items():
+            rows, plain = [], []
+            for k, case, side in sorted(dirs):
+                if k != kind:
+                    continue
+                others = [d for (k2, c2, _), d in dirs.items() if k2 == kind and c2 != case]
+                if not others:
+                    continue
+                sh = shapes[case][source]
+                pts = sh[f"{shape_name}.{side}"]
+                truth = np.asarray(marks[case]["landmarks"][f"{kind}-{side[0]}"], float) * TO_LPS
+                learned = {construction: (DIRECTIONS[construction][0], unit(np.mean(others, axis=0)))}
+                rows.append(float(np.linalg.norm(shaped_point(pts, sh["frames"], side, construction, learned) - truth)))
+                plain.append(float(np.linalg.norm(shaped_point(pts, sh["frames"], side, construction) - truth)))
+            out["leave_one_out"].setdefault(kind, {})[source] = distances(rows)
+            out["table"].setdefault(kind, {})[source] = distances(plain)
+            every = [d for (k, _, _), d in dirs.items() if k == kind]
+            if every:
+                mean = unit(np.mean(every, axis=0))
+                spread = float(np.median([angle_deg(mean, d) for d in every]))
+                out["learned_from_all"].setdefault(kind, {})[source] = {
+                    "frame": DIRECTIONS[construction][0], "direction": [round(float(x), 3) for x in mean],
+                    "median_angle_off_deg": round(spread, 1), "n": len(every)}
+    return out
+
+
+def distances(d):
+    d = np.asarray(d, float)
+    if not len(d):
+        return {"median": None, "max": None, "n": 0}
+    return {"median": round(float(np.median(d)), 1), "max": round(float(d.max()), 1), "n": int(len(d)),
+            "agrees": bool(np.median(d) <= AGREE_MM)}
+
+
+def calibration_markdown(learned):
+    def cell(s):
+        return "" if s["median"] is None else f"{s['median']} / {s['max']} / {s['n']}"
+    lines = ["| landmark | reading | TotalSegmentator (median / max / n, mm) | authors' labels |", "|---|---|---|---|"]
+    for kind in SHAPED:
+        for reading, key in (("the table's direction", "table"), ("learned, leaving the specimen out", "leave_one_out")):
+            got = learned[key].get(kind, {})
+            if got:
+                lines.append(f"| {kind} | {reading} | {cell(got['totalseg'])} | {cell(got['authors'])} |")
+    return "\n".join(lines) + "\n"
 
 
 def markdown(table):
@@ -1020,8 +1192,9 @@ COLOURS = {"person": (60, 230, 60), "totalseg": (255, 60, 60), "authors": (70, 1
 def panel(ct_path, case, person, readings):
     """The CT's mean along its anterior-posterior axis, bone's attenuation only (HU clipped to 0..1500), the patient's
     right on the left and superior up as on an anteroposterior film, with the person's points (green rings), the
-    constructions on TotalSegmentator's masks (red crosses) and on the authors' labels (blue diagonal crosses), and
-    TotalSegmentator's vertebral points (orange dots)."""
+    constructions set against them on TotalSegmentator's masks (red crosses) and on the authors' labels (blue diagonal
+    crosses), and TotalSegmentator's vertebral points (orange dots). The S1 plate's points are not drawn: on these
+    specimens every one was flagged (s1_against)."""
     import nibabel as nib
     from PIL import Image, ImageDraw
     img = nib.load(str(ct_path))
@@ -1060,7 +1233,7 @@ def panel(ct_path, case, person, readings):
         u, v = at(p)
         d.ellipse([u - 6, v - 6, u + 6, v + 6], outline=COLOURS["person"], width=2)
         d.text((u + 7, v - 5), name, fill=COLOURS["person"])
-    wanted = {"s1_anterior", "s1_centre", "s1_posterior"}
+    wanted = set()
     for n in person:
         kind, _, letter = n.partition("-")
         if letter.lower() in SIDE:
@@ -1081,6 +1254,7 @@ def panel(ct_path, case, person, readings):
     d.text((6, 6), f"{case}: CT mean along A-P, patient's right on the left", fill=(255, 255, 0))
     d.text((6, 20), "green ring: a person's point; red +: on TotalSegmentator; blue x: on the authors' labels",
            fill=(255, 255, 0))
+    d.text((6, 34), "orange dots: the vertebrae's corners and plate centres on TotalSegmentator", fill=(255, 255, 0))
     return im
 
 

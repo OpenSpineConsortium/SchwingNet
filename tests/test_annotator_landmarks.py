@@ -66,6 +66,16 @@ def world_frame():
     return G.Frame(np.zeros(3), np.array([1.0, 0, 0]), np.array([0, 1.0, 0]), np.array([0, 0, 1.0]))
 
 
+def world_frames():
+    """The pelvis's frames all the world's own, as a pelvis lying square in the scanner has them."""
+    return {"anatomical": world_frame(), "scanner": world_frame(), "joint": world_frame()}
+
+
+# the names' plain words, so the geometry is tested apart from the directions DeepFluoro's annotators taught
+WORDS = {"obturator_inferior": ("anatomical", (0.0, 0.0, -1.0)), "obturator_medial": ("anatomical", (-1.0, 0.0, 0.0)),
+         "symphysis_superior": ("scanner", (0.0, 0.0, 1.0)), "symphysis_inferior": ("scanner", (0.0, 0.0, -1.0))}
+
+
 @unittest.skipIf(MISSING, f"needs {', '.join(MISSING)}")
 class BoxVertebra(unittest.TestCase):
     @classmethod
@@ -143,7 +153,7 @@ class Pelvis(unittest.TestCase):
             return (r > 15) & (r < 27) & (np.abs(y) < 5)
 
         _, _, pts = mask_points(inside, (70, 20, 70), (-49.5, -9.5, -74.5))
-        got = AL.obturator(pts, world_frame(), np.zeros(3), "right")
+        got = AL.obturator(pts, world_frames(), np.zeros(3), "right", WORDS)
         self.assertIsNotNone(got)
         self.assertLess(float(np.linalg.norm(got["inferior"] - (middle + [0, 0, -16.0]))), 2.0, got)
         self.assertLess(float(np.linalg.norm(got["medial"] - (middle + [-16.0, 0, 0]))), 2.0, got)
@@ -168,7 +178,7 @@ class Pelvis(unittest.TestCase):
                 return (sign * x > 3) & (sign * x < 30) & (y > 0) & (y < 15) & (z > -60) & (z < -20)
             return mask_points(inside, (80, 30, 60), (-39.5, -9.5, -69.5))[2]
 
-        got = AL.symphysis(pubis(1.0), pubis(-1.0), world_frame())
+        got = AL.symphysis(pubis(1.0), pubis(-1.0), world_frames(), WORDS)
         self.assertIsNotNone(got)
         for side in ("right", "left"):
             self.assertAlmostEqual(got[f"superior_{side}"][2], -20.5, delta=1.5)
@@ -208,6 +218,34 @@ class Frames(unittest.TestCase):
         for kind, constructions in AL.PERSON.items():
             for c in constructions:
                 self.assertIn(c, AL.CONSTRUCTIONS, kind)
+
+    def test_a_direction_reads_back_mirrored_on_either_side(self):
+        frame = world_frame()
+        d = np.array([0.6, -0.48, -0.64])
+        for side in ("right", "left"):
+            back = AL.direction_of(frame, side, 3.0 * AL.along_direction(frame, side, d))
+            self.assertLess(float(np.linalg.norm(back - d)), 1e-9)
+        self.assertGreater(AL.along_direction(frame, "right", d)[0], 0)
+        self.assertLess(AL.along_direction(frame, "left", d)[0], 0)
+
+    def test_calibration_learns_the_direction_from_the_other_specimens(self):
+        # each specimen's foramen a ring of points; a person's IOF always at the ring's point 30 degrees from its
+        # bottom toward the back, mirrored on the left: leaving one out, the learned direction finds it again
+        angle = np.radians(np.arange(0, 360, 2.0))
+        shapes, marks = {}, {}
+        for i, case in enumerate(("a", "b", "c")):
+            centre = np.array([0.0, 5.0 * i, -40.0])
+            ring = centre + np.stack([np.zeros_like(angle), 15 * np.cos(angle), 15 * np.sin(angle)], 1)
+            pick = centre + 15 * np.array([0.0, -np.sin(np.radians(30)), -np.cos(np.radians(30))])
+            shapes[case] = {"totalseg": {"frames": world_frames(), "outline.right": ring, "outline.left": ring},
+                            "authors": {}}
+            marks[case] = {"landmarks": {"IOF-r": list(AL.to_lps(pick)), "IOF-l": list(AL.to_lps(pick))}}
+        got = AL.calibrate(shapes, marks, ["a", "b", "c"])
+        self.assertLess(got["leave_one_out"]["IOF"]["totalseg"]["max"], 1.0)
+        self.assertEqual(got["leave_one_out"]["IOF"]["totalseg"]["n"], 6)
+        self.assertEqual(got["table"]["IOF"]["totalseg"]["n"], 6)
+        self.assertLess(got["learned_from_all"]["IOF"]["totalseg"]["median_angle_off_deg"], 1e-6)
+        self.assertEqual(got["leave_one_out"]["IOF"]["authors"]["n"], 0)
 
     def test_a_person_row_measures_the_distance_in_lps(self):
         person = {"FH-l": [10.0, 0.0, 0.0], "ASIS-R": [0.0, 0.0, 0.0], "XYZ-l": [0.0, 0.0, 0.0]}
