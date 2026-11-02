@@ -1,6 +1,7 @@
-"""Tests of tools/annotator_landmarks.py on synthetic bones whose answers are known: a box vertebra's corners, a ball's
-centre, a ring's lowest and most medial points, a notch's deepest point, a symphysis's ends and the plane resting on
-three spines.
+"""Tests of tools/annotator_landmarks.py on synthetic bones whose answers are known: a box vertebra's corners, its chords
+against Panjabi's and the QA loop oracle's points on it, a ball's centre, a ring's lowest and most medial points, a
+triangular foramen's corners, a notch's deepest point, a symphysis's ends, the plane resting on three spines, and the
+sacrum joined to TotalSegmentator's S1.
 
 The tool reads masks with numpy, scipy and nibabel, which CI's python3 may lack, so the module is skipped there; run it
 with any python that has them:
@@ -121,6 +122,29 @@ class BoxVertebra(unittest.TestCase):
     def test_every_vertebral_point_names_a_construction(self):
         for name in self.points:
             self.assertIn(name, AL.CONSTRUCTIONS)
+            self.assertEqual(AL.kind_of(name), "corner")
+
+    def test_the_boxs_chords_are_a_bodys(self):
+        got = AL.plausibility("L3", self.points)
+        self.assertTrue(got["plausible"], got)
+        self.assertAlmostEqual(got["chords"]["upper_depth"]["mm"], 30.0, delta=1.0)
+        self.assertAlmostEqual(got["chords"]["posterior_height"]["mm"], 24.0, delta=1.0)
+
+    def test_a_plate_8_mm_deep_is_no_bodys(self):
+        points = dict(self.points)
+        points["anterior_inferior"] = np.asarray(points["posterior_inferior"], float) + [0.0, 8.0, 0.0]
+        got = AL.plausibility("L5", points)
+        self.assertFalse(got["plausible"])
+        self.assertIn("lower_depth", got["why"])
+
+    def test_the_qa_loops_slab_points_lie_at_the_slabs_middle_depth(self):
+        # the oracle's lateral ends are the slab's x-extremes at its median depth, the plate's middle (y = 15), where
+        # this tool's lie in its front half; its depth's ends are the wall and the slab's front
+        got = AL.slab_points(self.v)
+        self.assertLess(float(np.linalg.norm(got["superior_right"] - [20.0, 15.0, 11.5])), 1.5, got["superior_right"])
+        self.assertLess(float(np.linalg.norm(got["inferior_left"] - [-20.0, 15.0, -11.5])), 1.5, got["inferior_left"])
+        self.assertAlmostEqual(got["anterior_superior"][1], 30.0, delta=1.0)
+        self.assertAlmostEqual(got["posterior_superior"][1], 0.0, delta=1.0)
 
 
 @unittest.skipIf(MISSING, f"needs {', '.join(MISSING)}")
@@ -159,6 +183,39 @@ class Pelvis(unittest.TestCase):
         self.assertLess(float(np.linalg.norm(got["medial"] - (middle + [-16.0, 0, 0]))), 2.0, got)
         self.assertEqual(got["pitch_deg"], 0)
         self.assertEqual(got["yaw_deg"], 0)
+
+    def test_a_triangular_foramens_corners_are_its_points_of_maximal_curvature(self):
+        # a right hip's foramen as a triangle in the coronal plane, 10 mm of bone round it and 10 thick from front to
+        # back: its lowest corner is the inferior point of maximal curvature and its most medial the medial one
+        middle = np.array([-15.0, -40.0])
+        corners = np.array([[0.0, -20.0], [-20.0, 5.0], [15.0, 12.0]]) + middle
+
+        def inside(x, y, z):
+            q = np.stack([x, z], 1)
+            sides = []
+            for a, b in zip(corners, np.roll(corners, -1, axis=0)):
+                sides.append((b[0] - a[0]) * (q[:, 1] - a[1]) - (b[1] - a[1]) * (q[:, 0] - a[0]))
+            sides = np.array(sides)
+            hole = (sides > 0).all(0) | (sides < 0).all(0)
+            gap = np.full(len(q), np.inf)
+            for a, b in zip(corners, np.roll(corners, -1, axis=0)):
+                t = np.clip(((q - a) @ (b - a)) / float((b - a) @ (b - a)), 0, 1)
+                gap = np.minimum(gap, np.linalg.norm(q - (a + t[:, None] * (b - a)), axis=1))
+            return ~hole & (gap < 10) & (np.abs(y) < 5)
+
+        _, _, pts = mask_points(inside, (80, 20, 80), (-59.5, -9.5, -79.5))
+        got = AL.obturator(pts, world_frames(), np.zeros(3), "right", WORDS)
+        self.assertIsNotNone(got)
+        self.assertGreaterEqual(got["corners"], 3, got)
+        low, medial = corners[0], corners[1]
+        self.assertLess(float(np.hypot(*(got["inferior_curvature"][[0, 2]] - low))), 4.0, got["inferior_curvature"])
+        self.assertLess(float(np.hypot(*(got["medial_curvature"][[0, 2]] - medial))), 4.0, got["medial_curvature"])
+        self.assertFalse(got["on_search_edge"])
+
+    def test_a_circle_has_no_corner(self):
+        angle = np.radians(np.arange(0, 360, 1.0))
+        edge = 20 * np.stack([np.cos(angle), np.sin(angle)], 1)
+        self.assertEqual(AL.loop_corners(edge), [])
 
     def test_a_notchs_deepest_point(self):
         # a plate in the sagittal plane, its posterior border at y = -60 with a round notch 20 mm deep at z = 0
@@ -246,6 +303,48 @@ class Frames(unittest.TestCase):
         self.assertEqual(got["table"]["IOF"]["totalseg"]["n"], 6)
         self.assertLess(got["learned_from_all"]["IOF"]["totalseg"]["median_angle_off_deg"], 1e-6)
         self.assertEqual(got["leave_one_out"]["IOF"]["authors"]["n"], 0)
+
+    def test_the_s1_plate_is_read_under_l5_alone(self):
+        names = {24: "L5", 23: "L4", 28: "sacrum"}
+        self.assertEqual(AL.lowest_lumbar(names, {"L4": 1, "L5": 1}, {"L4", "L5"}), ("L5", ""))
+        low, why = AL.lowest_lumbar(names, {"L4": 1}, {"L4"})
+        self.assertIsNone(low)
+        self.assertIn("did not read L5", why)
+        low, why = AL.lowest_lumbar(names, {"L4": 1, "L5": 1}, {"L4"})
+        self.assertIsNone(low)
+        self.assertIn("plausibility", why)
+        self.assertIsNone(AL.lowest_lumbar({23: "L4"}, {"L4": 1}, {"L4"})[0])
+
+    def test_pose_dependent_points_are_told_apart(self):
+        self.assertEqual(AL.kind_of("crest_top"), "pose")
+        self.assertEqual(AL.kind_of("symphysis_inferior"), "pose")
+        self.assertEqual(AL.kind_of("asis"), "bone")
+        self.assertEqual(AL.kind_of("obturator_inferior_curvature"), "bone")
+
+    def test_totalsegmentators_s1_is_joined_to_its_sacrum(self):
+        import tempfile
+        import nibabel as nib
+        with tempfile.TemporaryDirectory() as tmp:
+            ts, s1 = Path(tmp) / "ts", Path(tmp) / "ts_s1"
+            ts.mkdir()
+            s1.mkdir()
+            sacrum, vertebra = np.zeros((10, 10, 10), np.uint8), np.zeros((10, 10, 10), np.uint8)
+            sacrum[2:8, 2:8, 0:4] = 1
+            vertebra[2:8, 2:8, 4:7] = 1
+            nib.save(nib.Nifti1Image(sacrum, np.eye(4)), str(ts / "sacrum.nii.gz"))
+            lab = AL.read_totalseg(ts)
+            self.assertEqual(len(lab.sacrum), 144)
+            self.assertIn("sacrum", lab.notes)
+            nib.save(nib.Nifti1Image(vertebra, np.eye(4)), str(s1 / "vertebrae_S1.nii.gz"))
+            lab = AL.read_totalseg(ts, s1_folder=s1)
+            self.assertEqual(len(lab.sacrum), 144 + 108)
+            self.assertNotIn("sacrum", lab.notes)
+
+    def test_qa_loop_offsets_leave_out_vertebrae_that_are_no_bodys(self):
+        reading = {"plausible_levels": ["L4"],
+                   "slab_points": {"L4": {"superior_right": [0.0, 0.0, 3.0]}, "L5": {"superior_right": [0.0, 0.0, 0.0]}},
+                   "points": {"L4.superior_right": {"lps": [0.0, 4.0, 0.0]}, "L5.superior_right": {"lps": [9.0, 0, 0]}}}
+        self.assertEqual(AL.qaloop_offsets(reading), {"L4.superior_right": 5.0})
 
     def test_a_person_row_measures_the_distance_in_lps(self):
         person = {"FH-l": [10.0, 0.0, 0.0], "ASIS-R": [0.0, 0.0, 0.0], "XYZ-l": [0.0, 0.0, 0.0]}

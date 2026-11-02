@@ -15,21 +15,31 @@ DeepFluoro's vol-landmarks and of the QA loop's pairs (tools/realx_pairs.py TO_L
 RAS world, so every point is built there and turned on the way out (to_lps).
 
 What it places, each from one construction (CONSTRUCTIONS says each in words):
-- per vertebra, from the engine's own reading of it (anatomy.build): the four corners a lateral reader marks on the
-  midline (column.wall_corner behind, the same construction mirrored to the front in front_corner), the two end-plate
-  centres (column.plate_centre, the middle points of Genant's and Black and McCloskey's six-point morphometry), and the
-  four corners an anteroposterior reader marks, each plate's lateral ends on its own layer (coronal_corners);
+- per vertebra, from the engine's own reading of it (anatomy.build): the four end-plate corners on the midline
+  (column.wall_corner behind, the same construction mirrored to the front in front_corner), the two end-plate centres
+  (column.plate_centre, the middle points of quantitative six-point morphometry, as Oei et al. 2013 review it; Genant's
+  1993 method grades by eye and places no point), and each plate's lateral ends on its own layer (coronal_corners).
+  These are fixed points on the bone; a reader marks the corner of a silhouette, which moves with the beam and the
+  vertebra's rotation, so they stand for a reader's corners only as far as that is checked, which DeepFluoro, with no
+  person-placed vertebral point, cannot do. Each vertebra's chords between them are set against Panjabi's at its level
+  (plausibility), and a vertebra whose chords no body has is marked so;
 - the pelvis from the engine's pelvis.py: the hip joint centres (socket_centre, the acetabulum's centre), the iliac
-  crests' tops (crest_top), and the S1 end plate (s1_plate) with its front end, the promontory, and its back end
-  (s1_points);
+  crests' tops (crest_top), and the S1 end plate (s1_plate) under L5 with its front end, the promontory, and its back
+  end (s1_points), on a sacrum that holds S1 (TotalSegmentator 2's sacrum class leaves S1 out: its vertebrae_S1 is
+  joined to it, as scanimport's TOTALSEG_FILES joins it);
 - DeepFluoro's other pelvic points (Grupp et al. 2020, IJCARS 15:759-769, the release's fourteen landmarks), each a
   short construction on a hip-bone mask written here: the anterior superior iliac spines where the anterior pelvic
   plane rests on each ilium (anterior_plane), the pubic symphysis's superior and inferior ends on each pubis
-  (symphysis), the obturator foramen's inferior and medial points (obturator), the greater sciatic notch's deepest
-  point (sciatic_notch), and the femoral head's centre read again as the centre of the femur's own ball
-  (ball_centre).
+  (symphysis), the obturator foramen's inferior and medial points (obturator), read two ways: as the source paper
+  defines them, the foramen's inferior and medial points of maximal curvature (Grupp et al. 2019, IEEE TBME, the paper
+  Grupp 2020 cites for the landmark set; loop_corners), and as the outline's extreme along a direction (DIRECTIONS),
+  the greater sciatic notch's deepest point (sciatic_notch), and the femoral head's centre read again as the centre of
+  the femur's own ball (ball_centre).
 
-    python tools/annotator_landmarks.py points --ts <TotalSegmentator folder> [--femur <folder>] --out points.json
+Two of the points are not fixed on the bone: crest_top and symphysis_inferior are extremes along the scanner's long
+axis, so on another CT they move on the bone with the pelvis's tilt on the table (KIND).
+
+    python tools/annotator_landmarks.py points --ts <TotalSegmentator folder> [--femur <folder>] [--s1 <folder>] --out points.json
     python tools/annotator_landmarks.py points --labels <label NIfTI> --scheme enhance --out points.json
     python tools/annotator_landmarks.py persons --h5 <ipcai_2020_full_res_data.h5> --out persons.json
     python tools/annotator_landmarks.py check --data <realxray_work/deepfluoro> --persons persons.json --out <folder>
@@ -80,7 +90,16 @@ APP_SETTLED_DEG = 0.01
 PUBIC_MIDLINE_MM = 45.0                # the pubic tubercles and the symphysis lie within this of the midline
 SYMPHYSIS_MM = 6.0                     # a pubis's face is its bone within this of the other pubis, beyond the joint's gap
 END_MM = 2.0                           # a face's end is its points within this of the end along the joint's long axis
-OBTURATOR_TILTS_DEG = tuple(range(-40, 41, 10))
+# The views the foramen is looked for in: pitch toward superior and yaw toward the right from the anterior pelvic
+# plane's normal. The first run searched 40 degrees each way and its largest view lay on that edge on every side of
+# every specimen (the yaw at the edge in 20 of 20), so the view along the foramen was never reached; the search runs
+# far enough now that the largest view can lie inside it, and a view still on its edge is recorded (on_search_edge).
+OBTURATOR_PITCH_DEG = tuple(range(-70, 41, 10))
+OBTURATOR_YAW_DEG = tuple(range(-80, 81, 10))
+TURN_ARC_MM = 8.0                      # a loop's turning at a point is read over this much arc on each side of it
+PEAK_ARC_MM = 15.0                     # a corner turns most within this much arc on each side
+LOOP_BINS = 360                        # the foramen's outline in the view, resampled by angle round its middle
+LOOP_SMOOTH_BINS = 3                   # and smoothed over this many bins on each side
 OBTURATOR_ABOVE_MM = 10.0              # the foramen is read on the hip bone below this height over the hip centre
 OBTURATOR_AREA_MM2 = (150.0, 4000.0)   # a hole in the silhouette of this area can be the foramen
 OBTURATOR_LATERAL_MM = 10.0            # and its middle lies no further than this lateral to the hip centre
@@ -95,6 +114,20 @@ S1_LATERAL_MAX_MM = 10.0               # and so is one further than this beside 
 PLATE_BEYOND_LAYERS = 0.5              # plates.py's BEYOND_LAYERS
 PLATE_FRONT_SHARE = 0.5                # plates.py's FRONT_SHARE
 PLATE_MIN_POINTS = 20                  # plates.py's MIN_POINTS
+# A vertebra's chords between its points are set against Panjabi's at its level (the pinned engine's reference table,
+# mean, standard error and n, so the spread is sem * sqrt(n)): one further than this many spreads from the mean is no
+# body's, and the vertebra's points are marked implausible, kept out of the picture and the S1 plate's reading.
+PANJABI_TABLE = ENGINE / "bordercall" / "reference" / "panjabi_full_spine.csv"
+PLAUSIBLE_SD = 4.0
+# chord -> (the two points it runs between, Panjabi's measure). Panjabi's lumbar tables give no mid-body height, so
+# the centre height is held to the posterior height's band: a lumbar body's middle is no taller than its taller wall,
+# which at L5 is the front, a few millimetres over the back, and 4 spreads of VBHp are 13 mm at L5.
+CHORDS = {"upper_width": (("superior_right", "superior_left"), "endplate"),
+          "upper_depth": (("anterior_superior", "posterior_superior"), "endplate_depth"),
+          "lower_width": (("inferior_right", "inferior_left"), "endplate_lower"),
+          "lower_depth": (("anterior_inferior", "posterior_inferior"), "endplate_lower_depth"),
+          "posterior_height": (("posterior_superior", "posterior_inferior"), "h_post"),
+          "centre_height": (("centre_superior", "centre_inferior"), "h_post")}
 
 # The four points read on a shape (the obturator foramen's outline, each pubis's face at the symphysis) are each the
 # shape's extreme along one direction, given as (lateral, anterior, superior) in one of three frames of the pelvis,
@@ -118,8 +151,13 @@ SHAPED = {"IOF": ("obturator_inferior", "outline"), "MOF": ("obturator_medial", 
           "SPS": ("symphysis_superior", "face"), "IPS": ("symphysis_inferior", "face")}
 
 
-# Each construction in plain words, and the QA loop's landmark it stands for (tools/qaloop_gates.py LANDMARKS), if
-# any. A vertebra's names are "<level>.<construction>", the pelvis's "<construction>.<side>" or "<construction>".
+# Each construction in plain words, and the QA loop's landmark that stands nearest it (tools/qaloop_gates.py
+# LANDMARKS), if any. The QA loop's points of those names are not these: its oracle (grid/autoanatomist/autoanatomist/
+# oracle.py body_traces) puts a plate's lateral ends at the whole slab's x-extremes, at the slab's median depth and
+# height, and a plate's front end on the whole slab's front surface, where these take the widest row of the plate's
+# own layer across its front half and the corners on the midline; `check` measures the two on the same bodies
+# (slab_points, qaloop_offsets_mm), and one name stands for one point only once that offset is known to be small.
+# A vertebra's names are "<level>.<construction>", the pelvis's "<construction>.<side>" or "<construction>".
 CONSTRUCTIONS = {
     "anterior_superior": ("the upper end plate's front end on the midline: column.wall_corner's construction mirrored "
                           "to the front (front_corner), in the plate's own frame", "endplate_depth.anterior"),
@@ -160,14 +198,39 @@ CONSTRUCTIONS = {
                            "down with the plane upright (obturator, DIRECTIONS)", None),
     "obturator_medial": ("the obturator foramen's point nearest the midline: the same outline's extreme toward the "
                          "midline with the anterior pelvic plane upright (obturator, DIRECTIONS)", None),
+    "obturator_inferior_curvature": ("the obturator foramen's inferior point of maximal curvature, as Grupp et al. 2019 "
+                                     "define IOF: of the corners of the foramen's outline in the view that shows it "
+                                     "largest (each a point turning most within 15 mm of arc, by more than the loop's "
+                                     "mean turning), the lowest with the anterior pelvic plane upright, and the bone "
+                                     "there (loop_corners)", None),
+    "obturator_medial_curvature": ("the obturator foramen's medial point of maximal curvature, as Grupp et al. 2019 "
+                                   "define MOF: of the same corners, the nearest the midline (loop_corners)", None),
     "sciatic_notch": ("the greater sciatic notch's deepest point: the hip bone's outline seen along the hip axis, the "
                       "point of its posterior concavity furthest inside the convex hull, and the bone there "
                       "(sciatic_notch)", None),
 }
 # DeepFluoro's fourteen (Grupp 2020): each person-placed point and the constructions it is set against.
 PERSON = {"FH": ("hip_centre", "femoral_head"), "ASIS": ("asis",), "GSN": ("sciatic_notch",),
-          "IOF": ("obturator_inferior",), "MOF": ("obturator_medial",), "SPS": ("symphysis_superior",),
+          "IOF": ("obturator_inferior", "obturator_inferior_curvature"),
+          "MOF": ("obturator_medial", "obturator_medial_curvature"), "SPS": ("symphysis_superior",),
           "IPS": ("symphysis_inferior",)}
+# What kind of point each construction gives: "bone", a point fixed on the bone wherever the CT was taken; "pose", an
+# extreme along the scanner's long axis, which moves on the bone with the pelvis's tilt on the table (6 to 31 degrees
+# against the anterior pelvic plane on DeepFluoro's specimens); "corner", a vertebral point fixed on the bone that
+# stands for the corner a film reader marks on the body's silhouette, which moves with the beam and the vertebra's
+# rotation (the lumbar posterior wall is concave at the midline, so a lateral film's posterior line runs along the
+# posterolateral margins), and is not checked against one here.
+POSE_DEPENDENT = ("crest_top", "symphysis_inferior")
+VERTEBRAL = ("anterior_superior", "posterior_superior", "anterior_inferior", "posterior_inferior", "centre_superior",
+             "centre_inferior", "superior_right", "superior_left", "inferior_right", "inferior_left")
+
+
+def kind_of(construction):
+    if construction in POSE_DEPENDENT:
+        return "pose"
+    return "corner" if construction in VERTEBRAL else "bone"
+
+
 SIDE = {"l": "left", "r": "right"}
 
 _E = {}
@@ -230,9 +293,12 @@ def read_mask(path):
     return np.asarray(img.dataobj) > 0, np.asarray(img.affine, float)
 
 
-def read_totalseg(folder, femur_folder=None):
+def read_totalseg(folder, femur_folder=None, s1_folder=None):
     """TotalSegmentator's per-structure masks: the vertebrae and the sacrum into one volume in the ENHANCE.PET ids, the
-    hip bones and the femurs by TotalSegmentator's own sides."""
+    hip bones and the femurs by TotalSegmentator's own sides. TotalSegmentator 2's sacrum class leaves the S1 vertebra
+    out (on DeepFluoro's specimens 2 to 53 per cent of vertebrae_S1 lies inside sacrum), so vertebrae_S1, from the
+    folder or from s1_folder, is joined to the sacrum, as scanimport's TOTALSEG_FILES joins it; without it the engine
+    reads the S1 plate on whatever lies lower."""
     G = engine()["G"]
     folder = Path(folder)
     vol, affine, names, notes = None, None, {}, {}
@@ -241,6 +307,10 @@ def read_totalseg(folder, femur_folder=None):
         path = folder / f"{stem}.nii.gz"
         if path.is_file():
             masks[stem] = read_mask(path)
+    for place in (folder, Path(s1_folder) if s1_folder else None):
+        path = place / "vertebrae_S1.nii.gz" if place is not None else None
+        if path is not None and path.is_file() and "vertebrae_S1" not in masks:
+            masks["vertebrae_S1"] = read_mask(path)
     for stem in ("femur_left", "femur_right"):
         path = Path(femur_folder) / f"{stem}.nii.gz" if femur_folder else None
         if path is not None and path.is_file():
@@ -256,9 +326,13 @@ def read_totalseg(folder, femur_folder=None):
         if stem in masks and masks[stem][0].any():
             vol[masks[stem][0]] = value
             names[value] = level
-    if "sacrum" in masks:
-        vol[masks["sacrum"][0] & (vol == 0)] = SACRUM_ID
-        names[SACRUM_ID] = "sacrum"
+    for stem in ("sacrum", "vertebrae_S1"):
+        if stem in masks:
+            vol[masks[stem][0] & (vol == 0)] = SACRUM_ID
+            names[SACRUM_ID] = "sacrum"
+    if "sacrum" in masks and "vertebrae_S1" not in masks:
+        notes["sacrum"] = ("no vertebrae_S1 mask: TotalSegmentator 2's sacrum class leaves S1 out, so the S1 plate is "
+                           "read on what lies lower")
     side = {s: np.argwhere(masks[f"hip_{s}"][0]) for s in ("left", "right") if f"hip_{s}" in masks}
     femurs = {s: np.argwhere(masks[f"femur_{s}"][0]) for s in ("left", "right") if f"femur_{s}" in masks}
     grid = G.VoxelGrid(affine, vol.shape)
@@ -460,6 +534,76 @@ def coronal_corners(v):
     return out
 
 
+def back_from_wall(v, local):
+    """Points squared to the canal's wall line (anatomy.square_to_wall) back in the world."""
+    local = np.array(local, float).reshape(-1, 3)
+    local[:, 1] += v.wall_slope * (local[:, 2] - v.wall_z0)
+    return v.points_world(local)
+
+
+def slab_points(v):
+    """The QA loop's oracle's end-plate points on this vertebra's own body in its own frame, so the offset between them
+    and this tool's corners is the constructions' alone: the steps of oracle.body_traces, which are the engine's
+    geometry.body_chords' (the body squared to the wall, each plate the slab within its thickness of the plane resting
+    on the central part, and beyond it), with each plate's lateral ends the slab's x-extremes at its median depth and
+    height, its front end the slab's front surface and its back end the wall, both at the slab's middle across."""
+    E = engine()
+    A, G = E["A"], E["G"]
+    B = A.square_to_wall(v, v.body_pts)
+    fx, fy, fz = (v.grid.footprint(e) for e in (v.frame.ex, v.frame.ey, v.frame.ez))
+    if len(B) < G.MIN_BODY_VOXELS:
+        return None
+    core = B[G.central(B[:, 0], B[:, 1])]
+    core = core if len(core) >= G.MIN_CHORD_POINTS else B
+    t = max(min(max(G.ENDPLATE_SHARE * (float(np.ptp(core[:, 2])) + fz), G.ENDPLATE_MM[0]), G.ENDPLATE_MM[1]), fz)
+    inner = G.central(B[:, 0], B[:, 1])
+    out = {}
+    for top, name in ((True, "superior"), (False, "inferior")):
+        slab = G.plate(B, inner, max(fx, fy), t, top, fz)
+        if len(slab) < G.MIN_CHORD_POINTS:
+            continue
+        right, left = G.surface(slab[:, 0], True, fx), G.surface(slab[:, 0], False, fx)
+        yc, zc = float(np.median(slab[:, 1])), float(np.median(slab[:, 2]))
+        xc = 0.5 * (float(slab[:, 0].min()) + float(slab[:, 0].max()))
+        local = {f"{name}_right": [right, yc, zc], f"{name}_left": [left, yc, zc],
+                 f"anterior_{name}": [xc, G.surface(slab[:, 1], True, fy), zc], f"posterior_{name}": [xc, v.wall_y0, zc]}
+        out.update({k: back_from_wall(v, q)[0] for k, q in local.items()})
+    return out
+
+
+_PANJABI = {}
+
+
+def panjabi_reference():
+    """Panjabi's mean and spread (sem * sqrt(n)) by (measure, level), from the pinned engine's reference table."""
+    if not _PANJABI:
+        import csv
+        lines = [ln for ln in PANJABI_TABLE.read_text().splitlines() if ln and not ln.startswith("#")]
+        for row in csv.DictReader(lines):
+            if row["mean"] and row["sem"] and row["n"]:
+                _PANJABI[(row["measure"], row["level"])] = (float(row["mean"]), float(row["sem"]) * math.sqrt(float(row["n"])))
+    return _PANJABI
+
+
+def plausibility(level, points):
+    """A vertebra's chords between its named points (CHORDS), each against Panjabi's mean at its level in spreads, and
+    the chords further than PLAUSIBLE_SD spreads from it: a body no person has, which on DeepFluoro's cadavers came
+    from a frame the engine turned onto a neighbour the labels left wrong. Levels Panjabi's tables lack are not
+    judged."""
+    ref = panjabi_reference()
+    chords, wrong = {}, []
+    for chord, ((a, b), measure) in CHORDS.items():
+        if a not in points or b not in points or (measure, level) not in ref:
+            continue
+        mean, sd = ref[(measure, level)]
+        value = float(np.linalg.norm(np.asarray(points[a], float) - np.asarray(points[b], float)))
+        z = (value - mean) / sd
+        chords[chord] = {"mm": round(value, 1), "panjabi_mm": mean, "spreads": round(z, 1)}
+        if abs(z) > PLAUSIBLE_SD:
+            wrong.append(f"{chord} {value:.1f} mm against Panjabi's {mean} (spread {sd:.1f})")
+    return {"chords": chords, "plausible": not wrong, "why": "; ".join(wrong)}
+
+
 def vertebra_points(v):
     """A vertebra's named points (RAS world) and what kept any from being placed."""
     COL = engine()["COL"]
@@ -638,15 +782,18 @@ def bone_at(points, uv, point2, reach=RIM_MM):
 
 
 def obturator(points, frames, hip_centre, side, directions=None):
-    """The obturator foramen's outline in 3-D and its two named points. The foramen is the one large hole the hip
-    bone's silhouette shows below the acetabulum, as on an anteroposterior film: over views tilted up to 40 degrees,
-    in steps of 10, from the frame's anterior (the anterior pelvic plane's normal, in pelvis_points), the largest
-    enclosed hole of the bone below OBTURATOR_ABOVE_MM over the hip centre whose middle lies below the hip centre and no
-    more than OBTURATOR_LATERAL_MM lateral to it; the view showing it largest looks along the foramen. Its outline in
-    3-D: at each pixel of the hole's edge in that view, the mean of the bone projecting within RIM_MM, the middle of the
-    rim's thickness there. Each named point is the outline's extreme along its entry in DIRECTIONS.
+    """The obturator foramen's outline in 3-D and its named points. The foramen is the one large hole the hip bone's
+    silhouette shows below the acetabulum, as on an anteroposterior film: over views tilted from the frame's anterior
+    (the anterior pelvic plane's normal, in pelvis_points) by OBTURATOR_PITCH_DEG toward superior and
+    OBTURATOR_YAW_DEG toward the right, the largest enclosed hole of the bone below OBTURATOR_ABOVE_MM over the hip
+    centre whose middle lies below the hip centre and no more than OBTURATOR_LATERAL_MM lateral to it. The view showing
+    it largest looks along the foramen where it lies inside the search; one on the search's edge is recorded
+    (on_search_edge), since there the view along the foramen was not reached. Its outline in 3-D: at each pixel of the
+    hole's edge in that view, the mean of the bone projecting within RIM_MM, the middle of the rim's thickness there.
+    Two readings of each named point: the outline's extreme along its entry in DIRECTIONS, and the corners of the
+    hole's edge in that view as the source defines IOF and MOF, points of maximal curvature (loop_corners).
 
-    Three readings of the inferior point were set aside on DeepFluoro (docs/research/annotator-landmarks/
+    Three readings of the inferior point by direction were set aside on DeepFluoro (docs/research/annotator-landmarks/
     constructions.md): the extremes in the oblique view itself (commit 18110ff4, the run the bars were set for), along
     the scanner's long axis and along the anatomical frame's; they lay a median 26, 25 and 11 mm from the person's, the
     person's point standing at the foramen's back lower end, toward the ischium, which the learned direction finds."""
@@ -660,8 +807,8 @@ def obturator(points, frames, hip_centre, side, directions=None):
         return None
     sign = 1.0 if side == "right" else -1.0
     best = None
-    for pitch in OBTURATOR_TILTS_DEG:
-        for yaw in OBTURATOR_TILTS_DEG:
+    for pitch in OBTURATOR_PITCH_DEG:
+        for yaw in OBTURATOR_YAW_DEG:
             w, u, v = view(frame, pitch, yaw)
             uv = (sel - hip_centre) @ np.column_stack([u, v])
             grid, origin = G.raster(uv, 1.0)
@@ -684,9 +831,61 @@ def obturator(points, frames, hip_centre, side, directions=None):
     outline = np.array([sel[i].mean(axis=0) for i in tree.query_ball_point(edge, RIM_MM) if len(i) >= 3])
     if len(outline) < 10:
         return None
-    return {"area_mm2": area, "pitch_deg": pitch, "yaw_deg": yaw, "outline_points": len(outline), "outline": outline,
-            "inferior": shaped_point(outline, frames, side, "obturator_inferior", directions),
-            "medial": shaped_point(outline, frames, side, "obturator_medial", directions)}
+    on_edge = pitch in (OBTURATOR_PITCH_DEG[0], OBTURATOR_PITCH_DEG[-1]) or yaw in (OBTURATOR_YAW_DEG[0],
+                                                                                    OBTURATOR_YAW_DEG[-1])
+    out = {"area_mm2": area, "pitch_deg": pitch, "yaw_deg": yaw, "on_search_edge": bool(on_edge),
+           "outline_points": len(outline), "outline": outline,
+           "inferior": shaped_point(outline, frames, side, "obturator_inferior", directions),
+           "medial": shaped_point(outline, frames, side, "obturator_medial", directions)}
+    corners = loop_corners(edge)
+    bone = [bone_at(sel, uv, c) for c in corners]
+    bone = [b for b in bone if b is not None]
+    out["corners"] = len(bone)
+    if bone:
+        local = frame.local(np.array(bone))
+        out["inferior_curvature"] = bone[int(np.argmin(local[:, 2]))]
+        out["medial_curvature"] = bone[int(np.argmin(sign * local[:, 0]))]
+    return out
+
+
+def loop_corners(edge, half=TURN_ARC_MM, reach=PEAK_ARC_MM):
+    """The corners of a hole's edge in a view, its points of maximal curvature: the edge's pixels resampled as a closed
+    loop by angle round their middle (LOOP_BINS, smoothed over LOOP_SMOOTH_BINS each side), the angle the loop turns
+    through between the chords to its points `half` mm of arc behind and ahead, and each point that turns the most
+    within `reach` mm of arc each side and more than the loop's mean turning (a circle has no corner). The foramen is
+    near convex, so its edge is one loop round its middle."""
+    edge = np.asarray(edge, float)
+    if len(edge) < 12:
+        return []
+    centre = edge.mean(0)
+    rel = edge - centre
+    bins = np.floor((np.arctan2(rel[:, 1], rel[:, 0]) + math.pi) / (2 * math.pi) * LOOP_BINS).astype(int) % LOOP_BINS
+    radius = np.full(LOOP_BINS, np.nan)
+    for b in np.unique(bins):
+        radius[b] = float(np.linalg.norm(rel[bins == b], axis=1).mean())
+    known = np.flatnonzero(np.isfinite(radius))
+    every = np.arange(LOOP_BINS)
+    radius = np.interp(every, known, radius[known], period=LOOP_BINS)
+    k = LOOP_SMOOTH_BINS
+    radius = np.mean([np.roll(radius, j) for j in range(-k, k + 1)], axis=0)
+    theta = (every + 0.5) / LOOP_BINS * 2 * math.pi - math.pi
+    loop = centre + radius[:, None] * np.column_stack([np.cos(theta), np.sin(theta)])
+    step = np.linalg.norm(np.roll(loop, -1, axis=0) - loop, axis=1)
+    perimeter = float(step.sum())
+    arc = np.concatenate([[0.0], np.cumsum(step)[:-1]])
+    ahead = np.searchsorted(arc, (arc + half) % perimeter) % LOOP_BINS
+    behind = np.searchsorted(arc, (arc - half) % perimeter) % LOOP_BINS
+    a, b = loop[ahead] - loop, loop - loop[behind]
+    turn = np.arctan2(b[:, 0] * a[:, 1] - b[:, 1] * a[:, 0], (a * b).sum(axis=1))
+    mean_turn = 2 * math.pi * 2 * half / perimeter
+    corners = []
+    for i in range(LOOP_BINS):
+        gap = np.abs(arc - arc[i])
+        near = np.minimum(gap, perimeter - gap) <= reach
+        if turn[i] > mean_turn and turn[i] >= turn[near].max():
+            if not corners or np.min([np.linalg.norm(loop[i] - c) for c in corners]) > reach:
+                corners.append(loop[i])
+    return corners
 
 
 def hull_mask(silhouette):
@@ -809,8 +1008,9 @@ def s1_points(sacrum_idx, grid, low):
 
 def s1_against(s1, low, notes, extras):
     """Where the S1 plate's centre lies against the lowest lumbar body's lower plate centre, in that body's frame
-    (lateral, ahead, below), and a note where it lies further below than a disc holds or off the midline, which on
-    DeepFluoro's cadavers traced to the sacrum's label, not to the plate's reading."""
+    (lateral, ahead, below), and a note where it lies further below than a disc holds or off the midline. On
+    DeepFluoro's cadavers that came from a sacrum read without TotalSegmentator's vertebrae_S1 (read_totalseg) and from
+    a plate read under L4 where L5 lay (lowest_lumbar); either can still put it there, as can the anatomy."""
     COL = engine()["COL"]
     try:
         offset = low.frame.local(s1["centre"][None, :])[0] - low.frame.local(COL.plate_centre(low, False)[None, :])[0]
@@ -820,17 +1020,25 @@ def s1_against(s1, low, notes, extras):
     extras["s1_offset_mm"] = {"lateral": float(offset[0]), "ahead": float(offset[1]), "below": float(-offset[2])}
     if -offset[2] > S1_BELOW_MAX_MM or abs(offset[0]) > S1_LATERAL_MAX_MM:
         notes["s1"] = (f"the S1 plate's centre lies {-offset[2]:.0f} mm below and {abs(offset[0]):.0f} mm beside "
-                       f"{low.level}'s lower plate centre, where no lumbosacral disc puts it: the sacrum's label is suspect")
+                       f"{low.level}'s lower plate centre, where no lumbosacral disc puts it")
 
 
-def lowest_lumbar(verts):
-    for lv in ("L6", "L5", "L4"):
-        if lv in verts:
-            return lv
-    return None
+def lowest_lumbar(names, verts, plausible):
+    """The vertebra the S1 plate is read under: the lowest lumbar level the labels hold, L6 or L5, where the engine
+    read it and its chords are a body's; else None and why. The first run fell back to L4 where the labels held an L5
+    the engine could not read, and read the sacrum under L4, where L5 lies."""
+    held = set(names.values())
+    low = next((lv for lv in ("L6", "L5") if lv in held), None)
+    if low is None:
+        return None, "the labels hold no L5, so nothing says where the sacrum's top is"
+    if low not in verts:
+        return None, f"the engine did not read {low}, the lowest lumbar level the labels hold"
+    if low not in plausible:
+        return None, f"{low}'s chords are no body's (plausibility), so its frame cannot place the S1 plate"
+    return low, ""
 
 
-def pelvis_points(lab, verts, shapes=None):
+def pelvis_points(lab, verts, shapes=None, plausible=None):
     """The pelvis's named points (RAS world), what kept any from being placed, and the constructions' own readings
     (the plane's tilt, the joint's gap, the foramen's view) for the record; where shapes is given it is filled with the
     anatomical frame, the foramina's outlines and the symphysis's faces, for the check's calibration."""
@@ -853,7 +1061,7 @@ def pelvis_points(lab, verts, shapes=None):
         if got is not None:
             points[f"femoral_head.{side}"] = got["centre"]
             extras[f"femoral_head_radius.{side}"] = got["radius"]
-    low = lowest_lumbar(verts)
+    low, why_not = lowest_lumbar(lab.names, verts, set(verts) if plausible is None else plausible)
     if low is not None and len(lab.sacrum) >= 1000:
         s1 = attempt(kept, notes, "s1", lambda: s1_points(lab.sacrum, lab.grid, verts[low]))
         if s1 is not None:
@@ -865,7 +1073,7 @@ def pelvis_points(lab, verts, shapes=None):
             if "depth_mm" in s1:
                 extras["s1_depth_mm"] = s1["depth_mm"]
     else:
-        notes["s1"] = "no lowest lumbar vertebra read, or no sacrum"
+        notes["s1"] = why_not or "no sacrum"
     if len(hips) < 2:
         notes["pelvis"] = "both acetabula are needed for the pelvis's frame"
         return points, notes, extras
@@ -893,11 +1101,13 @@ def pelvis_points(lab, verts, shapes=None):
     for side in ("right", "left"):
         ob = attempt(kept, notes, f"obturator.{side}", lambda: obturator(bone[side], frames, hips[side]["centre"], side))
         if ob is not None:
-            for end in ("inferior", "medial"):
-                points[f"obturator_{end}.{side}"] = ob[end]
+            for end in ("inferior", "medial", "inferior_curvature", "medial_curvature"):
+                if end in ob:
+                    points[f"obturator_{end}.{side}"] = ob[end]
             if shapes is not None:
                 shapes[f"outline.{side}"] = ob["outline"]
-            extras[f"obturator_view.{side}"] = {k: ob[k] for k in ("area_mm2", "pitch_deg", "yaw_deg", "outline_points")}
+            extras[f"obturator_view.{side}"] = {k: ob[k] for k in ("area_mm2", "pitch_deg", "yaw_deg", "on_search_edge",
+                                                                   "outline_points", "corners")}
         notch = attempt(kept, notes, f"sciatic_notch.{side}",
                         lambda: sciatic_notch(bone[side], frame, hips[side]["centre"]))
         if notch is not None:
@@ -918,22 +1128,38 @@ def construct(lab, shapes=None):
     pelvis_points fills it."""
     verts, vnotes = read_vertebrae(lab)
     points, notes = {}, {f"{lv}": why for lv, why in vnotes.items()}
+    chords, slabs, plausible = {}, {}, set()
     for lv, v in verts.items():
         got, why = vertebra_points(v)
         points.update({f"{lv}.{k}": p for k, p in got.items()})
         notes.update({f"{lv}.{k}": w for k, w in why.items()})
-    got, why, extras = pelvis_points(lab, verts, shapes)
+        judged = plausibility(lv, got)
+        chords[lv] = dict(judged, engine={k: float(v.panjabi.get(k, float("nan"))) for k in
+                                          ("endplate", "endplate_depth", "endplate_lower", "endplate_lower_depth",
+                                           "h_post")})
+        if judged["plausible"]:
+            plausible.add(lv)
+        else:
+            notes[f"{lv}.plausibility"] = f"no body's chords: {judged['why']}"
+        slab = {}
+        attempt(slab, notes, f"{lv}.slab", lambda: slab_points(v))
+        slabs[lv] = {k: to_lps(p).round(3).tolist() for k, p in slab.get(f"{lv}.slab", {}).items()}
+    got, why, extras = pelvis_points(lab, verts, shapes, plausible)
     points.update(got)
     notes.update(why)
     notes.update({f"labels.{k}": w for k, w in lab.notes.items()})
+    extras["vertebra_chords"] = chords
     named = {}
     for name, p in points.items():
         c = construction_of(name)
         named[name] = {"lps": [round(float(x), 3) for x in to_lps(p)], "construction": c,
-                       "qaloop": CONSTRUCTIONS[c][1]}
+                       "qaloop_near": CONSTRUCTIONS[c][1], "kind": kind_of(c)}
+        level = name.split(".")[0]
+        if level in verts:
+            named[name]["plausible"] = level in plausible
     return {"frame": "world millimetres, LPS (x to the patient's left, y posterior, z superior)", "source": lab.source,
-            "levels": sorted(verts, key=engine()["LEVELS"].index), "points": named, "notes": notes,
-            "extras": jsonable(extras)}
+            "levels": sorted(verts, key=engine()["LEVELS"].index), "plausible_levels": sorted(plausible),
+            "points": named, "slab_points": slabs, "notes": notes, "extras": jsonable(extras)}
 
 
 def jsonable(x):
@@ -1034,13 +1260,30 @@ def frame_check(person, lab):
 
 
 def vertebra_agreement(readings):
-    """For the vertebral and sacral points both sources placed, the distance between the two."""
+    """For the vertebral and sacral points both sources placed, on vertebrae both read as a body's (plausibility), the
+    distance between the two."""
     a, b = [r["points"] for r in readings.values()]
     out = {}
     for name in sorted(set(a) & set(b)):
         if not (name.startswith("s1_") or name.split(".")[0] in engine()["LEVELS"]):
             continue
+        if a[name].get("plausible") is False or b[name].get("plausible") is False:
+            continue
         out[name] = round(float(np.linalg.norm(np.array(a[name]["lps"]) - np.array(b[name]["lps"]))), 2)
+    return out
+
+
+def qaloop_offsets(reading):
+    """For each vertebral corner with a QA loop name, on vertebrae read as a body's, the distance from this tool's
+    construction to the QA loop oracle's construction of that name on the same body (slab_points), mm."""
+    out = {}
+    for lv, slab in reading.get("slab_points", {}).items():
+        if lv not in reading.get("plausible_levels", []):
+            continue
+        for c, q in slab.items():
+            mine = reading["points"].get(f"{lv}.{c}")
+            if mine is not None:
+                out[f"{lv}.{c}"] = round(float(np.linalg.norm(np.array(mine["lps"]) - np.array(q))), 2)
     return out
 
 
@@ -1049,8 +1292,9 @@ def promontory_offsets(reading):
     the S1 plate's front end less L5's lower plate centre and less L5's anterior-inferior corner, along the line from
     L5's lower plate's back end to its front end (the plate's own anterior), in mm."""
     p = reading["points"]
-    low = next((lv for lv in ("L6", "L5") if f"{lv}.anterior_inferior" in p and f"{lv}.posterior_inferior" in p), None)
-    if low is None or "s1_anterior" not in p:
+    low = next((lv for lv in ("L6", "L5") if f"{lv}.anterior_inferior" in p and f"{lv}.posterior_inferior" in p
+                and p[f"{lv}.anterior_inferior"].get("plausible", True)), None)
+    if low is None or "s1_anterior" not in p or "s1" in reading.get("notes", {}):
         return None
     front, back = np.array(p[f"{low}.anterior_inferior"]["lps"]), np.array(p[f"{low}.posterior_inferior"]["lps"])
     ahead = unit(front - back)
@@ -1072,7 +1316,7 @@ def check(data, persons_path, out, cases=CASES, pictures=2):
     rows, per_case, drawn, shapes = [], {}, [], {}
     for case in cases:
         folder = Path(data) / case
-        ts = read_totalseg(folder / "ts", folder / "ts_femur")
+        ts = read_totalseg(folder / "ts", folder / "ts_femur", folder / "ts_s1")
         authors = read_deepfluoro(folder / "vol_seg.nii.gz", reference=ts)
         shapes[case] = {"totalseg": {}, "authors": {}}
         readings = {"totalseg": construct(ts, shapes[case]["totalseg"]),
@@ -1081,6 +1325,7 @@ def check(data, persons_path, out, cases=CASES, pictures=2):
         rows += person_rows(case, person, readings)
         per_case[case] = {"readings": readings, "frame_check_mm": frame_check(person, authors),
                           "vertebra_agreement_mm": vertebra_agreement(readings),
+                          "qaloop_offsets_mm": {s: qaloop_offsets(r) for s, r in readings.items()},
                           "promontory": {s: promontory_offsets(r) for s, r in readings.items()}}
         (out / f"{case}.json").write_text(json.dumps(per_case[case], indent=1))
         print(f"{case}: {len(readings['totalseg']['points'])} points on TotalSegmentator, "
@@ -1092,15 +1337,49 @@ def check(data, persons_path, out, cases=CASES, pictures=2):
     report = {"cases": cases, "held_out_never_read": list(HELD_OUT), "agree_mm": AGREE_MM, "rows": rows,
               "summary": table, "calibration": learned, "frame_check_mm": {c: v["frame_check_mm"] for c, v in per_case.items()},
               "vertebra_agreement_mm": {c: v["vertebra_agreement_mm"] for c, v in per_case.items()},
+              "qaloop_offsets_mm": {c: v["qaloop_offsets_mm"] for c, v in per_case.items()},
+              "qaloop_offsets_summary": offsets_summary(per_case),
               "promontory": {c: v["promontory"] for c, v in per_case.items()},
               "extras": {c: {s: r["extras"] for s, r in v["readings"].items()} for c, v in per_case.items()},
               "notes": {c: {s: r["notes"] for s, r in v["readings"].items()} for c, v in per_case.items()}}
     (out / "check.json").write_text(json.dumps(report, indent=1))
-    (out / "table.md").write_text(markdown(table) + "\n" + calibration_markdown(learned))
+    (out / "table.md").write_text(markdown(table) + "\n" + calibration_markdown(learned) + "\n"
+                                  + vertebra_markdown(per_case) + "\n"
+                                  + offsets_markdown(report["qaloop_offsets_summary"]))
     if drawn:
         save_panels(drawn, out / "constructions.png")
     print(markdown(table))
     return report
+
+
+def offsets_summary(per_case):
+    """The QA loop offsets pooled over specimens and levels by construction and source: median, maximum and n, mm."""
+    out = {}
+    for v in per_case.values():
+        for source, offsets in v["qaloop_offsets_mm"].items():
+            for name, d in offsets.items():
+                out.setdefault(name.split(".", 1)[1], {}).setdefault(source, []).append(d)
+    return {c: {s: distances(d) for s, d in by.items()} for c, by in sorted(out.items())}
+
+
+def vertebra_markdown(per_case):
+    lines = ["| case | source | level | a body's? | chords, mm (spreads from Panjabi's mean) |", "|---|---|---|---|---|"]
+    for case, v in per_case.items():
+        for source, reading in v["readings"].items():
+            for lv, got in reading["extras"].get("vertebra_chords", {}).items():
+                cells = ", ".join(f"{k} {c['mm']} ({c['spreads']:+})" for k, c in got["chords"].items())
+                lines.append(f"| {case} | {source} | {lv} | {'yes' if got['plausible'] else 'no'} | {cells} |")
+    return "\n".join(lines) + "\n"
+
+
+def offsets_markdown(by_construction):
+    def cell(s):
+        return "" if not s or s["median"] is None else f"{s['median']} / {s['max']} / {s['n']}"
+    lines = ["| construction | QA loop name | TotalSegmentator (median / max / n, mm) | authors' labels |",
+             "|---|---|---|---|"]
+    for c, by in by_construction.items():
+        lines.append(f"| {c} | {CONSTRUCTIONS[c][1]} | {cell(by.get('totalseg'))} | {cell(by.get('authors'))} |")
+    return "\n".join(lines) + "\n"
 
 
 def person_direction(shape, frame, side, point_lps):
@@ -1193,8 +1472,8 @@ def panel(ct_path, case, person, readings):
     """The CT's mean along its anterior-posterior axis, bone's attenuation only (HU clipped to 0..1500), the patient's
     right on the left and superior up as on an anteroposterior film, with the person's points (green rings), the
     constructions set against them on TotalSegmentator's masks (red crosses) and on the authors' labels (blue diagonal
-    crosses), and TotalSegmentator's vertebral points (orange dots). The S1 plate's points are not drawn: on these
-    specimens every one was flagged (s1_against)."""
+    crosses), and TotalSegmentator's vertebral points (orange dots) on the vertebrae whose chords are a body's
+    (plausibility), with its S1 plate's points where they are not flagged (s1_against)."""
     import nibabel as nib
     from PIL import Image, ImageDraw
     img = nib.load(str(ct_path))
@@ -1225,8 +1504,10 @@ def panel(ct_path, case, person, readings):
         return (col + 0.5) * scale[0], (row + 0.5) * scale[1]
 
     d = ImageDraw.Draw(im)
+    flagged_s1 = "s1" in readings["totalseg"]["notes"]
     for name, q in readings["totalseg"]["points"].items():
-        if name[:1] in "TL" and "." in name:
+        vertebral = name[:1] in "TL" and "." in name and q.get("plausible", False)
+        if vertebral or (name.startswith("s1_") and not flagged_s1):
             u, v = at(q["lps"])
             d.ellipse([u - 1.5, v - 1.5, u + 1.5, v + 1.5], fill=COLOURS["spine"])
     for name, p in person.items():
@@ -1254,7 +1535,8 @@ def panel(ct_path, case, person, readings):
     d.text((6, 6), f"{case}: CT mean along A-P, patient's right on the left", fill=(255, 255, 0))
     d.text((6, 20), "green ring: a person's point; red +: on TotalSegmentator; blue x: on the authors' labels",
            fill=(255, 255, 0))
-    d.text((6, 34), "orange dots: the vertebrae's corners and plate centres on TotalSegmentator", fill=(255, 255, 0))
+    d.text((6, 34), "orange dots: corners and plate centres of vertebrae read as a body's, and S1, on TotalSegmentator",
+           fill=(255, 255, 0))
     return im
 
 
@@ -1282,6 +1564,7 @@ def main(argv=None):
     p = sub.add_parser("points", help="the named points of one labelled CT")
     p.add_argument("--ts", help="a TotalSegmentator folder of per-structure masks")
     p.add_argument("--femur", help="TotalSegmentator's femur masks, where they are in another folder")
+    p.add_argument("--s1", help="the folder of TotalSegmentator's vertebrae_S1 mask, where it is in another folder")
     p.add_argument("--labels", help="a label NIfTI")
     p.add_argument("--scheme", default="enhance", help="its scheme, as scanimport names them")
     p.add_argument("--out", required=True)
@@ -1298,7 +1581,7 @@ def main(argv=None):
     if a.cmd == "points":
         if bool(a.ts) == bool(a.labels):
             ap.error("give --ts or --labels")
-        lab = read_totalseg(a.ts, a.femur or a.ts) if a.ts else read_label_file(a.labels, a.scheme)
+        lab = read_totalseg(a.ts, a.femur or a.ts, a.s1) if a.ts else read_label_file(a.labels, a.scheme)
         Path(a.out).write_text(json.dumps(construct(lab), indent=1))
     elif a.cmd == "persons":
         persons(a.h5, a.out, a.cases.split(","))
